@@ -1,7 +1,7 @@
 [![Hits](https://hits.sh/github.com/AndriyKalashnykov/vks-simple.svg?view=today-total&style=plastic)](https://hits.sh/github.com/AndriyKalashnykov/vks-simple/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
 
-# VMware VKS Jumpbox Setup — Guides
+# VMware VKS Jumpbox Setup
 
 Copy-paste shell blocks that set up a jumpbox for VMware vSphere Kubernetes Service (VKS):
 `kubectl` and the VCF CLI (`vcf`). Each block declares its own variables at the top. There is no
