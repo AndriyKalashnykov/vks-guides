@@ -1,40 +1,43 @@
 # Install the VCF CLI and its plugins
 
 `vcf` is VMware's command-line tool; you use it to log in to the Supervisor. The plugin bundle
-adds its other commands (`vcf cluster`, `vcf package`, …). The block installs both from files you
-download, with no internet access needed at install time.
+adds its other commands (`vcf cluster`, `vcf package`, …). Download two files from Broadcom, then
+run the install block; it needs no internet access.
 
 ## Download
 
 You need a Broadcom support account. Download both files for your platform (`Linux_AMD64`,
-`Linux_ARM64`, `Darwin_ARM64` or `Darwin_AMD64`) into `~/Downloads`.
+`Linux_ARM64`, `Darwin_ARM64` or `Darwin_AMD64`; Windows in WSL 2 is `Linux_AMD64`).
 
 | file | where |
 |---|---|
 | `VCF-Consumption-CLI-<platform>-9.1.1.0100.25746586.tar.gz` | [VCF Consumption CLI](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0100&os=&servicePk=547810&language=EN&groupId=545612&viewGroup=true) |
 | `VCF-Consumption-CLI-PluginBundle-<platform>-9.1.1.0100.25793136.tar.gz` | [VCF Consumption CLI Plugins](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0100&os=&servicePk=548172&language=EN&groupId=545621&viewGroup=true) |
 
-Without the direct links: [My Downloads](https://support.broadcom.com/group/ecx/downloads) →
-VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0100.
-
-- Pick the release first; until you do, the page reads "No data found".
+- Without the direct links: [My Downloads](https://support.broadcom.com/group/ecx/downloads) →
+  VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0100. Until you pick the
+  release, the page reads "No data found".
 - Tick **"I agree to the Terms and Conditions"**. The checkbox stays greyed out until you open
   both Terms links, and until it is ticked the download icon does nothing.
 - Take the row for your platform, not the multi-GB bundles without a platform.
-- Note the **SHA2** value of each file; the block prints the checksums to compare.
+- Copy the **SHA2** value of each file; the install block checks them.
 
 ## Install
 
-Edit the variables at the top if your release, build numbers or download folder differ, then
-paste the whole block. It installs `vcf` into `INSTALL_DIR`, or into `~/.local/bin` when that
-needs `sudo` and `sudo` would ask for a password (see [PREREQS.md](PREREQS.md#sudo-optional)).
+Set the variables at the top: the two SHA2 values, and `DOWNLOAD_DIR` if the files are not in
+`~/Downloads` (on Windows they are in your Windows `Downloads` folder; see
+[Prerequisites](PREREQS.md#windows)). The block installs `vcf` into `INSTALL_DIR`, or into
+`~/.local/bin` when that needs `sudo` and `sudo` would ask for a password (see
+[Prerequisites](PREREQS.md#sudo-optional)).
 
 ```sh
+VCF_CLI_SHA256=""                # SHA2 of the CLI file from the download page
+VCF_PLUGINS_SHA256=""            # SHA2 of the plugin bundle from the download page
+DOWNLOAD_DIR="$HOME/Downloads"
+INSTALL_DIR="/usr/local/bin"
 VCF_RELEASE="9.1.1.0100"
 VCF_CLI_BUILD="25746586"
 VCF_PLUGINS_BUILD="25793136"
-DOWNLOAD_DIR="$HOME/Downloads"   # Windows (WSL): your Windows Downloads folder, see PREREQS.md
-INSTALL_DIR="/usr/local/bin"
 
 case "$(uname -s)/$(uname -m)" in
   Linux/x86_64)  P=Linux_AMD64 ;;
@@ -45,16 +48,25 @@ case "$(uname -s)/$(uname -m)" in
 esac
 CLI_TGZ="$DOWNLOAD_DIR/VCF-Consumption-CLI-${P}-${VCF_RELEASE}.${VCF_CLI_BUILD}.tar.gz"
 PLUGINS_TGZ="$DOWNLOAD_DIR/VCF-Consumption-CLI-PluginBundle-${P}-${VCF_RELEASE}.${VCF_PLUGINS_BUILD}.tar.gz"
+CLI_SUM="$( (sha256sum "$CLI_TGZ" 2>/dev/null || shasum -a 256 "$CLI_TGZ" 2>/dev/null) | cut -d' ' -f1)"
+PLUGINS_SUM="$( (sha256sum "$PLUGINS_TGZ" 2>/dev/null || shasum -a 256 "$PLUGINS_TGZ" 2>/dev/null) | cut -d' ' -f1)"
 TMP="$(mktemp -d)"
 
 if [ ! -f "$CLI_TGZ" ] || [ ! -f "$PLUGINS_TGZ" ]; then
   [ -f "$CLI_TGZ" ]     || echo "FAILED: not found: $CLI_TGZ"
   [ -f "$PLUGINS_TGZ" ] || echo "FAILED: not found: $PLUGINS_TGZ"
+elif [ -z "$VCF_CLI_SHA256" ] || [ -z "$VCF_PLUGINS_SHA256" ]; then
+  echo "FAILED: set VCF_CLI_SHA256 and VCF_PLUGINS_SHA256 from the download page"
+elif [ "$CLI_SUM" != "$(echo "$VCF_CLI_SHA256" | tr 'A-F' 'a-f')" ] \
+     || [ "$PLUGINS_SUM" != "$(echo "$VCF_PLUGINS_SHA256" | tr 'A-F' 'a-f')" ]; then
+  echo "FAILED: checksum mismatch; nothing installed"
+  echo "  CLI     $CLI_SUM"
+  echo "  plugins $PLUGINS_SUM"
 elif ! tar -xzf "$CLI_TGZ" -C "$TMP" || ! mv "$TMP"/vcf-cli-* "$TMP/vcf" \
      || ! mkdir "$TMP/plugins" || ! tar -xzf "$PLUGINS_TGZ" -C "$TMP/plugins"; then
   echo "FAILED: could not unpack the downloads"
 else
-  (sha256sum "$CLI_TGZ" "$PLUGINS_TGZ" 2>/dev/null || shasum -a 256 "$CLI_TGZ" "$PLUGINS_TGZ")
+  echo "checksums OK"
   if { mkdir -p "$INSTALL_DIR" 2>/dev/null && [ -w "$INSTALL_DIR" ] && install -m 0755 "$TMP/vcf" "$INSTALL_DIR/vcf"; } \
      || { sudo -n install -d "$INSTALL_DIR" 2>/dev/null && sudo -n install -m 0755 "$TMP/vcf" "$INSTALL_DIR/vcf"; }; then
     DEST="$INSTALL_DIR"
@@ -72,15 +84,21 @@ fi
 rm -rf "$TMP"
 ```
 
-**Expect:** two checksum lines matching the **SHA2** values on the download page, then
-`version: v9.1.1.0100.25746586`, then the plugins, each `installed`, and no `FAILED` or `WARNING`
-line.
+**Expect:** `checksums OK`, then `version: v9.1.1.0100.25746586`, then the plugins, each
+`installed`, and no `FAILED` or `WARNING` line.
 
 **If not:**
-- `FAILED: not found: …`: the file is not in `DOWNLOAD_DIR` or has another name. `unsupported`
-  in the name means there is no VCF CLI build for this OS/CPU.
-- A checksum that differs from the download page: delete the file, download it again, and do
-  not use the installed `vcf` until it matches.
+- `FAILED: not found: …`: the file is not in `DOWNLOAD_DIR`, or it has another name (another
+  release: set `VCF_RELEASE` and the two build numbers from the file names). `unsupported` in the
+  name means there is no VCF CLI build for this OS/CPU.
+- `FAILED: set VCF_CLI_SHA256 …`: copy both SHA2 values from the download page into the block.
+- `FAILED: checksum mismatch; nothing installed`: compare the printed values with the page. If
+  you copied them right, the file is damaged: delete it and download it again.
+- `FAILED: could not unpack the downloads`: a download is incomplete. Download it again.
+- `FAILED: plugin install`: `vcf` works without its plugins; the error above it says why the
+  plugins failed. Run the block again once fixed.
+- `note: … added to PATH for this terminal only`: make it permanent with
+  [`~/.local/bin` on your PATH](PREREQS.md#localbin-on-your-path).
 - `WARNING: 'vcf' on PATH is …`: another `vcf` is found first. Remove it, or put `INSTALL_DIR`
   first in your `PATH`.
 

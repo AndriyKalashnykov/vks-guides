@@ -1,17 +1,16 @@
 # Install kubectl
 
-`kubectl` is the Kubernetes command-line tool. Kubernetes supports a client within one minor
-version of the cluster, so install the cluster's version once you know it
-([Match the cluster's version](#match-the-clusters-version)).
-
-You need network reach to dl.k8s.io, or to your Supervisor when dl.k8s.io is blocked.
+`kubectl` is the Kubernetes command-line tool. Run **one** of the two install blocks:
+[From dl.k8s.io](#from-dlk8sio), or [From the Supervisor](#from-the-supervisor-dlk8sio-blocked)
+when this machine cannot reach dl.k8s.io. Kubernetes supports a client within one minor version
+of the cluster: once you can reach your cluster,
+[match the cluster's version](#match-the-clusters-version).
 
 ## From dl.k8s.io
 
-Edit the variables at the top, then paste the whole block. It downloads the official binary,
-checks its SHA-256 and installs it into `INSTALL_DIR`. When that directory needs `sudo` and
-`sudo` would ask for a password, it installs into `~/.local/bin` instead (run `sudo -v` first to
-avoid that; see [PREREQS.md](PREREQS.md#sudo-optional)).
+Downloads the official binary, checks its SHA-256 and installs it into `INSTALL_DIR`. When that
+directory needs `sudo` and `sudo` would ask for a password, it installs into `~/.local/bin`
+instead (see [Prerequisites](PREREQS.md#sudo-optional)).
 
 ```sh
 KUBECTL_VERSION=""               # empty = latest stable; or e.g. v1.33.4
@@ -31,7 +30,6 @@ elif ! curl -fsSL -o "$TMP/kubectl" "$URL" || ! SUM="$(curl -fsSL "$URL.sha256")
 elif [ "$( (sha256sum "$TMP/kubectl" 2>/dev/null || shasum -a 256 "$TMP/kubectl") | cut -d' ' -f1)" != "$SUM" ]; then
   echo "FAILED: checksum mismatch for $URL"
 else
-  chmod 0755 "$TMP/kubectl"
   if { mkdir -p "$INSTALL_DIR" 2>/dev/null && [ -w "$INSTALL_DIR" ] && install -m 0755 "$TMP/kubectl" "$INSTALL_DIR/kubectl"; } \
      || { sudo -n install -d "$INSTALL_DIR" 2>/dev/null && sudo -n install -m 0755 "$TMP/kubectl" "$INSTALL_DIR/kubectl"; }; then
     DEST="$INSTALL_DIR"
@@ -50,8 +48,13 @@ rm -rf "$TMP"
 **Expect:** `Client Version: v1.…` and no `FAILED` or `WARNING` line.
 
 **If not:**
+- `FAILED: unsupported …, or dl.k8s.io unreachable`: there is no build for this OS/CPU, or this
+  machine cannot reach dl.k8s.io. Use [From the Supervisor](#from-the-supervisor-dlk8sio-blocked).
 - `FAILED: download …` with a version such as `v1.33.4`: that exact patch has no upstream build.
-  Pick another patch of the same minor from `curl -fsSL https://dl.k8s.io/release/stable-1.33.txt`.
+  `curl -fsSL https://dl.k8s.io/release/stable-1.33.txt` prints the newest patch of that minor.
+- `FAILED: checksum mismatch …`: the download arrived damaged. Run the block again.
+- `note: … added to PATH for this terminal only`: make it permanent with
+  [`~/.local/bin` on your PATH](PREREQS.md#localbin-on-your-path).
 - `WARNING: 'kubectl' on PATH is …`: another kubectl is found first. Remove it, or put
   `INSTALL_DIR` first in your `PATH`.
 
@@ -88,16 +91,26 @@ else
   case ":$PATH:" in *":$DEST:"*) ;; *) PATH="$DEST:$PATH"; echo "note: $DEST added to PATH for this terminal only (see PREREQS.md)";; esac
   hash -r 2>/dev/null
   "$DEST/kubectl" version --client
+  [ "$(command -v kubectl)" = "$DEST/kubectl" ] || echo "WARNING: 'kubectl' on PATH is $(command -v kubectl)"
 fi
 rm -rf "$TMP"
 ```
 
-**Expect:** `Client Version: v1.…`. On Apple silicon, `bad CPU type in executable` means Rosetta
-is missing: `softwareupdate --install-rosetta --agree-to-license`.
+**Expect:** `Client Version: v1.…` and no `FAILED` or `WARNING` line.
+
+**If not:**
+- `FAILED: no Supervisor kubectl for …` (Linux arm64): the Supervisor has none for this machine.
+  Get dl.k8s.io unblocked and use [From dl.k8s.io](#from-dlk8sio).
+- `FAILED: download from …`: `SUPERVISOR_ENDPOINT` is wrong, or this machine cannot reach the
+  Supervisor. The `curl:` or `unzip:` line above it says which.
+- `bad CPU type in executable` (Apple silicon): install Rosetta with
+  `softwareupdate --install-rosetta --agree-to-license`, then run the block again.
+- `note: …` and `WARNING: …` lines: as in [From dl.k8s.io](#from-dlk8sio).
 
 ## Match the cluster's version
 
-Once `kubectl` can reach your cluster, print the client and server versions:
+Needs a kubeconfig for your cluster, for example the one the VCF CLI writes when you log in.
+This prints the client and server versions:
 
 ```sh
 KUBECONFIG_FILE="$HOME/.kube/config"   # the cluster's kubeconfig
@@ -106,8 +119,11 @@ kubectl --kubeconfig "$KUBECONFIG_FILE" version -o json \
   | jq -r '"client " + .clientVersion.gitVersion, "server " + (.serverVersion.gitVersion // "unreachable")'
 ```
 
-**Expect:** two lines. If the minor versions differ by more than one, re-run
-[From dl.k8s.io](#from-dlk8sio) with `KUBECTL_VERSION` set to the server version (a
+**Expect:** `client v1.…` and `server v1.…`. If the minor versions differ by more than one, run
+[From dl.k8s.io](#from-dlk8sio) again with `KUBECTL_VERSION` set to the server version (a
 `+vmware.N` suffix is dropped for you).
+
+**If not:** `server unreachable`: `KUBECONFIG_FILE` is wrong, or its login has expired. The
+`kubectl` error above it says which.
 
 Back to [README](README.md).

@@ -9,12 +9,12 @@ Service (VKS), by pasting shell blocks.
 ## How to use
 
 1. Open `bash` or `zsh`. On Windows, use Ubuntu in WSL 2 ([Prerequisites](PREREQS.md#windows)).
-2. Set the variables at the top of a block, then paste the whole block.
+2. If a block starts with variables, set them. Then paste the whole block.
 3. Compare the output with **Expect:**. If it differs, do what **If not:** says.
 
 ## Guides
 
-Use the ones you need, in any order.
+Start with Prerequisites. Then install kubectl, the VCF CLI, or both, in either order.
 
 | guide | what it is |
 |---|---|
@@ -36,7 +36,7 @@ done
 
 | platform | shells | what ran |
 |---|---|---|
-| Ubuntu (Linux amd64) | bash, zsh | KUBECTL.md: dl.k8s.io install (latest, `+vmware` suffix, `~/.local/bin` fallback) and failure paths; VCF.md: install logic against stand-in tarballs |
+| Ubuntu (Linux amd64) | bash, zsh | Install kubectl: dl.k8s.io install (latest, `+vmware` suffix, `~/.local/bin` fallback) and its failure messages. Install the VCF CLI: the install logic, against stand-in tarballs |
 
 Not tested yet: macOS, Windows (WSL 2), Linux arm64, the Supervisor kubectl download, and the real Broadcom VCF CLI
 tarballs.
