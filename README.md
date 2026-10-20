@@ -1,9 +1,9 @@
 [![Hits](https://hits.sh/github.com/AndriyKalashnykov/vks-simple.svg?view=today-total&style=plastic)](https://hits.sh/github.com/AndriyKalashnykov/vks-simple/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
 
-# VMware VKS Workstation Setup — Copy-Paste CLI Guides
+# VMware VKS Jumpbox Setup — Copy-Paste CLI Guides
 
-Copy-paste shell blocks that set up a workstation for VMware vSphere Kubernetes Service (VKS):
+Copy-paste shell blocks that set up a jumpbox for VMware vSphere Kubernetes Service (VKS):
 `kubectl` and the VCF CLI (`vcf`). Each block declares its own variables at the top. There is no
 Makefile, no mise and no env file. This repo is a minimal subset of
 [golang-web/vks](https://github.com/AndriyKalashnykov/golang-web/tree/main/vks).
