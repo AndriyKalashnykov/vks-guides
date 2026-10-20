@@ -10,7 +10,7 @@ Makefile, no mise and no env file. This repo is a minimal subset of
 
 ## How to use
 
-- Paste each block into `bash` or `zsh` on Linux or macOS.
+- Paste each block into `bash` or `zsh` on Linux, macOS, or Windows (WSL 2).
 - Edit the variables at the top of a block, then paste the whole block.
 - **Expect:** after a block says what you should see; **If not:** says what to do.
 
@@ -48,7 +48,7 @@ done
 |---|---|---|
 | Ubuntu (Linux amd64) | bash, zsh | KUBECTL.md: dl.k8s.io install (latest, `+vmware` suffix, `~/.local/bin` fallback) and failure paths; VCF.md: install logic against stand-in tarballs |
 
-Not tested yet: macOS, Linux arm64, the Supervisor kubectl download, and the real Broadcom VCF CLI
+Not tested yet: macOS, Windows (WSL 2), Linux arm64, the Supervisor kubectl download, and the real Broadcom VCF CLI
 tarballs.
 
 ## License

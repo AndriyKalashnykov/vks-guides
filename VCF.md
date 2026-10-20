@@ -33,7 +33,7 @@ needs `sudo` and `sudo` would ask for a password (see [PREREQS.md](PREREQS.md#su
 VCF_RELEASE="9.1.1.0100"
 VCF_CLI_BUILD="25746586"
 VCF_PLUGINS_BUILD="25793136"
-DOWNLOAD_DIR="$HOME/Downloads"
+DOWNLOAD_DIR="$HOME/Downloads"   # Windows (WSL): your Windows Downloads folder, see PREREQS.md
 INSTALL_DIR="/usr/local/bin"
 
 case "$(uname -s)/$(uname -m)" in
