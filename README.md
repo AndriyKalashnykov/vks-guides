@@ -18,17 +18,17 @@ Makefile, no mise and no env file. This repo is a minimal subset of
 
 | you need | for |
 |---|---|
-| `curl`, `tar`, `unzip`, `jq` | every guide; install with [PREREQS.md](PREREQS.md) |
-| a Broadcom support account that can download VMware vSphere Foundation 9 | [VCF.md](VCF.md) |
-| network reach to dl.k8s.io (or to your Supervisor) | [KUBECTL.md](KUBECTL.md) |
+| `curl`, `tar`, `unzip`, `jq` | every guide; install with [Prerequisites](PREREQS.md) |
+| a Broadcom support account that can download VMware vSphere Foundation 9 | [Install the VCF CLI](VCF.md) |
+| network reach to dl.k8s.io (or to your Supervisor) | [Install kubectl](KUBECTL.md) |
 
 ## Steps
 
 | # | guide | result |
 |---|---|---|
-| 1 | [PREREQS.md](PREREQS.md) | `curl`, `tar`, `unzip`, `jq`; optional `sudo -v`; `~/.local/bin` on `PATH` |
-| 2 | [KUBECTL.md](KUBECTL.md) | `kubectl` from dl.k8s.io (checksum-verified) or from the Supervisor; match the cluster's version |
-| 3 | [VCF.md](VCF.md) | `vcf` and its plugins, from the Broadcom downloads |
+| 1 | [Prerequisites](PREREQS.md) | `curl`, `tar`, `unzip`, `jq`; optional `sudo -v`; `~/.local/bin` on `PATH` |
+| 2 | [Install kubectl](KUBECTL.md) | `kubectl` from dl.k8s.io (checksum-verified) or from the Supervisor; match the cluster's version |
+| 3 | [Install the VCF CLI](VCF.md) | `vcf` and its plugins, from the Broadcom downloads |
 
 Then check:
 
