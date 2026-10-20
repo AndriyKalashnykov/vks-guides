@@ -26,11 +26,11 @@ Makefile, no mise and no env file. This repo is a minimal subset of
 
 Each guide stands alone. Use the ones you need, in any order, and skip any tool you already have.
 
-| guide | gives you |
+| guide | what it is |
 |---|---|
-| [Prerequisites](PREREQS.md) | `curl`, `tar`, `unzip`, `jq`; optional `sudo -v`; `~/.local/bin` on `PATH` |
-| [Install kubectl](KUBECTL.md) | `kubectl` from dl.k8s.io (checksum-verified) or from the Supervisor; match the cluster's version |
-| [Install the VCF CLI](VCF.md) | `vcf` and its plugins, from the Broadcom downloads |
+| [Prerequisites](PREREQS.md) | the small command-line tools the other guides use |
+| [Install kubectl](KUBECTL.md) | the Kubernetes command-line tool, for working with your clusters |
+| [Install the VCF CLI](VCF.md) | VMware's command-line tool, for logging in to the Supervisor and managing VKS clusters |
 
 ## Check what is installed
 
