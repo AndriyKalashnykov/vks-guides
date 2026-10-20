@@ -1,24 +1,36 @@
-# vks-simple
+[![Hits](https://hits.sh/github.com/AndriyKalashnykov/vks-simple.svg?view=today-total&style=plastic)](https://hits.sh/github.com/AndriyKalashnykov/vks-simple/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
 
-Copy-paste CLI guides for working with VMware vSphere Kubernetes Service (VKS). A minimal subset
-of [golang-web/vks](https://github.com/AndriyKalashnykov/golang-web/tree/main/vks).
+# VMware VKS Workstation Setup — Copy-Paste CLI Guides
+
+Copy-paste shell blocks that set up a workstation for VMware vSphere Kubernetes Service (VKS):
+`kubectl` and the VCF CLI (`vcf`). Each block declares its own variables at the top. There is no
+Makefile, no mise and no env file. This repo is a minimal subset of
+[golang-web/vks](https://github.com/AndriyKalashnykov/golang-web/tree/main/vks).
 
 ## How to use
 
-- Each guide is a list of shell blocks. Paste them into `bash` or `zsh` on Linux or macOS.
-- Each block sets the variables it needs at the top. Edit them, then paste the whole block.
-- No Makefile, no mise, no env file to source: a block depends only on the tools it names.
+- Paste each block into `bash` or `zsh` on Linux or macOS, in the order below.
+- Edit the variables at the top of a block, then paste the whole block.
 - **Expect:** after a block says what you should see; **If not:** says what to do.
 
-## Guides
+## Prerequisites
 
-| guide | what it does |
+| you need | for |
 |---|---|
-| [PREREQS.md](PREREQS.md) | `curl`, `tar`, `unzip`, `jq`; `sudo` and `PATH` notes |
-| [KUBECTL.md](KUBECTL.md) | install `kubectl` from dl.k8s.io or from the Supervisor, and match the cluster's version |
-| [VCF.md](VCF.md) | install the VCF CLI (`vcf`) and its plugins from the Broadcom downloads |
+| `curl`, `tar`, `unzip`, `jq` | every guide; install with [PREREQS.md](PREREQS.md) |
+| a Broadcom support account that can download VMware vSphere Foundation 9 | [VCF.md](VCF.md) |
+| network reach to dl.k8s.io (or to your Supervisor) | [KUBECTL.md](KUBECTL.md) |
 
-## Check
+## Steps
+
+| # | guide | result |
+|---|---|---|
+| 1 | [PREREQS.md](PREREQS.md) | `curl`, `tar`, `unzip`, `jq`; optional `sudo -v`; `~/.local/bin` on `PATH` |
+| 2 | [KUBECTL.md](KUBECTL.md) | `kubectl` from dl.k8s.io (checksum-verified) or from the Supervisor; match the cluster's version |
+| 3 | [VCF.md](VCF.md) | `vcf` and its plugins, from the Broadcom downloads |
+
+Then check:
 
 ```sh
 for t in curl tar unzip jq kubectl vcf; do
@@ -26,7 +38,16 @@ for t in curl tar unzip jq kubectl vcf; do
 done
 ```
 
-**Expect:** six `ok` lines. For a `MISSING` line, see the guide above for that tool.
+**Expect:** six `ok` lines. For a `MISSING` line, re-run that tool's guide.
+
+## Tested
+
+| platform | shells | what ran |
+|---|---|---|
+| Ubuntu (Linux amd64) | bash, zsh | KUBECTL.md: dl.k8s.io install (latest, `+vmware` suffix, `~/.local/bin` fallback) and failure paths; VCF.md: install logic against stand-in tarballs |
+
+Not tested yet: macOS, Linux arm64, the Supervisor kubectl download, and the real Broadcom VCF CLI
+tarballs.
 
 ## License
 
