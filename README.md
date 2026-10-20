@@ -3,28 +3,18 @@
 
 # VMware VKS Jumpbox Setup
 
-Copy-paste shell blocks that set up a jumpbox for VMware vSphere Kubernetes Service (VKS):
-`kubectl` and the VCF CLI (`vcf`). Each block declares its own variables at the top. There is no
-Makefile, no mise and no env file. This repo is a minimal subset of
-[golang-web/vks](https://github.com/AndriyKalashnykov/golang-web/tree/main/vks).
+Install `kubectl` and the VCF CLI on the machine you use to reach VMware vSphere Kubernetes
+Service (VKS), by pasting shell blocks.
 
 ## How to use
 
-- Paste each block into `bash` or `zsh` on Linux, macOS, or Windows (WSL 2).
-- Edit the variables at the top of a block, then paste the whole block.
-- **Expect:** after a block says what you should see; **If not:** says what to do.
-
-## Prerequisites
-
-| you need | for |
-|---|---|
-| `curl`, `tar`, `unzip`, `jq` | every guide; install with [Prerequisites](PREREQS.md) |
-| a Broadcom support account that can download VMware vSphere Foundation 9 | [Install the VCF CLI](VCF.md) |
-| network reach to dl.k8s.io (or to your Supervisor) | [Install kubectl](KUBECTL.md) |
+1. Open `bash` or `zsh`. On Windows, use Ubuntu in WSL 2 ([Prerequisites](PREREQS.md#windows)).
+2. Set the variables at the top of a block, then paste the whole block.
+3. Compare the output with **Expect:**. If it differs, do what **If not:** says.
 
 ## Guides
 
-Each guide stands alone. Use the ones you need, in any order, and skip any tool you already have.
+Use the ones you need, in any order.
 
 | guide | what it is |
 |---|---|

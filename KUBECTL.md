@@ -4,6 +4,8 @@
 version of the cluster, so install the cluster's version once you know it
 ([Match the cluster's version](#match-the-clusters-version)).
 
+You need network reach to dl.k8s.io, or to your Supervisor when dl.k8s.io is blocked.
+
 ## From dl.k8s.io
 
 Edit the variables at the top, then paste the whole block. It downloads the official binary,
