@@ -47,11 +47,10 @@ that tool's guide.
 
 | platform | shells | what ran |
 |---|---|---|
-| Ubuntu (Linux amd64) | bash, zsh | Install kubectl: dl.k8s.io install (latest, `+vmware` suffix, `~/.local/bin` fallback) and its failure messages. Install the VCF CLI: the install logic, against stand-in tarballs. Log in: every block, against stand-in `vcf`, `kubectl` and vCenter download |
+| Ubuntu (Linux amd64) | bash, zsh | Install kubectl: dl.k8s.io install (latest, `+vmware` suffix, `~/.local/bin` fallback) and its failure messages; the Supervisor download from a real 9.1.1 Supervisor. Install the VCF CLI: with the real Broadcom 9.1.1.0100 Linux_AMD64 tarballs (13 plugins installed). Log in: the vCenter CA download from a real vCenter (and that it verifies the Supervisor at its IP address); every other block against stand-in `vcf` and `kubectl` |
 | PowerShell 7 on Linux | pwsh | every Windows (PowerShell) block: parsed, and run against stand-in `curl.exe`, `kubectl`, `vcf` and zips |
 
-Not tested yet: macOS, Windows itself (Windows PowerShell 5.1 and WSL 2), Linux arm64, the Supervisor kubectl download, the real Broadcom VCF CLI
-tarballs, and a login to a real Supervisor.
+Not tested yet: macOS, Windows itself (Windows PowerShell 5.1 and WSL 2), Linux arm64, and a password login to a real Supervisor.
 
 ## License
 
