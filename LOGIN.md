@@ -1,6 +1,6 @@
-# Log in to the Supervisor and a guest cluster
+# Log in to the Supervisor and a VKS cluster
 
-You log in to the Supervisor with the VCF CLI and your vCenter SSO user, then read your guest
+You log in to the Supervisor with the VCF CLI and your vCenter SSO user, then read your VKS
 cluster's kubeconfig from it. Needs [kubectl](KUBECTL.md), the [VCF CLI](VCF.md) and
 [Prerequisites](PREREQS.md). Have these at hand:
 
@@ -8,7 +8,7 @@ cluster's kubeconfig from it. Needs [kubectl](KUBECTL.md), the [VCF CLI](VCF.md)
 - an SSO user with a role on your vSphere Namespace (for example `administrator@vsphere.local`),
   and its password (a login through a web page, Okta or Entra ID is not covered);
 - the vSphere Namespace's name and, once you see it in
-  [Check your vSphere Namespace](#check-your-vsphere-namespace), the guest cluster's name.
+  [Check your vSphere Namespace](#check-your-vsphere-namespace), the VKS cluster's name.
 
 Run the sections in order, in one terminal. After that, you need only
 [Renew the Supervisor login](#renew-the-supervisor-login) when the login ends, and
@@ -209,7 +209,7 @@ if (-not $SSO_PASSWORD) {
 
 ## Check your vSphere Namespace
 
-This checks that your SSO user can see your vSphere Namespace, and lists the guest clusters in
+This checks that your SSO user can see your vSphere Namespace, and lists the VKS clusters in
 it.
 
 macOS, Linux, WSL (bash or zsh):
@@ -232,7 +232,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE
 if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io }
 ```
 
-**Expect:** your namespace, `Active`, then a table whose `NAME` column holds your guest cluster.
+**Expect:** your namespace, `Active`, then a table whose `NAME` column holds your VKS cluster.
 
 **If not:**
 - `NotFound`: check `VKS_NAMESPACE`.
@@ -240,12 +240,12 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
   vCenter administrator for the role, then [Log out](#log-out) and log in again.
 - `Unauthorized`: the login has ended. Run
   [Renew the Supervisor login](#renew-the-supervisor-login).
-- `No resources found`: the namespace has no guest cluster yet. Creating one is not covered here.
+- `No resources found`: the namespace has no VKS cluster yet. Creating one is not covered here.
 
-## Get the guest cluster's kubeconfig
+## Get the VKS cluster's kubeconfig
 
-This reads the guest cluster's kubeconfig from the Supervisor and saves it as
-`GUEST_KUBECONFIG`, readable only by you. It is the cluster's shared administrator login: anyone
+This reads the VKS cluster's kubeconfig from the Supervisor and saves it as
+`VKS_KUBECONFIG`, readable only by you. It is the cluster's shared administrator login: anyone
 with the file controls the cluster, and it keeps working after your Supervisor login ends. Keep
 it private.
 
@@ -253,20 +253,20 @@ macOS, Linux, WSL (bash or zsh):
 
 ```sh
 VKS_NAMESPACE="my-namespace"
-VKS_CLUSTER="my-guest-cluster"                        # from the NAME column above
+VKS_CLUSTER="my-vks-cluster"                        # from the NAME column above
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
-GUEST_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-rm -f "$GUEST_KUBECONFIG.new"
+rm -f "$VKS_KUBECONFIG.new"
 if ( umask 077
      kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get secret "${VKS_CLUSTER}-kubeconfig" \
-       -o go-template='{{.data.value | base64decode}}' > "$GUEST_KUBECONFIG.new" ) \
-   && kubectl --kubeconfig "$GUEST_KUBECONFIG.new" config view >/dev/null 2>&1; then
-  mv "$GUEST_KUBECONFIG.new" "$GUEST_KUBECONFIG"
-  kubectl --kubeconfig "$GUEST_KUBECONFIG" get nodes
+       -o go-template='{{.data.value | base64decode}}' > "$VKS_KUBECONFIG.new" ) \
+   && kubectl --kubeconfig "$VKS_KUBECONFIG.new" config view >/dev/null 2>&1; then
+  mv "$VKS_KUBECONFIG.new" "$VKS_KUBECONFIG"
+  kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes
 else
-  rm -f "$GUEST_KUBECONFIG.new"
-  echo "FAILED: no kubeconfig read (see the kubectl error above); $GUEST_KUBECONFIG is as it was"
+  rm -f "$VKS_KUBECONFIG.new"
+  echo "FAILED: no kubeconfig read (see the kubectl error above); $VKS_KUBECONFIG is as it was"
 fi
 ```
 
@@ -274,22 +274,22 @@ Windows (PowerShell):
 
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
-$VKS_CLUSTER = "my-guest-cluster"                     # from the NAME column above
+$VKS_CLUSTER = "my-vks-cluster"                     # from the NAME column above
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
-$GUEST_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $KC = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" `
   -o go-template='{{.data.value | base64decode}}'
 if ($LASTEXITCODE -eq 0 -and $KC) {
-  Set-Content -Encoding ascii -Path "$GUEST_KUBECONFIG.new" -Value $KC
-  kubectl --kubeconfig "$GUEST_KUBECONFIG.new" config view *> $null
+  Set-Content -Encoding ascii -Path "$VKS_KUBECONFIG.new" -Value $KC
+  kubectl --kubeconfig "$VKS_KUBECONFIG.new" config view *> $null
 }
 if ($LASTEXITCODE -eq 0 -and $KC) {
-  Move-Item -Force "$GUEST_KUBECONFIG.new" $GUEST_KUBECONFIG
-  kubectl --kubeconfig $GUEST_KUBECONFIG get nodes
+  Move-Item -Force "$VKS_KUBECONFIG.new" $VKS_KUBECONFIG
+  kubectl --kubeconfig $VKS_KUBECONFIG get nodes
 } else {
-  Remove-Item -Force -ErrorAction SilentlyContinue "$GUEST_KUBECONFIG.new"
-  "FAILED: no kubeconfig read (see the kubectl error above); $GUEST_KUBECONFIG is as it was"
+  Remove-Item -Force -ErrorAction SilentlyContinue "$VKS_KUBECONFIG.new"
+  "FAILED: no kubeconfig read (see the kubectl error above); $VKS_KUBECONFIG is as it was"
 }
 ```
 
@@ -304,14 +304,14 @@ if ($LASTEXITCODE -eq 0 -and $KC) {
 - A node `NotReady`: the cluster is still starting, or a node has a problem; ask its
   administrator.
 
-## Use the guest cluster
+## Use the VKS cluster
 
-This makes the guest cluster `kubectl`'s default in this terminal.
+This makes the VKS cluster `kubectl`'s default in this terminal.
 
 macOS, Linux, WSL (bash or zsh):
 
 ```sh
-VKS_CLUSTER="my-guest-cluster"
+VKS_CLUSTER="my-vks-cluster"
 
 export KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 kubectl config current-context
@@ -320,7 +320,7 @@ kubectl config current-context
 Windows (PowerShell):
 
 ```powershell
-$VKS_CLUSTER = "my-guest-cluster"
+$VKS_CLUSTER = "my-vks-cluster"
 
 $env:KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 kubectl config current-context
@@ -335,7 +335,7 @@ kubectl must be within one minor version of the cluster. This prints both versio
 macOS, Linux, WSL (bash or zsh):
 
 ```sh
-VKS_CLUSTER="my-guest-cluster"
+VKS_CLUSTER="my-vks-cluster"
 
 kubectl --kubeconfig "$HOME/.kube/${VKS_CLUSTER}.kubeconfig" version -o json \
   | jq -r '"client " + .clientVersion.gitVersion, "server " + (.serverVersion.gitVersion // "unreachable")'
@@ -344,7 +344,7 @@ kubectl --kubeconfig "$HOME/.kube/${VKS_CLUSTER}.kubeconfig" version -o json \
 Windows (PowerShell):
 
 ```powershell
-$VKS_CLUSTER = "my-guest-cluster"
+$VKS_CLUSTER = "my-vks-cluster"
 
 $V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o json | Out-String | ConvertFrom-Json
 "client $($V.clientVersion.gitVersion)"
@@ -364,7 +364,7 @@ $V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o jso
 ## Renew the Supervisor login
 
 Run this only when a `kubectl` command to the Supervisor answers
-`error: You must be logged in to the server (Unauthorized)`. The guest cluster's kubeconfig does
+`error: You must be logged in to the server (Unauthorized)`. The VKS cluster's kubeconfig does
 not need it. Set `SUPERVISOR_CA` to the value you logged in with: a different one switches the
 login to the other mode without saying so. It logs in with your password again, so in a new
 terminal run the [password line](#type-your-sso-password) first, and mind the lock-out.
@@ -424,7 +424,7 @@ command that answered `Unauthorized` again.
 
 This deletes the Supervisor login with its namespace contexts, its kubeconfig, `vcf`'s log files
 (they hold a copy of the login token, valid until its 10 hours are over) and the password in this
-terminal. The guest cluster's kubeconfig is kept; delete it with `rm` if you no longer need it.
+terminal. The VKS cluster's kubeconfig is kept; delete it with `rm` if you no longer need it.
 
 macOS, Linux, WSL (bash or zsh):
 

@@ -104,7 +104,7 @@ Remove-Item -Recurse -Force $TMP
 
 The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only (Apple silicon
 runs it through Rosetta). It is the Supervisor's version, usually more than one minor version
-older than your guest cluster. The download skips the TLS check (`curl -k`).
+older than your VKS cluster. The download skips the TLS check (`curl -k`).
 
 macOS, Linux, WSL (bash or zsh):
 

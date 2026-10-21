@@ -1,10 +1,10 @@
 [![Hits](https://hits.sh/github.com/AndriyKalashnykov/vks-simple.svg?view=today-total&style=plastic)](https://hits.sh/github.com/AndriyKalashnykov/vks-simple/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
 
-# VMware VKS Jumpbox Setup
+# VMware VKS How-to Guides
 
 Install `kubectl` and the VCF CLI on the machine you use to reach VMware vSphere Kubernetes
-Service (VKS), and log in to the Supervisor and your guest cluster, by pasting shell blocks.
+Service (VKS), and log in to the Supervisor and your VKS cluster, by pasting shell blocks.
 
 ## How to use
 
@@ -22,7 +22,7 @@ Start with Prerequisites. Then install kubectl and the VCF CLI, in either order.
 | [Prerequisites](PREREQS.md) | the small command-line tools the other guides use |
 | [Install kubectl](KUBECTL.md) | the Kubernetes command-line tool, for working with your clusters |
 | [Install the VCF CLI](VCF.md) | VMware's command-line tool, for logging in to the Supervisor and managing VKS clusters |
-| [Log in to the Supervisor and a guest cluster](LOGIN.md) | your SSO login to the Supervisor, and the kubeconfig `kubectl` uses to reach your guest cluster |
+| [Log in to the Supervisor and a VKS cluster](LOGIN.md) | your SSO login to the Supervisor, and the kubeconfig `kubectl` uses to reach your VKS cluster |
 
 ## Check what is installed
 
@@ -48,7 +48,7 @@ that tool's guide.
 ## Tested
 
 Every install and login block ran against the real Broadcom 9.1.1.0100 files and a real vSphere
-9.1.1 Supervisor with a guest cluster, on:
+9.1.1 Supervisor with a VKS cluster, on:
 
 | platform | shell |
 |---|---|
