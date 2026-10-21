@@ -27,9 +27,9 @@ VCENTER_FQDN="vcsa.example.test"     # vCenter DNS name
 CA_FILE="$HOME/.kube/vcenter-ca.pem"
 
 TMP="$(mktemp -d)"
-if ! curl -fsSk --max-time 60 -o "$TMP/certs.zip" "https://${VCENTER_FQDN}/certs/download.zip"; then
+if ! curl -fsSk --connect-timeout 20 --speed-time 60 -o "$TMP/certs.zip" "https://${VCENTER_FQDN}/certs/download.zip"; then
   echo "FAILED: download from https://${VCENTER_FQDN}"
-elif ! unzip -oqj "$TMP/certs.zip" -d "$TMP/certs" || [ -z "$(find "$TMP/certs" -name '*.0')" ]; then
+elif ! unzip -oqj "$TMP/certs.zip" 'certs/lin/*' -d "$TMP/certs" || [ -z "$(find "$TMP/certs" -name '*.0')" ]; then
   echo "FAILED: no CA certificate in the download from https://${VCENTER_FQDN}"
 else
   mkdir -p "$(dirname "$CA_FILE")"
@@ -47,12 +47,12 @@ $VCENTER_FQDN = "vcsa.example.test"      # vCenter DNS name
 $CA_FILE = "$HOME\.kube\vcenter-ca.pem"
 
 $TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
-curl.exe -fsSk --max-time 60 -o "$TMP\certs.zip" "https://$VCENTER_FQDN/certs/download.zip"
+curl.exe -fsSk --connect-timeout 20 --speed-time 60 -o "$TMP\certs.zip" "https://$VCENTER_FQDN/certs/download.zip"
 if ($LASTEXITCODE -ne 0) {
   "FAILED: download from https://$VCENTER_FQDN"
 } else {
   Expand-Archive -Force -Path "$TMP\certs.zip" -DestinationPath "$TMP\certs" -ErrorAction SilentlyContinue
-  $CERTS = Get-ChildItem -Recurse -Path "$TMP\certs" -Filter '*.0' -ErrorAction SilentlyContinue
+  $CERTS = Get-ChildItem -Path "$TMP\certs\certs\lin" -Filter '*.0' -ErrorAction SilentlyContinue
   if (-not $CERTS) {
     "FAILED: no CA certificate in the download from https://$VCENTER_FQDN"
   } else {

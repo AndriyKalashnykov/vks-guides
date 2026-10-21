@@ -48,9 +48,10 @@ that tool's guide.
 | platform | shells | what ran |
 |---|---|---|
 | Ubuntu (Linux amd64) | bash, zsh | Install kubectl: dl.k8s.io install (latest, `+vmware` suffix, `~/.local/bin` fallback) and its failure messages; the Supervisor download from a real 9.1.1 Supervisor. Install the VCF CLI: with the real Broadcom 9.1.1.0100 Linux_AMD64 tarballs (13 plugins installed). Log in: the vCenter CA download from a real vCenter (and that it verifies the Supervisor at its IP address); every other block against stand-in `vcf` and `kubectl` |
+| Windows Server 2025 | Windows PowerShell 5.1 | Install kubectl from dl.k8s.io and from a real Supervisor; Install the VCF CLI with the real Windows_AMD64 zips (12 plugins); Log in: the vCenter CA download, and `vcf` reaching a real Supervisor through the CA check (rejected a made-up user, as expected); the check block |
 | PowerShell 7 on Linux | pwsh | every Windows (PowerShell) block: parsed, and run against stand-in `curl.exe`, `kubectl`, `vcf` and zips |
 
-Not tested yet: macOS, Windows itself (Windows PowerShell 5.1 and WSL 2), Linux arm64, and a password login to a real Supervisor.
+Not tested yet: macOS, WSL 2, Linux arm64, and a successful password login to a real Supervisor (and so the namespace, kubeconfig, renew and log-out blocks against it).
 
 ## License
 

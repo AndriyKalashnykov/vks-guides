@@ -18,14 +18,15 @@ INSTALL_DIR="/usr/local/bin"
 
 case "$(uname -s)" in Linux) OS=linux ;; Darwin) OS=darwin ;; *) OS="" ;; esac
 case "$(uname -m)" in x86_64|amd64) ARCH=amd64 ;; arm64|aarch64) ARCH=arm64 ;; *) ARCH="" ;; esac
-[ -n "$KUBECTL_VERSION" ] || KUBECTL_VERSION="$(curl -fsSL https://dl.k8s.io/release/stable.txt)"
+[ -n "$KUBECTL_VERSION" ] || KUBECTL_VERSION="$(curl -fsSL --connect-timeout 20 --speed-time 60 https://dl.k8s.io/release/stable.txt)"
 KUBECTL_VERSION="${KUBECTL_VERSION%%+*}"     # drop a "+vmware.N" suffix
 URL="https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/${OS}/${ARCH}/kubectl"
 TMP="$(mktemp -d)"
 
 if [ -z "$OS" ] || [ -z "$ARCH" ] || [ -z "$KUBECTL_VERSION" ]; then
   echo "FAILED: unsupported $(uname -s)/$(uname -m), or dl.k8s.io unreachable"
-elif ! curl -fsSL -o "$TMP/kubectl" "$URL" || ! SUM="$(curl -fsSL "$URL.sha256")"; then
+elif ! curl -fsSL --connect-timeout 20 --speed-time 60 -o "$TMP/kubectl" "$URL" \
+     || ! SUM="$(curl -fsSL --connect-timeout 20 --speed-time 60 "$URL.sha256")"; then
   echo "FAILED: download of $URL"
 elif [ "$( (sha256sum "$TMP/kubectl" 2>/dev/null || shasum -a 256 "$TMP/kubectl") | cut -d' ' -f1)" != "$SUM" ]; then
   echo "FAILED: checksum mismatch for $URL"
@@ -52,7 +53,7 @@ $KUBECTL_VERSION = ""                    # empty = latest stable; or e.g. v1.33.
 $INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
 
 $ARCH = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
-if (-not $KUBECTL_VERSION) { $KUBECTL_VERSION = curl.exe -fsSL https://dl.k8s.io/release/stable.txt }
+if (-not $KUBECTL_VERSION) { $KUBECTL_VERSION = curl.exe -fsSL --connect-timeout 20 --speed-time 60 https://dl.k8s.io/release/stable.txt }
 $KUBECTL_VERSION = "$KUBECTL_VERSION".Split('+')[0]   # drop a "+vmware.N" suffix
 $URL = "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/windows/$ARCH/kubectl.exe"
 $TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
@@ -60,8 +61,8 @@ $TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Pa
 if (-not $KUBECTL_VERSION) {
   "FAILED: unsupported $env:PROCESSOR_ARCHITECTURE, or dl.k8s.io unreachable"
 } else {
-  curl.exe -fsSL -o "$TMP\kubectl.exe" $URL
-  $SUM = if ($LASTEXITCODE -eq 0) { curl.exe -fsSL "$URL.sha256" }
+  curl.exe -fsSL --connect-timeout 20 --speed-time 60 -o "$TMP\kubectl.exe" $URL
+  $SUM = if ($LASTEXITCODE -eq 0) { curl.exe -fsSL --connect-timeout 20 --speed-time 60 "$URL.sha256" }
   if (-not $SUM) {
     "FAILED: download of $URL"
   } elseif ((Get-FileHash -Algorithm SHA256 "$TMP\kubectl.exe").Hash -ne "$SUM".Trim()) {
@@ -117,7 +118,7 @@ TMP="$(mktemp -d)"
 
 if [ -z "$P" ]; then
   echo "FAILED: no Supervisor kubectl for $(uname -s)/$(uname -m)"
-elif ! curl -fsSk -o "$TMP/p.zip" "https://${SUPERVISOR_ENDPOINT}/wcp/plugin/${P}/vsphere-plugin.zip" \
+elif ! curl -fsSk --connect-timeout 20 --speed-time 60 -o "$TMP/p.zip" "https://${SUPERVISOR_ENDPOINT}/wcp/plugin/${P}/vsphere-plugin.zip" \
      || ! unzip -oq "$TMP/p.zip" bin/kubectl -d "$TMP"; then
   echo "FAILED: download from https://${SUPERVISOR_ENDPOINT}"
 else
@@ -143,7 +144,7 @@ $SUPERVISOR_ENDPOINT = "10.0.0.10"       # Supervisor IP or FQDN
 $INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
 
 $TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
-curl.exe -fsSk -o "$TMP\p.zip" "https://$SUPERVISOR_ENDPOINT/wcp/plugin/windows-amd64/vsphere-plugin.zip"
+curl.exe -fsSk --connect-timeout 20 --speed-time 60 -o "$TMP\p.zip" "https://$SUPERVISOR_ENDPOINT/wcp/plugin/windows-amd64/vsphere-plugin.zip"
 if ($LASTEXITCODE -eq 0) { Expand-Archive -Force -Path "$TMP\p.zip" -DestinationPath "$TMP\p" -ErrorAction SilentlyContinue }
 
 if (-not (Test-Path "$TMP\p\bin\kubectl.exe")) {
