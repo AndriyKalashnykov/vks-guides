@@ -102,8 +102,9 @@ Remove-Item -Recurse -Force $TMP
 ## From the Supervisor (dl.k8s.io blocked)
 
 The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only (Apple silicon
-runs it through Rosetta). It is the Supervisor's version, which can be older than your guest
-cluster. The download skips the TLS check (`curl -k`).
+runs it through Rosetta). It is the Supervisor's version, usually older than your guest cluster
+by more than one minor version, so [match the cluster's version](#match-the-clusters-version) once
+you can. The download skips the TLS check (`curl -k`).
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"  # Supervisor IP or FQDN
@@ -200,9 +201,11 @@ $V = kubectl --kubeconfig $KUBECONFIG_FILE version -o json | Out-String | Conver
 "server $(if ($V.serverVersion) { $V.serverVersion.gitVersion } else { 'unreachable' })"
 ```
 
-**Expect:** `client v1.…` and `server v1.…`. If the minor versions differ by more than one, run
+**Expect:** `client v1.…` and `server v1.…`. If the minor versions differ by more than one,
+kubectl also prints `WARNING: version difference between client … and server …`: run
 [From dl.k8s.io](#from-dlk8sio) again with `KUBECTL_VERSION` set to the server version (a
-`+vmware.N` suffix is dropped for you).
+`+vmware.N` suffix is dropped for you). The Supervisor's kubectl usually gets this warning (for
+example 1.32 against a 1.36 guest cluster).
 
 **If not:** `server unreachable`: `KUBECONFIG_FILE` is wrong, or the cluster cannot be reached
 from here. The `kubectl` error above it says which.

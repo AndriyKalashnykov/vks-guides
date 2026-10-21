@@ -401,7 +401,8 @@ Remove-Item -Force -ErrorAction SilentlyContinue $SUPERVISOR_KUBECONFIG
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$HOME\.config\vcf\logs"
 ```
 
-**Expect:** the list shows no `supervisor` context. `context supervisor not found` means you
-were already logged out.
+**Expect:** `[!] Skipping to delete the kubeconfig context …` lines (harmless: the block deletes
+that file itself), `Successfully deleted context "supervisor"`, and a list with no `supervisor`
+context. `context supervisor not found` means you were already logged out.
 
 Back to [README](README.md).
