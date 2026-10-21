@@ -11,6 +11,8 @@ Downloads the official binary, checks its SHA-256 and installs it into `INSTALL_
 directory needs `sudo` and `sudo` would ask for a password, it installs into `~/.local/bin`
 instead (see [Prerequisites](PREREQS.md#sudo-optional)).
 
+macOS, Linux, WSL (bash or zsh):
+
 ```sh
 KUBECTL_VERSION=""               # empty = latest stable; or e.g. v1.33.4
 INSTALL_DIR="/usr/local/bin"
@@ -103,6 +105,8 @@ Remove-Item -Recurse -Force $TMP
 The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only (Apple silicon
 runs it through Rosetta). It is the Supervisor's version, usually more than one minor version
 older than your guest cluster. The download skips the TLS check (`curl -k`).
+
+macOS, Linux, WSL (bash or zsh):
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"  # Supervisor IP or FQDN

@@ -33,6 +33,8 @@ Set the two SHA2 values, and `DOWNLOAD_DIR` if the files are not in `~/Downloads
 into `~/.local/bin` when that needs `sudo` and `sudo` would ask for a password (see
 [Prerequisites](PREREQS.md#sudo-optional)).
 
+macOS, Linux, WSL (bash or zsh):
+
 ```sh
 VCF_CLI_SHA256=""                # SHA2 of the CLI file from the download page
 VCF_PLUGINS_SHA256=""            # SHA2 of the plugin bundle from the download page

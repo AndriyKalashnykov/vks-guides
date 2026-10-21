@@ -22,6 +22,8 @@ Supervisor. The download itself is not checked (`curl -k`), so it is saved as `C
 until you have compared its fingerprints with the ones your vCenter administrator gives you.
 Skip this section only if you will log in without the check.
 
+macOS, Linux, WSL (bash or zsh):
+
 ```sh
 VCENTER_FQDN="vcsa.example.test"     # vCenter DNS name
 CA_FILE="$HOME/.kube/vcenter-ca.pem"
@@ -85,6 +87,8 @@ ignoring colons and upper/lower case.
 
 When every fingerprint matches, keep the file:
 
+macOS, Linux, WSL (bash or zsh):
+
 ```sh
 CA_FILE="$HOME/.kube/vcenter-ca.pem"
 
@@ -106,6 +110,8 @@ Move-Item -Force "$CA_FILE.new" $CA_FILE; if ($?) { "kept $CA_FILE" }
 The login reads the password from this terminal, so it is never on a command line or in your
 shell history. Paste this line on its own, then type the password; nothing is shown as you type
 (PowerShell shows `*`).
+
+macOS, Linux, WSL (bash or zsh):
 
 ```sh
 printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
@@ -129,6 +135,8 @@ are not changed.
 `SUPERVISOR_CA` is the CA from [Get the vCenter CA](#get-the-vcenter-ca). Set it to `""` to log
 in without checking the Supervisor's certificate: then someone between you and the Supervisor
 could capture your password, and `vcf` keeps skipping the check for this login.
+
+macOS, Linux, WSL (bash or zsh):
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"                       # Supervisor IP or FQDN
@@ -204,6 +212,8 @@ if (-not $SSO_PASSWORD) {
 This checks that your SSO user can see your vSphere Namespace, and lists the guest clusters in
 it.
 
+macOS, Linux, WSL (bash or zsh):
+
 ```sh
 VKS_NAMESPACE="my-namespace"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -238,6 +248,8 @@ This reads the guest cluster's kubeconfig from the Supervisor and saves it as
 `GUEST_KUBECONFIG`, readable only by you. It is the cluster's shared administrator login: anyone
 with the file controls the cluster, and it keeps working after your Supervisor login ends. Keep
 it private.
+
+macOS, Linux, WSL (bash or zsh):
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -296,6 +308,8 @@ if ($LASTEXITCODE -eq 0 -and $KC) {
 
 This makes the guest cluster `kubectl`'s default in this terminal.
 
+macOS, Linux, WSL (bash or zsh):
+
 ```sh
 VKS_CLUSTER="my-guest-cluster"
 
@@ -317,6 +331,8 @@ kubectl config current-context
 ## Match kubectl to the cluster's version
 
 kubectl must be within one minor version of the cluster. This prints both versions:
+
+macOS, Linux, WSL (bash or zsh):
 
 ```sh
 VKS_CLUSTER="my-guest-cluster"
@@ -352,6 +368,8 @@ Run this only when a `kubectl` command to the Supervisor answers
 not need it. Set `SUPERVISOR_CA` to the value you logged in with: a different one switches the
 login to the other mode without saying so. It logs in with your password again, so in a new
 terminal run the [password line](#type-your-sso-password) first, and mind the lock-out.
+
+macOS, Linux, WSL (bash or zsh):
 
 ```sh
 SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"            # the value you logged in with
@@ -407,6 +425,8 @@ command that answered `Unauthorized` again.
 This deletes the Supervisor login with its namespace contexts, its kubeconfig, `vcf`'s log files
 (they hold a copy of the login token, valid until its 10 hours are over) and the password in this
 terminal. The guest cluster's kubeconfig is kept; delete it with `rm` if you no longer need it.
+
+macOS, Linux, WSL (bash or zsh):
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"

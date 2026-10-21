@@ -26,6 +26,8 @@ Start with Prerequisites. Then install kubectl and the VCF CLI, in either order.
 
 ## Check what is installed
 
+macOS, Linux, WSL (bash or zsh):
+
 ```sh
 for t in curl tar unzip jq openssl kubectl vcf; do
   command -v "$t" >/dev/null 2>&1 && echo "ok       $t" || echo "MISSING  $t"
