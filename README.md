@@ -52,8 +52,10 @@ Every install and login block ran against the real Broadcom 9.1.1.0100 files and
 |---|---|
 | Ubuntu, amd64 | bash, zsh |
 | Windows Server 2025 | Windows PowerShell 5.1 |
+| Windows Server 2025, WSL 2 Ubuntu | bash (all but the password login, run as root) |
 
-Not tested: macOS, WSL 2, Linux arm64, and renewing a login that has already expired.
+Not tested: macOS, Linux arm64, the password login in WSL 2, and renewing a login that has
+already expired.
 
 ## License
 
