@@ -1,11 +1,11 @@
 # Prerequisites
 
-The small command-line tools the other guides use: `curl`, `tar`, `unzip`, `jq`. Do the section
+The small command-line tools the other guides use: `curl`, `tar`, `unzip`, `jq`, `openssl`. Do the section
 for your OS, then [Check](#check).
 
 ## macOS
 
-macOS ships `curl`, `tar` and `unzip`, and recent releases also ship `jq`. This installs `jq` with
+macOS ships `curl`, `tar`, `unzip` and `openssl`, and recent releases also ship `jq`. This installs `jq` with
 [Homebrew](https://brew.sh) only when it is missing:
 
 ```sh
@@ -18,10 +18,10 @@ run the block again.
 ## Linux (Debian / Ubuntu)
 
 ```sh
-sudo apt-get update && sudo apt-get install -y curl tar unzip jq
+sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
 ```
 
-On other distributions, install the same four packages with your package manager.
+On other distributions, install the same five packages with your package manager.
 
 ## Windows
 
@@ -62,12 +62,12 @@ Linux path.
 ## Check
 
 ```sh
-for t in curl tar unzip jq; do
+for t in curl tar unzip jq openssl; do
   command -v "$t" >/dev/null 2>&1 && echo "ok       $t" || echo "MISSING  $t"
 done
 ```
 
-**Expect:** four `ok` lines.
+**Expect:** five `ok` lines.
 
 ## sudo (optional)
 

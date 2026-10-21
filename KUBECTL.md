@@ -109,11 +109,12 @@ rm -rf "$TMP"
 
 ## Match the cluster's version
 
-Needs a kubeconfig for your cluster, for example the one the VCF CLI writes when you log in.
-This prints the client and server versions:
+Needs your guest cluster's kubeconfig, from
+[Log in to the Supervisor and a guest cluster](LOGIN.md#get-the-guest-clusters-kubeconfig). This
+prints the client and server versions:
 
 ```sh
-KUBECONFIG_FILE="$HOME/.kube/config"   # the cluster's kubeconfig
+KUBECONFIG_FILE="$HOME/.kube/my-guest-cluster.kubeconfig"   # the guest cluster's kubeconfig
 
 kubectl --kubeconfig "$KUBECONFIG_FILE" version -o json \
   | jq -r '"client " + .clientVersion.gitVersion, "server " + (.serverVersion.gitVersion // "unreachable")'
@@ -123,7 +124,7 @@ kubectl --kubeconfig "$KUBECONFIG_FILE" version -o json \
 [From dl.k8s.io](#from-dlk8sio) again with `KUBECTL_VERSION` set to the server version (a
 `+vmware.N` suffix is dropped for you).
 
-**If not:** `server unreachable`: `KUBECONFIG_FILE` is wrong, or its login has expired. The
-`kubectl` error above it says which.
+**If not:** `server unreachable`: `KUBECONFIG_FILE` is wrong, or the cluster cannot be reached
+from here. The `kubectl` error above it says which.
 
 Back to [README](README.md).

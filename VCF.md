@@ -1,8 +1,8 @@
 # Install the VCF CLI and its plugins
 
-`vcf` is VMware's command-line tool; you use it to log in to the Supervisor. The plugin bundle
-adds its other commands (`vcf cluster`, `vcf package`, …). Download two files from Broadcom, then
-run the install block; it needs no internet access.
+`vcf` is VMware's command-line tool; you use it to [log in to the Supervisor](LOGIN.md). The
+plugin bundle adds its other commands (`vcf cluster`, `vcf package`, …). Download two files from
+Broadcom, then run the install block; it needs no internet access.
 
 ## Download
 
