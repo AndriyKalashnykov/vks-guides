@@ -45,13 +45,15 @@ that tool's guide.
 
 ## Tested
 
-| platform | shells | what ran |
-|---|---|---|
-| Ubuntu (Linux amd64) | bash, zsh | Install kubectl: dl.k8s.io install (latest, `+vmware` suffix, `~/.local/bin` fallback) and its failure messages; the Supervisor download from a real 9.1.1 Supervisor. Install the VCF CLI: with the real Broadcom 9.1.1.0100 Linux_AMD64 tarballs (13 plugins installed). Log in: every block against a real 9.1.1 Supervisor and guest cluster in bash, and against stand-ins in zsh (CA download, login with the certificate check, namespace, kubeconfig, version match, renew, log out) |
-| Windows Server 2025 | Windows PowerShell 5.1 | Install kubectl from dl.k8s.io and from a real Supervisor; Install the VCF CLI with the real Windows_AMD64 zips (12 plugins); Log in: every block against a real 9.1.1 Supervisor and guest cluster, same as on Linux; the check block |
-| PowerShell 7 on Linux | pwsh | every Windows (PowerShell) block: parsed, and run against stand-in `curl.exe`, `kubectl`, `vcf` and zips |
+Every install and login block ran against the real Broadcom 9.1.1.0100 files and a real vSphere
+9.1.1 Supervisor with a guest cluster, on:
 
-Not tested yet: macOS, WSL 2, Linux arm64, and renewing a login that has actually expired (only the "token still active" answer was seen).
+| platform | shell |
+|---|---|
+| Ubuntu, amd64 | bash, zsh |
+| Windows Server 2025 | Windows PowerShell 5.1 |
+
+Not tested: macOS, WSL 2, Linux arm64, and renewing a login that has already expired.
 
 ## License
 

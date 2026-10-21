@@ -5,8 +5,8 @@ section for your OS, then [Check](#check) (macOS, Linux and WSL; PowerShell need
 
 ## macOS
 
-macOS ships `curl`, `tar`, `unzip` and `openssl`, and recent releases also ship `jq`. This installs `jq` with
-[Homebrew](https://brew.sh) only when it is missing:
+macOS ships `curl`, `tar`, `unzip` and `openssl`, and recent releases also ship `jq`. This
+installs `jq` with [Homebrew](https://brew.sh) only when it is missing:
 
 ```sh
 command -v jq >/dev/null 2>&1 || brew install jq
@@ -88,13 +88,18 @@ sudo -v
 ## `~/.local/bin` on your PATH
 
 If an install printed `note: …/.local/bin added to PATH for this terminal only`, add it to your
-`PATH` once, then open a new terminal:
+`PATH` once:
 
 ```sh
-RC="$HOME/.zshrc"; [ -n "$BASH_VERSION" ] && RC="$HOME/.bashrc"
+case "$(uname -s)/${BASH_VERSION:+bash}" in
+  Darwin/bash) RC="$HOME/.bash_profile" ;;
+  */bash)      RC="$HOME/.bashrc" ;;
+  *)           RC="$HOME/.zshrc" ;;
+esac
 grep -qs '.local/bin' "$RC" || echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$RC"
+echo "PATH set in $RC"
 ```
 
-On macOS with bash, use `~/.bash_profile` instead of `~/.bashrc`.
+**Expect:** `PATH set in …`. New terminals find the tools.
 
 Back to [README](README.md).

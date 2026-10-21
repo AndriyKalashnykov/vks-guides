@@ -20,17 +20,17 @@ You need a Broadcom support account. Download both files for your platform: `Lin
   release, the page reads "No data found".
 - Tick **"I agree to the Terms and Conditions"**. The checkbox stays greyed out until you open
   both Terms links, and until it is ticked the download icon does nothing.
-- Take the row for your platform, not the multi-GB bundles without a platform.
+- Take the row for your platform, not the files without one (`…-Binaries-…`, plain
+  `…-PluginBundle-…`, `…-OCI-…`).
 - Copy the **SHA2** value of each file; the install block checks them.
-- 9.1.1.0100 is the newest release on the portal as of October 2026. If the release list shows a
-  newer one, take it and set `VCF_RELEASE` and the two build numbers from its file names.
+- If the release list has a newer release, take it, and set `VCF_RELEASE` and the two build
+  numbers from its file names.
 
 ## Install
 
-Set the variables at the top: the two SHA2 values, and `DOWNLOAD_DIR` if the files are not in
-`~/Downloads` (in WSL they are in your Windows `Downloads` folder; see
-[Prerequisites](PREREQS.md#wsl-2-with-ubuntu)). The block installs `vcf` into `INSTALL_DIR`, or into
-`~/.local/bin` when that needs `sudo` and `sudo` would ask for a password (see
+Set the two SHA2 values, and `DOWNLOAD_DIR` if the files are not in `~/Downloads` (in WSL, see
+[Prerequisites](PREREQS.md#wsl-2-with-ubuntu)). The block installs `vcf` into `INSTALL_DIR`, or
+into `~/.local/bin` when that needs `sudo` and `sudo` would ask for a password (see
 [Prerequisites](PREREQS.md#sudo-optional)).
 
 ```sh
@@ -142,8 +142,9 @@ if (-not $CLI_SUM -or -not $PLUGINS_SUM) {
 Remove-Item -Recurse -Force $TMP
 ```
 
-**Expect:** `checksums OK`, then `version: v9.1.1.0100.25746586`, then the plugins, each
-`installed`, and no `FAILED` or `WARNING` line.
+**Expect:** `checksums OK`, `Initialization done!` (first run only), `Installing plugin …` lines,
+`version: v9.1.1.0100.25746586`, then the plugins, each `installed`, and no `FAILED` or
+`WARNING` line.
 
 **If not:**
 - `FAILED: not found: …`: the file is not in `DOWNLOAD_DIR`, or it has another name (another

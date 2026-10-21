@@ -2,9 +2,8 @@
 
 `kubectl` is the Kubernetes command-line tool. Run **one** of the two install blocks:
 [From dl.k8s.io](#from-dlk8sio), or [From the Supervisor](#from-the-supervisor-dlk8sio-blocked)
-when this machine cannot reach dl.k8s.io. Kubernetes supports a client within one minor version
-of the cluster: once you can reach your cluster,
-[match the cluster's version](#match-the-clusters-version).
+when this machine cannot reach dl.k8s.io. After you log in,
+[match it to your cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version).
 
 ## From dl.k8s.io
 
@@ -102,9 +101,8 @@ Remove-Item -Recurse -Force $TMP
 ## From the Supervisor (dl.k8s.io blocked)
 
 The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only (Apple silicon
-runs it through Rosetta). It is the Supervisor's version, usually older than your guest cluster
-by more than one minor version, so [match the cluster's version](#match-the-clusters-version) once
-you can. The download skips the TLS check (`curl -k`).
+runs it through Rosetta). It is the Supervisor's version, usually more than one minor version
+older than your guest cluster. The download skips the TLS check (`curl -k`).
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"  # Supervisor IP or FQDN
@@ -177,37 +175,5 @@ Remove-Item -Recurse -Force $TMP
 - `bad CPU type in executable` (Apple silicon): install Rosetta with
   `softwareupdate --install-rosetta --agree-to-license`, then run the block again.
 - `note: …` and `WARNING: …` lines: as in [From dl.k8s.io](#from-dlk8sio).
-
-## Match the cluster's version
-
-Needs your guest cluster's kubeconfig, from
-[Log in to the Supervisor and a guest cluster](LOGIN.md#get-the-guest-clusters-kubeconfig). This
-prints the client and server versions:
-
-```sh
-KUBECONFIG_FILE="$HOME/.kube/my-guest-cluster.kubeconfig"   # the guest cluster's kubeconfig
-
-kubectl --kubeconfig "$KUBECONFIG_FILE" version -o json \
-  | jq -r '"client " + .clientVersion.gitVersion, "server " + (.serverVersion.gitVersion // "unreachable")'
-```
-
-Windows (PowerShell):
-
-```powershell
-$KUBECONFIG_FILE = "$HOME\.kube\my-guest-cluster.kubeconfig"   # the guest cluster's kubeconfig
-
-$V = kubectl --kubeconfig $KUBECONFIG_FILE version -o json | Out-String | ConvertFrom-Json
-"client $($V.clientVersion.gitVersion)"
-"server $(if ($V.serverVersion) { $V.serverVersion.gitVersion } else { 'unreachable' })"
-```
-
-**Expect:** `client v1.…` and `server v1.…`. If the minor versions differ by more than one,
-kubectl also prints `WARNING: version difference between client … and server …`: run
-[From dl.k8s.io](#from-dlk8sio) again with `KUBECTL_VERSION` set to the server version (a
-`+vmware.N` suffix is dropped for you). The Supervisor's kubectl usually gets this warning (for
-example 1.32 against a 1.36 guest cluster).
-
-**If not:** `server unreachable`: `KUBECONFIG_FILE` is wrong, or the cluster cannot be reached
-from here. The `kubectl` error above it says which.
 
 Back to [README](README.md).

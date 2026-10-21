@@ -1,12 +1,12 @@
 # Log in to the Supervisor and a guest cluster
 
 You log in to the Supervisor with the VCF CLI and your vCenter SSO user, then read your guest
-cluster's kubeconfig from it. Needs [kubectl](KUBECTL.md), the [VCF CLI](VCF.md), and from
-[Prerequisites](PREREQS.md): `curl`, `unzip`, `openssl` (Windows PowerShell needs nothing extra). Have these at hand:
+cluster's kubeconfig from it. Needs [kubectl](KUBECTL.md), the [VCF CLI](VCF.md) and
+[Prerequisites](PREREQS.md). Have these at hand:
 
 - the Supervisor's IP address or DNS name, and vCenter's DNS name;
 - an SSO user with a role on your vSphere Namespace (for example `administrator@vsphere.local`),
-  and its password;
+  and its password (a login through a web page, Okta or Entra ID is not covered);
 - the vSphere Namespace's name and, once you see it in
   [Check your vSphere Namespace](#check-your-vsphere-namespace), the guest cluster's name.
 
@@ -17,8 +17,8 @@ Run the sections in order, in one terminal. After that, you need only
 ## Get the vCenter CA
 
 By default the Supervisor's certificate is issued by vCenter's own CA, which this machine does
-not trust yet. This downloads vCenter's CAs so the login can check that it is talking to your
-real Supervisor. The download itself is not checked (`curl -k`), so it is saved as `CA_FILE.new`
+not trust yet. This downloads vCenter's CAs so the login can check that it talks to your real
+Supervisor. The download itself is not checked (`curl -k`), so it is saved as `CA_FILE.new`
 until you have compared its fingerprints with the ones your vCenter administrator gives you.
 Skip this section only if you will log in without the check.
 
@@ -71,9 +71,19 @@ Remove-Item -Recurse -Force $TMP
 ```
 
 **Expect:** for each CA, a `subject=` line (vCenter's own names `CA` and `vsphere`) and a
-`sha256 Fingerprint=…` line (`SHA256 Fingerprint=` on macOS), then `saved as …`. Every CA
-listed will be trusted for the login, so each fingerprint must match one from your
-administrator, ignoring colons and upper/lower case. When they all match, keep the file:
+`sha256 Fingerprint=…` line (`SHA256 Fingerprint=` on macOS), then `saved as …`. Every CA listed
+will be trusted for the login, so each fingerprint must match one from your administrator,
+ignoring colons and upper/lower case.
+
+**If not:**
+- `FAILED: download …`: `VCENTER_FQDN` is wrong, or this machine cannot reach vCenter. The
+  `curl:` line above it says which.
+- `FAILED: no CA certificate …`: the address answered, but it is not vCenter. Check
+  `VCENTER_FQDN`.
+- A fingerprint that matches none of your administrator's: do not keep the file. Check
+  `VCENTER_FQDN`. A company proxy that replaces HTTPS certificates also causes this.
+
+When every fingerprint matches, keep the file:
 
 ```sh
 CA_FILE="$HOME/.kube/vcenter-ca.pem"
@@ -89,13 +99,7 @@ $CA_FILE = "$HOME\.kube\vcenter-ca.pem"
 Move-Item -Force "$CA_FILE.new" $CA_FILE; if ($?) { "kept $CA_FILE" }
 ```
 
-**If not:**
-- `FAILED: download …`: `VCENTER_FQDN` is wrong, or this machine cannot reach vCenter. The
-  `curl:` line above it says which.
-- `FAILED: no CA certificate …`: the address answered, but it is not vCenter. Check
-  `VCENTER_FQDN`.
-- A fingerprint that matches none of your administrator's: do not keep the file. Check
-  `VCENTER_FQDN`. A company proxy that replaces HTTPS certificates also causes this.
+**Expect:** `kept …`.
 
 ## Type your SSO password
 
@@ -118,10 +122,9 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 ## Log in to the Supervisor
 
-Get the password right first: **a few failed logins in a row lock the SSO user for some
-minutes.** Your vCenter administrator sees the limit in the vSphere Client under Administration →
-Single Sign-On → Configuration → Lockout Policy; hardened vCenters often allow only 3. This saves the login in
-`SUPERVISOR_KUBECONFIG`, a kubeconfig of its own, so your other kubeconfigs are not changed.
+**A few failed logins in a row lock the SSO user for some minutes**, so get the password right.
+The login is saved in `SUPERVISOR_KUBECONFIG`, a kubeconfig of its own; your other kubeconfigs
+are not changed.
 
 `SUPERVISOR_CA` is the CA from [Get the vCenter CA](#get-the-vcenter-ca). Set it to `""` to log
 in without checking the Supervisor's certificate: then someone between you and the Supervisor
@@ -196,9 +199,6 @@ if (-not $SSO_PASSWORD) {
 - A login error: check `SSO_USERNAME`, and run the password line again. Mind the lock-out.
 - `Failed to install plugin 'telemetry:…'` before the output: harmless; the command still runs.
 
-`--auth-type basic` is the SSO user and password. A Supervisor that logs you in through a web
-page or an external identity provider (Okta, Entra ID) is not covered here.
-
 ## Check your vSphere Namespace
 
 This checks that your SSO user can see your vSphere Namespace, and lists the guest clusters in
@@ -228,15 +228,16 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 - `NotFound`: check `VKS_NAMESPACE`.
 - `Forbidden`: your SSO user has no role on this namespace, or got it after you logged in. Ask a
   vCenter administrator for the role, then [Log out](#log-out) and log in again.
-- `Unauthorized`: the login has ended. Run [Renew the Supervisor login](#renew-the-supervisor-login).
+- `Unauthorized`: the login has ended. Run
+  [Renew the Supervisor login](#renew-the-supervisor-login).
 - `No resources found`: the namespace has no guest cluster yet. Creating one is not covered here.
 
 ## Get the guest cluster's kubeconfig
 
 This reads the guest cluster's kubeconfig from the Supervisor and saves it as
-`GUEST_KUBECONFIG`, readable only by you (on Windows, your profile folder already is). It is the cluster's shared administrator login, not
-yours: anyone with the file has full control of the cluster, it keeps working after the
-Supervisor login ends, and it cannot be taken back from one person. Keep it private.
+`GUEST_KUBECONFIG`, readable only by you. It is the cluster's shared administrator login: anyone
+with the file controls the cluster, and it keeps working after your Supervisor login ends. Keep
+it private.
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -293,7 +294,7 @@ if ($LASTEXITCODE -eq 0 -and $KC) {
 
 ## Use the guest cluster
 
-This makes the guest cluster `kubectl`'s default in this terminal. Set `VKS_CLUSTER` as above.
+This makes the guest cluster `kubectl`'s default in this terminal.
 
 ```sh
 VKS_CLUSTER="my-guest-cluster"
@@ -311,12 +312,42 @@ $env:KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 kubectl config current-context
 ```
 
-**Expect:** a context named after your cluster. In a new terminal, run this block again. Then
-[match kubectl to the cluster's version](KUBECTL.md#match-the-clusters-version).
+**Expect:** a context named after your cluster. In a new terminal, run this block again.
+
+## Match kubectl to the cluster's version
+
+kubectl must be within one minor version of the cluster. This prints both versions:
+
+```sh
+VKS_CLUSTER="my-guest-cluster"
+
+kubectl --kubeconfig "$HOME/.kube/${VKS_CLUSTER}.kubeconfig" version -o json \
+  | jq -r '"client " + .clientVersion.gitVersion, "server " + (.serverVersion.gitVersion // "unreachable")'
+```
+
+Windows (PowerShell):
+
+```powershell
+$VKS_CLUSTER = "my-guest-cluster"
+
+$V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o json | Out-String | ConvertFrom-Json
+"client $($V.clientVersion.gitVersion)"
+"server $(if ($V.serverVersion) { $V.serverVersion.gitVersion } else { 'unreachable' })"
+```
+
+**Expect:** `client v1.…` and `server v1.…`, at most one minor version apart.
+
+**If not:**
+- kubectl also prints `WARNING: version difference between client … and server …` (the
+  Supervisor's kubectl usually does): run [From dl.k8s.io](KUBECTL.md#from-dlk8sio) again with
+  `KUBECTL_VERSION` set to the server version; a `+vmware.N` suffix is dropped for you. Where
+  dl.k8s.io is blocked, you stay on the Supervisor's kubectl, outside the supported range.
+- `server unreachable`: `VKS_CLUSTER` is wrong, or the cluster cannot be reached from here. The
+  `kubectl` error above it says which.
 
 ## Renew the Supervisor login
 
-Only when a `kubectl` command to the Supervisor answers
+Run this only when a `kubectl` command to the Supervisor answers
 `error: You must be logged in to the server (Unauthorized)`. The guest cluster's kubeconfig does
 not need it. Set `SUPERVISOR_CA` to the value you logged in with: a different one switches the
 login to the other mode without saying so. It logs in with your password again, so in a new
