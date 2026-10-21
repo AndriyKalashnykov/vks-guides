@@ -106,7 +106,7 @@ The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only (
 runs it through Rosetta). It is the Supervisor's version, usually more than one minor version
 older than your VKS cluster. The download skips the TLS check (`curl -k`).
 
-macOS, Linux, WSL (bash or zsh):
+macOS, Linux amd64, WSL amd64 (bash or zsh):
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"  # Supervisor IP or FQDN
