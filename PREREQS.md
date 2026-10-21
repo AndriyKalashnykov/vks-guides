@@ -1,7 +1,7 @@
 # Prerequisites
 
-The small command-line tools the other guides use: `curl`, `tar`, `unzip`, `jq`, `openssl`. Do the section
-for your OS, then [Check](#check).
+The small command-line tools the other guides use: `curl`, `tar`, `unzip`, `jq`, `openssl`. Do the
+section for your OS, then [Check](#check) (macOS, Linux and WSL; PowerShell needs no check).
 
 ## macOS
 
@@ -25,9 +25,17 @@ On other distributions, install the same five packages with your package manager
 
 ## Windows
 
-The guides are `bash`/`zsh` blocks, so on Windows they run inside
-[WSL 2](https://learn.microsoft.com/windows/wsl/install) with Ubuntu. Inside it, everything is the
-Linux path.
+Pick one:
+
+- **PowerShell**: nothing to install. Windows 10 version 1803 or later, and Windows 11, already
+  have what the guides use (`curl.exe`, `Expand-Archive`, `Get-FileHash`). Open **Windows
+  PowerShell** from the Start menu (not as Administrator) and, in every later guide, run the
+  **Windows (PowerShell)** block where a section has one. The tools go into
+  `%LOCALAPPDATA%\Programs\vks-tools`, so no administrator rights are needed.
+- **WSL 2 with Ubuntu**: run the Linux blocks in Ubuntu on Windows. Use it if you prefer the same
+  blocks as macOS and Linux; it needs administrator rights once, to install WSL.
+
+### WSL 2 with Ubuntu
 
 1. Open **PowerShell as Administrator** and install WSL with Ubuntu. This also turns WSL on if
    Windows does not have it yet; it needs Windows 10 version 2004 or later, or Windows 11.
@@ -40,13 +48,11 @@ Linux path.
    Ubuntu asks for a new Linux username and password.
 
    **If not:** WSL cannot be turned on — no administrator rights, an older Windows, virtualization
-   disabled in the BIOS/UEFI, or blocked by company policy. Ask your IT team to enable WSL 2.
-   Without it, run these guides on a Linux or macOS machine instead (for example a Linux VM, or a
-   Linux jumpbox you reach with `ssh`); they do not run in plain Windows PowerShell or Git Bash.
+   disabled in the BIOS/UEFI, or blocked by company policy. Use the PowerShell blocks instead.
 
 2. Open **Ubuntu** from the Start menu and run the
    [Linux (Debian / Ubuntu)](#linux-debian--ubuntu) block there. Run every later guide in this
-   Ubuntu terminal too.
+   Ubuntu terminal too, with the `sh` blocks.
 
 3. Files you download in Windows (the VCF CLI tarballs) are in your Windows `Downloads` folder,
    not in Ubuntu's `~/Downloads`. Print its path inside Ubuntu:

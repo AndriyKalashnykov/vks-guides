@@ -2,7 +2,7 @@
 
 You log in to the Supervisor with the VCF CLI and your vCenter SSO user, then read your guest
 cluster's kubeconfig from it. Needs [kubectl](KUBECTL.md), the [VCF CLI](VCF.md), and from
-[Prerequisites](PREREQS.md): `curl`, `unzip`, `openssl`. Have these at hand:
+[Prerequisites](PREREQS.md): `curl`, `unzip`, `openssl` (Windows PowerShell needs nothing extra). Have these at hand:
 
 - the Supervisor's IP address or DNS name, and vCenter's DNS name;
 - an SSO user with a role on your vSphere Namespace (for example `administrator@vsphere.local`),
@@ -40,6 +40,36 @@ fi
 rm -rf "$TMP"
 ```
 
+Windows (PowerShell):
+
+```powershell
+$VCENTER_FQDN = "vcsa.example.test"      # vCenter DNS name
+$CA_FILE = "$HOME\.kube\vcenter-ca.pem"
+
+$TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
+curl.exe -fsSk --max-time 60 -o "$TMP\certs.zip" "https://$VCENTER_FQDN/certs/download.zip"
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: download from https://$VCENTER_FQDN"
+} else {
+  Expand-Archive -Force -Path "$TMP\certs.zip" -DestinationPath "$TMP\certs" -ErrorAction SilentlyContinue
+  $CERTS = Get-ChildItem -Recurse -Path "$TMP\certs" -Filter '*.0' -ErrorAction SilentlyContinue
+  if (-not $CERTS) {
+    "FAILED: no CA certificate in the download from https://$VCENTER_FQDN"
+  } else {
+    New-Item -ItemType Directory -Force -Path (Split-Path $CA_FILE) | Out-Null
+    $CERTS | Get-Content | Set-Content -Encoding ascii -Path "$CA_FILE.new"
+    foreach ($C in $CERTS) {
+      $X = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $C.FullName
+      $H = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($X.RawData))
+      "subject=$($X.Subject)"
+      "sha256 Fingerprint=$($H.Replace('-', ':'))"
+    }
+    "saved as $CA_FILE.new"
+  }
+}
+Remove-Item -Recurse -Force $TMP
+```
+
 **Expect:** for each CA, a `subject=` line (vCenter's own names `CA` and `vsphere`) and a
 `sha256 Fingerprint=…` line (`SHA256 Fingerprint=` on macOS), then `saved as …`. Every CA
 listed will be trusted for the login, so each fingerprint must match one from your
@@ -49,6 +79,14 @@ administrator, ignoring colons and upper/lower case. When they all match, keep t
 CA_FILE="$HOME/.kube/vcenter-ca.pem"
 
 mv "$CA_FILE.new" "$CA_FILE" && echo "kept $CA_FILE"
+```
+
+Windows (PowerShell):
+
+```powershell
+$CA_FILE = "$HOME\.kube\vcenter-ca.pem"
+
+Move-Item -Force "$CA_FILE.new" $CA_FILE; if ($?) { "kept $CA_FILE" }
 ```
 
 **If not:**
@@ -62,10 +100,17 @@ mv "$CA_FILE.new" "$CA_FILE" && echo "kept $CA_FILE"
 ## Type your SSO password
 
 The login reads the password from this terminal, so it is never on a command line or in your
-shell history. Paste this line on its own, then type the password; nothing is shown as you type.
+shell history. Paste this line on its own, then type the password; nothing is shown as you type
+(PowerShell shows `*`).
 
 ```sh
 printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
+```
+
+Windows (PowerShell):
+
+```powershell
+$SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 ```
 
 **Expect:** a new prompt. The password stays in this terminal until you close it or run
@@ -103,6 +148,35 @@ else
 fi
 ```
 
+Windows (PowerShell):
+
+```powershell
+$SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
+$SSO_USERNAME = "administrator@vsphere.local"
+$SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"         # "" = do not check the certificate
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+$TLS = if ($SUPERVISOR_CA) { "--ca-certificate=$SUPERVISOR_CA" } else { "--insecure-skip-tls-verify" }
+if (-not $SSO_PASSWORD) {
+  "FAILED: no password in this terminal; run the line under Type your SSO password"
+} elseif ($SUPERVISOR_CA -and -not (Test-Path $SUPERVISOR_CA)) {
+  "FAILED: not found: $SUPERVISOR_CA"
+} else {
+  New-Item -ItemType Directory -Force -Path (Split-Path $SUPERVISOR_KUBECONFIG) | Out-Null
+  $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
+  $env:VCF_CLI_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
+  vcf context create supervisor --type k8s --endpoint "https://$SUPERVISOR_ENDPOINT" `
+    --username $SSO_USERNAME --auth-type basic $TLS
+  $RC = $LASTEXITCODE
+  Remove-Item Env:VCF_CLI_VSPHERE_PASSWORD; $env:KUBECONFIG = $OLD_KUBECONFIG
+  if ($RC -eq 0) {
+    kubectl --kubeconfig $SUPERVISOR_KUBECONFIG config use-context supervisor
+  } else {
+    "FAILED: login (see the vcf error above)"
+  }
+}
+```
+
 **Expect:** `Logged in successfully`, a list of contexts, then
 `Switched to context "supervisor"`. The login lasts about 10 hours.
 
@@ -138,6 +212,16 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
   && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io
 ```
 
+Windows (PowerShell):
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io }
+```
+
 **Expect:** your namespace, `Active`, then a table whose `NAME` column holds your guest cluster.
 
 **If not:**
@@ -150,7 +234,7 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
 ## Get the guest cluster's kubeconfig
 
 This reads the guest cluster's kubeconfig from the Supervisor and saves it as
-`GUEST_KUBECONFIG`, readable only by you. It is the cluster's shared administrator login, not
+`GUEST_KUBECONFIG`, readable only by you (on Windows, your profile folder already is). It is the cluster's shared administrator login, not
 yours: anyone with the file has full control of the cluster, it keeps working after the
 Supervisor login ends, and it cannot be taken back from one person. Keep it private.
 
@@ -173,6 +257,29 @@ else
 fi
 ```
 
+Windows (PowerShell):
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-guest-cluster"                     # from the NAME column above
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$GUEST_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+$KC = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" `
+  -o go-template='{{.data.value | base64decode}}'
+if ($LASTEXITCODE -eq 0 -and $KC) {
+  Set-Content -Encoding ascii -Path "$GUEST_KUBECONFIG.new" -Value $KC
+  kubectl --kubeconfig "$GUEST_KUBECONFIG.new" config view *> $null
+}
+if ($LASTEXITCODE -eq 0 -and $KC) {
+  Move-Item -Force "$GUEST_KUBECONFIG.new" $GUEST_KUBECONFIG
+  kubectl --kubeconfig $GUEST_KUBECONFIG get nodes
+} else {
+  Remove-Item -Force -ErrorAction SilentlyContinue "$GUEST_KUBECONFIG.new"
+  "FAILED: no kubeconfig read (see the kubectl error above); $GUEST_KUBECONFIG is as it was"
+}
+```
+
 **Expect:** the cluster's nodes, each `Ready`.
 
 **If not:**
@@ -192,6 +299,15 @@ This makes the guest cluster `kubectl`'s default in this terminal. Set `VKS_CLUS
 VKS_CLUSTER="my-guest-cluster"
 
 export KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+kubectl config current-context
+```
+
+Windows (PowerShell):
+
+```powershell
+$VKS_CLUSTER = "my-guest-cluster"
+
+$env:KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 kubectl config current-context
 ```
 
@@ -219,6 +335,25 @@ else
   KUBECONFIG="$SUPERVISOR_KUBECONFIG" VCF_CLI_VSPHERE_PASSWORD="$SSO_PASSWORD" \
     vcf context refresh supervisor "$TLS"
 fi
+```
+
+Windows (PowerShell):
+
+```powershell
+$SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"         # the value you logged in with
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+$TLS = if ($SUPERVISOR_CA) { "--ca-certificate=$SUPERVISOR_CA" } else { "--insecure-skip-tls-verify" }
+if (-not $SSO_PASSWORD) {
+  "FAILED: no password in this terminal; run the line under Type your SSO password"
+} elseif ($SUPERVISOR_CA -and -not (Test-Path $SUPERVISOR_CA)) {
+  "FAILED: not found: $SUPERVISOR_CA"
+} else {
+  $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
+  $env:VCF_CLI_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
+  vcf context refresh supervisor $TLS
+  Remove-Item Env:VCF_CLI_VSPHERE_PASSWORD; $env:KUBECONFIG = $OLD_KUBECONFIG
+}
 ```
 
 **Expect:** `Successful re-authentication completed for context "supervisor"`, or
@@ -250,6 +385,20 @@ KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf context list
 unset SSO_PASSWORD
 rm -f "$SUPERVISOR_KUBECONFIG"
 rm -rf "$HOME/.config/vcf/logs"
+```
+
+Windows (PowerShell):
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+$OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
+vcf context delete supervisor -y --skip-delete-kubeconfig-context
+vcf context list
+$env:KUBECONFIG = $OLD_KUBECONFIG
+Remove-Variable SSO_PASSWORD -ErrorAction SilentlyContinue
+Remove-Item -Force -ErrorAction SilentlyContinue $SUPERVISOR_KUBECONFIG
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$HOME\.config\vcf\logs"
 ```
 
 **Expect:** the list shows no `supervisor` context. `context supervisor not found` means you

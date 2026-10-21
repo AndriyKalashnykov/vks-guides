@@ -45,6 +45,45 @@ fi
 rm -rf "$TMP"
 ```
 
+Windows (PowerShell):
+
+```powershell
+$KUBECTL_VERSION = ""                    # empty = latest stable; or e.g. v1.33.4
+$INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
+
+$ARCH = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
+if (-not $KUBECTL_VERSION) { $KUBECTL_VERSION = curl.exe -fsSL https://dl.k8s.io/release/stable.txt }
+$KUBECTL_VERSION = "$KUBECTL_VERSION".Split('+')[0]   # drop a "+vmware.N" suffix
+$URL = "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/windows/$ARCH/kubectl.exe"
+$TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
+
+if (-not $KUBECTL_VERSION) {
+  "FAILED: unsupported $env:PROCESSOR_ARCHITECTURE, or dl.k8s.io unreachable"
+} else {
+  curl.exe -fsSL -o "$TMP\kubectl.exe" $URL
+  $SUM = if ($LASTEXITCODE -eq 0) { curl.exe -fsSL "$URL.sha256" }
+  if (-not $SUM) {
+    "FAILED: download of $URL"
+  } elseif ((Get-FileHash -Algorithm SHA256 "$TMP\kubectl.exe").Hash -ne "$SUM".Trim()) {
+    "FAILED: checksum mismatch for $URL"
+  } else {
+    New-Item -ItemType Directory -Force -Path $INSTALL_DIR | Out-Null
+    Copy-Item -Force "$TMP\kubectl.exe" "$INSTALL_DIR\kubectl.exe"
+    $USER_PATH = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if (("$USER_PATH" -split ';') -notcontains $INSTALL_DIR) {
+      $NEW_PATH = @("$USER_PATH".TrimEnd(';'), $INSTALL_DIR) | Where-Object { $_ }
+      [Environment]::SetEnvironmentVariable('Path', ($NEW_PATH -join ';'), 'User')
+      "note: $INSTALL_DIR added to your PATH"
+    }
+    if (($env:Path -split ';') -notcontains $INSTALL_DIR) { $env:Path = "$INSTALL_DIR;$env:Path" }
+    & "$INSTALL_DIR\kubectl.exe" version --client
+    $FOUND = (Get-Command kubectl -ErrorAction SilentlyContinue).Source
+    if ($FOUND -ne "$INSTALL_DIR\kubectl.exe") { "WARNING: 'kubectl' on PATH is $FOUND" }
+  }
+}
+Remove-Item -Recurse -Force $TMP
+```
+
 **Expect:** `Client Version: v1.…` and no `FAILED` or `WARNING` line.
 
 **If not:**
@@ -55,14 +94,15 @@ rm -rf "$TMP"
 - `FAILED: checksum mismatch …`: the download arrived damaged. Run the block again.
 - `note: … added to PATH for this terminal only`: make it permanent with
   [`~/.local/bin` on your PATH](PREREQS.md#localbin-on-your-path).
-- `WARNING: 'kubectl' on PATH is …`: another kubectl is found first. Remove it, or put
-  `INSTALL_DIR` first in your `PATH`.
+- `note: … added to your PATH` (Windows): new terminals find `kubectl` from now on; nothing to do.
+- `WARNING: 'kubectl' on PATH is …`: another kubectl is found first (on Windows, often Docker
+  Desktop's). Remove it, or put `INSTALL_DIR` first in your `PATH`.
 
 ## From the Supervisor (dl.k8s.io blocked)
 
-The Supervisor serves its own kubectl, for amd64 Linux and macOS only (Apple silicon runs it
-through Rosetta). It is the Supervisor's version, which can be older than your guest cluster.
-The download skips the TLS check (`curl -k`).
+The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only (Apple silicon
+runs it through Rosetta). It is the Supervisor's version, which can be older than your guest
+cluster. The download skips the TLS check (`curl -k`).
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"  # Supervisor IP or FQDN
@@ -96,13 +136,42 @@ fi
 rm -rf "$TMP"
 ```
 
+Windows (PowerShell), amd64 only:
+
+```powershell
+$SUPERVISOR_ENDPOINT = "10.0.0.10"       # Supervisor IP or FQDN
+$INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
+
+$TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
+curl.exe -fsSk -o "$TMP\p.zip" "https://$SUPERVISOR_ENDPOINT/wcp/plugin/windows-amd64/vsphere-plugin.zip"
+if ($LASTEXITCODE -eq 0) { Expand-Archive -Force -Path "$TMP\p.zip" -DestinationPath "$TMP\p" -ErrorAction SilentlyContinue }
+
+if (-not (Test-Path "$TMP\p\bin\kubectl.exe")) {
+  "FAILED: download from https://$SUPERVISOR_ENDPOINT"
+} else {
+  New-Item -ItemType Directory -Force -Path $INSTALL_DIR | Out-Null
+  Copy-Item -Force "$TMP\p\bin\kubectl.exe" "$INSTALL_DIR\kubectl.exe"
+  $USER_PATH = [Environment]::GetEnvironmentVariable('Path', 'User')
+  if (("$USER_PATH" -split ';') -notcontains $INSTALL_DIR) {
+    $NEW_PATH = @("$USER_PATH".TrimEnd(';'), $INSTALL_DIR) | Where-Object { $_ }
+    [Environment]::SetEnvironmentVariable('Path', ($NEW_PATH -join ';'), 'User')
+    "note: $INSTALL_DIR added to your PATH"
+  }
+  if (($env:Path -split ';') -notcontains $INSTALL_DIR) { $env:Path = "$INSTALL_DIR;$env:Path" }
+  & "$INSTALL_DIR\kubectl.exe" version --client
+  $FOUND = (Get-Command kubectl -ErrorAction SilentlyContinue).Source
+  if ($FOUND -ne "$INSTALL_DIR\kubectl.exe") { "WARNING: 'kubectl' on PATH is $FOUND" }
+}
+Remove-Item -Recurse -Force $TMP
+```
+
 **Expect:** `Client Version: v1.…` and no `FAILED` or `WARNING` line.
 
 **If not:**
 - `FAILED: no Supervisor kubectl for …` (Linux arm64): the Supervisor has none for this machine.
   Get dl.k8s.io unblocked and use [From dl.k8s.io](#from-dlk8sio).
 - `FAILED: download from …`: `SUPERVISOR_ENDPOINT` is wrong, or this machine cannot reach the
-  Supervisor. The `curl:` or `unzip:` line above it says which.
+  Supervisor. The `curl:` or `unzip:` line above it says which (in PowerShell, `curl:` only).
 - `bad CPU type in executable` (Apple silicon): install Rosetta with
   `softwareupdate --install-rosetta --agree-to-license`, then run the block again.
 - `note: …` and `WARNING: …` lines: as in [From dl.k8s.io](#from-dlk8sio).
@@ -118,6 +187,16 @@ KUBECONFIG_FILE="$HOME/.kube/my-guest-cluster.kubeconfig"   # the guest cluster'
 
 kubectl --kubeconfig "$KUBECONFIG_FILE" version -o json \
   | jq -r '"client " + .clientVersion.gitVersion, "server " + (.serverVersion.gitVersion // "unreachable")'
+```
+
+Windows (PowerShell):
+
+```powershell
+$KUBECONFIG_FILE = "$HOME\.kube\my-guest-cluster.kubeconfig"   # the guest cluster's kubeconfig
+
+$V = kubectl --kubeconfig $KUBECONFIG_FILE version -o json | Out-String | ConvertFrom-Json
+"client $($V.clientVersion.gitVersion)"
+"server $(if ($V.serverVersion) { $V.serverVersion.gitVersion } else { 'unreachable' })"
 ```
 
 **Expect:** `client v1.…` and `server v1.…`. If the minor versions differ by more than one, run

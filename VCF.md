@@ -6,8 +6,9 @@ Broadcom, then run the install block; it needs no internet access.
 
 ## Download
 
-You need a Broadcom support account. Download both files for your platform (`Linux_AMD64`,
-`Linux_ARM64`, `Darwin_ARM64` or `Darwin_AMD64`; Windows in WSL 2 is `Linux_AMD64`).
+You need a Broadcom support account. Download both files for your platform: `Linux_AMD64`,
+`Linux_ARM64`, `Darwin_ARM64`, `Darwin_AMD64`, or for Windows PowerShell `Windows_AMD64` or
+`Windows_ARM64` (`.zip` instead of `.tar.gz`). Windows in WSL 2 is `Linux_AMD64`.
 
 | file | where |
 |---|---|
@@ -21,12 +22,14 @@ You need a Broadcom support account. Download both files for your platform (`Lin
   both Terms links, and until it is ticked the download icon does nothing.
 - Take the row for your platform, not the multi-GB bundles without a platform.
 - Copy the **SHA2** value of each file; the install block checks them.
+- 9.1.1.0100 is the newest release on the portal as of October 2026. If the release list shows a
+  newer one, take it and set `VCF_RELEASE` and the two build numbers from its file names.
 
 ## Install
 
 Set the variables at the top: the two SHA2 values, and `DOWNLOAD_DIR` if the files are not in
-`~/Downloads` (on Windows they are in your Windows `Downloads` folder; see
-[Prerequisites](PREREQS.md#windows)). The block installs `vcf` into `INSTALL_DIR`, or into
+`~/Downloads` (in WSL they are in your Windows `Downloads` folder; see
+[Prerequisites](PREREQS.md#wsl-2-with-ubuntu)). The block installs `vcf` into `INSTALL_DIR`, or into
 `~/.local/bin` when that needs `sudo` and `sudo` would ask for a password (see
 [Prerequisites](PREREQS.md#sudo-optional)).
 
@@ -84,6 +87,61 @@ fi
 rm -rf "$TMP"
 ```
 
+Windows (PowerShell): the files end in `.zip`. Set the same variables at the top.
+
+```powershell
+$VCF_CLI_SHA256 = ""                     # SHA2 of the CLI file from the download page
+$VCF_PLUGINS_SHA256 = ""                 # SHA2 of the plugin bundle from the download page
+$DOWNLOAD_DIR = "$HOME\Downloads"
+$INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
+$VCF_RELEASE = "9.1.1.0100"
+$VCF_CLI_BUILD = "25746586"
+$VCF_PLUGINS_BUILD = "25793136"
+
+$P = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'Windows_ARM64' } else { 'Windows_AMD64' }
+$CLI_ZIP = "$DOWNLOAD_DIR\VCF-Consumption-CLI-$P-$VCF_RELEASE.$VCF_CLI_BUILD.zip"
+$PLUGINS_ZIP = "$DOWNLOAD_DIR\VCF-Consumption-CLI-PluginBundle-$P-$VCF_RELEASE.$VCF_PLUGINS_BUILD.zip"
+$CLI_SUM = if (Test-Path $CLI_ZIP) { (Get-FileHash -Algorithm SHA256 $CLI_ZIP).Hash.ToLower() }
+$PLUGINS_SUM = if (Test-Path $PLUGINS_ZIP) { (Get-FileHash -Algorithm SHA256 $PLUGINS_ZIP).Hash.ToLower() }
+$TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
+
+if (-not $CLI_SUM -or -not $PLUGINS_SUM) {
+  if (-not $CLI_SUM) { "FAILED: not found: $CLI_ZIP" }
+  if (-not $PLUGINS_SUM) { "FAILED: not found: $PLUGINS_ZIP" }
+} elseif (-not $VCF_CLI_SHA256 -or -not $VCF_PLUGINS_SHA256) {
+  "FAILED: set VCF_CLI_SHA256 and VCF_PLUGINS_SHA256 from the download page"
+} elseif ($CLI_SUM -ne $VCF_CLI_SHA256.Trim() -or $PLUGINS_SUM -ne $VCF_PLUGINS_SHA256.Trim()) {
+  "FAILED: checksum mismatch; nothing installed"
+  "  CLI     $CLI_SUM"
+  "  plugins $PLUGINS_SUM"
+} else {
+  Expand-Archive -Force -Path $CLI_ZIP -DestinationPath "$TMP\cli" -ErrorAction SilentlyContinue
+  Expand-Archive -Force -Path $PLUGINS_ZIP -DestinationPath "$TMP\plugins" -ErrorAction SilentlyContinue
+  $EXE = Get-ChildItem -Recurse -Path "$TMP\cli" -Filter 'vcf-cli-*.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $EXE -or -not (Test-Path "$TMP\plugins\*")) {
+    "FAILED: could not unpack the downloads"
+  } else {
+    "checksums OK"
+    New-Item -ItemType Directory -Force -Path $INSTALL_DIR | Out-Null
+    Copy-Item -Force $EXE.FullName "$INSTALL_DIR\vcf.exe"
+    $USER_PATH = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if (("$USER_PATH" -split ';') -notcontains $INSTALL_DIR) {
+      $NEW_PATH = @("$USER_PATH".TrimEnd(';'), $INSTALL_DIR) | Where-Object { $_ }
+      [Environment]::SetEnvironmentVariable('Path', ($NEW_PATH -join ';'), 'User')
+      "note: $INSTALL_DIR added to your PATH"
+    }
+    if (($env:Path -split ';') -notcontains $INSTALL_DIR) { $env:Path = "$INSTALL_DIR;$env:Path" }
+    & "$INSTALL_DIR\vcf.exe" plugin install all --local-source "$TMP\plugins"
+    if ($LASTEXITCODE -ne 0) { "FAILED: plugin install (vcf itself is installed)" }
+    & "$INSTALL_DIR\vcf.exe" version | Select-Object -First 1
+    & "$INSTALL_DIR\vcf.exe" plugin list
+    $FOUND = (Get-Command vcf -ErrorAction SilentlyContinue).Source
+    if ($FOUND -ne "$INSTALL_DIR\vcf.exe") { "WARNING: 'vcf' on PATH is $FOUND" }
+  }
+}
+Remove-Item -Recurse -Force $TMP
+```
+
 **Expect:** `checksums OK`, then `version: v9.1.1.0100.25746586`, then the plugins, each
 `installed`, and no `FAILED` or `WARNING` line.
 
@@ -99,6 +157,7 @@ rm -rf "$TMP"
   plugins failed. Run the block again once fixed.
 - `note: … added to PATH for this terminal only`: make it permanent with
   [`~/.local/bin` on your PATH](PREREQS.md#localbin-on-your-path).
+- `note: … added to your PATH` (Windows): new terminals find `vcf` from now on; nothing to do.
 - `WARNING: 'vcf' on PATH is …`: another `vcf` is found first. Remove it, or put `INSTALL_DIR`
   first in your `PATH`.
 
