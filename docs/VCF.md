@@ -1,7 +1,9 @@
 # Install the VCF CLI and its plugins
 
-Broadcom docs (VCF 9.1.1): [Installing and Using VCF Consumption CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9.html),
-[Installing the VCF CLI in Internet Restricted Environments](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/installing-the-vcf-cli-in-internet-restricted-environments%282%29.html).
+| **Broadcom docs (VCF 9.1.1)** |
+|---|
+| [Installing and Using VCF Consumption CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9.html) |
+| [Installing the VCF CLI in Internet Restricted Environments](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/installing-the-vcf-cli-in-internet-restricted-environments%282%29.html) |
 
 `vcf` is VMware's command-line tool; you use it to [log in to the Supervisor](LOGIN.md). The
 plugin bundle adds its other commands (`vcf cluster`, `vcf package`, …). Download two files from
@@ -14,14 +16,13 @@ You need a Broadcom support account. Download both files for your platform: `Lin
 `Windows_ARM64` (`.zip` instead of `.tar.gz`). In WSL 2, take `Linux_AMD64` (`Linux_ARM64` on an
 Arm PC).
 
-| file | where |
-|---|---|
-| `VCF-Consumption-CLI-<platform>-9.1.1.0100.25746586.tar.gz` | [VCF Consumption CLI](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0100&os=&servicePk=547810&language=EN&groupId=545612&viewGroup=true) |
-| `VCF-Consumption-CLI-PluginBundle-<platform>-9.1.1.0100.25793136.tar.gz` | [VCF Consumption CLI Plugins](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0100&os=&servicePk=548172&language=EN&groupId=545621&viewGroup=true) |
+| file | where to click | direct link |
+|---|---|---|
+| `VCF-Consumption-CLI-<platform>-9.1.1.0100.25746586.tar.gz` | [My Downloads](https://support.broadcom.com/group/ecx/downloads) → VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0100 → **VCF Consumption CLI** | [VCF CLI](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0100&os=&servicePk=547810&language=EN&groupId=545612&viewGroup=true) |
+| `VCF-Consumption-CLI-PluginBundle-<platform>-9.1.1.0100.25793136.tar.gz` | [My Downloads](https://support.broadcom.com/group/ecx/downloads) → VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0100 → **VCF Consumption CLI Plugins** | [VCF CLI plugins](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0100&os=&servicePk=548172&language=EN&groupId=545621&viewGroup=true) |
 
-- Without the direct links: [My Downloads](https://support.broadcom.com/group/ecx/downloads) →
-  VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0100, or VMware Cloud
-  Foundation → VMware Cloud Foundation 9 → 9.1.1.0. Until you pick the release, the page reads "No data found".
+- With a VMware Cloud Foundation account, click VMware Cloud Foundation → VMware Cloud Foundation
+  9 → 9.1.1.0 instead. Until you pick the release, the page reads "No data found".
 - Tick **"I agree to the Terms and Conditions"**. The checkbox stays greyed out until you open
   both Terms links, and until it is ticked the download icon does nothing.
 - Take the row for your platform, not the files without one (`…-Binaries-…`, plain
