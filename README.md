@@ -9,7 +9,7 @@ Service (VKS), and log in to the Supervisor and your VKS cluster, by pasting she
 ## How to use
 
 1. Open `bash` or `zsh`. On Windows, open PowerShell and use the **Windows (PowerShell)** blocks,
-   or use Ubuntu in WSL 2 ([Prerequisites](PREREQS.md#windows)).
+   or use Ubuntu in WSL 2 ([Prerequisites](docs/PREREQS.md#windows)).
 2. If a block starts with variables, set them. Then paste the whole block.
 3. Compare the output with **Expect:**. If it differs, do what **If not:** says.
 
@@ -19,14 +19,14 @@ Start with Prerequisites. Then install kubectl and the VCF CLI, in either order.
 
 | guide | what it is |
 |---|---|
-| [Prerequisites](PREREQS.md) | the small command-line tools the other guides use |
-| [Install kubectl](KUBECTL.md) | the Kubernetes command-line tool, for working with your clusters |
-| [Install the VCF CLI](VCF.md) | VMware's command-line tool, for logging in to the Supervisor and managing VKS clusters |
-| [Log in to the Supervisor and a VKS cluster](LOGIN.md) | your SSO login to the Supervisor, and the kubeconfig `kubectl` uses to reach your VKS cluster |
+| [Prerequisites](docs/PREREQS.md) | the small command-line tools the other guides use |
+| [Install kubectl](docs/KUBECTL.md) | the Kubernetes command-line tool, for working with your clusters |
+| [Install the VCF CLI](docs/VCF.md) | VMware's command-line tool, for logging in to the Supervisor and managing VKS clusters |
+| [Log in to the Supervisor and a VKS cluster](docs/LOGIN.md) | your SSO login to the Supervisor, and the kubeconfig `kubectl` uses to reach your VKS cluster |
 
 ## Check what is installed
 
-macOS, Linux, WSL (bash or zsh):
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 for t in curl tar unzip jq openssl kubectl vcf; do
@@ -34,7 +34,7 @@ for t in curl tar unzip jq openssl kubectl vcf; do
 done
 ```
 
-Windows (PowerShell):
+**Windows (PowerShell):**
 
 ```powershell
 foreach ($t in 'kubectl', 'vcf') {
@@ -56,7 +56,7 @@ Every install and login block ran against the real Broadcom 9.1.1.0100 files and
 | Windows Server 2025 | Windows PowerShell 5.1 |
 | Windows Server 2025, WSL 2 Ubuntu | bash (all but the password login, run as root) |
 
-Not tested: macOS, Linux arm64, the password login in WSL 2, and renewing a login that has
+Not tested: Linux arm64, macOS, the password login in WSL 2, and renewing a login that has
 already expired.
 
 ## License

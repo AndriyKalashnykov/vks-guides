@@ -11,7 +11,7 @@ Downloads the official binary, checks its SHA-256 and installs it into `INSTALL_
 directory needs `sudo` and `sudo` would ask for a password, it installs into `~/.local/bin`
 instead (see [Prerequisites](PREREQS.md#sudo-optional)).
 
-macOS, Linux, WSL (bash or zsh):
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 KUBECTL_VERSION=""               # empty = latest stable; or e.g. v1.33.4
@@ -47,7 +47,7 @@ fi
 rm -rf "$TMP"
 ```
 
-Windows (PowerShell):
+**Windows (PowerShell):**
 
 ```powershell
 $KUBECTL_VERSION = ""                    # empty = latest stable; or e.g. v1.33.4
@@ -106,7 +106,7 @@ The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only (
 runs it through Rosetta). It is the Supervisor's version, usually more than one minor version
 older than your VKS cluster. The download skips the TLS check (`curl -k`).
 
-macOS, Linux amd64, WSL amd64 (bash or zsh):
+**Linux amd64, macOS, WSL amd64 (bash or zsh):**
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"  # Supervisor IP or FQDN
@@ -140,7 +140,7 @@ fi
 rm -rf "$TMP"
 ```
 
-Windows (PowerShell), amd64 only:
+**Windows (PowerShell), amd64 only:**
 
 ```powershell
 $SUPERVISOR_ENDPOINT = "10.0.0.10"       # Supervisor IP or FQDN
@@ -180,4 +180,4 @@ Remove-Item -Recurse -Force $TMP
   `softwareupdate --install-rosetta --agree-to-license`, then run the block again.
 - `note: …` and `WARNING: …` lines: as in [From dl.k8s.io](#from-dlk8sio).
 
-Back to [README](README.md).
+Back to [README](../README.md).

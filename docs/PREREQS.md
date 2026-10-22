@@ -1,7 +1,15 @@
 # Prerequisites
 
 The small command-line tools the other guides use: `curl`, `tar`, `unzip`, `jq`, `openssl`. Do the
-section for your OS, then [Check](#check) (macOS, Linux and WSL; PowerShell needs no check).
+section for your OS, then [Check](#check) (Linux, macOS and WSL; PowerShell needs no check).
+
+## Linux (Debian / Ubuntu)
+
+```sh
+sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
+```
+
+On other distributions, install the same five packages with your package manager.
 
 ## macOS
 
@@ -15,14 +23,6 @@ command -v jq >/dev/null 2>&1 || brew install jq
 **If not:** `brew: command not found` — install Homebrew first ([brew.sh](https://brew.sh)), then
 run the block again.
 
-## Linux (Debian / Ubuntu)
-
-```sh
-sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
-```
-
-On other distributions, install the same five packages with your package manager.
-
 ## Windows
 
 Pick one:
@@ -33,7 +33,7 @@ Pick one:
   **Windows (PowerShell)** block where a section has one. The tools go into
   `%LOCALAPPDATA%\Programs\vks-tools`, so no administrator rights are needed.
 - **WSL 2 with Ubuntu**: run the Linux blocks in Ubuntu on Windows. Use it if you prefer the same
-  blocks as macOS and Linux; it needs administrator rights once, to install WSL.
+  blocks as Linux and macOS; it needs administrator rights once, to install WSL.
 
 ### WSL 2 with Ubuntu
 
@@ -102,4 +102,4 @@ echo "PATH set in $RC"
 
 **Expect:** `PATH set in …`. New terminals find the tools.
 
-Back to [README](README.md).
+Back to [README](../README.md).

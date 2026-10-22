@@ -31,9 +31,10 @@ You need a Broadcom support account. Download both files for your platform: `Lin
 Set the two SHA2 values, and `DOWNLOAD_DIR` if the files are not in `~/Downloads` (in WSL, see
 [Prerequisites](PREREQS.md#wsl-2-with-ubuntu)). The block installs `vcf` into `INSTALL_DIR`, or
 into `~/.local/bin` when that needs `sudo` and `sudo` would ask for a password (see
-[Prerequisites](PREREQS.md#sudo-optional)).
+[Prerequisites](PREREQS.md#sudo-optional)). Open the block for your system.
 
-macOS, Linux, WSL (bash or zsh):
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VCF_CLI_SHA256=""                # SHA2 of the CLI file from the download page
@@ -89,7 +90,12 @@ fi
 rm -rf "$TMP"
 ```
 
-Windows (PowerShell): the files end in `.zip`. Set the same variables at the top.
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+The files end in `.zip`. Set the same variables at the top.
 
 ```powershell
 $VCF_CLI_SHA256 = ""                     # SHA2 of the CLI file from the download page
@@ -144,6 +150,8 @@ if (-not $CLI_SUM -or -not $PLUGINS_SUM) {
 Remove-Item -Recurse -Force $TMP
 ```
 
+</details>
+
 **Expect:** `checksums OK`, `Initialization done!` (first run only), `Installing plugin …` lines,
 `version: v9.1.1.0100.25746586`, then the plugins, each `installed`, and no `FAILED` or
 `WARNING` line.
@@ -164,4 +172,4 @@ Remove-Item -Recurse -Force $TMP
 - `WARNING: 'vcf' on PATH is …`: another `vcf` is found first. Remove it, or put `INSTALL_DIR`
   first in your `PATH`.
 
-Back to [README](README.md).
+Back to [README](../README.md).

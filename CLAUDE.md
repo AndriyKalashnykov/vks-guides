@@ -1,16 +1,20 @@
 # CLAUDE.md
 
 Copy-paste how-to guides for VMware vSphere Kubernetes Service (VKS), VCF 9.x: README.md links
-PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md. Readers paste blocks; there is nothing to build.
+docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md. Readers paste blocks; there is nothing to build.
 
 ## Rules
 
 - No Makefile, mise, env file or helper script. Each block sets the variables it uses at its top
   and works on its own; never rely on a variable from an earlier block.
-- Every shell block is POSIX sh that runs in bash and zsh, labeled `macOS, Linux, WSL (bash or
-  zsh):`. Where Windows applies, a `Windows (PowerShell):` twin follows, written for Windows
-  PowerShell 5.1: `curl.exe` (not the `curl` alias), `Expand-Archive`, `Get-FileHash`, installs to
-  `%LOCALAPPDATA%\Programs\vks-tools`. PREREQS.md blocks sit under OS headings and have no label.
+- Every shell block is POSIX sh that runs in bash and zsh, labeled in bold
+  `**Linux, macOS, WSL (bash or zsh):**`. Where Windows applies, a bold
+  `**Windows (PowerShell):**` twin follows, written for Windows PowerShell 5.1: `curl.exe` (not
+  the `curl` alias), `Expand-Archive`, `Get-FileHash`, installs to
+  `%LOCALAPPDATA%\Programs\vks-tools`. A long block pair sits in two `<details>` cuts whose
+  `<summary><b>…</b></summary>` is the label (docs/VCF.md). PREREQS.md blocks sit under OS
+  headings and have no label.
+- Wherever several OSs appear (labels, sections, lists), the order is Linux, macOS, Windows.
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
 - Passwords are typed (`read -rs` / `Read-Host -AsSecureString`) and passed only as the
   `VCF_CLI_VSPHERE_PASSWORD` env var for one command; never on argv, never saved.
