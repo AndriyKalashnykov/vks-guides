@@ -11,7 +11,8 @@ Broadcom, then run the install block; it needs no internet access.
 
 You need a Broadcom support account. Download both files for your platform: `Linux_AMD64`,
 `Linux_ARM64`, `Darwin_ARM64`, `Darwin_AMD64`, or for Windows PowerShell `Windows_AMD64` or
-`Windows_ARM64` (`.zip` instead of `.tar.gz`). Windows in WSL 2 is `Linux_AMD64`.
+`Windows_ARM64` (`.zip` instead of `.tar.gz`). In WSL 2, take `Linux_AMD64` (`Linux_ARM64` on an
+Arm PC).
 
 | file | where |
 |---|---|
@@ -19,8 +20,8 @@ You need a Broadcom support account. Download both files for your platform: `Lin
 | `VCF-Consumption-CLI-PluginBundle-<platform>-9.1.1.0100.25793136.tar.gz` | [VCF Consumption CLI Plugins](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0100&os=&servicePk=548172&language=EN&groupId=545621&viewGroup=true) |
 
 - Without the direct links: [My Downloads](https://support.broadcom.com/group/ecx/downloads) →
-  VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0100. Until you pick the
-  release, the page reads "No data found".
+  VMware vSphere Foundation (or VMware Cloud Foundation, whichever your account has) → its 9 group
+  → the 9.1.1 release. Until you pick the release, the page reads "No data found".
 - Tick **"I agree to the Terms and Conditions"**. The checkbox stays greyed out until you open
   both Terms links, and until it is ticked the download icon does nothing.
 - Take the row for your platform, not the files without one (`…-Binaries-…`, plain
@@ -34,7 +35,7 @@ You need a Broadcom support account. Download both files for your platform: `Lin
 Set the two SHA2 values, and `DOWNLOAD_DIR` if the files are not in `~/Downloads` (in WSL, see
 [Prerequisites](PREREQS.md#wsl-2-with-ubuntu)). The block installs `vcf` into `INSTALL_DIR`, or
 into `~/.local/bin` when that needs `sudo` and `sudo` would ask for a password (see
-[Prerequisites](PREREQS.md#sudo-optional)). Open the block for your system.
+[Prerequisites](PREREQS.md#sudo-optional)).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -97,8 +98,6 @@ rm -rf "$TMP"
 
 <details>
 <summary><b>Windows (PowerShell)</b></summary>
-
-The files end in `.zip`. Set the same variables at the top.
 
 ```powershell
 $VCF_CLI_SHA256 = ""                     # SHA2 of the CLI file from the download page

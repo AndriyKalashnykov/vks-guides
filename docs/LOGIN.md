@@ -1,8 +1,7 @@
 # Log in to the Supervisor and a VKS cluster
 
 Broadcom docs (VCF 9.1): [Connecting to Supervisor and VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/connecting-to-vsphere-with-tanzu-clusters.html),
-[Connect to the Supervisor as a vCenter Single Sign-On User](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/connecting-to-vsphere-with-tanzu-clusters/connect-to-the-supervisor-cluster-as-a-vcenter-single-sign-on-user.html),
-[Log in Using the VKS Cluster Plugin](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/connecting-to-vsphere-with-tanzu-clusters/connect-to-a-tkg-service-cluster-as-a-vcenter-single-sign-on-user-with-kubectl/log-in-using-cluster-plugin.html).
+[Connect to the Supervisor as a vCenter Single Sign-On User](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/connecting-to-vsphere-with-tanzu-clusters/connect-to-the-supervisor-cluster-as-a-vcenter-single-sign-on-user.html).
 
 You log in to the Supervisor with the VCF CLI and your vCenter SSO user, then read your VKS
 cluster's kubeconfig from it. Needs [kubectl](KUBECTL.md), the [VCF CLI](VCF.md) and
@@ -260,10 +259,10 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 
 ## Get the VKS cluster's kubeconfig
 
-This reads the VKS cluster's kubeconfig from the Supervisor and saves it as
-`VKS_KUBECONFIG`, readable only by you. It is the cluster's shared administrator login: anyone
-with the file controls the cluster, and it keeps working after your Supervisor login ends. Keep
-it private.
+This reads the VKS cluster's kubeconfig from the Supervisor and saves it as `VKS_KUBECONFIG`
+(on Linux, macOS and WSL, readable only by you). It is the cluster's shared administrator login:
+anyone with the file controls the cluster, and it keeps working after your Supervisor login ends.
+Keep it private.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -387,9 +386,9 @@ $V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o jso
 
 Run this only when a `kubectl` command to the Supervisor answers
 `error: You must be logged in to the server (Unauthorized)`. The VKS cluster's kubeconfig does
-not need it. Set `SUPERVISOR_CA` to the value you logged in with: a different one switches the
-login to the other mode without saying so. It logs in with your password again, so in a new
-terminal run the [password line](#type-your-sso-password) first, and mind the lock-out.
+not need it. Set `SUPERVISOR_CA` to the value you logged in with. It logs in with your password
+again, so in a new terminal run the [password line](#type-your-sso-password) first, and mind the
+lock-out.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -445,8 +444,8 @@ command that answered `Unauthorized` again.
 ## Log out
 
 This deletes the Supervisor login with its namespace contexts, its kubeconfig, `vcf`'s log files
-(they hold a copy of the login token, valid until its 10 hours are over) and the password in this
-terminal. The VKS cluster's kubeconfig is kept; delete it with `rm` if you no longer need it.
+(they hold a copy of the login token) and the password in this terminal. The VKS cluster's
+kubeconfig is kept; delete it with `rm` if you no longer need it.
 
 **Linux, macOS, WSL (bash or zsh):**
 

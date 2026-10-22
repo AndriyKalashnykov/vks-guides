@@ -12,8 +12,8 @@ docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md. Readers paste blocks; there is 
   `**Windows (PowerShell):**` twin follows, written for Windows PowerShell 5.1: `curl.exe` (not
   the `curl` alias), `Expand-Archive`, `Get-FileHash`, installs to
   `%LOCALAPPDATA%\Programs\vks-tools`. A block pair where either block is 15 lines or more
-  sits in two `<details>` cuts whose `<summary><b>…</b></summary>` is the label. PREREQS.md blocks sit under OS
-  headings and have no label.
+  sits in two `<details>` cuts whose `<summary><b>…</b></summary>` is the label. PREREQS.md
+  blocks sit under OS headings and have no label.
 - Wherever several OSs appear (labels, sections, lists), the order is Linux, macOS, Windows.
 - Each guide opens with one line linking the official docs it follows (Broadcom VCF 9.1
   TechDocs; kubernetes.io where Broadcom has none). Open a link before adding it.
@@ -30,5 +30,5 @@ docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md. Readers paste blocks; there is 
   `[System.Management.Automation.Language.Parser]::ParseFile` in Windows PowerShell 5.1 (no pwsh
   on the dev host; use the Windows walkbox from nested-vsphere-lab: `make walkbox-vm-start
   WALKBOX_OS=windows`).
-- A behaviour change is run for real before README's "Tested" table claims it. The password login
+- A behaviour change is run for real before README's "Platforms" table claims it. The password login
   is run by the owner, never by an agent.
