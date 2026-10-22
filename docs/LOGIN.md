@@ -1,5 +1,9 @@
 # Log in to the Supervisor and a VKS cluster
 
+Broadcom docs (VCF 9.1): [Connecting to Supervisor and VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/connecting-to-vsphere-with-tanzu-clusters.html),
+[Connect to the Supervisor as a vCenter Single Sign-On User](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/connecting-to-vsphere-with-tanzu-clusters/connect-to-the-supervisor-cluster-as-a-vcenter-single-sign-on-user.html),
+[Log in Using the VKS Cluster Plugin](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/connecting-to-vsphere-with-tanzu-clusters/connect-to-a-tkg-service-cluster-as-a-vcenter-single-sign-on-user-with-kubectl/log-in-using-cluster-plugin.html).
+
 You log in to the Supervisor with the VCF CLI and your vCenter SSO user, then read your VKS
 cluster's kubeconfig from it. Needs [kubectl](KUBECTL.md), the [VCF CLI](VCF.md) and
 [Prerequisites](PREREQS.md). Have these at hand:
@@ -22,7 +26,8 @@ Supervisor. The download itself is not checked (`curl -k`), so it is saved as `C
 until you have compared its fingerprints with the ones your vCenter administrator gives you.
 Skip this section only if you will log in without the check.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VCENTER_FQDN="vcsa.example.test"     # vCenter DNS name
@@ -42,7 +47,10 @@ fi
 rm -rf "$TMP"
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VCENTER_FQDN = "vcsa.example.test"      # vCenter DNS name
@@ -71,6 +79,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 Remove-Item -Recurse -Force $TMP
 ```
+
+</details>
 
 **Expect:** for each CA, a `subject=` line (vCenter's own names `CA` and `vsphere`) and a
 `sha256 Fingerprint=…` line (`SHA256 Fingerprint=` on macOS), then `saved as …`. Every CA listed
@@ -136,7 +146,8 @@ are not changed.
 in without checking the Supervisor's certificate: then someone between you and the Supervisor
 could capture your password, and `vcf` keeps skipping the check for this login.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"                       # Supervisor IP or FQDN
@@ -159,7 +170,10 @@ else
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
@@ -187,6 +201,8 @@ if (-not $SSO_PASSWORD) {
   }
 }
 ```
+
+</details>
 
 **Expect:** `Logged in successfully`, a list of contexts, then
 `Switched to context "supervisor"`. The login lasts about 10 hours.
@@ -249,7 +265,8 @@ This reads the VKS cluster's kubeconfig from the Supervisor and saves it as
 with the file controls the cluster, and it keeps working after your Supervisor login ends. Keep
 it private.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -270,7 +287,10 @@ else
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
@@ -292,6 +312,8 @@ if ($LASTEXITCODE -eq 0 -and $KC) {
   "FAILED: no kubeconfig read (see the kubectl error above); $VKS_KUBECONFIG is as it was"
 }
 ```
+
+</details>
 
 **Expect:** the cluster's nodes, each `Ready`.
 
