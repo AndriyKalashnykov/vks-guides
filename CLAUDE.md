@@ -15,8 +15,8 @@ docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md. Readers paste blocks; there is 
   sits in two `<details>` cuts whose `<summary><b>…</b></summary>` is the label. PREREQS.md
   blocks sit under OS headings and have no label.
 - Wherever several OSs appear (labels, sections, lists), the order is Linux, macOS, Windows.
-- Each guide opens with one line linking the official docs it follows (Broadcom VCF 9.1
-  TechDocs; kubernetes.io where Broadcom has none). Open a link before adding it.
+- Each guide opens with a one-column table, bold header, linking the official docs it follows
+  (Broadcom VCF 9.1 TechDocs; kubernetes.io where Broadcom has none). Open a link before adding it.
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
 - Passwords are typed (`read -rs` / `Read-Host -AsSecureString`) and passed only as the
   `VCF_CLI_VSPHERE_PASSWORD` env var for one command; never on argv, never saved.
