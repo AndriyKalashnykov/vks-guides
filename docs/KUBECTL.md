@@ -1,5 +1,8 @@
 # Install kubectl
 
+Kubernetes docs: [Install Tools](https://kubernetes.io/docs/tasks/tools/). Broadcom's VCF 9.1 docs
+have no kubectl install page.
+
 `kubectl` is the Kubernetes command-line tool. Run **one** of the two install blocks:
 [From dl.k8s.io](#from-dlk8sio), or [From the Supervisor](#from-the-supervisor-dlk8sio-blocked)
 when this machine cannot reach dl.k8s.io. After you log in,
@@ -11,7 +14,8 @@ Downloads the official binary, checks its SHA-256 and installs it into `INSTALL_
 directory needs `sudo` and `sudo` would ask for a password, it installs into `~/.local/bin`
 instead (see [Prerequisites](PREREQS.md#sudo-optional)).
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 KUBECTL_VERSION=""               # empty = latest stable; or e.g. v1.33.4
@@ -47,7 +51,10 @@ fi
 rm -rf "$TMP"
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $KUBECTL_VERSION = ""                    # empty = latest stable; or e.g. v1.33.4
@@ -86,6 +93,8 @@ if (-not $KUBECTL_VERSION) {
 Remove-Item -Recurse -Force $TMP
 ```
 
+</details>
+
 **Expect:** `Client Version: v1.…` and no `FAILED` or `WARNING` line.
 
 **If not:**
@@ -106,7 +115,8 @@ The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only (
 runs it through Rosetta). It is the Supervisor's version, usually more than one minor version
 older than your VKS cluster. The download skips the TLS check (`curl -k`).
 
-**Linux amd64, macOS, WSL amd64 (bash or zsh):**
+<details>
+<summary><b>Linux amd64, macOS, WSL amd64 (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"  # Supervisor IP or FQDN
@@ -140,7 +150,10 @@ fi
 rm -rf "$TMP"
 ```
 
-**Windows (PowerShell), amd64 only:**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell), amd64 only</b></summary>
 
 ```powershell
 $SUPERVISOR_ENDPOINT = "10.0.0.10"       # Supervisor IP or FQDN
@@ -168,6 +181,8 @@ if (-not (Test-Path "$TMP\p\bin\kubectl.exe")) {
 }
 Remove-Item -Recurse -Force $TMP
 ```
+
+</details>
 
 **Expect:** `Client Version: v1.…` and no `FAILED` or `WARNING` line.
 

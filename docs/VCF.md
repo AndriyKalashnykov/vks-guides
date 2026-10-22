@@ -1,5 +1,8 @@
 # Install the VCF CLI and its plugins
 
+Broadcom docs (VCF 9.1.1): [Installing and Using VCF Consumption CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9.html),
+[Installing the VCF CLI in Internet Restricted Environments](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/installing-the-vcf-cli-in-internet-restricted-environments%282%29.html).
+
 `vcf` is VMware's command-line tool; you use it to [log in to the Supervisor](LOGIN.md). The
 plugin bundle adds its other commands (`vcf cluster`, `vcf package`, …). Download two files from
 Broadcom, then run the install block; it needs no internet access.

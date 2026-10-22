@@ -47,17 +47,17 @@ that tool's guide.
 
 ## Tested
 
-Every install and login block ran against the real Broadcom 9.1.1.0100 files and a real vSphere
-9.1.1 Supervisor with a VKS cluster, on:
+Run against the Broadcom 9.1.1.0100 files and a vSphere 9.1.1 Supervisor with a VKS cluster.
 
-| platform | shell |
-|---|---|
-| Ubuntu, amd64 | bash, zsh |
-| Windows Server 2025 | Windows PowerShell 5.1 |
-| Windows Server 2025, WSL 2 Ubuntu | bash (all but the password login, run as root) |
+| OS | shell | tested |
+|---|---|---|
+| Ubuntu, amd64 | bash, zsh | ✅ |
+| Linux, arm64 | bash, zsh | ❌ |
+| macOS | bash, zsh | ❌ |
+| Windows Server 2025 | Windows PowerShell 5.1 | ✅ |
+| Windows Server 2025, WSL 2 Ubuntu | bash | ✅ except the password login |
 
-Not tested: Linux arm64, macOS, the password login in WSL 2, and renewing a login that has
-already expired.
+Not tested anywhere: renewing a login that has already expired.
 
 ## License
 
