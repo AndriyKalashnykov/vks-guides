@@ -20,8 +20,8 @@ Arm PC).
 | `VCF-Consumption-CLI-PluginBundle-<platform>-9.1.1.0100.25793136.tar.gz` | [VCF Consumption CLI Plugins](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0100&os=&servicePk=548172&language=EN&groupId=545621&viewGroup=true) |
 
 - Without the direct links: [My Downloads](https://support.broadcom.com/group/ecx/downloads) →
-  VMware vSphere Foundation or VMware Cloud Foundation (whichever your account has) → its version
-  9 entry → the 9.1.1 release. Until you pick the release, the page reads "No data found".
+  VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0100, or VMware Cloud
+  Foundation → VMware Cloud Foundation 9 → 9.1.1.0. Until you pick the release, the page reads "No data found".
 - Tick **"I agree to the Terms and Conditions"**. The checkbox stays greyed out until you open
   both Terms links, and until it is ticked the download icon does nothing.
 - Take the row for your platform, not the files without one (`…-Binaries-…`, plain
