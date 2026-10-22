@@ -21,32 +21,14 @@ Run the sections in order, in one terminal, doing **one** of
 need only [Renew the Supervisor login](#renew-the-supervisor-login) when the login ends, and
 [Log out](#log-out) when you are done.
 
-## Type your SSO password
-
-The login reads the password from this terminal, so it is never on a command line or in your
-shell history. Paste this line on its own, then type the password; nothing is shown as you type
-(PowerShell shows `*`).
-
-**Linux, macOS, WSL (bash or zsh):**
-
-```sh
-printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
-```
-
-**Windows (PowerShell):**
-
-```powershell
-$SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
-```
-
-**Expect:** a new prompt. The password stays in this terminal until you close it or run
-[Log out](#log-out); in a new terminal, run this line again.
-
 ## Create Supervisor context with CA
 
 The login checks that it talks to your real Supervisor, using vCenter's CA.
 
-### Get the vCenter CA
+<details>
+<summary><b>Steps</b></summary>
+
+**1. Get the vCenter CA**
 
 By default the Supervisor's certificate is issued by vCenter's own CA, which this machine does
 not trust yet. This downloads vCenter's CAs. The download itself is not checked (`curl -k`), so it
@@ -142,7 +124,28 @@ Move-Item -Force "$CA_FILE.new" $CA_FILE; if ($?) { "kept $CA_FILE" }
 
 **Expect:** `kept …`.
 
-### Create the context
+**2. Type your SSO password**
+
+The login reads the password from this terminal, so it is never on a command line or in your
+shell history. Paste this line on its own, then type the password; nothing is shown as you type
+(PowerShell shows `*`).
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
+```
+
+**Expect:** a new prompt. The password stays in this terminal until you close it or run
+[Log out](#log-out); in a new terminal, run this line again.
+
+**3. Create the context**
 
 **A few failed logins in a row lock the SSO user for some minutes**, so get the password right.
 The login is saved in `SUPERVISOR_KUBECONFIG`, a kubeconfig of its own; your other kubeconfigs
@@ -208,25 +211,51 @@ if (-not $SSO_PASSWORD) {
 `Switched to context "supervisor"`. The login lasts about 10 hours.
 
 **If not:**
-- `FAILED: no password in this terminal`: run the line under
-  [Type your SSO password](#type-your-sso-password), then this block again.
-- `FAILED: not found: …`: run [Get the vCenter CA](#get-the-vcenter-ca), including its `mv`
-  block.
+- `FAILED: no password in this terminal`: run step 2, then this block again.
+- `FAILED: not found: …`: run step 1, including its `mv` block.
 - `context "supervisor" already exists`: run [Log out](#log-out), then the password line and this
   block again.
 - A connection error: check `SUPERVISOR_ENDPOINT`.
 - A certificate error (`x509: …`): that CA did not issue the Supervisor's certificate. Check
-  `VCENTER_FQDN` in [Get the vCenter CA](#get-the-vcenter-ca). If it is right, your administrator
-  replaced the Supervisor's certificate: ask them for its CA and set `SUPERVISOR_CA` to that file.
-  With an IP address in `SUPERVISOR_ENDPOINT`, also try the Supervisor's DNS name.
+  `VCENTER_FQDN` in step 1. If it is right, your administrator replaced the Supervisor's
+  certificate: ask them for its CA and set `SUPERVISOR_CA` to that file. With an IP address in
+  `SUPERVISOR_ENDPOINT`, also try the Supervisor's DNS name.
 - A login error: check `SSO_USERNAME`, and run the password line again. Mind the lock-out.
 - `Failed to install plugin 'telemetry:…'` before the output: harmless; the command still runs.
+
+</details>
 
 ## Create Supervisor context without CA
 
 Use this only when you cannot get the CA. The login does not check the Supervisor's certificate:
 someone between you and the Supervisor could capture your password, and `vcf` keeps skipping the
 check for this login.
+
+<details>
+<summary><b>Steps</b></summary>
+
+**1. Type your SSO password**
+
+The login reads the password from this terminal, so it is never on a command line or in your
+shell history. Paste this line on its own, then type the password; nothing is shown as you type
+(PowerShell shows `*`).
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
+```
+
+**Expect:** a new prompt. The password stays in this terminal until you close it or run
+[Log out](#log-out); in a new terminal, run this line again.
+
+**2. Create the context**
 
 **A few failed logins in a row lock the SSO user for some minutes**, so get the password right.
 The login is saved in `SUPERVISOR_KUBECONFIG`, a kubeconfig of its own; your other kubeconfigs
@@ -286,13 +315,86 @@ if (-not $SSO_PASSWORD) {
 `Switched to context "supervisor"`. The login lasts about 10 hours.
 
 **If not:**
-- `FAILED: no password in this terminal`: run the line under
-  [Type your SSO password](#type-your-sso-password), then this block again.
+- `FAILED: no password in this terminal`: run step 1, then this block again.
 - `context "supervisor" already exists`: run [Log out](#log-out), then the password line and this
   block again.
 - A connection error: check `SUPERVISOR_ENDPOINT`.
 - A login error: check `SSO_USERNAME`, and run the password line again. Mind the lock-out.
 - `Failed to install plugin 'telemetry:…'` before the output: harmless; the command still runs.
+
+</details>
+
+### Alternative: trust the Supervisor's own certificate
+
+Later logins are checked against the Supervisor's certificate, fetched once. Its limits:
+- The fetch itself is not checked: compare the printed fingerprint with one from your vCenter
+  administrator, or it is no safer than logging in without a check.
+- It stops working when the Supervisor's certificate is renewed: fetch it again.
+
+<details>
+<summary><b>Steps</b></summary>
+
+**1. Type your SSO password** (step 1 above).
+
+**2. Fetch the certificate**
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+SUPERVISOR_ENDPOINT="10.0.0.10"                       # Supervisor IP or FQDN
+SUPERVISOR_CERT="$HOME/.kube/supervisor.crt"
+
+mkdir -p "$(dirname "$SUPERVISOR_CERT")"
+openssl s_client -connect "${SUPERVISOR_ENDPOINT}:443" </dev/null 2>/dev/null \
+  | openssl x509 -outform PEM > "$SUPERVISOR_CERT" \
+  && openssl x509 -in "$SUPERVISOR_CERT" -noout -subject -fingerprint -sha256 \
+  || { rm -f "$SUPERVISOR_CERT"; echo "FAILED: no certificate from ${SUPERVISOR_ENDPOINT}:443"; }
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
+$SUPERVISOR_CERT = "$HOME\.kube\supervisor.crt"
+
+try {
+  $TCP = New-Object Net.Sockets.TcpClient($SUPERVISOR_ENDPOINT, 443)
+  $SSL = New-Object Net.Security.SslStream($TCP.GetStream(), $false, ([Net.Security.RemoteCertificateValidationCallback] { $true }))
+  $SSL.AuthenticateAsClient($SUPERVISOR_ENDPOINT, $null, [Security.Authentication.SslProtocols]::Tls12, $false)
+  $X = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $SSL.RemoteCertificate
+  $TCP.Close()
+  New-Item -ItemType Directory -Force -Path (Split-Path $SUPERVISOR_CERT) | Out-Null
+  $B64 = [Convert]::ToBase64String($X.RawData, 'InsertLineBreaks')
+  Set-Content -Encoding ascii -Path $SUPERVISOR_CERT -Value "-----BEGIN CERTIFICATE-----`r`n$B64`r`n-----END CERTIFICATE-----"
+  $H = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($X.RawData))
+  "subject=$($X.Subject)"
+  "sha256 Fingerprint=$($H.Replace('-', ':'))"
+} catch {
+  "FAILED: no certificate from ${SUPERVISOR_ENDPOINT}:443"
+}
+```
+
+</details>
+
+**Expect:** a `subject=` line and a `sha256 Fingerprint=…` line (`SHA256 Fingerprint=` on macOS)
+that matches the one from your administrator, ignoring colons and upper/lower case.
+
+**If not:**
+- `FAILED: no certificate …`: check `SUPERVISOR_ENDPOINT`, or this machine cannot reach the
+  Supervisor.
+- A fingerprint that does not match: delete the file and do not log in with it.
+
+**3. Create the context:** run step 3 of
+[Create Supervisor context with CA](#create-supervisor-context-with-ca) with
+`SUPERVISOR_CA="$HOME/.kube/supervisor.crt"` (PowerShell: `"$HOME\.kube\supervisor.crt"`). A
+certificate error (`x509: …`) there means the certificate does not list the address in
+`SUPERVISOR_ENDPOINT`: use the Supervisor's DNS name or IP address as it was issued for.
+
+</details>
 
 ## Check your vSphere Namespace
 
@@ -485,14 +587,15 @@ $V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o jso
 
 Run this only when a `kubectl` command to the Supervisor answers
 `error: You must be logged in to the server (Unauthorized)`. The VKS cluster's kubeconfig does
-not need it. Keep `SUPERVISOR_CA` if you created the context with CA; set it to `""` if without.
-It logs in with your password again, so in a new terminal run the
-[password line](#type-your-sso-password) first, and mind the lock-out.
+not need it. Set `SUPERVISOR_CA` to the file you created the context with (the vCenter CA, or
+`supervisor.crt`), or to `""` if you created it without CA. It logs in with your password again,
+so in a new terminal first run the password step of the Create section you used, and mind the
+lock-out.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"            # "" if created without CA
+SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"            # or supervisor.crt; "" if without CA
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 
 if [ -n "$SUPERVISOR_CA" ]; then TLS="--ca-certificate=$SUPERVISOR_CA"; else TLS="--insecure-skip-tls-verify"; fi
@@ -509,7 +612,7 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"         # "" if created without CA
+$SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"         # or supervisor.crt; "" if without CA
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
 $TLS = if ($SUPERVISOR_CA) { "--ca-certificate=$SUPERVISOR_CA" } else { "--insecure-skip-tls-verify" }
@@ -530,9 +633,9 @@ if (-not $SSO_PASSWORD) {
 command that answered `Unauthorized` again.
 
 **If not:**
-- `FAILED: no password in this terminal`: run the [password line](#type-your-sso-password), then
-  this block again.
-- `FAILED: not found: …`: set `SUPERVISOR_CA` to `""` if you created the context without CA.
+- `FAILED: no password in this terminal`: run the password step of the Create section you used,
+  then this block again.
+- `FAILED: not found: …`: set `SUPERVISOR_CA` to the file you created the context with, or `""`.
 - `context supervisor not found`: you are not logged in. Run
   [Create Supervisor context with CA](#create-supervisor-context-with-ca) or
   [without CA](#create-supervisor-context-without-ca).
