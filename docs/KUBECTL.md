@@ -1,7 +1,6 @@
 # Install kubectl
 
-Kubernetes docs: [Install Tools](https://kubernetes.io/docs/tasks/tools/). Broadcom's VCF 9.1 docs
-have no kubectl install page.
+Kubernetes docs: [Install Tools](https://kubernetes.io/docs/tasks/tools/).
 
 `kubectl` is the Kubernetes command-line tool. Run **one** of the two install blocks:
 [From dl.k8s.io](#from-dlk8sio), or [From the Supervisor](#from-the-supervisor-dlk8sio-blocked)
@@ -101,7 +100,8 @@ Remove-Item -Recurse -Force $TMP
 - `FAILED: unsupported …, or dl.k8s.io unreachable`: there is no build for this OS/CPU, or this
   machine cannot reach dl.k8s.io. Use [From the Supervisor](#from-the-supervisor-dlk8sio-blocked).
 - `FAILED: download …` with a version such as `v1.33.4`: that exact patch has no upstream build.
-  `curl -fsSL https://dl.k8s.io/release/stable-1.33.txt` prints the newest patch of that minor.
+  [stable-1.33.txt](https://dl.k8s.io/release/stable-1.33.txt) names the newest 1.33 patch;
+  for another minor, change the number in the link.
 - `FAILED: checksum mismatch …`: the download arrived damaged. Run the block again.
 - `note: … added to PATH for this terminal only`: make it permanent with
   [`~/.local/bin` on your PATH](PREREQS.md#localbin-on-your-path).
@@ -112,8 +112,8 @@ Remove-Item -Recurse -Force $TMP
 ## From the Supervisor (dl.k8s.io blocked)
 
 The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only (Apple silicon
-runs it through Rosetta). It is the Supervisor's version, usually more than one minor version
-older than your VKS cluster. The download skips the TLS check (`curl -k`).
+runs it through Rosetta). It is the Supervisor's version, which may be too old for your VKS
+cluster. The download skips the TLS check (`curl -k`).
 
 <details>
 <summary><b>Linux amd64, macOS, WSL amd64 (bash or zsh)</b></summary>

@@ -85,6 +85,11 @@ in `/usr/local/bin`, give `sudo` your password first, as a block of its own:
 sudo -v
 ```
 
+**Expect:** a new prompt, after your password if `sudo` asks for it. Run the install block in this
+terminal soon after.
+
+**If not:** `… is not in the sudoers file`: skip this; the install uses `~/.local/bin`.
+
 ## `~/.local/bin` on your PATH
 
 If an install printed `note: …/.local/bin added to PATH for this terminal only`, add it to your

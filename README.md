@@ -45,7 +45,7 @@ foreach ($t in 'kubectl', 'vcf') {
 **Expect:** an `ok` line for each tool (seven; two in PowerShell). For a `MISSING` line, re-run
 that tool's guide.
 
-## Tested
+## Platforms
 
 Run against the Broadcom 9.1.1.0100 files and a vSphere 9.1.1 Supervisor with a VKS cluster.
 
@@ -54,8 +54,9 @@ Run against the Broadcom 9.1.1.0100 files and a vSphere 9.1.1 Supervisor with a 
 | Ubuntu, amd64 | bash, zsh | ✅ |
 | Linux, arm64 | bash, zsh | ❌ |
 | macOS | bash, zsh | ❌ |
-| Windows Server 2025 | Windows PowerShell 5.1 | ✅ |
-| Windows Server 2025, WSL 2 Ubuntu | bash | ✅ except the password login |
+| Windows Server 2025, amd64 | Windows PowerShell 5.1 | ✅ |
+| Windows Server 2025, amd64, WSL 2 Ubuntu | bash, as root | ✅ except the password login |
+| Windows, arm64 | Windows PowerShell 5.1; bash in WSL 2 | ❌ |
 
 Not tested anywhere: renewing a login that has already expired.
 
