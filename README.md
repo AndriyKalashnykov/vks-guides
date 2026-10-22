@@ -8,8 +8,8 @@ Service (VKS), and log in to the Supervisor and your VKS cluster, by pasting she
 
 ## How to use
 
-1. Open `bash` or `zsh`. On Windows, open PowerShell and use the **Windows (PowerShell)** blocks,
-   or use Ubuntu in WSL 2 ([Prerequisites](docs/PREREQS.md#windows)).
+1. **Linux, macOS:** open `bash` or `zsh`. **Windows:** open PowerShell and use the
+   **Windows (PowerShell)** blocks, or use Ubuntu in WSL 2 ([Prerequisites](docs/PREREQS.md#windows)).
 2. If a block starts with variables, set them. Then paste the whole block.
 3. Compare the output with **Expect:**. If it differs, do what **If not:** says.
 
