@@ -42,8 +42,10 @@ foreach ($t in 'kubectl', 'vcf') {
 }
 ```
 
-**Expect:** an `ok` line for each tool (seven; two in PowerShell). For a `MISSING` line, re-run
-that tool's guide.
+**Expect:** an `ok` line for each tool (seven; two in PowerShell).
+
+**If not:** for `MISSING curl`, `tar`, `unzip`, `jq` or `openssl`, do [Prerequisites](docs/PREREQS.md);
+for `kubectl`, [Install kubectl](docs/KUBECTL.md); for `vcf`, [Install the VCF CLI](docs/VCF.md).
 
 ## Platforms
 
