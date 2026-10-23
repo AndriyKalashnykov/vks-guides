@@ -198,13 +198,15 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
+$global:LASTEXITCODE = $null
 $E = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER -o jsonpath='{.spec.controlPlaneEndpoint.host}'
 if ($LASTEXITCODE -eq 0) { $A = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get virtualmachineservices $VKS_CLUSTER -o jsonpath='{.status.loadBalancer.ingress[0].ip}' }
 if ($LASTEXITCODE -eq 0) { "cluster address: $(if ($E) { $E } else { 'none' }), load balancer address: $(if ($A) { $A } else { 'none' })" }
 ```
 
-**Expect:** the same address twice. Two different addresses: the cluster kept an old address;
-delete it (step 8) and create it again under a new name. `none`: wait; the address comes first.
+**Expect:** the same address twice. `none`, or `NotFound` for the virtual machine service: wait,
+the address comes first. Two different addresses: the cluster kept an old address; delete it
+(step 8) and create it again under a new name.
 
 If the addresses match, this shows why the cluster waits: read the `Conditions` and the `Events`
 at the end.
@@ -318,9 +320,9 @@ kubectl --kubeconfig $VKS_KUBECONFIG get persistentvolumeclaims -A
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get persistentvolumeclaims -l "$VKS_CLUSTER/TKGService"
 ```
 
-**Expect:** `No resources found` twice. Each disk listed stays after the delete: delete in the
-cluster the ones you do not need (`kubectl --kubeconfig "$VKS_KUBECONFIG" -n <namespace> delete
-persistentvolumeclaims <name>`) and run the block again.
+**Expect:** `No resources found` twice. Each disk listed stays after the delete. In the cluster,
+delete the apps you do not need and then their disk claims (a claim still in use waits for its
+app), and run the block again.
 
 Then this deletes the cluster.
 
@@ -344,10 +346,11 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete clusters.cluster.x-k8s.io $VKS_CLUSTER --wait=false
 ```
 
-**Expect:** `cluster.cluster.x-k8s.io "<name>" deleted` (kubectl 1.37: `… deleted from <your
+**Expect:** `cluster.cluster.x-k8s.io "<name>" deleted` (newer kubectl: `… deleted from <your
 namespace> namespace`). Then run the block in
 [step 2](#2-choose-a-name-and-the-values) again until it says `none now`, and the disk block
-above: its second list shows the disks the cluster left behind.
+above: its first command now fails (the cluster is gone); its second list shows the disks the
+cluster left behind.
 
 **If not:** `Forbidden`: your role on the namespace cannot delete clusters; ask for the **Edit**
 role.
