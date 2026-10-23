@@ -75,6 +75,7 @@ fi
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
+$global:LASTEXITCODE = $null
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 if ($LASTEXITCODE -ne 0 -or -not $SUP) {
   "FAILED: cannot read the Supervisor (see the error above)"
@@ -502,6 +503,7 @@ $VKS_NAMESPACE = "my-namespace"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
+$global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
 if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)" } else {
   $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get machines.cluster.x-k8s.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.conditions[?(@.type==''UpToDate'')].status} {.status.conditions[?(@.type==''UpToDate'')].lastTransitionTime}{''\n''}{end}'
@@ -675,6 +677,7 @@ fi
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
+$global:LASTEXITCODE = $null
 $VALUES = "$HARBOR_DIR\harbor-data-values.yml"
 $HARBOR_FQDN = if (Test-Path $VALUES) { "$((Get-Content $VALUES | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')" } else { '' }
 if (-not $HARBOR_FQDN) { "FAILED: no hostname in $VALUES (step 4)" } else {
@@ -725,6 +728,7 @@ NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform
 ```powershell
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
+$global:LASTEXITCODE = $null
 $NS = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[0].metadata.name}'
 if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get pods,persistentvolumeclaims }
 ```
@@ -819,6 +823,7 @@ $VKS_NAMESPACE = "my-namespace"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
+$global:LASTEXITCODE = $null
 $BEFORE = "$HARBOR_DIR\machines-$VKS_NAMESPACE.before"
 if (-not (Test-Path $BEFORE)) { "FAILED: no record $BEFORE (Record the VKS cluster machines, step 6)" } else {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
@@ -889,6 +894,7 @@ fi
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
+$global:LASTEXITCODE = $null
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $CA = "$HARBOR_DIR\harbor-ca.crt"
 $NS = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[0].metadata.name}'
@@ -1313,6 +1319,7 @@ fi
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
+$global:LASTEXITCODE = $null
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 if ($LASTEXITCODE -ne 0 -or -not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
 elseif (Test-Path "$HARBOR_DIR\none-before-$SUP") { "MAY UNINSTALL: this Supervisor had no Harbor when you began" }

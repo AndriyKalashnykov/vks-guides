@@ -63,6 +63,7 @@ rm -rf "$TMP"
 $KUBECTL_VERSION = ""                    # empty = latest stable; or e.g. v1.33.4
 $INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
 
+$global:LASTEXITCODE = $null
 $ARCH = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
 if (-not $KUBECTL_VERSION) { $KUBECTL_VERSION = curl.exe -fsSL --connect-timeout 20 --speed-time 60 https://dl.k8s.io/release/stable.txt }
 $KUBECTL_VERSION = "$KUBECTL_VERSION".Split('+')[0]   # drop a "+vmware.N" suffix
@@ -166,6 +167,7 @@ rm -rf "$TMP"
 $SUPERVISOR_ENDPOINT = "10.0.0.10"       # Supervisor IP or FQDN
 $INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
 
+$global:LASTEXITCODE = $null
 $TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
 curl.exe -fsSk --connect-timeout 20 --speed-time 60 -o "$TMP\p.zip" "https://$SUPERVISOR_ENDPOINT/wcp/plugin/windows-amd64/vsphere-plugin.zip"
 if ($LASTEXITCODE -eq 0) { Expand-Archive -Force -Path "$TMP\p.zip" -DestinationPath "$TMP\p" -ErrorAction SilentlyContinue }
