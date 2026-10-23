@@ -429,12 +429,14 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 **If not:**
 - `… supervisor.kubeconfig: no such file or directory`: you are not logged in. Create the
   Supervisor context first.
-- `NotFound`: check `VKS_NAMESPACE`.
-- `Forbidden`: your SSO user has no role on this namespace, or got it after you logged in. Ask a
-  vCenter administrator for the role, then [Log out](#log-out) and log in again.
+- `NotFound`: check `VKS_NAMESPACE`, or [create the namespace](NAMESPACE.md).
+- `Forbidden`: check `VKS_NAMESPACE` (a user who is not a vCenter administrator gets `Forbidden`
+  for a name that does not exist). Otherwise your SSO user has no role on this namespace, or got
+  it after you logged in. Ask a vCenter administrator for the role, then [Log out](#log-out) and
+  log in again.
 - `Unauthorized`: the login has ended. Run
   [Renew the Supervisor login](#renew-the-supervisor-login).
-- `No resources found`: the namespace has no VKS cluster yet. Creating one is not covered here.
+- `No resources found`: the namespace has no VKS cluster yet: [create one](CLUSTER.md).
 
 ## Get the VKS cluster's kubeconfig
 

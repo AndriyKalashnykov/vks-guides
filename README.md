@@ -15,7 +15,8 @@ Service (VKS), and log in to the Supervisor and your VKS cluster, by pasting she
 
 ## Guides
 
-Start with Prerequisites. Then install kubectl and the VCF CLI, in either order. Log in needs both.
+Start with Prerequisites. Then install kubectl and the VCF CLI, in either order. Log in needs both. Then create the
+vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it.
 
 | guide | what it is |
 |---|---|
@@ -23,6 +24,8 @@ Start with Prerequisites. Then install kubectl and the VCF CLI, in either order.
 | [Install kubectl](docs/KUBECTL.md) | the Kubernetes command-line tool, for working with your clusters |
 | [Install the VCF CLI](docs/VCF.md) | VMware's command-line tool, for logging in to the Supervisor and managing VKS clusters |
 | [Log in to the Supervisor and a VKS cluster](docs/LOGIN.md) | your SSO login to the Supervisor, and the kubeconfig `kubectl` uses to reach your VKS cluster |
+| [Create a vSphere Namespace](docs/NAMESPACE.md) | a vCenter administrator's vSphere Namespace for VKS clusters, and the check that it is ready |
+| [Create a VKS cluster](docs/CLUSTER.md) | a VKS cluster made in the vSphere Client, checked, and deleted |
 
 ## Check what is installed
 

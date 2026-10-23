@@ -1,7 +1,8 @@
 # CLAUDE.md
 
 Copy-paste how-to guides for VMware vSphere Kubernetes Service (VKS), VCF 9.x: README.md links
-docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md. Readers paste blocks; there is nothing to build.
+docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md, NAMESPACE.md, CLUSTER.md (screenshots in
+docs/img/). Readers paste blocks; there is nothing to build.
 
 ## Rules
 
