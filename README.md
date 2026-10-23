@@ -66,11 +66,14 @@ Run against the Broadcom 9.1.1.0100 files and a vSphere 9.1.1 Supervisor with a 
 | Windows Server 2025, amd64, WSL 2 Ubuntu | bash, as root | ✅ except the password login |
 | Windows, arm64 | Windows PowerShell 5.1; bash in WSL 2 | ❌ |
 
-NAMESPACE.md, CLUSTER.md, HARBOR.md and ARGOCD.md were run on Ubuntu (bash, zsh), macOS 26
-(bash 3.2, zsh 5.9) and Windows PowerShell 5.1. On macOS and in PowerShell, HARBOR.md's admin
-password blocks ran against a stand-in server. Its clipboard blocks ran in a Linux desktop session
-(Wayland) and in PowerShell, and on macOS only without a desktop session. ARGOCD.md's web-page
-steps were done in Chrome.
+NAMESPACE.md, CLUSTER.md, HARBOR.md and ARGOCD.md were run on 2026-10-23 with VKS 3.7.2, the
+Harbor Supervisor Service 2.15.2 and the ArgoCD Service 1.2.0, on Ubuntu (bash, zsh), macOS 26
+(bash 3.2, zsh 5.9) and Windows PowerShell 5.1, not in WSL; most blocks as an SSO user whose only
+role was **Namespaces Edit**. Harbor was installed and uninstalled twice, and the VKS cluster
+nodes were updated each time; ArgoCD's certificate renewal (step 7) was run with an app deployed.
+On macOS and in PowerShell, HARBOR.md's admin password blocks ran against a stand-in server. Its
+clipboard blocks ran in a Linux desktop session (Wayland) and in PowerShell, and on macOS only
+without a desktop session. ARGOCD.md's web-page steps were done in Chrome.
 
 Renewing a login that had already expired was run on macOS (zsh) only.
 
