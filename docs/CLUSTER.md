@@ -355,5 +355,40 @@ cluster left behind.
 **If not:** `Forbidden`: your role on the namespace cannot delete clusters; ask for the **Edit**
 role.
 
+**This deletes those disks and what they hold, for good.** It deletes nothing while a cluster of
+that name exists.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+
+if ! L="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" --ignore-not-found -o name)"; then
+  echo "Nothing deleted: cannot read the clusters (see the error above)"
+elif [ -n "$L" ]; then
+  echo "Nothing deleted: $L still exists"
+else
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" delete persistentvolumeclaims -l "$VKS_CLUSTER/TKGService"
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+$global:LASTEXITCODE = $null
+$L = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER --ignore-not-found -o name
+if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot read the clusters (see the error above)" }
+elseif ($L) { "Nothing deleted: $L still exists" }
+else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete persistentvolumeclaims -l "$VKS_CLUSTER/TKGService" }
+```
+
+**Expect:** a `persistentvolumeclaim "<id>" deleted` line for each disk, or `No resources found`.
+
 Do not create the next cluster under the same name. The cluster's kubeconfig stays in
 `~/.kube`; delete it yourself.

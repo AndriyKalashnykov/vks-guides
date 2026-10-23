@@ -1065,7 +1065,8 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOC
 ```
 
 **Expect:** `application.argoproj.io "test-web-apps" deleted`, then
-`appproject.argoproj.io "test-web-apps" deleted`.
+`appproject.argoproj.io "test-web-apps" deleted`. Newer kubectl adds `from <namespace>
+namespace` to each `deleted` line.
 
 **If not:** `timed out waiting`: ArgoCD cannot reach the VKS cluster (step 7's certificate ended,
 or the cluster is gone). In the ArgoCD page, delete the Application with **Non-cascading**.
