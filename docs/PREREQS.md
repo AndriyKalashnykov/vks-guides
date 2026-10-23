@@ -1,9 +1,13 @@
 # Prerequisites
 
 > [!NOTE]
-> **Official Microsoft documentation for this guide**
+> **Official documentation for this guide**
 >
-> - [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
+> - Ubuntu: [Install and manage packages](https://ubuntu.com/server/docs/how-to/software/package-management/)
+> - Homebrew: [Installation](https://docs.brew.sh/Installation); jq: [Download jq](https://jqlang.org/download/)
+> - Microsoft: [Starting Windows PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/starting-windows-powershell?view=powershell-5.1), [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Working across Windows and Linux file systems](https://learn.microsoft.com/en-us/windows/wsl/filesystems)
+> - curl: [curl shipped by Microsoft](https://curl.se/windows/microsoft.html) (`curl.exe` in Windows)
+> - sudo: [Sudo Manual](https://www.sudo.ws/docs/man/sudo.man/) (`-v`)
 
 The small command-line tools the other guides use: `curl`, `tar`, `unzip`, `jq`, `openssl`. Do the
 section for your OS, then [Check](#check) (Linux, macOS and WSL; PowerShell needs no check).

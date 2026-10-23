@@ -3,17 +3,18 @@
 > [!NOTE]
 > **Official Broadcom documentation (VCF 9.1) and Argo CD documentation for this guide**
 >
-> - [Installing and Configuring the Argo CD Service in VCF and vSphere](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-argo-cd-service.html)
+> - [Install the VMware Argo CD Operator as a Supervisor Service](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-argo-cd-service/install-argo-cd-service.html)
 > - [Add a Supervisor Service to vCenter](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/add-a-vsphere-services-to-vcenter-server.html)
 > - [Install a Supervisor Service on a Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/install-a-supervisor-service-on-supervisors.html)
 > - [Deploy an Argo CD Instance on a Supervisor without VCF Automation](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-argo-cd-service/deploying-and-managing-an-argo-cd-instance-as-a-supervisor-service/deploy-and-argo-cd-instance-on-a-supervisor-without-vcf-automation.html)
-> - [Add and Manage a vSphere Namespace in an Argo CD Instance by Using kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-argo-cd-service/deploying-and-managing-an-argo-cd-instance-as-a-supervisor-service/register-a-vsphere-namespace-as-a-target-cluster-in-argo-cd-supervisor-service/manage-a-vsphere-namespace-in-an-argo-cd-instance-on-supervisor-service-using-kubect.html)
-> - [Register and Manage VKS Clusters in an Argo CD Instance by Using kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-argo-cd-service/deploying-and-managing-an-argo-cd-instance-as-a-supervisor-service/create-a-cluster-by-argocd.html)
+> - [Approach 1: Add and Manage a vSphere Namespace in an Argo CD Instance on Supervisor Service by Using kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-argo-cd-service/deploying-and-managing-an-argo-cd-instance-as-a-supervisor-service/register-a-vsphere-namespace-as-a-target-cluster-in-argo-cd-supervisor-service/manage-a-vsphere-namespace-in-an-argo-cd-instance-on-supervisor-service-using-kubect.html)
+> - [Workflow for Provisioning VKS Clusters Using kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/workflow-for-provisioning-tkg-clusters-using-kubectl.html) (Kubernetes releases, VM classes, storage classes)
+> - [Register and Manage VKS Clusters in an Argo CD Instance on Supervisor Service by Using kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-argo-cd-service/deploying-and-managing-an-argo-cd-instance-as-a-supervisor-service/create-a-cluster-by-argocd.html)
 > - [Uninstall a Supervisor Service from a Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/uninstall-a-supervisor-service-version-from-a-supervisor.html)
 > - [Delete a Supervisor Service](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/delete-a-vsphere-service.html)
 > - [Argo CD Service API](https://developer.broadcom.com/xapis/argocd-service-api/latest/api-docs.html) (the `ArgoCD` and `ManagedEntity` fields)
 > - [Supervisor Services: how to find and install them](https://github.com/vsphere-tmm/Supervisor-Services/blob/main/README.md) (the `legacy` manifest)
-> - Argo CD 3.4: [Declarative Setup](https://argo-cd.readthedocs.io/en/release-3.4/operator-manual/declarative-setup/), [Automated Sync Policy](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/auto_sync/), [Helm](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/helm/)
+> - Argo CD 3.4: [Getting Started: Sync (Deploy) The Application](https://argo-cd.readthedocs.io/en/release-3.4/getting_started/#7-sync-deploy-the-application), [TLS configuration](https://argo-cd.readthedocs.io/en/release-3.4/operator-manual/tls/), [Declarative Setup](https://argo-cd.readthedocs.io/en/release-3.4/operator-manual/declarative-setup/), [Helm](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/helm/), [Automated Sync Policy](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/auto_sync/), [App Deletion](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/app_deletion/)
 
 ArgoCD keeps what is in a Git folder applied to a destination. On a Supervisor it is the ArgoCD
 Service: a vCenter administrator installs the service once, then a vSphere Namespace runs its own
@@ -281,7 +282,8 @@ password on a line of its own.
 - `secrets "argocd-initial-admin-secret" not found`: someone changed the admin password and
   removed the first one. Ask them for it.
 
-This guide needs no `argocd` program; Broadcom's build is on the same download page.
+This guide needs no `argocd` program. Broadcom's build is `vcf argocd`, from the
+[VCF CLI](VCF.md) plugin bundle.
 
 ## 5. Let ArgoCD manage your vSphere Namespace
 
