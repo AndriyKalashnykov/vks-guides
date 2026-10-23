@@ -66,6 +66,7 @@ rm -rf "$TMP"
 $VCENTER_FQDN = "vcsa.example.test"      # vCenter DNS name
 $CA_FILE = "$HOME\.kube\vcenter-ca.pem"
 
+$global:LASTEXITCODE = $null
 $TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
 curl.exe -fsSk --connect-timeout 20 --speed-time 60 -o "$TMP\certs.zip" "https://$VCENTER_FQDN/certs/download.zip"
 if ($LASTEXITCODE -ne 0) {
@@ -186,6 +187,7 @@ $SSO_USERNAME = "administrator@vsphere.local"
 $SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
+$global:LASTEXITCODE = $null
 if (-not $SSO_PASSWORD) {
   "FAILED: no password in this terminal; run the line under Type your SSO password"
 } elseif (-not (Test-Path $SUPERVISOR_CA)) {
@@ -292,6 +294,7 @@ $SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
 $SSO_USERNAME = "administrator@vsphere.local"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
+$global:LASTEXITCODE = $null
 if (-not $SSO_PASSWORD) {
   "FAILED: no password in this terminal; run the line under Type your SSO password"
 } else {
@@ -420,6 +423,7 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
 $VKS_NAMESPACE = "my-namespace"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
+$global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE
 if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io }
 ```
@@ -429,12 +433,14 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 **If not:**
 - `… supervisor.kubeconfig: no such file or directory`: you are not logged in. Create the
   Supervisor context first.
-- `NotFound`: check `VKS_NAMESPACE`.
-- `Forbidden`: your SSO user has no role on this namespace, or got it after you logged in. Ask a
-  vCenter administrator for the role, then [Log out](#log-out) and log in again.
+- `NotFound`: check `VKS_NAMESPACE`, or [create the namespace](NAMESPACE.md).
+- `Forbidden`: check `VKS_NAMESPACE` (a user who is not a vCenter administrator gets `Forbidden`
+  for a name that does not exist). Otherwise your SSO user has no role on this namespace, or got
+  it after you logged in. Ask a vCenter administrator for the role, then [Log out](#log-out) and
+  log in again.
 - `Unauthorized`: the login has ended. Run
   [Renew the Supervisor login](#renew-the-supervisor-login).
-- `No resources found`: the namespace has no VKS cluster yet. Creating one is not covered here.
+- `No resources found`: the namespace has no VKS cluster yet: [create one](CLUSTER.md).
 
 ## Get the VKS cluster's kubeconfig
 
@@ -476,6 +482,7 @@ $VKS_CLUSTER = "my-vks-cluster"                     # from the NAME column above
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
+$global:LASTEXITCODE = $null
 $KC = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" `
   -o go-template='{{.data.value | base64decode}}'
 if ($LASTEXITCODE -eq 0 -and $KC) {
