@@ -281,8 +281,9 @@ password on a line of its own.
 - `secrets "argocd-initial-admin-secret" not found`: someone changed the admin password and
   removed the first one. Ask them for it.
 
-This guide needs no `argocd` program. Broadcom's build is `vcf argocd`, from the
-[VCF CLI](VCF.md) plugin bundle.
+This guide needs no `argocd` program. Broadcom builds it two ways: `vcf argocd`, from the
+[VCF CLI](VCF.md) plugin bundle, and `argocd-cli-…-vcf.gz` (amd64) on this service's download
+page.
 
 ## 5. Let ArgoCD manage your vSphere Namespace
 

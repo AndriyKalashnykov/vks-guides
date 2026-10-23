@@ -19,7 +19,7 @@ when this machine cannot reach dl.k8s.io. After you log in,
 Downloads the official binary, checks its SHA-256 and installs it into `INSTALL_DIR`. When that
 directory needs `sudo` and `sudo` would ask for a password, it installs into `~/.local/bin`
 instead (see [Prerequisites](PREREQS.md#sudo-optional)). Leave `KUBECTL_VERSION` empty for the
-latest stable release, or set one such as `v1.33.4`.
+latest stable release, or set one such as `v1.36.2`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -64,7 +64,7 @@ rm -rf "$TMP"
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$KUBECTL_VERSION = ""                    # empty = latest stable; or e.g. v1.33.4
+$KUBECTL_VERSION = ""                    # empty = latest stable; or e.g. v1.36.2
 $INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
 
 $global:LASTEXITCODE = $null
@@ -108,8 +108,8 @@ Remove-Item -Recurse -Force $TMP
 **If not:**
 - `FAILED: unsupported …, or dl.k8s.io unreachable`: there is no build for this OS/CPU, or this
   machine cannot reach dl.k8s.io. Use [From the Supervisor](#from-the-supervisor-dlk8sio-blocked).
-- `FAILED: download …` with a version such as `v1.33.4`: that exact patch has no upstream build.
-  [stable-1.33.txt](https://dl.k8s.io/release/stable-1.33.txt) names the newest 1.33 patch;
+- `FAILED: download …` with a version you set: check that it starts with `v` and that the patch
+  exists. [stable-1.36.txt](https://dl.k8s.io/release/stable-1.36.txt) names the newest 1.36 patch;
   for another minor, change the number in the link.
 - `FAILED: checksum mismatch …`: the download arrived damaged. Run the block again.
 - `note: … added to PATH for this terminal only`: make it permanent with
