@@ -1354,6 +1354,7 @@ fi
 ```powershell
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
+$global:LASTEXITCODE = $null
 $H = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name
 if ($LASTEXITCODE -eq 0) { "Harbor namespaces left: $(if ($H) { $H -join ' ' } else { 'none' })" }
 else { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
@@ -1417,6 +1418,7 @@ fi
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
+$global:LASTEXITCODE = $null
 $H = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name
 if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot list the Supervisor's namespaces (see the error above)" }
 elseif ($H) { "Nothing deleted: a Harbor is still on the Supervisor ($($H -join ' '))" }
