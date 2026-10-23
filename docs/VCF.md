@@ -31,7 +31,8 @@ Arm PC).
 - Copy the **SHA2** value of each file; the install block checks them.
 - Take the files whose names contain `9.1.1.0100.25746586` and `9.1.1.0100.25793136`, the names
   the install block expects. The plugins page can open on a newer release: pick the release
-  whose file names match.
+  whose file names match. The 9.1.1.0100 plugins are for VKS 3.7; release 9.1.1.0200 has the
+  VKS 3.8 ones, which these guides were not tested with.
 
 ## Install
 
