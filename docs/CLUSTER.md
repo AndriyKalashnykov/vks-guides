@@ -11,7 +11,8 @@ You create the cluster in the vSphere Client, on your vSphere Namespace's **Reso
 Local Consumption Interface). Steps 3 to 5 are clicks; the other steps use a terminal and need
 [kubectl](KUBECTL.md), [jq](PREREQS.md) and a [Supervisor login](LOGIN.md). The names are those
 of the vSphere Client for VCF 9.1.1 with VKS 3.7. The screenshots show example names; yours
-differ.
+differ. Steps 3 to 5 were tested as a vCenter administrator; the terminal steps also as a user
+with only **Namespaces Edit**.
 
 You need a vSphere Namespace that passes [Check the namespace](NAMESPACE.md#8-check-the-namespace),
 and the **Edit** role on it.
@@ -53,7 +54,7 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
   echo "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
 elif L="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io,virtualmachineservices "$VKS_CLUSTER" --ignore-not-found -o name)"; then
-  if [ -n "$L" ]; then echo "in use:"; printf '%s\n' "$L"; else echo "free: no cluster and no address named $VKS_CLUSTER"; fi
+  if [ -n "$L" ]; then echo "in use:"; printf '%s\n' "$L"; else echo "none now: no cluster and no address named $VKS_CLUSTER"; fi
 else
   echo "unknown (see the error above)"
 fi
@@ -70,11 +71,12 @@ $global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
 if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)" } else {
   $L = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io,virtualmachineservices $VKS_CLUSTER --ignore-not-found -o name
-  if ($LASTEXITCODE -ne 0) { "unknown (see the error above)" } elseif ($L) { "in use:"; $L } else { "free: no cluster and no address named $VKS_CLUSTER" }
+  if ($LASTEXITCODE -ne 0) { "unknown (see the error above)" } elseif ($L) { "in use:"; $L } else { "none now: no cluster and no address named $VKS_CLUSTER" }
 }
 ```
 
-**Expect:** `free: no cluster and no address named <your name>`.
+**Expect:** `none now: no cluster and no address named <your name>`. This cannot see a name
+used before and deleted; such a name is still not safe.
 
 **If not:**
 - `in use:`: choose another name.
@@ -175,8 +177,37 @@ downloads its node image.
 
 ![The list with the cluster Available](img/cluster/12-cluster-available.png)
 
-**If not:** still `False` after 30 minutes. This shows why: read the `Conditions` and the
-`Events` at the end.
+**If not:** still `False` after 30 minutes. First check that the cluster got its own address.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+
+E="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" -o jsonpath='{.spec.controlPlaneEndpoint.host}')" \
+  && A="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get virtualmachineservices "$VKS_CLUSTER" -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" \
+  && echo "cluster address: ${E:-none}, load balancer address: ${A:-none}"
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+$E = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER -o jsonpath='{.spec.controlPlaneEndpoint.host}'
+if ($LASTEXITCODE -eq 0) { $A = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get virtualmachineservices $VKS_CLUSTER -o jsonpath='{.status.loadBalancer.ingress[0].ip}' }
+if ($LASTEXITCODE -eq 0) { "cluster address: $(if ($E) { $E } else { 'none' }), load balancer address: $(if ($A) { $A } else { 'none' })" }
+```
+
+**Expect:** the same address twice. Two different addresses: the cluster kept an old address;
+delete it (step 8) and create it again under a new name. `none`: wait; the address comes first.
+
+If the addresses match, this shows why the cluster waits: read the `Conditions` and the `Events`
+at the end.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -249,14 +280,47 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 8. Delete the cluster (optional)
 
-**This destroys the cluster, its virtual machines and every disk its apps created.** A cluster
-that ArgoCD manages comes back after you delete it here; delete it in ArgoCD instead.
+**This destroys the cluster and its virtual machines.** The disks its apps created stay in the
+vSphere Namespace and keep their storage
+([Broadcom KB 402764](https://knowledge.broadcom.com/external/article/402764)). A cluster that
+ArgoCD manages comes back after you delete it here; delete it in ArgoCD instead.
 
 First run the block in [step 2](#2-choose-a-name-and-the-values) with your cluster's name.
 
 **Expect:** `in use:`, then `cluster.cluster.x-k8s.io/<name>` and
-`virtualmachineservice.vmoperator.vmware.com/<name>`. If it says `free` or `unknown`, stop: the name
-is wrong, or you may not read it.
+`virtualmachineservice.vmoperator.vmware.com/<name>`. If it says `none now` or `unknown`, stop:
+the name is wrong, or you may not read it.
+
+Then this lists the disks of the cluster's apps: first as the cluster sees them, then as they
+sit in the vSphere Namespace.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+kubectl --kubeconfig "$VKS_KUBECONFIG" get persistentvolumeclaims -A
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get persistentvolumeclaims -l "$VKS_CLUSTER/TKGService"
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+kubectl --kubeconfig $VKS_KUBECONFIG get persistentvolumeclaims -A
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get persistentvolumeclaims -l "$VKS_CLUSTER/TKGService"
+```
+
+**Expect:** `No resources found` twice. Each disk listed stays after the delete: delete in the
+cluster the ones you do not need (`kubectl --kubeconfig "$VKS_KUBECONFIG" -n <namespace> delete
+persistentvolumeclaims <name>`) and run the block again.
 
 Then this deletes the cluster.
 
@@ -280,8 +344,10 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete clusters.cluster.x-k8s.io $VKS_CLUSTER --wait=false
 ```
 
-**Expect:** `cluster.cluster.x-k8s.io "<name>" deleted`. Then run the block in
-[step 2](#2-choose-a-name-and-the-values) again until it says `free`.
+**Expect:** `cluster.cluster.x-k8s.io "<name>" deleted` (kubectl 1.37: `… deleted from <your
+namespace> namespace`). Then run the block in
+[step 2](#2-choose-a-name-and-the-values) again until it says `none now`, and the disk block
+above: its second list shows the disks the cluster left behind.
 
 **If not:** `Forbidden`: your role on the namespace cannot delete clusters; ask for the **Edit**
 role.

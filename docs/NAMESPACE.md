@@ -341,7 +341,7 @@ one name under `Storage classes:`, then `Kubernetes releases ready to use:` and
 machines and disks, every VM, every volume. Remove only a namespace you created, when it holds
 nothing you want to keep.
 
-This lists what is left in it:
+This lists the VKS clusters, VMs and volumes left in it:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -368,7 +368,8 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 **If not:**
 - `NotFound`: check `VKS_NAMESPACE`. Do not remove a namespace you cannot see here.
 - A VKS cluster, VM or volume is listed: delete it first ([CLUSTER.md](CLUSTER.md) deletes a
-  VKS cluster).
+  VKS cluster). A deleted cluster leaves its apps' volumes here; see
+  [Delete the cluster](CLUSTER.md#8-delete-the-cluster-optional).
 
 Then, in the vSphere Client:
 
