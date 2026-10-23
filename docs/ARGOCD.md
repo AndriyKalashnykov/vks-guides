@@ -24,7 +24,8 @@ ArgoCD (an *instance*). In this guide ArgoCD creates a VKS cluster from the char
 Needs [kubectl](KUBECTL.md), `jq` and `openssl` ([Prerequisites](PREREQS.md)), a
 [Supervisor login](LOGIN.md) and a [vSphere Namespace](NAMESPACE.md) with the **Namespaces Edit**
 role for your SSO user. Steps 2 and 10 need a vCenter administrator. Written for ArgoCD Service
-1.2.0 on VCF 9.1.1 with VKS 3.7. The Supervisor must reach `github.com`.
+1.2.0 on VCF 9.1.1 with VKS 3.7. The Supervisor must reach `github.com`, and the VKS cluster
+`docker.io` (step 8).
 
 `ARGOCD_NAMESPACE` is the vSphere Namespace that runs ArgoCD, `VKS_NAMESPACE` the one that holds
 the VKS cluster. They can be the same namespace.
@@ -281,9 +282,10 @@ This guide needs no `argocd` program; Broadcom's build is on the same download p
 
 ## 5. Let ArgoCD manage your vSphere Namespace
 
-**Whoever can log in to this ArgoCD as `admin` can then do everything Namespaces Edit allows in
+**Whoever can log in to this ArgoCD as `admin`, or has Namespaces Edit on `ARGOCD_NAMESPACE`
+(it can read ArgoCD's admin password there), can then do everything Namespaces Edit allows in
 `VKS_NAMESPACE`**: create and delete VKS clusters and VMs, and read every VKS cluster's
-kubeconfig. Share the `admin` login only with people who may do that.
+kubeconfig. Give both only to people who may do that.
 
 This gives ArgoCD's account `argocd-k8s-sa` the `edit` role in `VKS_NAMESPACE` and makes that
 namespace an ArgoCD destination named after it, for the project `vks-clusters` of step 6.
@@ -367,7 +369,8 @@ spec:
 </details>
 
 **Expect:** `rolebinding…/argocd-k8s-sa-edit created` and `managedentity…/ns-<namespace>
-created` (`configured` or `unchanged` on a second run). This lists the destinations:
+created` (`unchanged` on a second run). `configured` or `unchanged` on your first run: someone
+else made them; stop and ask them. This lists the destinations:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -459,7 +462,7 @@ spec:
 
 **Expect:** `appproject.argoproj.io/vks-clusters created`.
 
-This lists what the cluster can use: Kubernetes versions (as the Supervisor stores them, without
+This lists what the cluster can use: Kubernetes versions (as the cluster needs them, without
 the `-vkr.N` ending), cluster classes, VM classes and storage classes.
 
 <details>
@@ -644,13 +647,16 @@ cluster: **Missing** and **OutOfSync**.
 - The tile shows `ComparisonError` with `repository not accessible` or a timeout: the Supervisor
   cannot reach `github.com`. Behind a proxy, add it to the instance:
   `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> patch argocd argocd-1
-  --type merge -p '{"spec":{"repo":{"proxy":{"httpsProxy":"http://<proxy>:<port>"}}}}'`.
+  --type merge -p '{"spec":{"repo":{"proxy":{"httpsProxy":"http://<proxy>:<port>"}}}}'`
+  (PowerShell: write each `"` inside the quotes as `\"`).
 - `set kubernetesVersion` or another `set …`: that value is empty.
 
 Now look at it, then sync:
 
 1. Click the tile, then **DIFF**. The right half shows, in green, the `Cluster` with your
-   values. The left half must be empty.
+   values. The left half must be empty. If it is not, a cluster of that name exists: do not
+   sync; delete the Application in the ArgoCD page with **Non-cascading** and choose another
+   name.
 
    ![The DIFF tab: the left half empty, the right half in green with the Cluster: builtin-generic-v3.7.0, best-effort-small, wcp-vmfs and v1.36.2+vmware.2](img/argocd/07-diff.png)
 
@@ -688,8 +694,6 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.clust
 **Expect:** `Synced  Healthy`, and the cluster with `AVAILABLE` `True`.
 
 **If not:**
-- A left half that is not empty in the DIFF: a cluster of that name exists. Do not sync; delete
-  the Application in the ArgoCD page with **Non-cascading** and choose another name.
 - `OutOfSync` right after a sync: `K8S_VERSION` has a `-vkr.N` ending. Run the Application block
   again without it.
 - `Progressing` after 30 minutes: `kubectl --kubeconfig <supervisor.kubeconfig> -n <namespace>
@@ -798,8 +802,9 @@ created`.
 - `Forbidden` on the RoleBinding: your role may not grant `ROLE`. Ask a vCenter administrator to
   run the block.
 
-ArgoCD stores the VKS cluster's administrator certificate for this destination. This shows the
-destinations and the date that certificate ends:
+ArgoCD stores the VKS cluster's administrator certificate for this destination, in a Secret of
+`ARGOCD_NAMESPACE`: anyone who may read Secrets there can use the cluster as its administrator.
+This shows the destinations and the date that certificate ends:
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -859,8 +864,10 @@ if (-not $D) {
 - `secrets "cls-vks-…" not found`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD
   namespace> get secret -l argocd.argoproj.io/secret-type=cluster` lists the stored destinations.
 
-After `notAfter`, ArgoCD cannot reach the cluster. Before that date, run the registration block
-again.
+After `notAfter`, ArgoCD can no longer use the certificate. Before that date, delete the
+destination (`kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> delete
+managedentity vks-<namespace>-<cluster>`) and run the registration block again; the block above
+then shows a later `notAfter`.
 
 ## 8. Deploy the test app
 
@@ -999,7 +1006,7 @@ IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n test-web-apps get service test-w
 if [ -z "$IP" ]; then
   echo "No address yet: run this block again in a minute"
 else
-  curl -s -o /dev/null --connect-timeout 20 -w "http://${IP}/ answers %{http_code}\n" "http://${IP}/"
+  curl -s -o /dev/null --connect-timeout 20 --max-time 30 -w "http://${IP}/ answers %{http_code}\n" "http://${IP}/"
 fi
 ```
 
@@ -1017,7 +1024,7 @@ $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n test-web-apps get service test-web
 if (-not $IP) {
   "No address yet: run this block again in a minute"
 } else {
-  curl.exe -s -o NUL --connect-timeout 20 -w "http://${IP}/ answers %{http_code}\n" "http://${IP}/"
+  curl.exe -s -o NUL --connect-timeout 20 --max-time 30 -w "http://${IP}/ answers %{http_code}\n" "http://${IP}/"
 }
 ```
 
@@ -1102,8 +1109,9 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applicat
 **Expect:** three `… deleted` lines. Then run the name check of step 6 every few minutes until it
 prints two `NotFound` lines.
 
-This deletes the project, the namespace destination and the instance. Skip it if the instance was
-there before you started.
+This deletes the project, the namespace destination and ArgoCD's role in `VKS_NAMESPACE`. Run it
+only if steps 5 and 6 printed `created` for them. It deletes nothing while an Application of the
+project is left.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1112,11 +1120,15 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appproject vks-clusters --ignore-not-found
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete managedentity "ns-${VKS_NAMESPACE}" --ignore-not-found
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" delete rolebinding argocd-k8s-sa-edit --ignore-not-found
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete argocd argocd-1 --ignore-not-found
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete secret argocd-initial-admin-secret argocd-redis --ignore-not-found
+if ! A="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get applications.argoproj.io -o jsonpath="{range .items[?(@.spec.project=='vks-clusters')]}{.metadata.name}{' '}{end}")"; then
+  echo "Nothing deleted: cannot list the Applications (see the error above)"
+elif [ -n "$A" ]; then
+  echo "Nothing deleted: these Applications still use vks-clusters: $A"
+else
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appproject vks-clusters --ignore-not-found
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete managedentity "ns-${VKS_NAMESPACE}" --ignore-not-found
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" delete rolebinding argocd-k8s-sa-edit --ignore-not-found
+fi
 ```
 
 **Windows (PowerShell):**
@@ -1126,18 +1138,48 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject vks-clusters --ignore-not-found
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete managedentity "ns-${VKS_NAMESPACE}" --ignore-not-found
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete rolebinding argocd-k8s-sa-edit --ignore-not-found
+$global:LASTEXITCODE = $null
+$A = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get applications.argoproj.io -o jsonpath='{range .items[?(@.spec.project==''vks-clusters'')]}{.metadata.name}{'' ''}{end}'
+if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot list the Applications (see the error above)" }
+elseif ("$A".Trim()) { "Nothing deleted: these Applications still use vks-clusters: $A" }
+else {
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject vks-clusters --ignore-not-found
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete managedentity "ns-${VKS_NAMESPACE}" --ignore-not-found
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete rolebinding argocd-k8s-sa-edit --ignore-not-found
+}
+```
+
+**Expect:** three `… deleted` lines.
+
+**If not:** `Nothing deleted: these Applications …`: delete them first (the blocks above).
+
+This deletes the instance. Run it only if step 3 printed `created`.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete argocd argocd-1 --ignore-not-found
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete secret argocd-initial-admin-secret argocd-redis --ignore-not-found
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete argocd argocd-1 --ignore-not-found
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete secret argocd-initial-admin-secret argocd-redis --ignore-not-found
 ```
 
-**Expect:** up to six `… deleted` lines.
+**Expect:** up to three `… deleted` lines.
 
 ## 10. Remove the ArgoCD Service (vCenter administrator)
 
-Only if step 2 installed it. Uninstalling removes every ArgoCD instance on the Supervisor. This
+Only if step 2 installed it, and only when no ArgoCD instance is left on the Supervisor. This
 lists them:
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -1163,9 +1205,11 @@ administrator must run this.
 
 1. vSphere Client: **Supervisor Management** → **Supervisors** → **View** in your Supervisor's
    **Services** column. Select **ArgoCD Service**, click **UNINSTALL**, then **UNINSTALL** again.
-2. Only if no other Supervisor uses it: **Services** tab → **ArgoCD Service** card → **ACTIONS**
-   → **Delete**. Click **CONFIRM** under *1. Deactivate service*, **CONFIRM** under *3. Delete
-   all versions of the Service*, then **DELETE**.
+2. Only if no other Supervisor of this vCenter will use it: **Services** tab → **ArgoCD
+   Service** card → **ACTIONS** → **Delete**. Section *2. Uninstall all versions from
+   Supervisors* must have a green tick, and the table under section 3 must show `0` under
+   **Supervisors**; otherwise stop and close the window. Click **CONFIRM** under *1. Deactivate
+   service*, **CONFIRM** under *3. Delete all versions of the Service*, then **DELETE**.
 
 **Expect:** the row disappears from the Supervisor's services; after 2, *'ArgoCD Service'
 successfully deleted.*
