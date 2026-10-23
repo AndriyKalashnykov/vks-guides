@@ -128,7 +128,7 @@ built on it.
 
    Click **NEXT**.
 
-   ![The Create Namespace window, step 2 Configuration, filled in: Name, Default Network, Additional Networks and Description](img/namespace/06-new-namespace.jpg)
+   ![The Create Namespace window, step 2 Configuration, filled in: Name, Default Network, Additional Networks and Description](img/namespace/06-new-namespace.png)
 
 4. **3 Add Zones:** leave the zone that is ticked, click **NEXT**.
 5. **4 Review:** check the values, click **FINISH**.
@@ -160,7 +160,7 @@ lists your user. Do this to let another SSO user work in the namespace.
    who creates VKS clusters needs **Namespaces Edit**.
 4. Leave **Propagate to children** ticked and click **OK**.
 
-   ![The Add Permission window: Domain, User/Group, Role, and the ticked box Propagate to children](img/namespace/08-add-permissions.jpg)
+   ![The Add Permission window: Domain, User/Group, Role, and the ticked box Propagate to children](img/namespace/08-add-permissions.png)
 
 **Expect:** a new row on the **Permissions** tab with the user and the role.
 
@@ -174,7 +174,7 @@ lists your user. Do this to let another SSO user work in the namespace.
 
    ![The Select Storage Policies window: the columns Storage Policy, Total Capacity and Available Capacity, with one policy ticked](img/namespace/09-add-storage.jpg)
 
-**Expect:** the **Storage** card shows *Storage Policies 1* and the policy's name, and its link
+**Expect:** after a few seconds, the **Storage** card shows *Storage Policies 1* and the policy's name, and its link
 reads **EDIT STORAGE**. The namespace now offers a storage class named after the policy, and a
 second one ending in `-latebinding`.
 
