@@ -1375,17 +1375,16 @@ registered. This removes it for every Supervisor.
    Harbor** window has three sections and a **DELETE** button that stays grey until they are
    done.
 
-   ![The Delete Harbor window, taken while Harbor was still installed: section 1, Deactivate service, with a CONFIRM button; section 2, Uninstall all versions from Supervisors, with its own CONFIRM button and a list of one Supervisor on which Harbor is Configured; section 3, Delete all versions of the Service, with text only; a grey DELETE button at the bottom right](img/harbor/10-delete-wizard.jpg)
+   ![The Delete Harbor window after the uninstall: section 1 Deactivate service with CONFIRM, section 2 Uninstall all versions from Supervisors with a green tick, section 3 Delete all versions of the Service with CONFIRM and the version table showing 0 Supervisors, and a grey DELETE button](img/harbor/10-delete-wizard.png)
 
-2. Read the list under **2. Uninstall all versions from Supervisors**. **If it names any
-   Supervisor, stop and close the window**: its **CONFIRM** uninstalls Harbor there, with
-   everything it holds, and updates the nodes of every VKS cluster on that Supervisor. (The
-   picture was taken with Harbor still installed; after *Uninstall it* above, the list is
-   empty.)
-3. With the list empty, click **CONFIRM** under **1. Deactivate service**, then go on as the
-   window leads you, and click **DELETE** when it is no longer grey.
+2. Check section **2. Uninstall all versions from Supervisors**: it must have a green tick, and
+   the table under section 3 must show `0` under **Supervisors**. **Otherwise stop and close the
+   window**: Harbor still runs on a Supervisor, and going on uninstalls it there, with
+   everything it holds.
+3. Click **CONFIRM** under **1. Deactivate service**, then **CONFIRM** under **3. Delete all
+   versions of the Service**, then **DELETE**.
 
-**Expect:** a green line saying the service was deleted. The card disappears when the page is
+**Expect:** *'Harbor' successfully deleted.* The card disappears when the page is
 reloaded.
 
 ### Delete what this guide wrote
