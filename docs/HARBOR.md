@@ -274,7 +274,16 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get storageclass -o custom-columns=N
 
 ### Write the file
 
-This writes `harbor-data-values.yml` from Broadcom's file, with your values and the secrets.
+This writes `harbor-data-values.yml` from Broadcom's file and changes only these fields:
+
+| field in Broadcom's file | Broadcom's value | set to |
+|---|---|---|
+| `hostname` | `yourdomain.com` | `HARBOR_FQDN` |
+| `enableNginxLoadBalancer`, `enableContourHttpProxy` | `false`, `true` | `true`, `false`: Harbor gets its own load-balancer address |
+| `harborAdminPassword`, `secretKey`, `database.password`, `core.secret`, `core.xsrfKey`, `jobservice.secret`, `registry.secret` | `Harbor12345`, `0123456789ABCDEF`, `change-it`, … | the seven values of `secrets.env` (step 3) |
+| `storageClass` of the five volumes | `insert-storage-class-name-here` | `HARBOR_STORAGE_CLASS` |
+| the registry volume's `size` | `10Gi` | `HARBOR_REGISTRY_SIZE` |
+
 Set at the top:
 
 - `HARBOR_FQDN`: Harbor's DNS name. Choose it now: a wrong one can only be fixed by uninstalling,
@@ -843,9 +852,11 @@ the record if the cluster autoscaler added or removed a node.
 
 ### Save the CA
 
-This reads Harbor's CA certificate from the `harbor-ca-key-pair` Secret and saves it as
-`harbor-ca.crt`, if Harbor at its DNS name answers with a certificate it signed. It prints the
-fingerprint for everyone who will use this Harbor.
+This reads Harbor's CA certificate from Harbor's TLS Secret (the one labeled
+`managed-by=vmware-vRegistry`, which VKS also reads) and saves it as `harbor-ca.crt`, if Harbor at
+its DNS name answers with a certificate it signed. It prints the fingerprint for everyone who will
+use this Harbor. Reading it needs permission to read Secrets in Harbor's namespace; that Secret
+also holds Harbor's private server key, which the block does not print or keep.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -860,7 +871,11 @@ if [ -z "$HARBOR_FQDN" ]; then
   echo "FAILED: no hostname in $HARBOR_DIR/harbor-data-values.yml (step 4)"
 elif ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[0].metadata.name}')" || [ -z "$NS" ]; then
   echo "FAILED: no Harbor namespace found (see the error above)"
-elif ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get secret harbor-ca-key-pair -o go-template='{{index .data "ca.crt" | base64decode}}' > "$CA.new" \
+elif ! S="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get secret -l managed-by=vmware-vRegistry -o name)"; then
+  echo "FAILED: no CA certificate read (see the error above)"
+elif [ "$(printf '%s\n' "$S" | grep -c .)" != 1 ]; then
+  echo "FAILED: expected one Secret labeled managed-by=vmware-vRegistry in $NS, found: ${S:-none}"
+elif ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get "$S" -o go-template='{{with index .data "ca.crt"}}{{base64decode .}}{{end}}' > "$CA.new" \
      || ! openssl x509 -in "$CA.new" -noout -subject -fingerprint -sha256; then
   rm -f "$CA.new"
   echo "FAILED: no CA certificate read (see the error above)"
@@ -887,20 +902,25 @@ $NS = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.v
 if (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" }
 elseif ($LASTEXITCODE -ne 0 -or -not $NS) { "FAILED: no Harbor namespace found (see the error above)" }
 else {
-  $B64 = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get secret harbor-ca-key-pair -o jsonpath='{.data.ca\.crt}'
-  try {
-    $PEM = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String("$B64"))
-    Set-Content -Encoding ascii -Path "$CA.new" -Value $PEM
-    $X = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 "$CA.new"
-    $F = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($X.RawData))
-    "subject=$($X.Subject)"
-    "sha256 Fingerprint=$($F.Replace('-', ':'))"
-    $H = curl.exe -s --ssl-no-revoke --cacert "$CA.new" --connect-timeout 20 --max-time 30 -o NUL -w '%{http_code}' "https://$HARBOR_FQDN"
-    "Harbor at https://$HARBOR_FQDN with this CA: http=$H"
-    if ($H -eq '200') { Move-Item -Force "$CA.new" $CA; "kept $CA" } else { Remove-Item -Force "$CA.new" }
-  } catch {
-    Remove-Item -Force -ErrorAction SilentlyContinue "$CA.new"
-    "FAILED: no CA certificate read (see the error above)"
+  $S = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get secret -l managed-by=vmware-vRegistry -o name)
+  if ($LASTEXITCODE -ne 0) { "FAILED: no CA certificate read (see the error above)" }
+  elseif ($S.Count -ne 1) { "FAILED: expected one Secret labeled managed-by=vmware-vRegistry in $NS, found: $(if ($S.Count) { $S -join ' ' } else { 'none' })" }
+  else {
+    $B64 = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get $S[0] -o jsonpath='{.data.ca\.crt}'
+    try {
+      $PEM = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String("$B64"))
+      Set-Content -Encoding ascii -Path "$CA.new" -Value $PEM
+      $X = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 "$CA.new"
+      $F = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($X.RawData))
+      "subject=$($X.Subject)"
+      "sha256 Fingerprint=$($F.Replace('-', ':'))"
+      $H = curl.exe -s --ssl-no-revoke --cacert "$CA.new" --connect-timeout 20 --max-time 30 -o NUL -w '%{http_code}' "https://$HARBOR_FQDN"
+      "Harbor at https://$HARBOR_FQDN with this CA: http=$H"
+      if ($H -eq '200') { Move-Item -Force "$CA.new" $CA; "kept $CA" } else { Remove-Item -Force "$CA.new" }
+    } catch {
+      Remove-Item -Force -ErrorAction SilentlyContinue "$CA.new"
+      "FAILED: no CA certificate read (see the error above)"
+    }
   }
 }
 ```
@@ -912,7 +932,12 @@ on macOS), `Harbor at https://<your Harbor name> with this CA: http=200`, then `
 
 **If not:**
 - `FAILED: no CA certificate read`, under `Forbidden`: your user may not read Secrets in Harbor's
-  namespace; a vCenter administrator must run this block.
+  namespace; a vCenter administrator must run this block. Under `Could not find certificate`
+  (PowerShell: no error above it): the Secret has no `ca.crt`, and VKS clusters cannot trust
+  Harbor either
+  ([Broadcom KB 441275](https://knowledge.broadcom.com/external/article/441275/error-failed-to-call-extension-handler-g.html)).
+- `found: none`: Harbor is still being installed (step 6), or `tlsSecretLabels` was changed in
+  `harbor-data-values.yml`. Two or more names: stop; this guide cannot tell which is Harbor's.
 - `http=000`: the name does not resolve or answer (step 7, *Check the DNS record*), or Harbor
   answered with a certificate this CA did not sign: the name leads to another server. The `curl`
   error is not shown; nothing was kept.
