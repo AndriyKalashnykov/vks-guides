@@ -236,7 +236,9 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 
 **If not:**
 - `NotFound`: check `VKS_NAMESPACE`.
-- `Forbidden`, or `no`: your SSO user has no **Namespaces Edit** role on the namespace (step 4).
+- `Forbidden`, or `no`: check `VKS_NAMESPACE` (a user who is not a vCenter administrator gets
+  `Forbidden` for a name that does not exist); if it is right, your SSO user has no
+  **Namespaces Edit** role on the namespace (step 4).
 - `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
 This lists what the namespace offers a VKS cluster: VM classes, storage classes, Kubernetes
