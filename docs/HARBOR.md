@@ -448,20 +448,20 @@ step 6.
    the **Services** tab.
 2. On the **Add New Service** card click **ADD**.
 
-   ![The Services tab of Supervisor Management, with the Add New Service card and its ADD button](img/harbor/01-services-add.jpg)
+   ![The Services tab of Supervisor Management, with the Add New Service card and its ADD button](img/harbor/01-services-add.png)
 
 3. In the **New Service** window click **UPLOAD** and choose the manifest with **legacy** in its
    name. The window shows *YAML was uploaded successfully*, name **Harbor**, ID
    `harbor.tanzu.vmware.com`, version `2.15.2+vmware.1-vks.1`.
 
-   ![The New Service window after the upload, showing the file name and the service details](img/harbor/02-new-service-uploaded.jpg)
+   ![The New Service window after the upload, showing the file name and the service details](img/harbor/02-new-service-uploaded.png)
 
 4. Click **FINISH**.
 
 **Expect:** a green line saying the service is registered, and a **Harbor** card with **Active
 Versions 1** and **Supervisors 0**.
 
-![The Services tab after registration, with the green success line and the Harbor card](img/harbor/03-registered.jpg)
+![The Services tab after registration, with the green success line and the Harbor card](img/harbor/03-registered.png)
 
 **If not:** no **ADD** button, or the upload is refused: your user may not manage Supervisor
 Services. An error naming the YAML: you chose the wrong file.
@@ -562,17 +562,17 @@ instead; do not send it through chat or mail.
 
 1. On the **Harbor** card click **ACTIONS**, then **Manage Service**.
 
-   ![The Harbor card with its ACTIONS menu open: Manage Service, Add New Version, Manage Versions, Edit, Delete](img/harbor/04-service-actions.jpg)
+   ![The Harbor card with its ACTIONS menu open: Manage Service, Add New Version, Manage Versions, Edit, Delete](img/harbor/04-service-actions.png)
 
 2. **Configure:** leave **Install Version** at `2.15.2+vmware.1-vks.1`, select your Supervisor,
    click **NEXT**.
 
-   ![The Manage: Harbor window, Configure step, with the Supervisor selected](img/harbor/05-install-configure.jpg)
+   ![The Manage: Harbor window, Configure step, with the Supervisor selected](img/harbor/05-install-configure.png)
 
 3. **Validate:** wait for *Validation completed successfully*, with **Compatibility Check** and
    **Signature Verification** both **Pass**. Click **NEXT**.
 
-   ![The Validate step: Compatibility Check Pass and Signature Verification Pass](img/harbor/06-install-validate.jpg)
+   ![The Validate step: Compatibility Check Pass and Signature Verification Pass](img/harbor/06-install-validate.png)
 
 4. **Review:** click into the **YAML Service Config** box and paste. Check `hostname:` on line 3
    against your Harbor name; line 33 reads `enableNginxLoadBalancer: true`. Click **FINISH**.
