@@ -102,7 +102,6 @@ rm -rf "$TMP"
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$global:LASTEXITCODE = $null
 $VCF_CLI_SHA256 = ""                     # SHA2 of the CLI file from the download page
 $VCF_PLUGINS_SHA256 = ""                 # SHA2 of the plugin bundle from the download page
 $DOWNLOAD_DIR = "$HOME\Downloads"
@@ -111,6 +110,7 @@ $VCF_RELEASE = "9.1.1.0100"
 $VCF_CLI_BUILD = "25746586"
 $VCF_PLUGINS_BUILD = "25793136"
 
+$global:LASTEXITCODE = $null
 $P = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'Windows_ARM64' } else { 'Windows_AMD64' }
 $CLI_ZIP = "$DOWNLOAD_DIR\VCF-Consumption-CLI-$P-$VCF_RELEASE.$VCF_CLI_BUILD.zip"
 $PLUGINS_ZIP = "$DOWNLOAD_DIR\VCF-Consumption-CLI-PluginBundle-$P-$VCF_RELEASE.$VCF_PLUGINS_BUILD.zip"

@@ -870,7 +870,9 @@ if (-not $D) {
   namespace> get secret -l argocd.argoproj.io/secret-type=cluster` lists the stored destinations.
 
 It is the VKS cluster's own administrator certificate, the one in its kubeconfig, so it ends when
-that one ends; registering the cluster again stores the same certificate.
+that one ends; registering the cluster again stores the same certificate. When `notAfter` is near,
+compare it with the date in the cluster's kubeconfig; if they differ, run the registration block
+again.
 
 ## 8. Deploy the test app
 
@@ -1156,7 +1158,8 @@ else {
 
 **Expect:** three `… deleted` lines.
 
-**If not:** `Nothing deleted: these Applications …`: delete them first (the blocks above).
+**If not:** `Nothing deleted: these Applications …`: a cluster Application is still being
+deleted; run step 6's name check until it prints two `NotFound` lines, then this block again.
 
 This deletes the instance. Run it only if step 3 printed `created`.
 

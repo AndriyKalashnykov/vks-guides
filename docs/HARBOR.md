@@ -553,7 +553,7 @@ $VALUES = "$HOME\.config\vks-guides\harbor\harbor-data-values.yml"
 if (-not (Test-Path $VALUES)) {
   "Nothing copied: $VALUES is missing (step 4)"
 } else {
-  Set-Clipboard -Value ([IO.File]::ReadAllText($VALUES)); "copied to the clipboard"
+  try { Set-Clipboard -Value ([IO.File]::ReadAllText($VALUES)) -ErrorAction Stop; "copied to the clipboard" } catch { "FAILED: nothing copied (no desktop session here?)" }
 }
 ```
 
@@ -626,7 +626,7 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-Set-Clipboard -Value ' '; "clipboard emptied"
+try { Set-Clipboard -Value ' ' -ErrorAction Stop; "clipboard emptied" } catch { "FAILED: clipboard not emptied" }
 ```
 
 **Expect:** `clipboard emptied`.
