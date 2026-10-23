@@ -17,8 +17,8 @@ docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md, NAMESPACE.md, CLUSTER.md, HARBO
   blocks sit under OS headings and have no label.
 - Wherever several OSs appear (labels, sections, lists), the order is Linux, macOS, Windows.
 - Each guide opens with a `> [!NOTE]` callout, first line `**Official … documentation … for this
-  guide**`, listing the official docs it follows (Broadcom VCF 9.1 TechDocs; kubernetes.io where
-  Broadcom has none). Open a link before adding it.
+  guide**`, listing the official docs it follows (Broadcom VCF 9.1 TechDocs; kubernetes.io or the
+  tool's own docs where Broadcom has none). Open a link before adding it.
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
 - Passwords are typed (`read -rs` / `Read-Host -AsSecureString`) and passed only as the
   `VCF_CLI_VSPHERE_PASSWORD` env var for one command; never on argv, never saved.

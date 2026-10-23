@@ -3,7 +3,6 @@
 > [!NOTE]
 > **Official Broadcom documentation (VCF 9.1.1) for this guide**
 >
-> - [Installing and Using VCF Consumption CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9.html)
 > - [Installing the VCF CLI in Internet Restricted Environments](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/installing-the-vcf-cli-in-internet-restricted-environments%282%29.html)
 
 `vcf` is VMware's command-line tool; you use it to [log in to the Supervisor](LOGIN.md). The

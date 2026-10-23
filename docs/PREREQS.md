@@ -1,5 +1,10 @@
 # Prerequisites
 
+> [!NOTE]
+> **Official Microsoft documentation for this guide**
+>
+> - [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
+
 The small command-line tools the other guides use: `curl`, `tar`, `unzip`, `jq`, `openssl`. Do the
 section for your OS, then [Check](#check) (Linux, macOS and WSL; PowerShell needs no check).
 
