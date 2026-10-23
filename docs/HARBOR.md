@@ -1405,7 +1405,8 @@ remove its finalizers by hand.
 
 Then run [step 8](#8-check-that-the-vks-cluster-nodes-were-updated) until it shows
 `machines updated: <n> of <n>`. The nodes start to update some minutes after the namespace is
-gone.
+gone. **If not:** still `0` 30 minutes after the namespace is gone: the nodes were not updated,
+and there is nothing to wait for.
 
 ### Remove the service from vCenter
 

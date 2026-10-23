@@ -806,8 +806,9 @@ created`.
 - `Forbidden` on the RoleBinding: your role may not grant `ROLE`. Ask a vCenter administrator to
   run the block.
 
-ArgoCD stores the VKS cluster's administrator certificate for this destination, in a Secret of
-`ARGOCD_NAMESPACE`: anyone who may read Secrets there can use the cluster as its administrator.
+ArgoCD stores the VKS cluster's administrator certificate for this destination in a Secret of
+`ARGOCD_NAMESPACE`. Anyone who may read Secrets there, or log in to this ArgoCD as `admin`, can use
+the cluster as its administrator until that certificate ends.
 This shows the destinations and the date that certificate ends:
 
 <details>
@@ -857,7 +858,7 @@ if (-not $D) {
 </details>
 
 **Expect:** `ns-<namespace>` and `vks-<namespace>-<cluster>`, both `Ready`; then `subject=…` and
-`notAfter=…`, about a year from now. In the ArgoCD page, **Settings** → **Clusters** lists
+`notAfter=…`, within a year. In the ArgoCD page, **Settings** → **Clusters** lists
 `<cluster>-<namespace>` at `https://<address>:6443`.
 
 ![Settings, Clusters: the VKS cluster at https://192.168.101.134:6443 with status Unknown, and the namespace with status Successful](img/argocd/09-clusters.png)
@@ -869,10 +870,12 @@ if (-not $D) {
 - `secrets "cls-vks-…" not found`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD
   namespace> get secret -l argocd.argoproj.io/secret-type=cluster` lists the stored destinations.
 
-It is the VKS cluster's own administrator certificate, the one in its kubeconfig, so it ends when
-that one ends; registering the cluster again stores the same certificate. When `notAfter` is near,
-compare it with the date in the cluster's kubeconfig; if they differ, run the registration block
-again.
+It is a copy of the administrator certificate in the VKS cluster's kubeconfig, made when the cluster
+was registered. When `notAfter` is near, compare it with the date in the cluster's kubeconfig. If
+the kubeconfig's date is later, delete the destination (`kubectl --kubeconfig <supervisor.kubeconfig>
+-n <ArgoCD namespace> delete managedentity vks-<namespace>-<cluster>`) and run the registration
+block again: the apps on the cluster keep running, and their Applications show `Unknown` until the
+destination is back. If the dates are the same, ask a vCenter administrator.
 
 ## 8. Deploy the test app
 
