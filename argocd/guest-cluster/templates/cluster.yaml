@@ -1,0 +1,34 @@
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: {{ required "set name" .Values.name | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - {{ .Values.podsCidr | quote }}
+    services:
+      cidrBlocks:
+        - {{ .Values.servicesCidr | quote }}
+  topology:
+    classRef:
+      name: {{ .Values.clusterClass | quote }}
+      namespace: {{ .Values.clusterClassNamespace | quote }}
+    version: {{ required "set kubernetesVersion" .Values.kubernetesVersion | quote }}
+    controlPlane:
+      replicas: {{ .Values.controlPlaneReplicas | int }}
+    workers:
+      machineDeployments:
+        - class: node-pool
+          name: np1
+          replicas: {{ .Values.workerReplicas | int }}
+    variables:
+      - name: vmClass
+        value: {{ required "set vmClass" .Values.vmClass | quote }}
+      - name: storageClass
+        value: {{ required "set storageClass" .Values.storageClass | quote }}
+      - name: vsphereOptions
+        value:
+          persistentVolumes:
+            defaultStorageClass: {{ required "set storageClass" .Values.storageClass | quote }}
