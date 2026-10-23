@@ -66,9 +66,10 @@ Run against the Broadcom 9.1.1.0100 files and a vSphere 9.1.1 Supervisor with a 
 | Windows Server 2025, amd64, WSL 2 Ubuntu | bash, as root | ✅ except the password login |
 | Windows, arm64 | Windows PowerShell 5.1; bash in WSL 2 | ❌ |
 
-NAMESPACE.md, CLUSTER.md, HARBOR.md and ARGOCD.md were run on Ubuntu (bash, zsh) and Windows
-PowerShell 5.1 only. In PowerShell, HARBOR.md's blocks that use the admin password or the
-clipboard, and all of ARGOCD.md, were only parsed. ARGOCD.md's web-page steps were done in Chrome.
+NAMESPACE.md, CLUSTER.md, HARBOR.md and ARGOCD.md were run on Ubuntu (bash, zsh), macOS 26
+(bash 3.2, zsh 5.9) and Windows PowerShell 5.1. On macOS and in PowerShell, HARBOR.md's admin
+password blocks ran against a stand-in server, and its clipboard blocks only without a desktop
+session. ARGOCD.md's web-page steps were done in Chrome.
 
 Not tested anywhere: renewing a login that has already expired.
 
