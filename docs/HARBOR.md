@@ -836,9 +836,10 @@ if (-not (Test-Path $BEFORE)) { "FAILED: no record $BEFORE (Record the VKS clust
 
 </details>
 
-**Expect:** the first number climbs while the nodes are updated. At the end: `machines updated:
-<n> of <n>`, and every machine in the table `Running` with `READY` and `UP-TO-DATE` `True`. The
-total can differ from the record if the cluster autoscaler added or removed a node.
+**Expect:** the first number climbs while the nodes are updated; the second moves too, while new
+nodes come up and old ones go. At the end: `machines updated: <n> of <n>` with as many machines
+as you recorded, each `Running` with `READY` and `UP-TO-DATE` `True`. The total can differ from
+the record if the cluster autoscaler added or removed a node.
 
 **If not:**
 - The first number stays below the second for more than 30 minutes after Harbor answers (step
@@ -1364,7 +1365,8 @@ else { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
 remove its finalizers by hand.
 
 Then run [step 8](#8-check-that-the-vks-cluster-nodes-were-updated) until it shows
-`machines updated: <n> of <n>`.
+`machines updated: <n> of <n>`. The nodes start to update some minutes after the namespace is
+gone.
 
 ### Remove the service from vCenter
 
