@@ -125,13 +125,28 @@ checksum: delete the file and download it again; do not use it.
 3. On the **Add New Service** card click **ADD**, then **UPLOAD**, and choose the manifest. The
    window shows **ArgoCD Service**, `argocd-service.vsphere.vmware.com`, `1.2.0-25642124`. Click
    **FINISH**.
+
+   ![The New Service window after the upload: ArgoCD Service, argocd-service.vsphere.vmware.com, version 1.2.0-25642124, and FINISH](img/argocd/01-new-service-uploaded.png)
+
+   The page shows *Service 'ArgoCD Service' is successfully registered* and an **ArgoCD
+   Service** card.
+
+   ![The Services tab with the green registered line and the ArgoCD Service card with its ACTIONS menu](img/argocd/02-registered.png)
+
 4. On the **ArgoCD Service** card click **ACTIONS** → **Manage Service**. Leave **Install
    Version** at `1.2.0-25642124`, select your Supervisor, click **NEXT**. Wait for
    **Compatibility Check** and **Signature Verification** to **Pass**, click **NEXT**. Leave
    **YAML Service Config** empty, click **FINISH**.
+
+   ![The Manage: ArgoCD Service window, Configure step: Install Version 1.2.0-25642124 and the Supervisor selected](img/argocd/03-install-configure.png)
+
+   ![The Review step with the YAML Service Config box empty and FINISH](img/argocd/04-install-review.png)
+
 5. **Supervisors** tab → your Supervisor's row → **View** in the **Services** column.
 
 **Expect:** **ArgoCD Service**, **Configured**, `1.2.0-25642124`, after about a minute.
+
+![The Supervisor's installed services with ArgoCD Service Configured, version 1.2.0-25642124](img/argocd/05-installed.png)
 
 **If not:**
 - No **ADD** button, or the upload is refused: your user lacks **Manage Supervisor Services**.
@@ -374,7 +389,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedenti
 
 **Expect:** `ns-<namespace>` with `PHASE` `Ready`. In the ArgoCD page, **Settings** →
 **Clusters** lists the namespace at `https://kubernetes.default.svc/?context=<namespace>`, status
-**Unknown** until an Application uses it.
+**Unknown** until an Application uses it (picture in step 7).
 
 **If not:** not `Ready` after a minute:
 `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> describe managedentity
@@ -503,7 +518,7 @@ if ($LASTEXITCODE -eq 0) {
 
 Choose a name no cluster in `VKS_NAMESPACE` has: lower-case letters, digits and `-`, starting with
 a letter. ArgoCD would take over an existing cluster of that name, and deleting the Application
-would delete it. This checks the name is free:
+would delete it. This checks that nothing has the name now:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -618,8 +633,11 @@ spec:
 
 </details>
 
-**Expect:** `application.argoproj.io/<cluster> created`. In the ArgoCD page, a tile named after
-the cluster: **Missing** and **OutOfSync**.
+**Expect:** `application.argoproj.io/<cluster> created`, after a `Warning:` about the finalizer
+name (harmless: it is Argo CD's documented name). In the ArgoCD page, a tile named after the
+cluster: **Missing** and **OutOfSync**.
+
+![The Applications page: a cluster already synced, Healthy and Synced, and a new one, Missing and OutOfSync](img/argocd/06-applications.png)
 
 **If not:**
 - `application destination … is not permitted in project`: create the project above.
@@ -633,7 +651,12 @@ Now look at it, then sync:
 
 1. Click the tile, then **DIFF**. The right half shows, in green, the `Cluster` with your
    values. The left half must be empty.
+
+   ![The DIFF tab: the left half empty, the right half in green with the Cluster: builtin-generic-v3.7.0, best-effort-small, wcp-vmfs and v1.36.2+vmware.2](img/argocd/07-diff.png)
+
 2. Close it, click **SYNC**, then **SYNCHRONIZE**.
+
+   ![The SYNC panel: SYNCHRONIZE at the top, the pinned revision, and the Cluster ticked under SYNCHRONIZE RESOURCES](img/argocd/08-sync.png)
 
 This shows the Application and the cluster. Run it again every few minutes; VKS builds the cluster
 in 5 to 10 minutes.
@@ -827,6 +850,8 @@ if (-not $D) {
 `notAfter=…`, about a year from now. In the ArgoCD page, **Settings** → **Clusters** lists
 `<cluster>-<namespace>` at `https://<address>:6443`.
 
+![Settings, Clusters: the VKS cluster at https://192.168.101.134:6443 with status Unknown, and the namespace with status Successful](img/argocd/09-clusters.png)
+
 **If not:**
 - Not `Ready`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> describe
   managedentity vks-<namespace>-<cluster>` names the failed condition. `MissingRoleBinding`: the
@@ -954,7 +979,7 @@ spec:
 </details>
 
 **Expect:** `appproject.argoproj.io/test-web-apps created` and
-`application.argoproj.io/test-web-apps created`.
+`application.argoproj.io/test-web-apps created`, after the same finalizer `Warning:` as in step 6.
 
 This checks the app. It needs the VKS cluster's kubeconfig from
 [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig). Run it again until
@@ -997,7 +1022,10 @@ if (-not $IP) {
 ```
 
 **Expect:** `Synced  Healthy`, then `test-web-apps   5/5   5   5`, then
-`http://<address>/ answers 200`.
+`http://<address>/ answers 200`. In the ArgoCD page, `test-web-apps` is **Healthy** and
+**Synced**, with its namespace, Service and Deployment.
+
+![The test-web-apps Application: Healthy, Synced, auto sync enabled, and its ns, svc and deploy](img/argocd/10-test-web-apps.png)
 
 **If not:**
 - `application destination … is not permitted in project`: step 7 is not done, or its destination
