@@ -556,7 +556,8 @@ if (-not (Test-Path $VALUES)) {
 **If not:** `No clipboard program here: …`: on a Linux desktop install one (`sudo apt-get
 install -y wl-clipboard`, or `xclip` on X11) and run the block again. In a terminal on another
 machine than the browser (over `ssh`), open the file in an editor on the browser's machine
-instead; do not send it through chat or mail.
+instead; do not send it through chat or mail. Copying from an editor: keep it open until you
+have pasted (on Linux the copy is lost when the editor closes).
 
 ### Install it
 
@@ -574,10 +575,10 @@ instead; do not send it through chat or mail.
 
    ![The Validate step: Compatibility Check Pass and Signature Verification Pass](img/harbor/06-install-validate.png)
 
-4. **Review:** click into the **YAML Service Config** box and paste. Check `hostname:` on line 3
-   against your Harbor name; line 33 reads `enableNginxLoadBalancer: true`. Click **FINISH**.
+4. **Review:** click into the **YAML Service Config** box and paste. Check the `hostname:` line
+   near the top against your Harbor name. Click **FINISH**.
 
-   ![The Review step: the YAML Service Config box shows the first 23 lines of the configuration, with the host name on line 3](img/harbor/07-install-review.jpg)
+   ![The Review step: the YAML Service Config box shows the top of the configuration, with the hostname line](img/harbor/07-install-review.png)
 
 5. Open the **Supervisors** tab, and in your Supervisor's row click **View** in the **Services**
    column. Wait until the **Harbor** row shows **Configured**: a few minutes. The refresh arrow
@@ -587,7 +588,7 @@ instead; do not send it through chat or mail.
 **Trusted**. **Configured** means vCenter accepted the install, not that Harbor answers yet:
 step 7 waits for that.
 
-![The Supervisor's installed services, with Harbor Configured](img/harbor/08-installed.jpg)
+![The Supervisor's installed services, with Harbor Configured](img/harbor/08-installed.png)
 
 **If not:**
 - A failed check in **Validate**: the message beside it says why.
