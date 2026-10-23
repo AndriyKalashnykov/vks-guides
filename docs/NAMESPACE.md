@@ -338,11 +338,11 @@ one name under `Storage classes:`, then `Kubernetes releases ready to use:` and
 
 ## 9. Remove the namespace (optional)
 
-**Removing a vSphere Namespace deletes everything in it**: every VKS cluster with its virtual
-machines and disks, every VM, every volume. Remove only a namespace you created, when it holds
-nothing you want to keep.
+**Remove only a namespace you created, and only when it holds nothing you want to keep.**
+Broadcom asks you to delete its VKS clusters, VMs and vSphere Pods first; the window that asks
+you to confirm says the same.
 
-This lists the VKS clusters, VMs and volumes left in it:
+This lists the VKS clusters, VMs, volumes and pods left in it:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -351,7 +351,7 @@ VKS_NAMESPACE="my-namespace"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
-  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io,virtualmachines,persistentvolumeclaims
+  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io,virtualmachines,persistentvolumeclaims,pods
 ```
 
 **Windows (PowerShell):**
@@ -362,14 +362,14 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
 $global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE
-if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io,virtualmachines,persistentvolumeclaims }
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io,virtualmachines,persistentvolumeclaims,pods }
 ```
 
 **Expect:** your namespace, `Active`, then `No resources found in <your namespace> namespace.`
 
 **If not:**
 - `NotFound`: check `VKS_NAMESPACE`. Do not remove a namespace you cannot see here.
-- A VKS cluster, VM or volume is listed: delete it first ([CLUSTER.md](CLUSTER.md) deletes a
+- A VKS cluster, VM, volume or pod is listed: delete it first ([CLUSTER.md](CLUSTER.md) deletes a
   VKS cluster). A deleted cluster leaves its apps' volumes here; see
   [Delete the cluster](CLUSTER.md#8-delete-the-cluster-optional).
 
