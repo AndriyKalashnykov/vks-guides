@@ -71,7 +71,7 @@ NAMESPACE.md, CLUSTER.md, HARBOR.md and ARGOCD.md were run on Ubuntu (bash, zsh)
 password blocks ran against a stand-in server, and its clipboard blocks only without a desktop
 session. ARGOCD.md's web-page steps were done in Chrome.
 
-Not tested anywhere: renewing a login that has already expired.
+Renewing a login that had already expired was run on macOS (zsh) only.
 
 ## License
 
