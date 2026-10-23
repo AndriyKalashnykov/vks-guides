@@ -3,8 +3,11 @@
 
 # VMware VKS How-to Guides
 
-Install `kubectl` and the VCF CLI on the machine you use to reach VMware vSphere Kubernetes
-Service (VKS), and log in to the Supervisor and your VKS cluster, by pasting shell blocks.
+Copy-paste guides for VMware vSphere Kubernetes Service (VKS) on VCF 9.1, from an empty machine
+to apps running on a VKS cluster: install `kubectl` and the VCF CLI, log in to the Supervisor,
+create a vSphere Namespace and a VKS cluster, run Harbor as the clusters' private registry, and
+deploy clusters and apps from Git with ArgoCD. Each command-line step is a block for bash, zsh
+or Windows PowerShell, with the output to expect and what to do if it differs.
 
 ## How to use
 

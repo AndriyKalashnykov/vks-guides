@@ -3,7 +3,6 @@
 > [!NOTE]
 > **Official Broadcom documentation (VCF 9.1) and Harbor documentation for this guide**
 >
-> - [Installing and Configuring Harbor as a Supervisor Service](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-harbor-as-vcf-service/installing-and-configuring-harbor-and-contour.html)
 > - [Install Harbor as a Supervisor Service](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-harbor-as-vcf-service/installing-and-configuring-harbor-and-contour/install-harbor-as-a-supervisor-service.html)
 > - [Supervisor Services: how to find and install them](https://github.com/vsphere-tmm/Supervisor-Services/blob/main/README.md) (the `legacy` manifest)
 > - [Add a Supervisor Service to vCenter](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/add-a-vsphere-services-to-vcenter-server.html)
@@ -1028,7 +1027,13 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 - `FAILED: … is missing`: run the step that writes it (4, 9 or 3).
 - `ERROR UNAUTHORIZED`: this Harbor was installed with another admin password than the one in
   `secrets.env`, or someone changed it in Harbor since.
-- A `curl:` certificate error: `harbor-ca.crt` is not this Harbor's; run *Save the CA* again.
+- A `curl:` error that the name does not match (`no alternative certificate subject name
+  matches`; PowerShell: `failed to match connection hostname`): the name leads to another
+  server (step 7, *Check the DNS record*), or Harbor's hostname is no longer the one in
+  `harbor-data-values.yml`.
+- Any other `curl:` certificate error: run step 7's *Check the DNS record* first; a name that
+  leads to another server can also give this (PowerShell: `UNTRUSTED_ROOT`). If DNS is right,
+  `harbor-ca.crt` is not this Harbor's; run *Save the CA* again.
 
 Harbor's web page is `https://<your Harbor name>`; log in there as `admin`. This prints the
 password **on your screen**: run it only when nobody can see the screen, then clear the terminal.
@@ -1242,7 +1247,10 @@ EOF
   case "$M" in
     "")               echo "NO ANSWER: the cluster reported no pull attempt in 90 seconds" ;;
     *"no such host"*) echo "DNS: the nodes cannot resolve $HARBOR_FQDN" ;;
-    *x509*)           echo "CA: the nodes do not trust the certificate of $HARBOR_FQDN" ;;
+    *"certificate is valid for"*|*"not valid for any names"*)
+                      echo "NAME: the certificate at $HARBOR_FQDN is not for that name" ;;
+    *"unknown authority"*) echo "CA: the nodes do not trust the certificate of $HARBOR_FQDN" ;;
+    *x509*)           echo "OTHER: $M" ;;
     *"not found"*|*"access denied"*|*nauthorized*|*insufficient_scope*)
                       echo "OK: the nodes resolve $HARBOR_FQDN and trust its certificate" ;;
     *)                echo "OTHER: $M" ;;
@@ -1295,7 +1303,11 @@ spec:
   kubectl --kubeconfig $VKS_KUBECONFIG -n default delete pod harbor-pull-check --ignore-not-found | Out-Null
   if (-not $M) { "NO ANSWER: the cluster reported no pull attempt in 90 seconds" }
   elseif ($M -like '*no such host*') { "DNS: the nodes cannot resolve $HARBOR_FQDN" }
-  elseif ($M -like '*x509*') { "CA: the nodes do not trust the certificate of $HARBOR_FQDN" }
+  elseif ($M -like '*certificate is valid for*' -or $M -like '*not valid for any names*') {
+    "NAME: the certificate at $HARBOR_FQDN is not for that name"
+  }
+  elseif ($M -like '*unknown authority*') { "CA: the nodes do not trust the certificate of $HARBOR_FQDN" }
+  elseif ($M -like '*x509*') { "OTHER: $M" }
   elseif ($M -like '*not found*' -or $M -like '*access denied*' -or $M -like '*nauthorized*' -or $M -like '*insufficient_scope*') {
     "OK: the nodes resolve $HARBOR_FQDN and trust its certificate"
   } else { "OTHER: $M" }
@@ -1311,10 +1323,15 @@ spec:
 - `FAILED: … is missing`: run step 4, or LOGIN.md's
   [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig).
 - `DNS: …`: the DNS server the nodes use does not have the record (step 7).
+- `NAME: …`: the address answers with a certificate for another name: the DNS server the nodes
+  use leads to another server (step 7's check uses your machine's DNS, not theirs), or Harbor's
+  hostname is no longer the one in `harbor-data-values.yml`.
 - `CA: …`: the nodes are still being updated (step 8): run this again when that is over. Or the
   cluster is under another Supervisor, which this guide does not cover.
 - `OTHER: …` with `i/o timeout` or `connection refused`: the nodes resolve the name but cannot
   reach the address: a network or firewall matter.
+- `OTHER: …` with `certificate has expired`: Harbor's certificate is out of date, or a node's
+  clock is wrong.
 - `NO ANSWER: …`: run `kubectl --kubeconfig <the VKS kubeconfig> -n default get events` and read
   the last lines.
 

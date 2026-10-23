@@ -9,7 +9,7 @@
 > - [Configure vSphere Namespace Permissions for vCenter Single Sign-On Users and Groups](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/configure-vsphere-namespace-persmissions-for-vcenter-sso-users-and-groups.html)
 > - [Connect to the VKS Cluster Control Plane as a Kubernetes Administrator](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connect-to-the-tkg-service-cluster-control-plane-as-a-kubernetes-administrator.html)
 > - [VCF CLI command reference: context](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/command-reference2/system-commands%281%29/context2.html) (create, refresh, delete)
-> - Kubernetes: [Version Skew Policy](https://kubernetes.io/releases/version-skew-policy/), [Organizing Cluster Access Using kubeconfig Files](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/)
+> - Kubernetes: [Version Skew Policy](https://kubernetes.io/releases/version-skew-policy/)
 
 You log in to the Supervisor with the VCF CLI and your vCenter SSO user, then read your VKS
 cluster's kubeconfig from it. Needs [kubectl](KUBECTL.md), the [VCF CLI](VCF.md) and
@@ -224,10 +224,13 @@ if (-not $SSO_PASSWORD) {
 - `context "supervisor" already exists`: run [Log out](#log-out), then the password line and this
   block again.
 - A connection error: check `SUPERVISOR_ENDPOINT`.
-- A certificate error (`x509: …`): that CA did not issue the Supervisor's certificate. Check
-  `VCENTER_FQDN` in step 1. If it is right, your administrator replaced the Supervisor's
-  certificate: ask them for its CA and set `SUPERVISOR_CA` to that file. With an IP address in
-  `SUPERVISOR_ENDPOINT`, also try the Supervisor's DNS name.
+- `x509: certificate is valid for …, not …`: the certificate is not issued for the address in
+  `SUPERVISOR_ENDPOINT`. Use the Supervisor's DNS name or IP address as the message lists it.
+- `x509: cannot validate certificate for <IP> because it doesn't contain any IP SANs`: the
+  certificate lists only DNS names. Set `SUPERVISOR_ENDPOINT` to the Supervisor's DNS name.
+- `x509: certificate signed by unknown authority`: that CA did not issue the Supervisor's
+  certificate. Check `VCENTER_FQDN` in step 1. If it is right, your administrator replaced the
+  Supervisor's certificate: ask them for its CA and set `SUPERVISOR_CA` to that file.
 - A login error: check `SSO_USERNAME`, and run the password line again. Mind the lock-out.
 - `Failed to install plugin 'telemetry:…'` before the output: harmless; the command still runs.
 
@@ -401,9 +404,13 @@ that matches the one from your administrator, ignoring colons and upper/lower ca
 
 **3. Create the context:** run step 3 of
 [Create Supervisor context with CA](#create-supervisor-context-with-ca) with
-`SUPERVISOR_CA="$HOME/.kube/supervisor.crt"` (PowerShell: `"$HOME\.kube\supervisor.crt"`). A
-certificate error (`x509: …`) there means the certificate does not list the address in
-`SUPERVISOR_ENDPOINT`: use the Supervisor's DNS name or IP address as it was issued for.
+`SUPERVISOR_CA="$HOME/.kube/supervisor.crt"` (PowerShell: `"$HOME\.kube\supervisor.crt"`).
+`x509: certificate is valid for …, not …` there means the certificate does not list the address
+in `SUPERVISOR_ENDPOINT`: use the DNS name or IP address the message lists.
+`x509: cannot validate certificate for <IP> because it doesn't contain any IP SANs` means it lists
+only DNS names: use the Supervisor's DNS name.
+`x509: certificate signed by unknown authority` means the Supervisor's certificate changed since
+you fetched it: fetch it again (step 2).
 
 </details>
 
