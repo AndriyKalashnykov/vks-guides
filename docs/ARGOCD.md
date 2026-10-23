@@ -221,6 +221,8 @@ every half minute until it shows `Ready` and an address: one to two minutes.
 
 **If not:**
 - `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
+- `failed calling webhook` with `connection refused`: the service is still starting after step 2.
+  Wait a minute and run the block again.
 - Not `Ready` after 10 minutes: `kubectl --kubeconfig <supervisor.kubeconfig> -n <namespace>
   describe argocd argocd-1` shows why. No address: the Supervisor has no free load-balancer
   address.
@@ -867,10 +869,8 @@ if (-not $D) {
 - `secrets "cls-vks-…" not found`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD
   namespace> get secret -l argocd.argoproj.io/secret-type=cluster` lists the stored destinations.
 
-After `notAfter`, ArgoCD can no longer use the certificate. Before that date, delete the
-destination (`kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> delete
-managedentity vks-<namespace>-<cluster>`) and run the registration block again; the block above
-then shows a later `notAfter`.
+It is the VKS cluster's own administrator certificate, the one in its kubeconfig, so it ends when
+that one ends; registering the cluster again stores the same certificate.
 
 ## 8. Deploy the test app
 
