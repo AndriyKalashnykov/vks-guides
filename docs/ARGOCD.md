@@ -20,11 +20,6 @@ Service: a vCenter administrator installs the service once, then a vSphere Names
 ArgoCD (an *instance*). In this guide ArgoCD creates a VKS cluster from the chart in
 [`argocd/guest-cluster`](../argocd/guest-cluster), then deploys the app in
 [`argocd/test-web-apps`](../argocd/test-web-apps) into that cluster and keeps it in sync.
-ArgoCD reads this public repository at a fixed commit; you need no access beyond reading it. To
-change the chart or the app, copy both folders into a repository of your own and replace
-`https://github.com/AndriyKalashnykov/vks-guides.git` in every block below (two projects, two
-Applications) with its address, and `targetRevision` with your commit. A private repository also
-needs its login added to ArgoCD.
 
 Needs [kubectl](KUBECTL.md), `jq` and `openssl` ([Prerequisites](PREREQS.md)), a
 [Supervisor login](LOGIN.md) and a [vSphere Namespace](NAMESPACE.md) with the **Namespaces Edit**
@@ -1048,8 +1043,8 @@ if (-not $IP) {
 - `OutOfSync` with `ComparisonError`: see the proxy line in step 6.
 - `0/5` with `ErrImagePull` or `ImagePullBackOff` (`kubectl --kubeconfig <cluster.kubeconfig> -n
   test-web-apps get pods`): the cluster cannot pull from `docker.io`. Copy the image into a
-  registry it can reach and change `image:` in your own copy of the folders (see the start of
-  this guide).
+  registry it can reach, change `image:` in your own copy of the folder, and point `repoURL` and
+  `sourceRepos` in step 8's block at that copy.
 - `No address yet` for more than 5 minutes: the Supervisor has no free load-balancer address.
 - `answers 000`: this machine cannot reach the address.
 
