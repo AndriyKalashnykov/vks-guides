@@ -14,19 +14,20 @@ when this machine cannot reach dl.k8s.io. After you log in,
 
 Downloads the official binary, checks its SHA-256 and installs it into `INSTALL_DIR`. When that
 directory needs `sudo` and `sudo` would ask for a password, it installs into `~/.local/bin`
-instead (see [Prerequisites](PREREQS.md#sudo-optional)).
+instead (see [Prerequisites](PREREQS.md#sudo-optional)). Leave `KUBECTL_VERSION` empty for the
+latest stable release, or set one such as `v1.33.4`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-KUBECTL_VERSION=""               # empty = latest stable; or e.g. v1.33.4
+KUBECTL_VERSION=""
 INSTALL_DIR="/usr/local/bin"
 
 case "$(uname -s)" in Linux) OS=linux ;; Darwin) OS=darwin ;; *) OS="" ;; esac
 case "$(uname -m)" in x86_64|amd64) ARCH=amd64 ;; arm64|aarch64) ARCH=arm64 ;; *) ARCH="" ;; esac
 [ -n "$KUBECTL_VERSION" ] || KUBECTL_VERSION="$(curl -fsSL --connect-timeout 20 --speed-time 60 https://dl.k8s.io/release/stable.txt)"
-KUBECTL_VERSION="${KUBECTL_VERSION%%+*}"     # drop a "+vmware.N" suffix
+KUBECTL_VERSION="${KUBECTL_VERSION%%+*}"
 URL="https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/${OS}/${ARCH}/kubectl"
 TMP="$(mktemp -d)"
 
@@ -116,13 +117,14 @@ Remove-Item -Recurse -Force $TMP
 
 The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only (Apple silicon
 runs it through Rosetta). It is the Supervisor's version, which may be too old for your VKS
-cluster. The download skips the TLS check (`curl -k`).
+cluster. The download skips the TLS check (`curl -k`). Set `SUPERVISOR_ENDPOINT` to the
+Supervisor's IP address or DNS name.
 
 <details>
 <summary><b>Linux amd64, macOS, WSL amd64 (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_ENDPOINT="10.0.0.10"  # Supervisor IP or FQDN
+SUPERVISOR_ENDPOINT="10.0.0.10"
 INSTALL_DIR="/usr/local/bin"
 
 case "$(uname -s)/$(uname -m)" in

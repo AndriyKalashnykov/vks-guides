@@ -34,13 +34,13 @@ The login checks that it talks to your real Supervisor, using vCenter's CA.
 By default the Supervisor's certificate is issued by vCenter's own CA, which this machine does
 not trust yet. This downloads vCenter's CAs. The download itself is not checked (`curl -k`), so it
 is saved as `CA_FILE.new` until you have compared its fingerprints with the ones your vCenter
-administrator gives you.
+administrator gives you. Set `VCENTER_FQDN` to vCenter's DNS name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VCENTER_FQDN="vcsa.example.test"     # vCenter DNS name
+VCENTER_FQDN="vcsa.example.test"
 CA_FILE="$HOME/.kube/vcenter-ca.pem"
 
 TMP="$(mktemp -d)"
@@ -150,13 +150,13 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 **A few failed logins in a row lock the SSO user for some minutes**, so get the password right.
 The login is saved in `SUPERVISOR_KUBECONFIG`, a kubeconfig of its own; your other kubeconfigs
-are not changed.
+are not changed. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_ENDPOINT="10.0.0.10"                       # Supervisor IP or FQDN
+SUPERVISOR_ENDPOINT="10.0.0.10"
 SSO_USERNAME="administrator@vsphere.local"
 SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -260,13 +260,13 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 **A few failed logins in a row lock the SSO user for some minutes**, so get the password right.
 The login is saved in `SUPERVISOR_KUBECONFIG`, a kubeconfig of its own; your other kubeconfigs
-are not changed.
+are not changed. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_ENDPOINT="10.0.0.10"                       # Supervisor IP or FQDN
+SUPERVISOR_ENDPOINT="10.0.0.10"
 SSO_USERNAME="administrator@vsphere.local"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 
@@ -339,11 +339,13 @@ Later logins are checked against the Supervisor's certificate, fetched once. Its
 
 **2. Fetch the certificate**
 
+Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
+
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_ENDPOINT="10.0.0.10"                       # Supervisor IP or FQDN
+SUPERVISOR_ENDPOINT="10.0.0.10"
 SUPERVISOR_CERT="$HOME/.kube/supervisor.crt"
 
 mkdir -p "$(dirname "$SUPERVISOR_CERT")"
@@ -425,6 +427,8 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 **Expect:** your namespace, `Active`, then a table whose `NAME` column holds your VKS cluster.
 
 **If not:**
+- `… supervisor.kubeconfig: no such file or directory`: you are not logged in. Create the
+  Supervisor context first.
 - `NotFound`: check `VKS_NAMESPACE`.
 - `Forbidden`: your SSO user has no role on this namespace, or got it after you logged in. Ask a
   vCenter administrator for the role, then [Log out](#log-out) and log in again.
@@ -437,14 +441,14 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 This reads the VKS cluster's kubeconfig from the Supervisor and saves it as `VKS_KUBECONFIG`
 (on Linux, macOS and WSL, readable only by you). It is the cluster's shared administrator login:
 anyone with the file controls the cluster, and it keeps working after your Supervisor login ends.
-Keep it private.
+Keep it private. Set `VKS_CLUSTER` to a name from the `NAME` column above.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
-VKS_CLUSTER="my-vks-cluster"                        # from the NAME column above
+VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
@@ -583,6 +587,8 @@ $V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o jso
   dl.k8s.io is blocked, you stay on the Supervisor's kubectl, outside the supported range.
 - `server unreachable`: `VKS_CLUSTER` is wrong, or the cluster cannot be reached from here. The
   `kubectl` error above it says which.
+- Only `error: … .kubeconfig: no such file or directory`: `VKS_CLUSTER` is wrong, or you have not
+  run [Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig) yet.
 
 ## Renew the Supervisor login
 
@@ -596,7 +602,7 @@ lock-out.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"            # or supervisor.crt; "" if without CA
+SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 
 if [ -n "$SUPERVISOR_CA" ]; then TLS="--ca-certificate=$SUPERVISOR_CA"; else TLS="--insecure-skip-tls-verify"; fi
