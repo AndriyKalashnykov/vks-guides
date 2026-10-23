@@ -68,8 +68,9 @@ Run against the Broadcom 9.1.1.0100 files and a vSphere 9.1.1 Supervisor with a 
 
 NAMESPACE.md, CLUSTER.md, HARBOR.md and ARGOCD.md were run on Ubuntu (bash, zsh), macOS 26
 (bash 3.2, zsh 5.9) and Windows PowerShell 5.1. On macOS and in PowerShell, HARBOR.md's admin
-password blocks ran against a stand-in server, and its clipboard blocks only without a desktop
-session. ARGOCD.md's web-page steps were done in Chrome.
+password blocks ran against a stand-in server. Its clipboard blocks ran in a Linux desktop session
+(Wayland) and in PowerShell, and on macOS only without a desktop session. ARGOCD.md's web-page
+steps were done in Chrome.
 
 Renewing a login that had already expired was run on macOS (zsh) only.
 
