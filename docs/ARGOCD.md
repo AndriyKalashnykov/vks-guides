@@ -575,7 +575,7 @@ spec:
   project: vks-clusters
   source:
     repoURL: https://github.com/AndriyKalashnykov/vks-guides.git
-    targetRevision: "<main SHA after merge>"
+    targetRevision: "173fba41691ffd7c0379443a6ca2fb014a3205d8"
     path: argocd/guest-cluster
     helm:
       valuesObject:
@@ -616,7 +616,7 @@ spec:
   project: vks-clusters
   source:
     repoURL: https://github.com/AndriyKalashnykov/vks-guides.git
-    targetRevision: "<main SHA after merge>"
+    targetRevision: "173fba41691ffd7c0379443a6ca2fb014a3205d8"
     path: argocd/guest-cluster
     helm:
       valuesObject:
@@ -910,7 +910,7 @@ spec:
   project: test-web-apps
   source:
     repoURL: https://github.com/AndriyKalashnykov/vks-guides.git
-    targetRevision: "<main SHA after merge>"
+    targetRevision: "173fba41691ffd7c0379443a6ca2fb014a3205d8"
     path: argocd/test-web-apps
   destination:
     name: ${VKS_CLUSTER}-${VKS_NAMESPACE}
@@ -964,7 +964,7 @@ spec:
   project: test-web-apps
   source:
     repoURL: https://github.com/AndriyKalashnykov/vks-guides.git
-    targetRevision: "<main SHA after merge>"
+    targetRevision: "173fba41691ffd7c0379443a6ca2fb014a3205d8"
     path: argocd/test-web-apps
   destination:
     name: ${VKS_CLUSTER}-${VKS_NAMESPACE}
