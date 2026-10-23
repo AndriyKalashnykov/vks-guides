@@ -29,8 +29,9 @@ Arm PC).
 - Take the row for your platform, not the files without one (`…-Binaries-…`, plain
   `…-PluginBundle-…`, `…-OCI-…`).
 - Copy the **SHA2** value of each file; the install block checks them.
-- If the release list has a newer release, take it, and set `VCF_RELEASE` and the two build
-  numbers from its file names.
+- Take the files whose names contain `9.1.1.0100.25746586` and `9.1.1.0100.25793136`, the names
+  the install block expects. The plugins page can open on a newer release: pick the release
+  whose file names match.
 
 ## Install
 
@@ -162,9 +163,9 @@ Remove-Item -Recurse -Force $TMP
 `WARNING` line.
 
 **If not:**
-- `FAILED: not found: …`: the file is not in `DOWNLOAD_DIR`, or it has another name (another
-  release: set `VCF_RELEASE` and the two build numbers from the file names). `unsupported` in the
-  name means there is no VCF CLI build for this OS/CPU.
+- `FAILED: not found: …`: the file is not in `DOWNLOAD_DIR`, or it is from another release
+  (download the file with the name in the `FAILED` line). `unsupported` in the name means there is no VCF CLI build for
+  this OS/CPU.
 - `FAILED: set VCF_CLI_SHA256 …`: copy both SHA2 values from the download page into the block.
 - `FAILED: checksum mismatch; nothing installed`: compare the printed values with the page. If
   you copied them right, the file is damaged: delete it and download it again.
