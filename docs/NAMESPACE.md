@@ -249,20 +249,24 @@ releases and cluster classes.
 VKS_NAMESPACE="my-namespace"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 
-echo "VM classes:"
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get virtualmachineclass --no-headers
-echo "Storage classes:"
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get storagepolicyquota \
-  -o jsonpath='{range .items[*].status.total[*]}{.storageClassName}{"\n"}{end}' | sort -u
-if J="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get kr -o json)"; then
-  echo "Kubernetes releases ready to use: $(printf '%s' "$J" | jq '[.items[] | select([.status.conditions[]? | select(.type == "Ready" or .type == "Compatible") | .status] | length == 2 and all(. == "True"))] | length')"
+if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
+  echo "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
 else
-  echo "Kubernetes releases ready to use: unknown (see the error above)"
-fi
-if J="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n vmware-system-vks-public get clusterclass -o name)"; then
-  echo "Cluster classes: $(printf '%s\n' "$J" | grep -c .)"
-else
-  echo "Cluster classes: unknown (see the error above)"
+  echo "VM classes:"
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get virtualmachineclass --no-headers
+  echo "Storage classes:"
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get storagepolicyquota \
+    -o jsonpath='{range .items[*].status.total[*]}{.storageClassName}{"\n"}{end}' | sort -u
+  if J="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get kr -o json)"; then
+    echo "Kubernetes releases ready to use: $(printf '%s' "$J" | jq '[.items[] | select([.status.conditions[]? | select(.type == "Ready" or .type == "Compatible") | .status] | length == 2 and all(. == "True"))] | length')"
+  else
+    echo "Kubernetes releases ready to use: unknown (see the error above)"
+  fi
+  if J="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n vmware-system-vks-public get clusterclass -o name)"; then
+    echo "Cluster classes: $(printf '%s\n' "$J" | grep -c .)"
+  else
+    echo "Cluster classes: unknown (see the error above)"
+  fi
 fi
 ```
 
@@ -275,28 +279,33 @@ fi
 $VKS_NAMESPACE = "my-namespace"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
-"VM classes:"
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get virtualmachineclass --no-headers
-"Storage classes:"
-$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get storagepolicyquota -o json
-if ($LASTEXITCODE -eq 0) {
-  ($J | Out-String | ConvertFrom-Json).items | ForEach-Object { $_.status.total } |
-    ForEach-Object { $_.storageClassName } | Sort-Object -Unique
-}
-$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get kr -o json
-if ($LASTEXITCODE -eq 0) {
-  $READY = ($J | Out-String | ConvertFrom-Json).items | Where-Object {
-    @($_.status.conditions | Where-Object { ($_.type -eq 'Ready' -or $_.type -eq 'Compatible') -and $_.status -eq 'True' }).Count -eq 2
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
+} else {
+  "VM classes:"
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get virtualmachineclass --no-headers
+  "Storage classes:"
+  $J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get storagepolicyquota -o json
+  if ($LASTEXITCODE -eq 0) {
+    ($J | Out-String | ConvertFrom-Json).items | ForEach-Object { $_.status.total } |
+      ForEach-Object { $_.storageClassName } | Sort-Object -Unique
   }
-  "Kubernetes releases ready to use: $(@($READY).Count)"
-} else {
-  "Kubernetes releases ready to use: unknown (see the error above)"
-}
-$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n vmware-system-vks-public get clusterclass -o name
-if ($LASTEXITCODE -eq 0) {
-  "Cluster classes: $(@($J | Where-Object { $_ }).Count)"
-} else {
-  "Cluster classes: unknown (see the error above)"
+  $J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get kr -o json
+  if ($LASTEXITCODE -eq 0) {
+    $READY = ($J | Out-String | ConvertFrom-Json).items | Where-Object {
+      @($_.status.conditions | Where-Object { ($_.type -eq 'Ready' -or $_.type -eq 'Compatible') -and $_.status -eq 'True' }).Count -eq 2
+    }
+    "Kubernetes releases ready to use: $(@($READY).Count)"
+  } else {
+    "Kubernetes releases ready to use: unknown (see the error above)"
+  }
+  $J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n vmware-system-vks-public get clusterclass -o name
+  if ($LASTEXITCODE -eq 0) {
+    "Cluster classes: $(@($J | Where-Object { $_ }).Count)"
+  } else {
+    "Cluster classes: unknown (see the error above)"
+  }
 }
 ```
 
@@ -307,6 +316,8 @@ one name under `Storage classes:`, then `Kubernetes releases ready to use:` and
 `Cluster classes:`, each with a number above 0.
 
 **If not:**
+- `FAILED: cannot read the namespace …`: as in the block above (`NotFound`, `Forbidden`,
+  `Unauthorized`).
 - An error with `Forbidden` above a line, or `unknown`: your user may not read that. Ask a
   vCenter administrator for the **Namespaces Edit** role (step 4); the number is not the cause.
 - `No resources found` under `VM classes:`: add a VM class (step 6).
