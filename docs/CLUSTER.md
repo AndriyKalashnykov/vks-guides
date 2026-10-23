@@ -40,7 +40,7 @@ Never reuse a cluster's name in the same namespace: a new cluster under an old n
 old cluster's address and never become available. After `dev-1`, take `dev-2`.
 
 If you will install Harbor on this Supervisor, install it before you create clusters: installing
-it replaces every node of every VKS cluster.
+it updates every node of every VKS cluster.
 
 This checks that nothing in the namespace holds the name.
 

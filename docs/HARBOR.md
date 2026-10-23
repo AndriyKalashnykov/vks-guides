@@ -28,9 +28,9 @@ You need:
 - a storage class with room for about 18 GiB, and one free load-balancer address;
 - someone who can create a DNS record.
 
-**Installing or uninstalling Harbor replaces every node of every VKS cluster on this
-Supervisor**, one node at a time. Do it before you create VKS clusters, or in a maintenance
-window.
+**Installing or uninstalling Harbor updates every node of every VKS cluster on this
+Supervisor**: VKS replaces some nodes and updates others in place, restarting their container
+runtimes. Do it before you create VKS clusters, or in a maintenance window.
 
 The blocks keep their files in `~/.config/vks-guides/harbor` (PowerShell:
 `$HOME\.config\vks-guides\harbor`). Run them all on the same machine.
@@ -282,7 +282,7 @@ size. Everything else stays as Broadcom ships it: Harbor makes its own CA and ce
 Set at the top:
 
 - `HARBOR_FQDN`: Harbor's DNS name. Choose it now: a wrong one can only be fixed by uninstalling,
-  which replaces every node again.
+  which updates every node again.
 - `HARBOR_STORAGE_CLASS`: a name from the list above.
 - `HARBOR_REGISTRY_SIZE`: the volume for your images. `10Gi` fills up in regular use, and this
   guide does not cover growing it.
@@ -470,9 +470,9 @@ Services. An error naming the YAML: you chose the wrong file.
 
 ### Record the VKS cluster machines
 
-This saves the names of the machines (nodes) of the VKS clusters in one vSphere Namespace, so
-that step 8 can prove they were replaced. Run it for each vSphere Namespace that holds VKS
-clusters, right before you install. Skip it if this Supervisor has no VKS cluster.
+This saves the machines (nodes) of the VKS clusters in one vSphere Namespace, each with the time
+it was last brought up to date, so that step 8 can prove every one was updated. Run it for each
+vSphere Namespace that holds VKS clusters, right before you install. Skip it if this Supervisor has no VKS cluster.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -483,7 +483,7 @@ HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
   echo "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
-elif ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get machines.cluster.x-k8s.io -o name)"; then
+elif ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get machines.cluster.x-k8s.io -o jsonpath="{range .items[*]}{.metadata.name} {.status.conditions[?(@.type=='UpToDate')].lastTransitionTime}{'\n'}{end}")"; then
   echo "FAILED: cannot list the machines in $VKS_NAMESPACE (see the error above)"
 else
   mkdir -p "$HARBOR_DIR"
@@ -501,7 +501,7 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
 if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)" } else {
-  $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get machines.cluster.x-k8s.io -o name
+  $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get machines.cluster.x-k8s.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.conditions[?(@.type==''UpToDate'')].lastTransitionTime}{''\n''}{end}'
   if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the machines in $VKS_NAMESPACE (see the error above)" } else {
     New-Item -ItemType Directory -Force -Path $HARBOR_DIR | Out-Null
     Set-Content -Encoding ascii -Path "$HARBOR_DIR\machines-$VKS_NAMESPACE.before" -Value $M
@@ -778,10 +778,11 @@ way. `Harbor is at 'unknown'`: the Supervisor login ended, or Harbor is not inst
 
 This proves the name from your machine only; step 11 proves it from the nodes.
 
-## 8. Check that the VKS cluster nodes were replaced
+## 8. Check that the VKS cluster nodes were updated
 
-Installing Harbor adds its CA to every VKS cluster node, by replacing the nodes one at a time.
-This compares the machines now with the names recorded in step 6. Run it for each vSphere
+Installing Harbor adds its CA to every VKS cluster node: VKS replaces some nodes and updates the
+others in place. This compares the machines now with the record of step 6: a machine whose line
+is unchanged was not updated yet. Run it for each vSphere
 Namespace you recorded.
 
 <details>
@@ -797,11 +798,11 @@ if [ ! -s "$BEFORE" ]; then
   echo "FAILED: no record $BEFORE (Record the VKS cluster machines, step 6)"
 elif ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
   echo "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
-elif ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get machines.cluster.x-k8s.io -o name)"; then
+elif ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get machines.cluster.x-k8s.io -o jsonpath="{range .items[*]}{.metadata.name} {.status.conditions[?(@.type=='UpToDate')].lastTransitionTime}{'\n'}{end}")"; then
   echo "FAILED: cannot list the machines in $VKS_NAMESPACE (see the error above)"
 else
   kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get machines.cluster.x-k8s.io
-  echo "machines from before still there: $(printf '%s\n' "$M" | grep -c -x -F -f "$BEFORE") of $(grep -c . "$BEFORE")"
+  echo "machines not updated yet: $(printf '%s\n' "$M" | grep -c -x -F -f "$BEFORE") of $(grep -c . "$BEFORE")"
 fi
 ```
 
@@ -819,11 +820,11 @@ $BEFORE = "$HARBOR_DIR\machines-$VKS_NAMESPACE.before"
 if (-not (Test-Path $BEFORE)) { "FAILED: no record $BEFORE (Record the VKS cluster machines, step 6)" } else {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
   if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)" } else {
-    $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get machines.cluster.x-k8s.io -o name
+    $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get machines.cluster.x-k8s.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.conditions[?(@.type==''UpToDate'')].lastTransitionTime}{''\n''}{end}'
     if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the machines in $VKS_NAMESPACE (see the error above)" } else {
       kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get machines.cluster.x-k8s.io
       $OLD = @(Get-Content $BEFORE | Where-Object { $_ })
-      "machines from before still there: $(@($OLD | Where-Object { @($M) -ccontains $_ }).Count) of $($OLD.Count)"
+      "machines not updated yet: $(@($OLD | Where-Object { @($M) -ccontains $_ }).Count) of $($OLD.Count)"
     }
   }
 }
@@ -831,13 +832,13 @@ if (-not (Test-Path $BEFORE)) { "FAILED: no record $BEFORE (Record the VKS clust
 
 </details>
 
-**Expect:** while the nodes are being replaced, the first number goes down. At the end:
-`machines from before still there: 0 of <n>`, and every machine in the table `Running`, as many
-as before.
+**Expect:** while the nodes are being updated, the first number goes down. At the end:
+`machines not updated yet: 0 of <n>`, and every machine in the table `Running` with `READY` and
+`UP-TO-DATE` `True`, as many as before.
 
 **If not:**
-- The first number stays at `<n>` for more than 30 minutes after Harbor answers (step 7): the
-  nodes were not replaced, and they do not trust Harbor's CA. Step 11 shows whether they can pull.
+- The first number stays above `0` for more than 30 minutes after Harbor answers (step 7): those
+  nodes may not trust Harbor's CA. Step 11 shows whether they can pull.
 - A machine stays `Provisioning` or `Deleting`: the namespace has no room for one more node
   (**Capacity and Usage**, [NAMESPACE.md](NAMESPACE.md#7-check-the-status)).
 
@@ -1150,7 +1151,7 @@ once: keep both where you keep passwords. The `$` is part of the name.
 ## 11. Check that a VKS cluster can pull from Harbor
 
 A node must find Harbor by name and trust its certificate. A VKS cluster under this Supervisor
-trusts Harbor's CA once its nodes were replaced (step 8). This asks the cluster to start a pod
+trusts Harbor's CA once its nodes were updated (step 8). This asks the cluster to start a pod
 from an image that does not exist, and reads why the pull failed: *not found* or *unauthorized*
 is the good answer (the node reached Harbor, trusted it, and Harbor said no). The pod never runs.
 It needs the VKS cluster's kubeconfig from [LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig).
@@ -1268,7 +1269,7 @@ spec:
 - `FAILED: … is missing`: run step 4, or LOGIN.md's
   [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig).
 - `DNS: …`: the DNS server the nodes use does not have the record (step 7).
-- `CA: …`: the nodes are still being replaced (step 8): run this again when that is over. Or the
+- `CA: …`: the nodes are still being updated (step 8): run this again when that is over. Or the
   cluster is under another Supervisor, which this guide does not cover.
 - `OTHER: …` with `i/o timeout` or `connection refused`: the nodes resolve the name but cannot
   reach the address: a network or firewall matter.
@@ -1278,7 +1279,7 @@ spec:
 ## 12. Uninstall Harbor (optional)
 
 **Uninstalling destroys everything this Harbor holds**: every image, project and robot account.
-A new install starts empty, with a new address and a new CA. **It also replaces every node of
+A new install starts empty, with a new address and a new CA. **It also updates every node of
 every VKS cluster on this Supervisor** again.
 
 ### Check that it is yours
@@ -1358,8 +1359,8 @@ else { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
 **If not:** a name: the namespace is still being deleted. Wait before you install again. Do not
 remove its finalizers by hand.
 
-Then run [step 8](#8-check-that-the-vks-cluster-nodes-were-replaced) until it shows
-`machines from before still there: 0 of <n>`.
+Then run [step 8](#8-check-that-the-vks-cluster-nodes-were-updated) until it shows
+`machines not updated yet: 0 of <n>`.
 
 ### Remove the service from vCenter
 
@@ -1374,7 +1375,7 @@ registered. This removes it for every Supervisor.
 
 2. Read the list under **2. Uninstall all versions from Supervisors**. **If it names any
    Supervisor, stop and close the window**: its **CONFIRM** uninstalls Harbor there, with
-   everything it holds, and replaces the nodes of every VKS cluster on that Supervisor. (The
+   everything it holds, and updates the nodes of every VKS cluster on that Supervisor. (The
    picture was taken with Harbor still installed; after *Uninstall it* above, the list is
    empty.)
 3. With the list empty, click **CONFIRM** under **1. Deactivate service**, then go on as the
