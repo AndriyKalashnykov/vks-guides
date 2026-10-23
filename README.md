@@ -55,7 +55,8 @@ Run against the Broadcom 9.1.1.0100 files and a vSphere 9.1.1 Supervisor with a 
 |---|---|---|
 | Ubuntu, amd64 | bash, zsh | ✅ |
 | Linux, arm64 | bash, zsh | ❌ |
-| macOS | bash, zsh | ❌ |
+| macOS 26, arm64 (Apple silicon) | bash 3.2, zsh 5.9 | ✅ except the password login |
+| macOS, amd64 (Intel) | bash, zsh | ❌ |
 | Windows Server 2025, amd64 | Windows PowerShell 5.1 | ✅ |
 | Windows Server 2025, amd64, WSL 2 Ubuntu | bash, as root | ✅ except the password login |
 | Windows, arm64 | Windows PowerShell 5.1; bash in WSL 2 | ❌ |

@@ -115,10 +115,12 @@ Remove-Item -Recurse -Force $TMP
 
 ## From the Supervisor (dl.k8s.io blocked)
 
-The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only (Apple silicon
-runs it through Rosetta). It is the Supervisor's version, which may be too old for your VKS
-cluster. The download skips the TLS check (`curl -k`). Set `SUPERVISOR_ENDPOINT` to the
-Supervisor's IP address or DNS name.
+The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only. It is the
+Supervisor's version, which may be too old for your VKS cluster. The download skips the TLS
+check (`curl -k`). Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
+
+On Apple silicon this kubectl runs through Rosetta. If you have not installed Rosetta, do it
+first: `softwareupdate --install-rosetta --agree-to-license`.
 
 <details>
 <summary><b>Linux amd64, macOS, WSL amd64 (bash or zsh)</b></summary>
