@@ -757,8 +757,9 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
-NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"
-if [ -z "$NS" ] || [ "$NS" != "${NS#* }" ]; then
+if ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
+  echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
+elif [ -z "$NS" ] || [ "$NS" != "${NS#* }" ]; then
   echo "FAILED: Harbor namespaces on this Supervisor: '${NS}' (expected exactly one)"
 else
   IP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get service harbor-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
@@ -778,8 +779,10 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$global:LASTEXITCODE = $null
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
-if ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" } else {
+if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
+elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" } else {
   $NS = $NS[0] -replace '^namespace/', ''
   $IP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get service harbor-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
   $GOT = curl.exe -sk --connect-timeout 10 --max-time 20 -o NUL -w '%{remote_ip}' "https://$HARBOR_FQDN/api/v2.0/health"
@@ -795,7 +798,9 @@ if ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -jo
 
 **If not:** `leads to 'nothing'` (PowerShell: `''`): the name does not resolve yet; a new record
 can take some minutes. Another address: the record is wrong or old, or a company proxy is in the
-way. `Harbor is at 'unknown'`: the Supervisor login ended, or Harbor is not installed.
+way. `Harbor is at 'unknown'`: Harbor has no load-balancer address (step 7).
+`FAILED: cannot list …` under `Unauthorized`: renew the Supervisor login. `FAILED: Harbor
+namespaces …: ''`: Harbor is not installed; two names: see *Fix common problems*.
 
 ## 8. Check that the VKS cluster nodes were updated
 
