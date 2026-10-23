@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Official Broadcom documentation (VCF 9.1) for this guide**
 >
-> - [Download and install vCenter Server root certificates](https://knowledge.broadcom.com/external/article/330833/download-and-install-vcenter-server-root.html) (Broadcom KB 330833)
+> - [Download and install vCenter Server root certificates to avoid web browser certificate warnings](https://knowledge.broadcom.com/external/article/330833/download-and-install-vcenter-server-root.html) (Broadcom KB 330833)
 > - [Using VM Classes with VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/using-vm-classes-with-tkg-service-clusters.html)
 > - [Create and Configure a vSphere Namespace on the Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/configuring-and-managing-vsphere-namespaces/create-and-configure-a-vsphere-namespace.html)
 > - [Configure vSphere Namespace Permissions for vCenter Single Sign-On Users and Groups](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/configure-vsphere-namespace-persmissions-for-vcenter-sso-users-and-groups.html)
@@ -199,8 +199,9 @@ A VKS cluster needs no content library in the namespace: do not click **ADD CONT
 
 ## 7. Check the status
 
-Leave **Capacity and Usage** at *No limit*, or click **EDIT LIMITS** and leave room for every
-node of the VKS clusters you will create.
+Broadcom recommends a storage limit for each storage policy: click **EDIT LIMITS** and set one
+with room for the disks of every node of the VKS clusters you will create. CPU and memory can
+stay at *No limit*.
 
 ![The Summary page of the finished namespace: Config Status Running, Kubernetes Status Active, the Storage card with one policy, the VM Service card with 2 Associated VM Classes](img/namespace/11-summary-running.jpg)
 
