@@ -1,11 +1,13 @@
 # Install kubectl
 
 > [!NOTE]
-> **Official Kubernetes documentation for this guide**
+> **Official Kubernetes, Broadcom and Apple documentation for this guide**
 >
 > - [Install and Set Up kubectl on Linux](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
 > - [Install and Set Up kubectl on macOS](https://kubernetes.io/docs/tasks/tools/install-kubectl-macos/)
 > - [Install and Set Up kubectl on Windows](https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/)
+> - [The Kubernetes CLI Tools for vSphere download package (vsphere-plugin.zip) cannot be downloaded from the Web UI](https://knowledge.broadcom.com/external/article/414343/the-kubernetes-cli-tools-for-vsphere-dow.html) (Broadcom KB 414343: the Supervisor's download links)
+> - [Using Intel-based apps on a Mac with Apple silicon](https://support.apple.com/en-us/102527) (Rosetta)
 
 `kubectl` is the Kubernetes command-line tool. Run **one** of the two install blocks:
 [From dl.k8s.io](#from-dlk8sio), or [From the Supervisor](#from-the-supervisor-dlk8sio-blocked)
