@@ -34,7 +34,7 @@ Arm PC).
 
 ## Install
 
-Set the two SHA2 values, and `DOWNLOAD_DIR` if the files are not in `~/Downloads` (in WSL, see
+Set `VCF_CLI_SHA256` and `VCF_PLUGINS_SHA256` to the two SHA2 values, and `DOWNLOAD_DIR` if the files are not in `~/Downloads` (in WSL, see
 [Prerequisites](PREREQS.md#wsl-2-with-ubuntu)). The block installs `vcf` into `INSTALL_DIR`, or
 into `~/.local/bin` when that needs `sudo` and `sudo` would ask for a password (see
 [Prerequisites](PREREQS.md#sudo-optional)).
@@ -43,8 +43,8 @@ into `~/.local/bin` when that needs `sudo` and `sudo` would ask for a password (
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VCF_CLI_SHA256=""                # SHA2 of the CLI file from the download page
-VCF_PLUGINS_SHA256=""            # SHA2 of the plugin bundle from the download page
+VCF_CLI_SHA256=""
+VCF_PLUGINS_SHA256=""
 DOWNLOAD_DIR="$HOME/Downloads"
 INSTALL_DIR="/usr/local/bin"
 VCF_RELEASE="9.1.1.0100"
