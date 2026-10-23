@@ -16,7 +16,7 @@ Service (VKS), and log in to the Supervisor and your VKS cluster, by pasting she
 ## Guides
 
 Start with Prerequisites. Then install kubectl and the VCF CLI, in either order. Log in needs both. Then create the
-vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it.
+vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harbor and ArgoCD are optional.
 
 | guide | what it is |
 |---|---|
@@ -26,6 +26,8 @@ vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it.
 | [Log in to the Supervisor and a VKS cluster](docs/LOGIN.md) | your SSO login to the Supervisor, and the kubeconfig `kubectl` uses to reach your VKS cluster |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | a vCenter administrator's vSphere Namespace for VKS clusters, and the check that it is ready |
 | [Create a VKS cluster](docs/CLUSTER.md) | a VKS cluster made in the vSphere Client, checked, and deleted |
+| [Install Harbor](docs/HARBOR.md) | a vCenter administrator's Harbor registry on the Supervisor, trusted by its VKS clusters |
+| [Create a VKS cluster and deploy an app with ArgoCD](docs/ARGOCD.md) | the ArgoCD Service, a VKS cluster made from Git, and a test app ArgoCD keeps in sync |
 
 ## Check what is installed
 
@@ -63,6 +65,10 @@ Run against the Broadcom 9.1.1.0100 files and a vSphere 9.1.1 Supervisor with a 
 | Windows Server 2025, amd64 | Windows PowerShell 5.1 | ✅ |
 | Windows Server 2025, amd64, WSL 2 Ubuntu | bash, as root | ✅ except the password login |
 | Windows, arm64 | Windows PowerShell 5.1; bash in WSL 2 | ❌ |
+
+NAMESPACE.md, CLUSTER.md, HARBOR.md and ARGOCD.md were run on Ubuntu (bash, zsh) and Windows
+PowerShell 5.1 only. In PowerShell, HARBOR.md's blocks that use the admin password or the
+clipboard, and all of ARGOCD.md, were only parsed. ARGOCD.md's web-page steps were done in Chrome.
 
 Not tested anywhere: renewing a login that has already expired.
 

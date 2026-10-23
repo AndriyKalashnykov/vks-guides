@@ -1332,7 +1332,7 @@ are not sure the Harbor is the one you installed, ask before you click.
    Supervisor's **Services** column. Select **Harbor**, click **UNINSTALL**, then **UNINSTALL**
    in the window that asks *Are you sure…*. The row shows **Removing**, then disappears.
 
-   ![The Supervisor's installed services with Harbor selected and the UNINSTALL confirmation window](img/harbor/09-uninstall.jpg)
+   ![The Supervisor's installed services with Harbor selected and the UNINSTALL confirmation window](img/harbor/09-uninstall.png)
 
 Then check that Harbor's namespace is gone. Run it again until it prints `none`: a few minutes.
 
