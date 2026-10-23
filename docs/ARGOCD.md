@@ -806,8 +806,9 @@ created`.
 - `Forbidden` on the RoleBinding: your role may not grant `ROLE`. Ask a vCenter administrator to
   run the block.
 
-ArgoCD stores the VKS cluster's administrator certificate for this destination, in a Secret of
-`ARGOCD_NAMESPACE`: anyone who may read Secrets there can use the cluster as its administrator.
+ArgoCD stores the VKS cluster's administrator certificate for this destination in a Secret of
+`ARGOCD_NAMESPACE`. Anyone who may read Secrets there, or log in to this ArgoCD as `admin`, can use
+the cluster as its administrator until that certificate ends.
 This shows the destinations and the date that certificate ends:
 
 <details>
@@ -857,7 +858,7 @@ if (-not $D) {
 </details>
 
 **Expect:** `ns-<namespace>` and `vks-<namespace>-<cluster>`, both `Ready`; then `subject=…` and
-`notAfter=…`, about a year from now. In the ArgoCD page, **Settings** → **Clusters** lists
+`notAfter=…`, a date after today, at most a year away. In the ArgoCD page, **Settings** → **Clusters** lists
 `<cluster>-<namespace>` at `https://<address>:6443`.
 
 ![Settings, Clusters: the VKS cluster at https://192.168.101.134:6443 with status Unknown, and the namespace with status Successful](img/argocd/09-clusters.png)
@@ -869,10 +870,44 @@ if (-not $D) {
 - `secrets "cls-vks-…" not found`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD
   namespace> get secret -l argocd.argoproj.io/secret-type=cluster` lists the stored destinations.
 
-It is the VKS cluster's own administrator certificate, the one in its kubeconfig, so it ends when
-that one ends; registering the cluster again stores the same certificate. When `notAfter` is near,
-compare it with the date in the cluster's kubeconfig; if they differ, run the registration block
-again.
+It is a copy of the administrator certificate in the VKS cluster's kubeconfig, made when the cluster
+was registered. When `notAfter` is near, this prints the date of the kubeconfig's certificate as
+the Supervisor holds it now:
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+VKS_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get secret "${VKS_CLUSTER}-kubeconfig" -o go-template='{{.data.value | base64decode}}' \
+  | sed -n 's/^ *client-certificate-data: //p' | openssl base64 -d -A | openssl x509 -noout -enddate
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+
+$global:LASTEXITCODE = $null
+$K = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" -o jsonpath='{.data.value}'
+if ($LASTEXITCODE -eq 0 -and $K) {
+  $Y = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("$K"))
+  $C = (($Y -split "`n") | Where-Object { $_ -match '^\s*client-certificate-data: ' }) -replace '^\s*client-certificate-data: ', ''
+  $X = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 (,[Convert]::FromBase64String("$C".Trim()))
+  "notAfter=$($X.NotAfter.ToUniversalTime().ToString('u'))"
+}
+```
+
+**Expect:** `notAfter=…`. A later date than ArgoCD's: delete the destination and register again
+(the apps on the cluster keep running, and their Applications show `Unknown` until the
+destination is back):
+`kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> delete managedentity
+vks-<namespace>-<cluster>`, then the registration block above. The same date: ask a vCenter
+administrator.
 
 ## 8. Deploy the test app
 
