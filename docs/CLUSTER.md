@@ -66,6 +66,7 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
+$global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
 if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)" } else {
   $L = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io,virtualmachineservices $VKS_CLUSTER --ignore-not-found -o name
@@ -77,6 +78,8 @@ if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (se
 
 **If not:**
 - `in use:`: choose another name.
+- `unknown`: your user may not read clusters or their addresses in this namespace. Ask for the
+  **Edit** role.
 - `FAILED: cannot read the namespace`: see **If not** under
   [Check the namespace](NAMESPACE.md#8-check-the-namespace).
 
@@ -222,6 +225,7 @@ fi
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
+$global:LASTEXITCODE = $null
 kubectl --kubeconfig $VKS_KUBECONFIG get nodes
 if ($LASTEXITCODE -eq 0) { $J = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) {
@@ -235,6 +239,8 @@ if ($LASTEXITCODE -eq 0) {
 **Expect:** each node `Ready`, then `default storage class:` and the storage class you chose.
 
 **If not:**
+- Nothing after `default storage class:`, under `jq: command not found`: install jq
+  ([PREREQS.md](PREREQS.md)).
 - `default storage class: NONE`: **Default Storage Class** was left empty in step 4. Name the
   storage class in each disk request, or create a new cluster with it set.
 - `FAILED: cannot read the cluster`, under `no such file or directory` (Windows: `cannot find
@@ -249,7 +255,8 @@ that ArgoCD manages comes back after you delete it here; delete it in ArgoCD ins
 First run the block in [step 2](#2-choose-a-name-and-the-values) with your cluster's name.
 
 **Expect:** `in use:`, then `cluster.cluster.x-k8s.io/<name>` and
-`virtualmachineservice.vmoperator.vmware.com/<name>`. If it says `free`, the name is wrong: stop.
+`virtualmachineservice.vmoperator.vmware.com/<name>`. If it says `free` or `unknown`, stop: the name
+is wrong, or you may not read it.
 
 Then this deletes the cluster.
 

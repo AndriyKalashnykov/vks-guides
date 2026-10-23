@@ -11,8 +11,9 @@
 > - [Download and install vCenter Server root certificates](https://knowledge.broadcom.com/external/article?articleNumber=330833) (Broadcom KB 330833)
 
 You create the namespace in the vSphere Client, give users a role in it, and add a storage
-policy and VM classes. Steps 1 to 7 are clicks; steps 8 and 9 use a terminal and need
-[kubectl](KUBECTL.md), [jq](PREREQS.md) and a [Supervisor login](LOGIN.md). The names are
+policy and VM classes. Steps 2 to 7 are clicks. Step 1 has a block that needs
+[unzip and openssl](PREREQS.md); steps 8 and 9 use a terminal and need [kubectl](KUBECTL.md),
+[jq](PREREQS.md) and a [Supervisor login](LOGIN.md). The names are
 those of the vSphere Client for VCF 9.1.1, on a Supervisor with vSphere Distributed Switch
 networking. The screenshots show example names; yours differ.
 
@@ -86,7 +87,8 @@ Remove-Item -Recurse -Force $TMP
 - **Config Status** is not **Running**: the Supervisor is not ready, and no namespace can be
   created on it yet.
 - `FAILED: no CA certificate …` or `cannot find …`: the file is not in `Downloads` under that
-  name. Set `CA_ZIP` to where the browser saved it.
+  name. Set `CA_ZIP` to where the browser saved it. Under `unzip: command not found`: install
+  unzip ([PREREQS.md](PREREQS.md)).
 
 ## 2. Find the storage policies and the VM classes
 
@@ -281,6 +283,7 @@ fi
 $VKS_NAMESPACE = "my-namespace"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
+$global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
 if ($LASTEXITCODE -ne 0) {
   "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
@@ -322,6 +325,8 @@ one name under `Storage classes:`, then `Kubernetes releases ready to use:` and
   `Unauthorized`).
 - An error with `Forbidden` above a line, or `unknown`: your user may not read that. Ask a
   vCenter administrator for the **Namespaces Edit** role (step 4); the number is not the cause.
+- Nothing after `Kubernetes releases ready to use:`, under `jq: command not found`: install jq
+  ([PREREQS.md](PREREQS.md)).
 - `No resources found` under `VM classes:`: add a VM class (step 6).
 - Nothing under `Storage classes:`, with no error: add a storage policy (step 5).
 - `Kubernetes releases ready to use: 0`: on a Supervisor switched on minutes ago, wait ten
