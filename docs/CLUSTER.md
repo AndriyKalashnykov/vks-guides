@@ -1,11 +1,15 @@
 # Create a VKS cluster
 
 > [!NOTE]
-> **Official Broadcom documentation (VCF 9.1) for this guide**
+> **Official Broadcom documentation for this guide**
 >
 > - [Access the IaaS Services Console or Local Consumption Interface](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/access-the-iaas-services-console-or-local-consumption-interface.html)
 > - [Provision a Kubernetes Cluster Using Self-Service](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provision-and-manage-kubernetes-clusters/provision-a-kubernetes-cluster-using-the-iaas-services-console-in-vcf-automation.html)
+> - [ClusterClass Variable Reference, VKS 3.7.0](https://developer.broadcom.com/xapis/vmware-vsphere-kubernetes-service/3.7.0/variable-docs.html) (`defaultStorageClass`)
 > - [Delete a VKS Cluster Using Kubectl or Using VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/delete-a-tkg-cluster-using-kubectl-or-using-the-tanzu-cli.html)
+> - [Clean Up Persistent Volumes and Volume Snapshots while Deleting VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/delete-a-tkg-cluster-using-kubectl-or-using-the-tanzu-cli/clean-up-pvc-pv-and-volume-snapshots-while-deleting-vks-clusters.html)
+> - [VKS cluster provisioning fails on a back-to-back recreation](https://knowledge.broadcom.com/external/article/439698/vks-cluster-provisioning-fails-with-cont.html) (Broadcom KB 439698: reusing a name)
+> - [Guest cluster deployment via the Local Consumption Interface](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html) (Broadcom KB 446139: VM class size)
 
 You create the cluster in the vSphere Client, on your vSphere Namespace's **Resources** tab (the
 Local Consumption Interface). Steps 3 to 5 are clicks; the other steps use a terminal and need
@@ -31,7 +35,7 @@ the Kubernetes releases and the cluster classes.
 |---|---|
 | name | lower-case letters, digits and `-`, a name no cluster in this namespace ever had |
 | Kubernetes release | the newest the create page offers |
-| VM class | 2 CPUs with 4 GB (`best-effort-small`) is the smallest that runs a cluster |
+| VM class | `best-effort-small` (2 CPUs, 4 GB) ran this guide's clusters; Broadcom recommends `best-effort-medium` or larger (KB 446139) |
 | storage class | one from step 1 |
 | control-plane nodes | `1`, or `3` for a cluster that must stay up when a node fails |
 | worker nodes | `1` or more |
