@@ -720,8 +720,13 @@ ask for. The block may take 20 minutes before it gives up; Ctrl+C stops it.
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 
-NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[0].metadata.name}')" \
-  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get pods,persistentvolumeclaims
+if ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
+  echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
+elif [ -z "$NS" ] || [ "$NS" != "${NS#* }" ]; then
+  echo "FAILED: Harbor namespaces on this Supervisor: '${NS}' (expected exactly one)"
+else
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get pods,persistentvolumeclaims
+fi
 ```
 
 **Windows (PowerShell):**
@@ -730,8 +735,10 @@ NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
 $global:LASTEXITCODE = $null
-$NS = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[0].metadata.name}'
-if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get pods,persistentvolumeclaims }
+$NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
+if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
+elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
+else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n ($NS[0] -replace '^namespace/', '') get pods,persistentvolumeclaims }
 ```
 
 **Expect:** every pod `Running` or `Completed`, and five volumes `Bound`.
@@ -750,13 +757,18 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
-NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[0].metadata.name}')"
-IP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get service harbor-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-GOT="$(curl -sk --connect-timeout 10 --max-time 20 -o /dev/null -w '%{remote_ip}' "https://${HARBOR_FQDN}/api/v2.0/health")"
-if [ -n "$HARBOR_FQDN" ] && [ -n "$IP" ] && [ "$GOT" = "$IP" ]; then
-  echo "DNS is right: $HARBOR_FQDN is $IP"
+if ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
+  echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
+elif [ -z "$NS" ] || [ "$NS" != "${NS#* }" ]; then
+  echo "FAILED: Harbor namespaces on this Supervisor: '${NS}' (expected exactly one)"
 else
-  echo "DNS is NOT right: '${HARBOR_FQDN}' leads to '${GOT:-nothing}', Harbor is at '${IP:-unknown}'"
+  IP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get service harbor-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+  GOT="$(curl -sk --connect-timeout 10 --max-time 20 -o /dev/null -w '%{remote_ip}' "https://${HARBOR_FQDN}/api/v2.0/health")"
+  if [ -n "$HARBOR_FQDN" ] && [ -n "$IP" ] && [ "$GOT" = "$IP" ]; then
+    echo "DNS is right: $HARBOR_FQDN is $IP"
+  else
+    echo "DNS is NOT right: '${HARBOR_FQDN}' leads to '${GOT:-nothing}', Harbor is at '${IP:-unknown}'"
+  fi
 fi
 ```
 
@@ -767,13 +779,18 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
-$NS = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[0].metadata.name}'
-$IP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get service harbor-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-$GOT = curl.exe -sk --connect-timeout 10 --max-time 20 -o NUL -w '%{remote_ip}' "https://$HARBOR_FQDN/api/v2.0/health"
-if ($HARBOR_FQDN -and $IP -and $GOT -eq $IP) {
-  "DNS is right: $HARBOR_FQDN is $IP"
-} else {
-  "DNS is NOT right: '$HARBOR_FQDN' leads to '$GOT', Harbor is at '$IP'"
+$global:LASTEXITCODE = $null
+$NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
+if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
+elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" } else {
+  $NS = $NS[0] -replace '^namespace/', ''
+  $IP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get service harbor-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  $GOT = curl.exe -sk --connect-timeout 10 --max-time 20 -o NUL -w '%{remote_ip}' "https://$HARBOR_FQDN/api/v2.0/health"
+  if ($HARBOR_FQDN -and $IP -and $GOT -eq $IP) {
+    "DNS is right: $HARBOR_FQDN is $IP"
+  } else {
+    "DNS is NOT right: '$HARBOR_FQDN' leads to '$GOT', Harbor is at '$IP'"
+  }
 }
 ```
 
@@ -781,7 +798,9 @@ if ($HARBOR_FQDN -and $IP -and $GOT -eq $IP) {
 
 **If not:** `leads to 'nothing'` (PowerShell: `''`): the name does not resolve yet; a new record
 can take some minutes. Another address: the record is wrong or old, or a company proxy is in the
-way. `Harbor is at 'unknown'`: the Supervisor login ended, or Harbor is not installed.
+way. `Harbor is at 'unknown'`: Harbor has no load-balancer address (step 7).
+`FAILED: cannot list …` under `Unauthorized`: renew the Supervisor login. `FAILED: Harbor
+namespaces …: ''`: Harbor is not installed; two names: see *Fix common problems*.
 
 ## 8. Check that the VKS cluster nodes were updated
 
@@ -869,8 +888,10 @@ HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
 CA="$HARBOR_DIR/harbor-ca.crt"
 if [ -z "$HARBOR_FQDN" ]; then
   echo "FAILED: no hostname in $HARBOR_DIR/harbor-data-values.yml (step 4)"
-elif ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[0].metadata.name}')" || [ -z "$NS" ]; then
-  echo "FAILED: no Harbor namespace found (see the error above)"
+elif ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
+  echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
+elif [ -z "$NS" ] || [ "$NS" != "${NS#* }" ]; then
+  echo "FAILED: Harbor namespaces on this Supervisor: '${NS}' (expected exactly one)"
 elif ! S="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get secret -l managed-by=vmware-vRegistry -o name)"; then
   echo "FAILED: no CA certificate read (see the error above)"
 elif [ "$(printf '%s\n' "$S" | grep -c .)" != 1 ]; then
@@ -898,10 +919,12 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 $global:LASTEXITCODE = $null
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $CA = "$HARBOR_DIR\harbor-ca.crt"
-$NS = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[0].metadata.name}'
+$NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
 if (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" }
-elseif ($LASTEXITCODE -ne 0 -or -not $NS) { "FAILED: no Harbor namespace found (see the error above)" }
+elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
+elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
 else {
+  $NS = $NS[0] -replace '^namespace/', ''
   $S = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get secret -l managed-by=vmware-vRegistry -o name)
   if ($LASTEXITCODE -ne 0) { "FAILED: no CA certificate read (see the error above)" }
   elseif ($S.Count -ne 1) { "FAILED: expected one Secret labeled managed-by=vmware-vRegistry in $NS, found: $(if ($S.Count) { $S -join ' ' } else { 'none' })" }
@@ -1447,6 +1470,7 @@ else { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $HARBOR_DIR; "d
 | symptom | fix |
 |---|---|
 | `error: You must be logged in to the server (Unauthorized)`, or a block says Harbor is not installed right after it was | Run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then the block again. |
+| `Harbor namespaces on this Supervisor: '<two names>'` | One of them is still being removed after an uninstall: wait, then run the block again. |
 | **Validate** shows **Signature Verification** failed | The manifest is not Broadcom's file, or was edited: download it again (step 2). |
 | The paste into **YAML Service Config** is one long line, or the install fails with a YAML error | The clipboard lost the line breaks (some remote-desktop programs do that). Open `harbor-data-values.yml` in an editor on the browser's machine and copy from there. |
 | Every push and pull fails after Harbor was installed again | A new install has a new address, a new CA and an empty registry: change the DNS record, run steps 9 and 10 again. |
