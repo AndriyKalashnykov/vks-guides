@@ -535,11 +535,11 @@ VALUES="$HOME/.config/vks-guides/harbor/harbor-data-values.yml"
 if [ ! -s "$VALUES" ]; then
   echo "Nothing copied: $VALUES is missing (step 4)"
 elif command -v pbcopy >/dev/null 2>&1; then
-  pbcopy < "$VALUES" && echo "copied to the clipboard"
+  pbcopy < "$VALUES" && echo "copied to the clipboard" || echo "FAILED: nothing copied (no desktop session here?)"
 elif command -v wl-copy >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
-  wl-copy --type text/plain < "$VALUES" && echo "copied to the clipboard"
+  wl-copy --type text/plain < "$VALUES" && echo "copied to the clipboard" || echo "FAILED: nothing copied (no desktop session here?)"
 elif command -v xclip >/dev/null 2>&1; then
-  xclip -selection clipboard < "$VALUES" && echo "copied to the clipboard"
+  xclip -selection clipboard < "$VALUES" && echo "copied to the clipboard" || echo "FAILED: nothing copied (no desktop session here?)"
 else
   echo "No clipboard program here: open $VALUES in an editor on the machine with the browser, and copy everything"
 fi
@@ -559,11 +559,12 @@ if (-not (Test-Path $VALUES)) {
 
 **Expect:** `copied to the clipboard`.
 
-**If not:** `No clipboard program here: …`: on a Linux desktop install one (`sudo apt-get
-install -y wl-clipboard`, or `xclip` on X11) and run the block again. In a terminal on another
-machine than the browser (over `ssh`), open the file in an editor on the browser's machine
-instead; do not send it through chat or mail. Copying from an editor: keep it open until you
-have pasted (on Linux the copy is lost when the editor closes).
+**If not:**
+- `No clipboard program here: …`: on a Linux desktop install one (`sudo apt-get install -y
+  wl-clipboard`, or `xclip` on X11) and run the block again.
+- `FAILED: nothing copied …`, or a terminal on another machine than the browser (over `ssh`):
+  open the file in an editor on the browser's machine instead; do not send it through chat or
+  mail. Keep the editor open until you have pasted (on Linux the copy is lost when it closes).
 
 ### Install it
 
@@ -612,11 +613,11 @@ Whether the install worked or not:
 
 ```sh
 if command -v pbcopy >/dev/null 2>&1; then
-  pbcopy < /dev/null && echo "clipboard emptied"
+  pbcopy < /dev/null && echo "clipboard emptied" || echo "FAILED: clipboard not emptied"
 elif command -v wl-copy >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
-  wl-copy --clear && echo "clipboard emptied"
+  wl-copy --clear && echo "clipboard emptied" || echo "FAILED: clipboard not emptied"
 elif command -v xclip >/dev/null 2>&1; then
-  xclip -selection clipboard < /dev/null && echo "clipboard emptied"
+  xclip -selection clipboard < /dev/null && echo "clipboard emptied" || echo "FAILED: clipboard not emptied"
 else
   echo "No clipboard program here: copy any other text on the machine with the browser"
 fi
@@ -629,6 +630,9 @@ Set-Clipboard -Value ' '; "clipboard emptied"
 ```
 
 **Expect:** `clipboard emptied`.
+
+**If not:** `FAILED: …` or `No clipboard program here`: copy any other text on the machine with the
+browser.
 
 ## 7. Find Harbor's address and get a DNS record
 
@@ -989,7 +993,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 
 </details>
 
-**Expect:** `logged in as admin, administrator: true`.
+**Expect:** `logged in as admin, administrator: true` (PowerShell: `True`).
 
 **If not:**
 - `FAILED: … is missing`: run the step that writes it (4, 9 or 3).
