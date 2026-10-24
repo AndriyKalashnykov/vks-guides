@@ -9,7 +9,7 @@
 > - [Prometheus Package Reference](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/standard-package-reference/prometheus-package-reference.html) (Broadcom's Prometheus add-on, the supported alternative; VCF 9.0 page, there is no 9.1 copy)
 > - [Observability on VKS](https://www.vmware.com/docs/observability-vks) and its [examples](https://github.com/vmware/vks-consumption-models/tree/main/observability-consumption-model) (VMware's design this guide follows)
 
-This installs kube-prometheus-stack 92.11.0 into a VKS cluster: Prometheus 3.15.0, Alertmanager
+This installs kube-prometheus-stack 92.13.1 into a VKS cluster: Prometheus 3.15.0, Alertmanager
 0.34.1, Grafana 13.2.4, the Prometheus Operator 0.94.1, node-exporter 1.12.1 and
 kube-state-metrics 2.20.0. The chart is upstream (prometheus-community); Broadcom does not
 support it. Broadcom's supported metrics option is the Prometheus add-on, which has no Grafana.
@@ -212,14 +212,15 @@ password.
 This downloads the chart, checks its SHA-256 and writes `values.yaml`: Grafana uses the Secret
 from step 3, Prometheus keeps its data on a volume of `PROMETHEUS_STORAGE` from the default
 storage class, and the chart skips etcd, the scheduler, the controller manager and kube-proxy,
-whose metrics VKS does not publish.
+whose metrics VKS does not publish. node-exporter runs on the pod network, because the VKS
+node firewall blocks its host port; node network graphs then show the pod's interface.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-CHART_VERSION="92.11.0"
-CHART_SHA256="c357a259965187edcbed86591461bfbd56997591afba09be3a49a09b2bec8a2c"
+CHART_VERSION="92.13.1"
+CHART_SHA256="4d2ef1a537c2e42765e795afe62baac08d97f3377715b39e00077a46d33f4219"
 PROMETHEUS_STORAGE="20Gi"
 MONITORING_DIR="$HOME/.config/vks-guides/monitoring"
 
@@ -254,6 +255,8 @@ kubeControllerManager:
   enabled: false
 kubeProxy:
   enabled: false
+prometheus-node-exporter:
+  hostNetwork: false
 EOF
   echo "chart: $CHART"
   echo "values: $MONITORING_DIR/values.yaml"
@@ -267,8 +270,8 @@ rm -f "$CHART.new"
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$CHART_VERSION = "92.11.0"
-$CHART_SHA256 = "c357a259965187edcbed86591461bfbd56997591afba09be3a49a09b2bec8a2c"
+$CHART_VERSION = "92.13.1"
+$CHART_SHA256 = "4d2ef1a537c2e42765e795afe62baac08d97f3377715b39e00077a46d33f4219"
 $PROMETHEUS_STORAGE = "20Gi"
 $MONITORING_DIR = "$HOME\.config\vks-guides\monitoring"
 
@@ -305,6 +308,8 @@ kubeControllerManager:
   enabled: false
 kubeProxy:
   enabled: false
+prometheus-node-exporter:
+  hostNetwork: false
 "@
   [IO.File]::WriteAllText("$MONITORING_DIR\values.yaml", ($V -replace "`r`n", "`n") + "`n")
   "chart: $CHART"
@@ -315,7 +320,7 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 
 </details>
 
-**Expect:** `chart: …kube-prometheus-stack-92.11.0.tgz` and `values: …values.yaml`.
+**Expect:** `chart: …kube-prometheus-stack-92.13.1.tgz` and `values: …values.yaml`.
 
 **If not:**
 - `FAILED: download …`: this machine cannot reach `github.com`, or `CHART_VERSION` names a
@@ -333,7 +338,7 @@ running (a few minutes; the first run downloads the images).
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
-CHART_VERSION="92.11.0"
+CHART_VERSION="92.13.1"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 MONITORING_DIR="$HOME/.config/vks-guides/monitoring"
 
@@ -360,7 +365,7 @@ fi
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
-$CHART_VERSION = "92.11.0"
+$CHART_VERSION = "92.13.1"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $MONITORING_DIR = "$HOME\.config\vks-guides\monitoring"
 
