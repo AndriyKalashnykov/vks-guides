@@ -93,9 +93,8 @@ with curl through the port-forward.
 
 LOGGING.md was run on 2026-10-24 with VKS 3.7.2 and Fluent Bit add-on 5.0.9 on Ubuntu (bash;
 steps 5 to 7 also in zsh) and in WSL 2 Ubuntu (bash), installed, checked and uninstalled in each,
-against a stand-in HTTPS receiver in place of Log Management; step 7 was run with a changed host
-and with a changed CA. In Windows PowerShell 5.1 its steps 2, 3, 5 and 6 were run; steps 1, 4, 7
-and 8 were only parsed. On 2026-10-24 PREREQS.md, KUBECTL.md, VCF.md and LOGIN.md were run again
+against a stand-in HTTPS receiver in place of Log Management; step 7 was run with a changed CA.
+In Windows PowerShell 5.1 its steps 2, 3, 5 and 6 were run; steps 1, 4, 7 and 8 were only parsed. On 2026-10-24 PREREQS.md, KUBECTL.md, VCF.md and LOGIN.md were run again
 in WSL 2 Ubuntu, the password login included.
 
 Renewing a login that had already expired was run on macOS (zsh) only.

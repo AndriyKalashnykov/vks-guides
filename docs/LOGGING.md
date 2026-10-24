@@ -410,8 +410,7 @@ minutes.
   your administrator whether ingestion authentication is enforced, which drops logs without a
   token.
 - `no upstream connections available` or a `tls` error: the nodes cannot reach Log Management on
-  port 9543, or the Secret holds the wrong CA (step 5: delete the Secret, create it again, then
-  `kubectl --kubeconfig <the VKS kubeconfig> -n tanzu-system-logging rollout restart daemonset/fluent-bit`).
+  port 9543, or the Secret holds the wrong CA (save the right one as step 2 says, then run step 7).
 - The pod's log says `waiting to start`: the nodes cannot pull `busybox:1.37` from `docker.io`;
   the Fluent Bit lines still apply.
 
@@ -429,15 +428,20 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 LOGGING_DIR="$HOME/.config/vks-guides/logging"
 
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging create secret generic tls-ca-cert \
-  --from-file=tls_http.crt="$LOGGING_DIR/logs-ca.crt" --dry-run=client -o yaml \
-  | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -
-vcf context use supervisor
-vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
-  -f "$LOGGING_DIR/values.yaml" -y
-sleep 30
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+CA="$LOGGING_DIR/logs-ca.crt"
+if [ ! -s "$CA" ]; then
+  echo "FAILED: not found: $CA (step 2)"
+else
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging create secret generic tls-ca-cert \
+    --from-file=tls_http.crt="$CA" --dry-run=client -o yaml \
+    | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -
+  vcf context use supervisor
+  vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+    -f "$LOGGING_DIR/values.yaml" -y
+  sleep 30
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+fi
 ```
 
 </details>
@@ -451,22 +455,30 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $LOGGING_DIR = "$HOME\.config\vks-guides\logging"
 
-kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging create secret generic tls-ca-cert --from-file=tls_http.crt="$LOGGING_DIR\logs-ca.crt" --dry-run=client -o yaml |
-  kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
-vcf context use supervisor
-vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$LOGGING_DIR\values.yaml" -y
-Start-Sleep 30
-kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
-kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+$CA = "$LOGGING_DIR\logs-ca.crt"
+if (-not (Test-Path $CA)) {
+  "FAILED: not found: $CA (step 2)"
+} else {
+  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging create secret generic tls-ca-cert --from-file=tls_http.crt="$CA" --dry-run=client -o yaml |
+    kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
+  vcf context use supervisor
+  vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$LOGGING_DIR\values.yaml" -y
+  Start-Sleep 30
+  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
+  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+}
 ```
 
 </details>
 
 **Expect:** `secret/tls-ca-cert configured` (or `unchanged`), the context lines
 from step 1, `Addon 'fluent-bit' in the cluster … is being updated`, then
-`daemon set "fluent-bit" successfully rolled out`. Then run step 6 again.
+`daemon set "fluent-bit" successfully rolled out`. Wait a minute, as the pods may restart once more,
+then run step 6 again.
 
-**If not:** `Unauthorized` or `context supervisor not found`: as in step 1.
+**If not:**
+- `FAILED: not found`: save the CA as step 2 says.
+- `Unauthorized` or `context supervisor not found`: as in step 1.
 
 ## 8. Uninstall (optional)
 
