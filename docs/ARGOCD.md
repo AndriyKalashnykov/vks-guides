@@ -1077,9 +1077,9 @@ if (-not $IP) {
 ![The test-web-apps Application: Healthy, Synced, auto sync enabled, and its ns, svc and deploy](img/argocd/10-test-web-apps.png)
 
 **If not:**
-- `application destination … is not permitted in project`: step 7 is not done, or its destination
-  has another name (**Settings** → **Clusters** shows it).
-- `OutOfSync` with `ComparisonError`: see the proxy line in step 6.
+- The tile in the ArgoCD page shows `application destination … is not permitted in project`:
+  step 7 is not done, or its destination has another name (**Settings** → **Clusters** shows it).
+- `OutOfSync`, and the tile shows `ComparisonError`: see the proxy line in step 6.
 - `0/5` with `ErrImagePull` or `ImagePullBackOff` (`kubectl --kubeconfig <cluster.kubeconfig> -n
   test-web-apps get pods`): the cluster cannot pull from `docker.io`. Copy the image into a
   registry it can reach, change `image:` in your own copy of the folder, and point `repoURL` and
@@ -1089,7 +1089,8 @@ if (-not $IP) {
 
 ## 9. Clean up (optional)
 
-Do these in order: an Application can be deleted only while ArgoCD still reaches its
+If you installed monitoring with ArgoCD, run [MONITORING.md](MONITORING.md) step 10 first. Do
+these in order: an Application can be deleted only while ArgoCD still reaches its
 destination, and deleting an Application deletes what it created.
 
 This deletes the test app and its namespace on the VKS cluster:

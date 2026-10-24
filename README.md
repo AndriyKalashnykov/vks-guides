@@ -22,7 +22,7 @@ and what to do if it differs.
 
 Start with Prerequisites. Then install kubectl and the VCF CLI, in either order. Log in needs both. Then create the
 vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harbor, ArgoCD, monitoring and
-logging are optional; monitoring needs Helm.
+logging are optional; monitoring needs Helm or ArgoCD.
 
 | guide | what it is |
 |---|---|
@@ -35,7 +35,7 @@ logging are optional; monitoring needs Helm.
 | [Install Harbor](docs/HARBOR.md) | a vCenter administrator's Harbor registry on the Supervisor, trusted by its VKS clusters |
 | [Create a VKS cluster and deploy an app with ArgoCD](docs/ARGOCD.md) | the ArgoCD Service, a VKS cluster made from Git, and a test app ArgoCD keeps in sync |
 | [Install Helm](docs/HELM.md) | the Kubernetes package manager, for installing charts such as the monitoring stack |
-| [Monitor a VKS cluster](docs/MONITORING.md) | Prometheus, Alertmanager and Grafana in a VKS cluster, from the upstream kube-prometheus-stack chart |
+| [Monitor a VKS cluster](docs/MONITORING.md) | Prometheus, Alertmanager and Grafana in a VKS cluster, from the upstream kube-prometheus-stack chart, with Helm or ArgoCD |
 | [Send a VKS cluster's logs to VCF Operations](docs/LOGGING.md) | Broadcom's Fluent Bit add-on, sending the cluster's logs over HTTPS to Log Management in VCF Operations |
 
 ## Check what is installed
@@ -90,6 +90,11 @@ HELM.md and MONITORING.md were run on 2026-10-24 with VKS 3.7.2 on Ubuntu (bash,
 Windows PowerShell 5.1, not on macOS or in WSL; MONITORING.md was installed and uninstalled
 in each of those shells, and its Grafana login (step 7) was checked from Ubuntu
 with curl through the port-forward.
+
+MONITORING.md's ArgoCD steps (9 and 10) were run on 2026-10-24 with ArgoCD Service 1.2.0 (Argo
+CD 3.4.4) on Ubuntu (bash, zsh) and Windows PowerShell 5.1, installed, checked and uninstalled in
+each; the VKS cluster was added to ArgoCD by the lab's own registration, not by ARGOCD.md step 7,
+and in PowerShell the Grafana password (step 3) was set from bash.
 
 LOGGING.md was run on 2026-10-24 with VKS 3.7.2 and Fluent Bit add-on 5.0.9 on Ubuntu (bash;
 steps 5 to 7 also in zsh) and in WSL 2 Ubuntu (bash), installed, checked and uninstalled in each,

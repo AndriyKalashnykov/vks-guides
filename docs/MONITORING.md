@@ -7,6 +7,7 @@
 > - [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/)
 > - [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/) (Grafana)
 > - [Prometheus Package Reference](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/standard-package-reference/prometheus-package-reference.html) (Broadcom's Prometheus add-on, the supported alternative; VCF 9.0 page, there is no 9.1 copy)
+> - Argo CD 3.4: [Helm](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/helm/), [Sync Options](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/sync-options/) (Server-Side Apply), [Automated Sync Policy](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/auto_sync/) (step 9)
 > - [Observability on VKS](https://www.vmware.com/docs/observability-vks) and its [examples](https://github.com/vmware/vks-consumption-models/tree/main/observability-consumption-model) (VMware's design this guide follows)
 
 This installs kube-prometheus-stack 92.13.1 into a VKS cluster: Prometheus 3.15.0, Alertmanager
@@ -17,10 +18,13 @@ support it. Broadcom's supported metrics option is the Prometheus add-on, which 
 You need:
 
 - a VKS cluster with a default storage class ([CLUSTER.md](CLUSTER.md)), its kubeconfig
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) and [Helm](HELM.md);
+  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) and [Helm](HELM.md), or for step 9 the
+  ArgoCD of [ARGOCD.md](ARGOCD.md);
 - 20 GiB of storage for Prometheus, inside the vSphere Namespace's storage limit, if one is set;
 - nodes that reach `quay.io`, `ghcr.io`, `registry.k8s.io` and `docker.io`, and a machine that
-  reaches `github.com`.
+  reaches `github.com` and `release-assets.githubusercontent.com`.
+
+Steps 4 and 5 install with Helm; step 9 installs with ArgoCD instead.
 
 The blocks keep their files in `~/.config/vks-guides/monitoring` (PowerShell:
 `$HOME\.config\vks-guides\monitoring`).
@@ -79,7 +83,7 @@ if ($LASTEXITCODE -eq 0) {
 **If not:**
 - `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
 - `Prometheus Operator CRDs:` or `Broadcom Prometheus add-on:` more than 0, before you ran this
-  guide's step 5: the cluster already runs a Prometheus. Use it, or a cluster without one; this
+  guide's step 5 or 9: the cluster already runs a Prometheus. Use it, or a cluster without one; this
   guide does not cover both.
 - `FAILED: cannot read the cluster`: run
   [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
@@ -333,8 +337,8 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 **Expect:** `chart: …kube-prometheus-stack-92.13.1.tgz` and `values: …values.yaml`.
 
 **If not:**
-- `FAILED: download …`: this machine cannot reach `github.com`, or `CHART_VERSION` names a
-  release that does not exist.
+- `FAILED: download …`: this machine cannot reach `github.com` or
+  `release-assets.githubusercontent.com`, or `CHART_VERSION` names a release that does not exist.
 - `FAILED: checksum mismatch …`: the download arrived damaged, or that release was rebuilt. Do
   not install it; run the block again.
 
@@ -393,7 +397,7 @@ if (-not (Test-Path $CHART) -or -not (Test-Path "$MONITORING_DIR\values.yaml")) 
       kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring get pods,pvc
     } else {
       "FAILED: Prometheus or Alertmanager is not running"
-      kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring get prometheus,alertmanager -o jsonpath='{range .items[*]}{.kind}: {range .status.conditions[*]}{.type}={.status} {.message}; {end}{"\n"}{end}'
+      kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring get prometheus,alertmanager -o jsonpath='{range .items[*]}{.kind}: {range .status.conditions[*]}{.type}={.status} {.message}; {end}{''\n''}{end}'
     }
   }
 }
@@ -444,8 +448,8 @@ $T | Where-Object { $_.health -ne 'up' } | ForEach-Object { "down: $($_.labels.j
 **Expect:** `up N of N`, the same number twice and above 0 (22 on a cluster with one control
 plane node and two workers), and no `down:` line.
 
-**If not:** a `down:` line names the target and its error. Right after step 5, wait a minute and
-run this again.
+**If not:** a `down:` line names the target and its error. Right after step 5 or 9, wait a minute
+and run this again.
 
 ## 7. Open Grafana
 
@@ -482,10 +486,11 @@ graphs for the cluster.
   `kubectl --kubeconfig <the VKS kubeconfig> -n monitoring rollout restart deployment/prometheus-grafana`,
   then log in again.
 
-## 8. Uninstall (optional)
+## 8. Uninstall with Helm (optional)
 
-**This deletes Prometheus's data and the Grafana password.** It removes the release, a Service the
-Prometheus Operator left in `kube-system`, and the namespace. The chart's CRDs stay (see below).
+For an install with ArgoCD, use step 10. **This deletes Prometheus's data and the Grafana
+password.** It removes the release, a Service the Prometheus Operator left in `kube-system`, and
+the namespace. The chart's CRDs stay (see below).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -538,5 +543,373 @@ kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name | Where-Object { $_ -cmatch
 
 **Expect:** ten `customresourcedefinition.apiextensions.k8s.io "….monitoring.coreos.com" deleted`
 lines.
+
+## 9. Install with ArgoCD (instead of steps 4 and 5)
+
+This installs the same chart, version and values through the ArgoCD instance of
+[ARGOCD.md](ARGOCD.md), which then keeps them applied. It needs that guide's steps 1 to 4 and 7
+(the VKS cluster added to ArgoCD), and a Supervisor that reaches
+`prometheus-community.github.io`, `github.com` and `release-assets.githubusercontent.com`.
+ArgoCD downloads the chart by version; there is no SHA-256 check on this path. Do steps 1 to 3
+first.
+
+This checks that nothing has the names this step uses: the ArgoCD project `monitoring`, the
+Application `prometheus`, and a Helm release `prometheus` on the cluster.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get appproject monitoring
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get applications.argoproj.io prometheus
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n monitoring get secret -l owner=helm,name=prometheus
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get appproject monitoring
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get applications.argoproj.io prometheus
+kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring get secret -l owner=helm,name=prometheus
+```
+
+**Expect:** two `Error from server (NotFound): …` lines, then `No resources found in monitoring
+namespace.`
+
+**If not:**
+- A project or Application is listed: someone else uses ArgoCD for this; ask them.
+- A Secret is listed: the chart is installed with Helm (step 5). Use that, or remove it with
+  step 8 first.
+
+This creates the project `monitoring` and the Application `prometheus`. ArgoCD installs the chart
+at once and puts back anything changed or deleted on the cluster: change the values in this
+block and run it again, not on the cluster. The project limits what the Application may create
+(the namespaces `monitoring` and `kube-system`, and the chart's cluster-wide kinds); whoever can
+change the Application can still do anything on the cluster. Set `ARGOCD_DESTINATION` to the VKS
+cluster's name in ArgoCD (**Settings** → **Clusters**; `<cluster>-<namespace>` after
+[ARGOCD.md](ARGOCD.md) step 7).
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+ARGOCD_DESTINATION="my-vks-cluster-my-namespace"
+CHART_VERSION="92.13.1"
+PROMETHEUS_STORAGE="20Gi"
+
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" apply -f - <<EOF
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: monitoring
+spec:
+  description: kube-prometheus-stack into ${ARGOCD_DESTINATION}
+  sourceRepos:
+    - https://prometheus-community.github.io/helm-charts
+  destinations:
+    - name: ${ARGOCD_DESTINATION}
+      namespace: monitoring
+    - name: ${ARGOCD_DESTINATION}
+      namespace: kube-system
+  clusterResourceWhitelist:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: monitoring
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: "${CHART_VERSION}"
+    helm:
+      releaseName: prometheus
+      valuesObject:
+        grafana:
+          admin:
+            existingSecret: grafana-admin
+        prometheus:
+          prometheusSpec:
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: ${PROMETHEUS_STORAGE}
+        kubeEtcd:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeControllerManager:
+          enabled: false
+        kubeProxy:
+          enabled: false
+        prometheus-node-exporter:
+          hostNetwork: false
+          prometheus:
+            monitor:
+              relabelings:
+                - sourceLabels: [__meta_kubernetes_pod_node_name]
+                  targetLabel: instance
+  destination:
+    name: ${ARGOCD_DESTINATION}
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+    syncOptions:
+      - ServerSideApply=true
+EOF
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$ARGOCD_DESTINATION = "my-vks-cluster-my-namespace"
+$CHART_VERSION = "92.13.1"
+$PROMETHEUS_STORAGE = "20Gi"
+
+@"
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: monitoring
+spec:
+  description: kube-prometheus-stack into ${ARGOCD_DESTINATION}
+  sourceRepos:
+    - https://prometheus-community.github.io/helm-charts
+  destinations:
+    - name: ${ARGOCD_DESTINATION}
+      namespace: monitoring
+    - name: ${ARGOCD_DESTINATION}
+      namespace: kube-system
+  clusterResourceWhitelist:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: monitoring
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: "${CHART_VERSION}"
+    helm:
+      releaseName: prometheus
+      valuesObject:
+        grafana:
+          admin:
+            existingSecret: grafana-admin
+        prometheus:
+          prometheusSpec:
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: ${PROMETHEUS_STORAGE}
+        kubeEtcd:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeControllerManager:
+          enabled: false
+        kubeProxy:
+          enabled: false
+        prometheus-node-exporter:
+          hostNetwork: false
+          prometheus:
+            monitor:
+              relabelings:
+                - sourceLabels: [__meta_kubernetes_pod_node_name]
+                  targetLabel: instance
+  destination:
+    name: ${ARGOCD_DESTINATION}
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+    syncOptions:
+      - ServerSideApply=true
+"@ | kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE apply -f -
+```
+
+</details>
+
+**Expect:** `appproject.argoproj.io/monitoring created` and
+`application.argoproj.io/prometheus created`, after a `Warning:` about the finalizer name (as in
+[ARGOCD.md](ARGOCD.md) step 6). `configured` or `unchanged` on your first run: someone else made
+them; stop and ask them.
+
+This shows the Application, then waits until Prometheus and Alertmanager are running. Run it a
+minute after the block above; the first install takes a few minutes.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get applications.argoproj.io prometheus \
+  -o jsonpath='{.status.sync.status}  {.status.health.status}  {.status.operationState.phase}{"\n"}{.status.operationState.message}{"\n"}{range .status.conditions[*]}{.type}: {.message}{"\n"}{end}'
+if kubectl --kubeconfig "$VKS_KUBECONFIG" -n monitoring wait --for=condition=Available --timeout=10m \
+     prometheus/prometheus-kube-prometheus-prometheus alertmanager/prometheus-kube-prometheus-alertmanager; then
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n monitoring get pods,pvc
+else
+  echo "FAILED: Prometheus or Alertmanager is not running"
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+$global:LASTEXITCODE = $null
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get applications.argoproj.io prometheus -o jsonpath='{.status.sync.status}  {.status.health.status}  {.status.operationState.phase}{''\n''}{.status.operationState.message}{''\n''}{range .status.conditions[*]}{.type}: {.message}{''\n''}{end}'
+kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring wait --for=condition=Available --timeout=10m prometheus/prometheus-kube-prometheus-prometheus alertmanager/prometheus-kube-prometheus-alertmanager
+if ($LASTEXITCODE -eq 0) {
+  kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring get pods,pvc
+} else {
+  "FAILED: Prometheus or Alertmanager is not running"
+}
+```
+
+</details>
+
+**Expect:** `Synced  Healthy  Succeeded` and `successfully synced (no more tasks)`, both
+`condition met`, every pod `Running`, and the Prometheus volume `Bound`. Then do steps 6 and 7.
+
+**If not:**
+- `InvalidSpecError` with `there are no clusters with this name`, `is not permitted in project` or
+  `do not match any of the allowed destinations`: `ARGOCD_DESTINATION` is not the name ArgoCD
+  shows. Run the block above again with the right name; it prints `configured` this time.
+- `ComparisonError` or a message with `failed to fetch chart` or a timeout: the Supervisor cannot
+  reach the hosts above. Behind a proxy, see the proxy line in [ARGOCD.md](ARGOCD.md) step 6.
+- No such error, and `Running` or `OutOfSync` on the first line, `Retrying attempt #…`,
+  `prometheuses… not found` or `doesn't have a resource type "prometheus"`: the install is still
+  going (a first attempt can fail and is tried again); run the block again in a minute.
+- `Failed` with a message: the message says what failed. ArgoCD tries up to ten times; to try
+  again after that, click the tile in the ArgoCD page, then **SYNC** and **SYNCHRONIZE**.
+- `FAILED: Prometheus or Alertmanager is not running`: as in step 5.
+
+## 10. Uninstall with ArgoCD (optional)
+
+**This deletes Prometheus's data and the Grafana password.** It deletes the Application (and
+with it what ArgoCD installed) and the project, then a Service the Prometheus Operator left in
+`kube-system`, and the namespace. The chart's CRDs stay (measured with ArgoCD 3.4.4); to delete
+them, see step 8.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+if kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete applications.argoproj.io prometheus --ignore-not-found --timeout=5m \
+   && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appproject monitoring --ignore-not-found; then
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n kube-system delete service prometheus-kube-prometheus-kubelet --ignore-not-found
+  kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace monitoring --ignore-not-found
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+$global:LASTEXITCODE = $null
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applications.argoproj.io prometheus --ignore-not-found --timeout=5m
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject monitoring --ignore-not-found }
+if ($LASTEXITCODE -eq 0) {
+  kubectl --kubeconfig $VKS_KUBECONFIG -n kube-system delete service prometheus-kube-prometheus-kubelet --ignore-not-found
+  kubectl --kubeconfig $VKS_KUBECONFIG delete namespace monitoring --ignore-not-found
+}
+```
+
+**Expect:** `application.argoproj.io "prometheus" deleted`, `appproject.argoproj.io "monitoring"
+deleted`, `service "prometheus-kube-prometheus-kubelet" deleted` and `namespace "monitoring"
+deleted`. Newer kubectl adds `from <namespace> namespace` to each `deleted` line.
+
+**If not:** `timed out waiting`: ArgoCD cannot reach the VKS cluster. In the ArgoCD page, delete
+the Application with **Non-cascading**. If the VKS cluster is gone, stop here. Otherwise run this
+block again, then delete what the chart left outside the namespace:
+`kubectl --kubeconfig <the VKS kubeconfig> delete clusterrole,clusterrolebinding,mutatingwebhookconfiguration,validatingwebhookconfiguration -l app.kubernetes.io/instance=prometheus`
+and
+`kubectl --kubeconfig <the VKS kubeconfig> -n kube-system delete service -l app.kubernetes.io/instance=prometheus`.
 
 Back to [README](../README.md).
