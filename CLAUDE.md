@@ -37,3 +37,8 @@ nothing to build.
   nested-vsphere-lab the agent logs in itself and never asks the owner to: `make login` (or
   `make kubectl-login`) in that checkout logs in to the Supervisor with the lab's own secrets, so
   the agent never handles the password.
+- Coordinate every lab use with the nested-vsphere-lab session (find it with ListAgents, message
+  it with SendMessage): announce before installing anything cluster-wide on a VKS cluster (CRDs,
+  DaemonSets, host ports) or starting the walkbox, say when the lab is clean, and send it any lab
+  finding. It owns vCenter, the Supervisor and VCF Operations; this repo's work stays inside the
+  VKS cluster.
