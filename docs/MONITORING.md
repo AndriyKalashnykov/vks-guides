@@ -216,10 +216,10 @@ password.
 
 This downloads the chart, checks its SHA-256 and writes `values.yaml`: Grafana uses the Secret
 from step 3, Prometheus keeps its data on a volume of `PROMETHEUS_STORAGE` from the default
-storage class and deletes the oldest data before it fills 90% of it, and the chart skips etcd, the scheduler, the controller manager and kube-proxy,
-whose metrics VKS does not publish. node-exporter runs on the pod network, because the VKS
-node firewall blocks its host port; node graphs name each node, and their network panels show
-the pod's interface.
+storage class and deletes the oldest data once it passes about 80% of it, and the chart skips
+etcd, the scheduler, the controller manager and kube-proxy, whose metrics VKS does not publish.
+node-exporter runs on the pod network, because the VKS node firewall blocks its host port; node
+graphs name each node, and their network panels show the pod's interface.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -245,7 +245,7 @@ grafana:
     existingSecret: grafana-admin
 prometheus:
   prometheusSpec:
-    retentionPercentage: 90
+    retentionPercentage: 80
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -304,7 +304,7 @@ grafana:
     existingSecret: grafana-admin
 prometheus:
   prometheusSpec:
-    retentionPercentage: 90
+    retentionPercentage: 80
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -658,7 +658,7 @@ spec:
             existingSecret: grafana-admin
         prometheus:
           prometheusSpec:
-            retentionPercentage: 90
+            retentionPercentage: 80
             storageSpec:
               volumeClaimTemplate:
                 spec:
@@ -758,7 +758,7 @@ spec:
             existingSecret: grafana-admin
         prometheus:
           prometheusSpec:
-            retentionPercentage: 90
+            retentionPercentage: 80
             storageSpec:
               volumeClaimTemplate:
                 spec:
