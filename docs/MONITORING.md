@@ -441,8 +441,8 @@ $T = (kubectl --kubeconfig $VKS_KUBECONFIG get --raw /api/v1/namespaces/monitori
 $T | Where-Object { $_.health -ne 'up' } | ForEach-Object { "down: $($_.labels.job) $($_.lastError)" }
 ```
 
-**Expect:** `up N of N`, the same number twice and above 0 (22 on a cluster with three nodes),
-and no `down:` line.
+**Expect:** `up N of N`, the same number twice and above 0 (22 on a cluster with one control
+plane node and two workers), and no `down:` line.
 
 **If not:** a `down:` line names the target and its error. Right after step 5, wait a minute and
 run this again.

@@ -86,7 +86,8 @@ without a desktop session. ARGOCD.md's web-page steps were done in Chrome.
 
 HELM.md and MONITORING.md were run on 2026-10-24 with VKS 3.7.2 on Ubuntu (bash, zsh) and
 Windows PowerShell 5.1, not on macOS or in WSL; MONITORING.md was installed and uninstalled
-in each of those shells, and its Grafana login (step 7) was checked from Ubuntu.
+in each of those shells, and its Grafana login (step 7) was checked from Ubuntu
+with curl through the port-forward.
 
 Renewing a login that had already expired was run on macOS (zsh) only.
 
