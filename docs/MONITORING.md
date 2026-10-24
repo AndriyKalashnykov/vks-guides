@@ -397,7 +397,7 @@ if (-not (Test-Path $CHART) -or -not (Test-Path "$MONITORING_DIR\values.yaml")) 
       kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring get pods,pvc
     } else {
       "FAILED: Prometheus or Alertmanager is not running"
-      kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring get prometheus,alertmanager -o jsonpath='{range .items[*]}{.kind}: {range .status.conditions[*]}{.type}={.status} {.message}; {end}{"\n"}{end}'
+      kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring get prometheus,alertmanager -o jsonpath='{range .items[*]}{.kind}: {range .status.conditions[*]}{.type}={.status} {.message}; {end}{''\n''}{end}'
     }
   }
 }
@@ -488,8 +488,9 @@ graphs for the cluster.
 
 ## 8. Uninstall with Helm (optional)
 
-For an install with ArgoCD, use step 10. **This deletes Prometheus's data and the Grafana password.** It removes the release, a Service the
-Prometheus Operator left in `kube-system`, and the namespace. The chart's CRDs stay (see below).
+For an install with ArgoCD, use step 10. **This deletes Prometheus's data and the Grafana
+password.** It removes the release, a Service the Prometheus Operator left in `kube-system`, and
+the namespace. The chart's CRDs stay (see below).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -813,7 +814,7 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get applications.argoproj.io prometheus \
-  -o jsonpath='{.status.sync.status}  {.status.health.status}  {.status.operationState.phase}{"\n"}{.status.operationState.message}{"\n"}'
+  -o jsonpath='{.status.sync.status}  {.status.health.status}  {.status.operationState.phase}{"\n"}{.status.operationState.message}{"\n"}{range .status.conditions[*]}{.type}: {.message}{"\n"}{end}'
 if kubectl --kubeconfig "$VKS_KUBECONFIG" -n monitoring wait --for=condition=Available --timeout=10m \
      prometheus/prometheus-kube-prometheus-prometheus alertmanager/prometheus-kube-prometheus-alertmanager; then
   kubectl --kubeconfig "$VKS_KUBECONFIG" -n monitoring get pods,pvc
@@ -834,7 +835,7 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get applications.argoproj.io prometheus -o jsonpath='{.status.sync.status}  {.status.health.status}  {.status.operationState.phase}{''\n''}{.status.operationState.message}{''\n''}'
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get applications.argoproj.io prometheus -o jsonpath='{.status.sync.status}  {.status.health.status}  {.status.operationState.phase}{''\n''}{.status.operationState.message}{''\n''}{range .status.conditions[*]}{.type}: {.message}{''\n''}{end}'
 kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring wait --for=condition=Available --timeout=10m prometheus/prometheus-kube-prometheus-prometheus alertmanager/prometheus-kube-prometheus-alertmanager
 if ($LASTEXITCODE -eq 0) {
   kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring get pods,pvc
@@ -849,14 +850,14 @@ if ($LASTEXITCODE -eq 0) {
 `condition met`, every pod `Running`, and the Prometheus volume `Bound`. Then do steps 6 and 7.
 
 **If not:**
-- `Running` or `OutOfSync` on the first line, `Retrying attempt #…`, or `prometheuses… not found`:
-  the install is still going (a first attempt can fail and is tried again); run the block again in
-  a minute.
+- `Running` or `OutOfSync` on the first line, `Retrying attempt #…`, `prometheuses… not found` or
+  `doesn't have a resource type "prometheus"`: the install is still going (a first attempt can fail
+  and is tried again); run the block again in a minute.
 - `ComparisonError` or a message with `failed to fetch chart` or a timeout: the Supervisor cannot
   reach the hosts above. Behind a proxy, see the proxy line in [ARGOCD.md](ARGOCD.md) step 6.
-- `application destination … is not permitted in project` or `do not match any of the allowed
-  destinations`: `ARGOCD_DESTINATION` is not the name ArgoCD shows; run the block above with the
-  right one.
+- `InvalidSpecError` with `there are no clusters with this name`, `is not permitted in project` or
+  `do not match any of the allowed destinations`: `ARGOCD_DESTINATION` is not the name ArgoCD
+  shows. Run the block above again with the right name; it prints `configured` this time.
 - `Failed` with a message: the message says what failed. ArgoCD tries up to ten times; to try
   again after that, click the tile in the ArgoCD page, then **SYNC** and **SYNCHRONIZE**.
 - `FAILED: Prometheus or Alertmanager is not running`: as in step 5.
@@ -865,7 +866,8 @@ if ($LASTEXITCODE -eq 0) {
 
 **This deletes Prometheus's data and the Grafana password.** It deletes the Application (and
 with it what ArgoCD installed) and the project, then a Service the Prometheus Operator left in
-`kube-system`, and the namespace. The chart's CRDs stay; to delete them, see step 8.
+`kube-system`, and the namespace. The chart's CRDs stay (measured with ArgoCD 3.4.4); to delete
+them, see step 8.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -875,8 +877,8 @@ ARGOCD_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-if kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete applications.argoproj.io prometheus --timeout=5m \
-   && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appproject monitoring; then
+if kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete applications.argoproj.io prometheus --ignore-not-found --timeout=5m \
+   && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appproject monitoring --ignore-not-found; then
   kubectl --kubeconfig "$VKS_KUBECONFIG" -n kube-system delete service prometheus-kube-prometheus-kubelet --ignore-not-found
   kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace monitoring --ignore-not-found
 fi
@@ -891,8 +893,8 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applications.argoproj.io prometheus --timeout=5m
-if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject monitoring }
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applications.argoproj.io prometheus --ignore-not-found --timeout=5m
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject monitoring --ignore-not-found }
 if ($LASTEXITCODE -eq 0) {
   kubectl --kubeconfig $VKS_KUBECONFIG -n kube-system delete service prometheus-kube-prometheus-kubelet --ignore-not-found
   kubectl --kubeconfig $VKS_KUBECONFIG delete namespace monitoring --ignore-not-found
@@ -904,6 +906,10 @@ deleted`, `service "prometheus-kube-prometheus-kubelet" deleted` and `namespace 
 deleted`. Newer kubectl adds `from <namespace> namespace` to each `deleted` line.
 
 **If not:** `timed out waiting`: ArgoCD cannot reach the VKS cluster. In the ArgoCD page, delete
-the Application with **Non-cascading**, then run step 8 without its `helm uninstall` line.
+the Application with **Non-cascading**, run this block again, then delete what the chart left
+outside the namespace:
+`kubectl --kubeconfig <the VKS kubeconfig> delete clusterrole,clusterrolebinding,mutatingwebhookconfiguration,validatingwebhookconfiguration -l app.kubernetes.io/instance=prometheus`
+and
+`kubectl --kubeconfig <the VKS kubeconfig> -n kube-system delete service -l app.kubernetes.io/instance=prometheus`.
 
 Back to [README](../README.md).

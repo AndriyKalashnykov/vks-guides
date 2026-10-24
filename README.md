@@ -91,10 +91,10 @@ Windows PowerShell 5.1, not on macOS or in WSL; MONITORING.md was installed and 
 in each of those shells, and its Grafana login (step 7) was checked from Ubuntu
 with curl through the port-forward.
 
-MONITORING.md's ArgoCD steps (9 and 10) were run on 2026-10-24 with ArgoCD 3.4.4 (ArgoCD Service)
-on Ubuntu (bash, zsh) and Windows PowerShell 5.1, installed, checked and uninstalled in each; the
-VKS cluster was added to ArgoCD by the lab's own registration, not by ARGOCD.md step 7, and in
-PowerShell the Grafana password (step 3) was set from bash.
+MONITORING.md's ArgoCD steps (9 and 10) were run on 2026-10-24 with ArgoCD Service 1.2.0 (Argo
+CD 3.4.4) on Ubuntu (bash, zsh) and Windows PowerShell 5.1, installed, checked and uninstalled in
+each; the VKS cluster was added to ArgoCD by the lab's own registration, not by ARGOCD.md step 7,
+and in PowerShell the Grafana password (step 3) was set from bash.
 
 LOGGING.md was run on 2026-10-24 with VKS 3.7.2 and Fluent Bit add-on 5.0.9 on Ubuntu (bash;
 steps 5 to 7 also in zsh) and in WSL 2 Ubuntu (bash), installed, checked and uninstalled in each,
