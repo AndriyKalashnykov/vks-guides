@@ -2,7 +2,8 @@
 
 Copy-paste how-to guides for VMware vSphere Kubernetes Service (VKS), VCF 9.x: README.md links
 docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, ARGOCD.md,
-HELM.md, MONITORING.md (screenshots in docs/img/). Readers paste blocks; there is nothing to build.
+HELM.md, MONITORING.md, LOGGING.md (screenshots in docs/img/). Readers paste blocks; there is
+nothing to build.
 
 ## Rules
 
@@ -32,5 +33,7 @@ HELM.md, MONITORING.md (screenshots in docs/img/). Readers paste blocks; there i
   `[System.Management.Automation.Language.Parser]::ParseFile` in Windows PowerShell 5.1 (no pwsh
   on the dev host; use the Windows walkbox from nested-vsphere-lab: `make walkbox-vm-start
   WALKBOX_OS=windows`).
-- A behaviour change is run for real before README's "Platforms" table claims it. The password login
-  is run by the owner, never by an agent.
+- A behaviour change is run for real before README's "Platforms" table claims it. On the owner's
+  nested-vsphere-lab the agent logs in itself and never asks the owner to: `make login` (or
+  `make kubectl-login`) in that checkout logs in to the Supervisor with the lab's own secrets, so
+  the agent never handles the password.

@@ -6,7 +6,8 @@
 Copy-paste guides for VMware vSphere Kubernetes Service (VKS) on VCF 9.1, from an empty machine
 to apps running on a VKS cluster: install `kubectl` and the VCF CLI, log in to the Supervisor,
 create a vSphere Namespace and a VKS cluster, run Harbor as the clusters' private registry,
-deploy clusters and apps from Git with ArgoCD, and monitor a cluster with Prometheus and Grafana.
+deploy clusters and apps from Git with ArgoCD, monitor a cluster with Prometheus and Grafana, and
+send its logs to VCF Operations.
 Each command-line step is a block for bash, zsh or Windows PowerShell, with the output to expect
 and what to do if it differs.
 
@@ -20,8 +21,8 @@ and what to do if it differs.
 ## Guides
 
 Start with Prerequisites. Then install kubectl and the VCF CLI, in either order. Log in needs both. Then create the
-vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harbor, ArgoCD and monitoring are
-optional; monitoring needs Helm.
+vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harbor, ArgoCD, monitoring and
+logging are optional; monitoring needs Helm.
 
 | guide | what it is |
 |---|---|
@@ -35,6 +36,7 @@ optional; monitoring needs Helm.
 | [Create a VKS cluster and deploy an app with ArgoCD](docs/ARGOCD.md) | the ArgoCD Service, a VKS cluster made from Git, and a test app ArgoCD keeps in sync |
 | [Install Helm](docs/HELM.md) | the Kubernetes package manager, for installing charts such as the monitoring stack |
 | [Monitor a VKS cluster](docs/MONITORING.md) | Prometheus, Alertmanager and Grafana in a VKS cluster, from the upstream kube-prometheus-stack chart |
+| [Send a VKS cluster's logs to VCF Operations](docs/LOGGING.md) | Broadcom's Fluent Bit add-on, sending the cluster's logs over HTTPS to Log Management in VCF Operations |
 
 ## Check what is installed
 
@@ -72,7 +74,7 @@ Run against the Broadcom 9.1.1.0100 files and a vSphere 9.1.1 Supervisor with a 
 | macOS 26, arm64 (Apple silicon) | bash 3.2, zsh 5.9 | ✅ |
 | macOS, amd64 (Intel) | bash, zsh | ❌ |
 | Windows Server 2025, amd64 | Windows PowerShell 5.1 | ✅ |
-| Windows Server 2025, amd64, WSL 2 Ubuntu | bash, as root | ✅ except the password login |
+| Windows Server 2025, amd64, WSL 2 Ubuntu | bash, as root | ✅ |
 | Windows, arm64 | Windows PowerShell 5.1; bash in WSL 2 | ❌ |
 
 NAMESPACE.md, CLUSTER.md, HARBOR.md and ARGOCD.md were run on 2026-10-23 with VKS 3.7.2, the
@@ -88,6 +90,12 @@ HELM.md and MONITORING.md were run on 2026-10-24 with VKS 3.7.2 on Ubuntu (bash,
 Windows PowerShell 5.1, not on macOS or in WSL; MONITORING.md was installed and uninstalled
 in each of those shells, and its Grafana login (step 7) was checked from Ubuntu
 with curl through the port-forward.
+
+LOGGING.md was run on 2026-10-24 with VKS 3.7.2 and Fluent Bit add-on 5.0.9 on Ubuntu (bash;
+steps 5 to 7 also in zsh) and in WSL 2 Ubuntu (bash), installed, checked and uninstalled in each,
+against a stand-in HTTPS receiver in place of Log Management; step 7 was run with a changed CA.
+In Windows PowerShell 5.1 its steps 2, 3, 5 and 6 were run; steps 1, 4, 7 and 8 were only parsed. On 2026-10-24 PREREQS.md, KUBECTL.md, VCF.md and LOGIN.md were run again
+in WSL 2 Ubuntu, the password login included.
 
 Renewing a login that had already expired was run on macOS (zsh) only.
 
