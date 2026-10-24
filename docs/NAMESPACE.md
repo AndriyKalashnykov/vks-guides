@@ -198,8 +198,9 @@ A VKS cluster needs no content library in the namespace: do not click **ADD CONT
 
 ## 7. Check the status
 
-Leave **Capacity and Usage** at *No limit*, or click **EDIT LIMITS** and leave room for every
-node of the VKS clusters you will create.
+Leave **Capacity and Usage** at *No limit*, or click **EDIT LIMITS**, expand **Storage**, and set
+a limit on your storage policy that leaves room for every node of the VKS clusters you will
+create.
 
 ![The Summary page of the finished namespace: Config Status Running, Kubernetes Status Active, the Storage card with one policy, the VM Service card with 2 Associated VM Classes](img/namespace/11-summary-running.jpg)
 

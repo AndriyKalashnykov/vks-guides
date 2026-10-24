@@ -32,7 +32,8 @@ Arm PC).
 - Take the files whose names contain `9.1.1.0100.25746586` and `9.1.1.0100.25793136`, the names
   the install block expects. The plugins page can open on a newer release: pick the release
   whose file names match. Its VKS plugins (`cluster`, `package`, …) are v3.7.2, for VKS 3.7;
-  release 9.1.1.0200 has v3.8.0 ones, for VKS 3.8, not tested with these guides.
+  release 9.1.1.0200 has v3.8.0 ones, for VKS 3.8; `vcf context create`, `list` and `delete`
+  also work with them on VKS 3.7.
 
 ## Install
 
