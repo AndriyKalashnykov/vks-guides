@@ -393,7 +393,8 @@ if (-not (Test-Path $CHART) -or -not (Test-Path "$MONITORING_DIR\values.yaml")) 
 
 **Expect:** `STATUS: deployed`, both `condition met`, every pod `Running`, and the Prometheus
 volume `Bound`. Ignore the two password commands in Helm's notes: the password is the one from
-step 3.
+step 3. Helm may also print lines with `Warning: event bookmark expired` or
+`watch ended with error`; they do no harm when `STATUS: deployed` follows.
 
 **If not:**
 - `FAILED: helm install` after `namespaces "monitoring" not found`, or after

@@ -5,9 +5,10 @@
 
 Copy-paste guides for VMware vSphere Kubernetes Service (VKS) on VCF 9.1, from an empty machine
 to apps running on a VKS cluster: install `kubectl` and the VCF CLI, log in to the Supervisor,
-create a vSphere Namespace and a VKS cluster, run Harbor as the clusters' private registry, and
-deploy clusters and apps from Git with ArgoCD. Each command-line step is a block for bash, zsh
-or Windows PowerShell, with the output to expect and what to do if it differs.
+create a vSphere Namespace and a VKS cluster, run Harbor as the clusters' private registry,
+deploy clusters and apps from Git with ArgoCD, and monitor a cluster with Prometheus and Grafana.
+Each command-line step is a block for bash, zsh or Windows PowerShell, with the output to expect
+and what to do if it differs.
 
 ## How to use
 
@@ -19,7 +20,8 @@ or Windows PowerShell, with the output to expect and what to do if it differs.
 ## Guides
 
 Start with Prerequisites. Then install kubectl and the VCF CLI, in either order. Log in needs both. Then create the
-vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harbor and ArgoCD are optional.
+vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harbor, ArgoCD and monitoring are
+optional; monitoring needs Helm.
 
 | guide | what it is |
 |---|---|
@@ -31,13 +33,15 @@ vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harb
 | [Create a VKS cluster](docs/CLUSTER.md) | a VKS cluster made in the vSphere Client, checked, and deleted |
 | [Install Harbor](docs/HARBOR.md) | a vCenter administrator's Harbor registry on the Supervisor, trusted by its VKS clusters |
 | [Create a VKS cluster and deploy an app with ArgoCD](docs/ARGOCD.md) | the ArgoCD Service, a VKS cluster made from Git, and a test app ArgoCD keeps in sync |
+| [Install Helm](docs/HELM.md) | the Kubernetes package manager, for installing charts such as the monitoring stack |
+| [Monitor a VKS cluster](docs/MONITORING.md) | Prometheus, Alertmanager and Grafana in a VKS cluster, from the upstream kube-prometheus-stack chart |
 
 ## Check what is installed
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-for t in curl tar unzip jq openssl kubectl vcf; do
+for t in curl tar unzip jq openssl kubectl vcf helm; do
   command -v "$t" >/dev/null 2>&1 && echo "ok       $t" || echo "MISSING  $t"
 done
 ```
@@ -45,15 +49,17 @@ done
 **Windows (PowerShell):**
 
 ```powershell
-foreach ($t in 'kubectl', 'vcf') {
+foreach ($t in 'kubectl', 'vcf', 'helm') {
   if (Get-Command $t -ErrorAction SilentlyContinue) { "ok       $t" } else { "MISSING  $t" }
 }
 ```
 
-**Expect:** an `ok` line for each tool (seven; two in PowerShell).
+**Expect:** an `ok` line for each tool (eight; three in PowerShell). `helm` is needed only for
+monitoring.
 
 **If not:** for `MISSING curl`, `tar`, `unzip`, `jq` or `openssl`, do [Prerequisites](docs/PREREQS.md);
-for `kubectl`, [Install kubectl](docs/KUBECTL.md); for `vcf`, [Install the VCF CLI](docs/VCF.md).
+for `kubectl`, [Install kubectl](docs/KUBECTL.md); for `vcf`, [Install the VCF CLI](docs/VCF.md); for
+`helm`, [Install Helm](docs/HELM.md).
 
 ## Platforms
 
@@ -77,6 +83,10 @@ nodes were updated each time; ArgoCD's certificate renewal (step 7) was run with
 On macOS and in PowerShell, HARBOR.md's admin password blocks ran against a stand-in server. Its
 clipboard blocks ran in a Linux desktop session (Wayland) and in PowerShell, and on macOS only
 without a desktop session. ARGOCD.md's web-page steps were done in Chrome.
+
+HELM.md and MONITORING.md were run on 2026-10-24 with VKS 3.7.2 on Ubuntu (bash, zsh) and
+Windows PowerShell 5.1, not on macOS or in WSL; MONITORING.md was installed and uninstalled
+in each of those shells.
 
 Renewing a login that had already expired was run on macOS (zsh) only.
 
