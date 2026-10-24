@@ -43,10 +43,11 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 if kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes \
    && SC="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)" \
-   && CRD="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
+   && CRD="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)" \
+   && PKG="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get packageinstalls -A -o custom-columns=PACKAGE:.spec.packageRef.refName --no-headers)"; then
   echo "default storage class: $(printf '%s' "$SC" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | .metadata.name] | if length == 0 then "NONE" else join(" ") end')"
   echo "Prometheus Operator CRDs: $(printf '%s\n' "$CRD" | grep -c 'monitoring\.coreos\.com$')"
-  echo "Broadcom Prometheus add-on: $(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace tanzu-system-monitoring -o name 2>/dev/null | grep -c .)"
+  echo "Broadcom Prometheus add-on: $(printf '%s\n' "$PKG" | grep -c '^prometheus\.')"
 else
   echo "FAILED: cannot read the cluster (see the error above)"
 fi
@@ -65,11 +66,12 @@ $global:LASTEXITCODE = $null
 kubectl --kubeconfig $VKS_KUBECONFIG get nodes
 if ($LASTEXITCODE -eq 0) { $SC = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) { $CRD = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name) }
+if ($LASTEXITCODE -eq 0) { $PKG = @(kubectl --kubeconfig $VKS_KUBECONFIG get packageinstalls -A -o custom-columns=PACKAGE:.spec.packageRef.refName --no-headers) }
 if ($LASTEXITCODE -eq 0) {
   $D = @((ConvertFrom-Json $SC).items | Where-Object { $_.metadata.annotations.'storageclass.kubernetes.io/is-default-class' -eq 'true' } | ForEach-Object { $_.metadata.name })
   "default storage class: $(if ($D.Count) { $D -join ' ' } else { 'NONE' })"
   "Prometheus Operator CRDs: $(@($CRD | Where-Object { $_ -cmatch 'monitoring\.coreos\.com$' }).Count)"
-  "Broadcom Prometheus add-on: $(@(kubectl --kubeconfig $VKS_KUBECONFIG get namespace tanzu-system-monitoring -o name 2>$null).Count)"
+  "Broadcom Prometheus add-on: $(@($PKG | Where-Object { $_ -cmatch '^prometheus\.' }).Count)"
 } else {
   "FAILED: cannot read the cluster (see the error above)"
 }
@@ -214,7 +216,7 @@ password.
 
 This downloads the chart, checks its SHA-256 and writes `values.yaml`: Grafana uses the Secret
 from step 3, Prometheus keeps its data on a volume of `PROMETHEUS_STORAGE` from the default
-storage class, and the chart skips etcd, the scheduler, the controller manager and kube-proxy,
+storage class and deletes the oldest data before it fills 90% of it, and the chart skips etcd, the scheduler, the controller manager and kube-proxy,
 whose metrics VKS does not publish. node-exporter runs on the pod network, because the VKS
 node firewall blocks its host port; node graphs name each node, and their network panels show
 the pod's interface.
@@ -243,6 +245,7 @@ grafana:
     existingSecret: grafana-admin
 prometheus:
   prometheusSpec:
+    retentionPercentage: 90
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -301,6 +304,7 @@ grafana:
     existingSecret: grafana-admin
 prometheus:
   prometheusSpec:
+    retentionPercentage: 90
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -654,6 +658,7 @@ spec:
             existingSecret: grafana-admin
         prometheus:
           prometheusSpec:
+            retentionPercentage: 90
             storageSpec:
               volumeClaimTemplate:
                 spec:
@@ -753,6 +758,7 @@ spec:
             existingSecret: grafana-admin
         prometheus:
           prometheusSpec:
+            retentionPercentage: 90
             storageSpec:
               volumeClaimTemplate:
                 spec:
