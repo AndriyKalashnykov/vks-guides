@@ -86,8 +86,7 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 2. Create the namespace
 
-node-exporter reads each node's host network, processes and files, so the namespace allows
-privileged pods.
+node-exporter reads each node's processes and files, so the namespace allows privileged pods.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -213,7 +212,8 @@ This downloads the chart, checks its SHA-256 and writes `values.yaml`: Grafana u
 from step 3, Prometheus keeps its data on a volume of `PROMETHEUS_STORAGE` from the default
 storage class, and the chart skips etcd, the scheduler, the controller manager and kube-proxy,
 whose metrics VKS does not publish. node-exporter runs on the pod network, because the VKS
-node firewall blocks its host port; node network graphs then show the pod's interface.
+node firewall blocks its host port; node graphs name each node, and their network panels show
+the pod's interface.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -257,6 +257,11 @@ kubeProxy:
   enabled: false
 prometheus-node-exporter:
   hostNetwork: false
+  prometheus:
+    monitor:
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: instance
 EOF
   echo "chart: $CHART"
   echo "values: $MONITORING_DIR/values.yaml"
@@ -310,6 +315,11 @@ kubeProxy:
   enabled: false
 prometheus-node-exporter:
   hostNetwork: false
+  prometheus:
+    monitor:
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: instance
 "@
   [IO.File]::WriteAllText("$MONITORING_DIR\values.yaml", ($V -replace "`r`n", "`n") + "`n")
   "chart: $CHART"
@@ -394,7 +404,8 @@ if (-not (Test-Path $CHART) -or -not (Test-Path "$MONITORING_DIR\values.yaml")) 
 **Expect:** `STATUS: deployed`, both `condition met`, every pod `Running`, and the Prometheus
 volume `Bound`. Ignore the two password commands in Helm's notes: the password is the one from
 step 3. Helm may also print lines with `Warning: event bookmark expired` or
-`watch ended with error`; they do no harm when `STATUS: deployed` follows.
+`watch ended with error`; they do no harm when `STATUS: deployed` and both `condition met`
+follow.
 
 **If not:**
 - `FAILED: helm install` after `namespaces "monitoring" not found`, or after
@@ -430,7 +441,8 @@ $T = (kubectl --kubeconfig $VKS_KUBECONFIG get --raw /api/v1/namespaces/monitori
 $T | Where-Object { $_.health -ne 'up' } | ForEach-Object { "down: $($_.labels.job) $($_.lastError)" }
 ```
 
-**Expect:** `up N of N`, the same number twice, and no `down:` line.
+**Expect:** `up N of N`, the same number twice and above 0 (22 on a cluster with three nodes),
+and no `down:` line.
 
 **If not:** a `down:` line names the target and its error. Right after step 5, wait a minute and
 run this again.
