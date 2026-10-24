@@ -35,10 +35,10 @@ This lists the Fluent Bit releases the Supervisor offers and the add-ons the clu
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 
-KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf addon available-releases list --addon-name fluent-bit
-KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"
+vcf context use supervisor
+vcf addon available-releases list --addon-name fluent-bit
+vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"
 ```
 
 **Windows (PowerShell):**
@@ -46,16 +46,16 @@ KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf addon install list --cluster-name "$VKS_
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
-$OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
+vcf context use supervisor
 vcf addon available-releases list --addon-name fluent-bit
 vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE
-$env:KUBECONFIG = $OLD_KUBECONFIG
 ```
 
-**Expect:** one or more releases named `fluent-bit.kubernetes.vmware.com.<version>`; copy the
-newest one's name for step 4. The cluster's list has no `fluent-bit`.
+**Expect:** `Successfully activated context 'supervisor'`, then one or more releases named
+`fluent-bit.kubernetes.vmware.com.<version>`; copy the newest one's name for step 4. The
+cluster's list has no `fluent-bit`. A line `failed to discover plugin sources from the system
+Harbor registry` may follow the context line; it does no harm here.
 
 **If not:**
 - `Unauthorized`: your Supervisor login ended; see [LOGIN.md](LOGIN.md).
@@ -216,10 +216,10 @@ Set `FLUENT_BIT_RELEASE` to the release name from step 1.
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 FLUENT_BIT_RELEASE="fluent-bit.kubernetes.vmware.com.5.0.9-vmware.1-vks.1"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 LOGGING_DIR="$HOME/.config/vks-guides/logging"
 
-KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+vcf context use supervisor
+vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
   --addon-release-name "$FLUENT_BIT_RELEASE" -f "$LOGGING_DIR/values.yaml" -y
 ```
 
@@ -229,12 +229,10 @@ KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf addon install create fluent-bit --cluste
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $FLUENT_BIT_RELEASE = "fluent-bit.kubernetes.vmware.com.5.0.9-vmware.1-vks.1"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $LOGGING_DIR = "$HOME\.config\vks-guides\logging"
 
-$OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
+vcf context use supervisor
 vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f "$LOGGING_DIR\values.yaml" -y
-$env:KUBECONFIG = $OLD_KUBECONFIG
 ```
 
 **Expect:** a line saying the add-on install was created.
@@ -260,8 +258,9 @@ until kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace tanzu-system-logging 
 done
 if ! kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace tanzu-system-logging >/dev/null 2>&1; then
   echo "FAILED: no namespace tanzu-system-logging after 10 minutes (step 4)"
-elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging create secret generic tls-ca-cert \
-       --from-file=tls_http.crt="$LOGGING_DIR/logs-ca.crt"; then
+elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get secret tls-ca-cert 2>/dev/null \
+     || kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging create secret generic tls-ca-cert \
+          --from-file=tls_http.crt="$LOGGING_DIR/logs-ca.crt"; then
   kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
 else
   echo "FAILED: Secret not created (see the error above)"
@@ -288,7 +287,10 @@ do {
 if ($LASTEXITCODE -ne 0) {
   "FAILED: no namespace tanzu-system-logging after 10 minutes (step 4)"
 } else {
-  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging create secret generic tls-ca-cert --from-file=tls_http.crt="$LOGGING_DIR\logs-ca.crt"
+  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get secret tls-ca-cert 2>$null
+  if ($LASTEXITCODE -ne 0) {
+    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging create secret generic tls-ca-cert --from-file=tls_http.crt="$LOGGING_DIR\logs-ca.crt"
+  }
   if ($LASTEXITCODE -eq 0) {
     kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
   } else {
@@ -299,52 +301,100 @@ if ($LASTEXITCODE -ne 0) {
 
 </details>
 
-**Expect:** `secret/tls-ca-cert created`, then `daemon set "fluent-bit" successfully rolled out`.
+**Expect:** `secret/tls-ca-cert created` (or, on a rerun, the existing `tls-ca-cert` listed), then
+`daemon set "fluent-bit" successfully rolled out`.
 
-**If not:**
-- `already exists`: the Secret is there from an earlier run; the rollout line still applies.
-- The rollout times out: run
-  `kubectl --kubeconfig <the VKS kubeconfig> -n tanzu-system-logging get pods` and `describe`
-  the one that is not `Running`.
+**If not:** the rollout times out: run
+`kubectl --kubeconfig <the VKS kubeconfig> -n tanzu-system-logging get pods` and `describe` the
+one that is not `Running`.
 
 ## 6. Check that logs arrive
 
-This writes a line with a unique word into the cluster's logs, and shows what Fluent Bit reports
-about sending.
+This runs a pod that writes a line with a unique word into the cluster's logs, and shows what
+Fluent Bit reports about sending.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 WORD="vks-guides-$(date +%s)"
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n default run log-check --image=busybox:1.37 --restart=Never -- echo "$WORD"
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n default apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: log-check
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: log-check
+      image: busybox:1.37
+      args: ["echo", "$WORD"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+EOF
 echo "search for: $WORD"
 sleep 30
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n default logs log-check
 kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging logs daemonset/fluent-bit --since=5m | grep -E 'HTTP status|error|warn' | tail -5
 kubectl --kubeconfig "$VKS_KUBECONFIG" -n default delete pod log-check
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $WORD = "vks-guides-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
-kubectl --kubeconfig $VKS_KUBECONFIG -n default run log-check --image=busybox:1.37 --restart=Never -- echo $WORD
+@"
+apiVersion: v1
+kind: Pod
+metadata:
+  name: log-check
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: log-check
+      image: busybox:1.37
+      args: ["echo", "$WORD"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+"@ | kubectl --kubeconfig $VKS_KUBECONFIG -n default apply -f -
 "search for: $WORD"
 Start-Sleep 30
+kubectl --kubeconfig $VKS_KUBECONFIG -n default logs log-check
 kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging logs daemonset/fluent-bit --since=5m | Select-String 'HTTP status|error|warn' | Select-Object -Last 5
 kubectl --kubeconfig $VKS_KUBECONFIG -n default delete pod log-check
 ```
 
+</details>
+
 Then in VCF Operations, open **Operate** → **Logs**, set the time range to the last 15 minutes
 and search for the word the block printed.
 
-**Expect:** `search for: vks-guides-…`, Fluent Bit lines with `HTTP status=200`, and the word
-in **Operate** → **Logs** within a few minutes.
+**Expect:** `pod/log-check created`, `search for: vks-guides-…`, the word itself (the pod's log),
+Fluent Bit lines with `HTTP status=200`, and the word in **Operate** → **Logs** within a few
+minutes.
 
 **If not:**
 - `HTTP status=401`: Log Management enforces ingestion authentication; this guide needs it not
@@ -352,8 +402,8 @@ in **Operate** → **Logs** within a few minutes.
 - `no upstream connections available` or a `tls` error: the nodes cannot reach Log Management on
   port 9543, or the Secret holds the wrong CA (step 5: delete the Secret, create it again, then
   `kubectl --kubeconfig <the VKS kubeconfig> -n tanzu-system-logging rollout restart daemonset/fluent-bit`).
-- `ErrImagePull` for `log-check`: the nodes cannot reach `docker.io`; the Fluent Bit lines still
-  apply.
+- The pod's log says `waiting to start`: the nodes cannot pull `busybox:1.37` from `docker.io`;
+  the Fluent Bit lines still apply.
 
 ## 7. Change the destination (optional)
 
@@ -364,10 +414,10 @@ Run step 2 and step 3 with the new name, then this.
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 LOGGING_DIR="$HOME/.config/vks-guides/logging"
 
-KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+vcf context use supervisor
+vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
   -f "$LOGGING_DIR/values.yaml" -y
 ```
 
@@ -376,15 +426,14 @@ KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf addon install update fluent-bit --cluste
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $LOGGING_DIR = "$HOME\.config\vks-guides\logging"
 
-$OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
+vcf context use supervisor
 vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$LOGGING_DIR\values.yaml" -y
-$env:KUBECONFIG = $OLD_KUBECONFIG
 ```
 
-**Expect:** a line saying the add-on install was updated; then run step 6 again.
+**Expect:** `Addon 'fluent-bit' in the cluster … is being updated`; within a minute the Fluent Bit
+pods restart. Then run step 6 again.
 
 ## 8. Uninstall (optional)
 
@@ -393,9 +442,9 @@ $env:KUBECONFIG = $OLD_KUBECONFIG
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 
-KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf addon install delete fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y
+vcf context use supervisor
+vcf addon install delete fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y
 ```
 
 **Windows (PowerShell):**
@@ -403,11 +452,9 @@ KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf addon install delete fluent-bit --cluste
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
-$OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
+vcf context use supervisor
 vcf addon install delete fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
-$env:KUBECONFIG = $OLD_KUBECONFIG
 ```
 
 **Expect:** a line saying the add-on install was deleted; the Fluent Bit pods go away within a few
