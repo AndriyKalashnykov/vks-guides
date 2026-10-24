@@ -6,7 +6,7 @@
 > - [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/README.md) (the chart this guide installs)
 > - [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/)
 > - [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/) (Grafana)
-> - [Prometheus Package Reference](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/standard-package-reference/prometheus-package-reference.html) (Broadcom's Prometheus add-on, the supported alternative)
+> - [Prometheus Package Reference](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/standard-package-reference/prometheus-package-reference.html) (Broadcom's Prometheus add-on, the supported alternative; VCF 9.0 page, there is no 9.1 copy)
 > - [Observability on VKS](https://www.vmware.com/docs/observability-vks) and its [examples](https://github.com/vmware/vks-consumption-models/tree/main/observability-consumption-model) (VMware's design this guide follows)
 
 This installs kube-prometheus-stack 92.11.0 into a VKS cluster: Prometheus 3.15.0, Alertmanager
@@ -27,8 +27,8 @@ The blocks keep their files in `~/.config/vks-guides/monitoring` (PowerShell:
 
 ## 1. Check the cluster
 
-This checks the nodes and the default storage class, and that the cluster has no Prometheus
-Operator yet (Broadcom's Prometheus add-on brings one).
+This checks the nodes and the default storage class, and that the cluster runs no Prometheus
+yet: neither Broadcom's Prometheus add-on nor another Prometheus Operator.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -42,6 +42,7 @@ if kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes \
    && CRD="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
   echo "default storage class: $(printf '%s' "$SC" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | .metadata.name] | if length == 0 then "NONE" else join(" ") end')"
   echo "Prometheus Operator CRDs: $(printf '%s\n' "$CRD" | grep -c 'monitoring\.coreos\.com$')"
+  echo "Broadcom Prometheus add-on: $(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace tanzu-system-monitoring -o name 2>/dev/null | grep -c .)"
 else
   echo "FAILED: cannot read the cluster (see the error above)"
 fi
@@ -64,6 +65,7 @@ if ($LASTEXITCODE -eq 0) {
   $D = @((ConvertFrom-Json $SC).items | Where-Object { $_.metadata.annotations.'storageclass.kubernetes.io/is-default-class' -eq 'true' } | ForEach-Object { $_.metadata.name })
   "default storage class: $(if ($D.Count) { $D -join ' ' } else { 'NONE' })"
   "Prometheus Operator CRDs: $(@($CRD | Where-Object { $_ -cmatch 'monitoring\.coreos\.com$' }).Count)"
+  "Broadcom Prometheus add-on: $(@(kubectl --kubeconfig $VKS_KUBECONFIG get namespace tanzu-system-monitoring -o name 2>$null).Count)"
 } else {
   "FAILED: cannot read the cluster (see the error above)"
 }
@@ -71,13 +73,14 @@ if ($LASTEXITCODE -eq 0) {
 
 </details>
 
-**Expect:** each node `Ready`, `default storage class:` and a name, and
-`Prometheus Operator CRDs: 0`.
+**Expect:** each node `Ready`, `default storage class:` and a name,
+`Prometheus Operator CRDs: 0` and `Broadcom Prometheus add-on: 0`.
 
 **If not:**
 - `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
-- `Prometheus Operator CRDs:` more than 0: the cluster already runs a Prometheus Operator, for
-  example Broadcom's add-on. Use that, or a cluster without one; this guide does not cover both.
+- `Prometheus Operator CRDs:` or `Broadcom Prometheus add-on:` more than 0, before you ran this
+  guide's step 5: the cluster already runs a Prometheus. Use it, or a cluster without one; this
+  guide does not cover both.
 - `FAILED: cannot read the cluster`: run
   [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
@@ -384,11 +387,12 @@ if (-not (Test-Path $CHART) -or -not (Test-Path "$MONITORING_DIR\values.yaml")) 
 </details>
 
 **Expect:** `STATUS: deployed`, both `condition met`, every pod `Running`, and the Prometheus
-volume `Bound`. Ignore the commands in Helm's notes that read the password from
-`prometheus-grafana`: the password is the one from step 3.
+volume `Bound`. Ignore the two password commands in Helm's notes: the password is the one from
+step 3.
 
 **If not:**
-- `FAILED: helm install` under `violates PodSecurity`: run step 2 first.
+- `FAILED: helm install` after `namespaces "monitoring" not found`, or after
+  `would violate PodSecurity` and `context deadline exceeded`: run step 2, then this block again.
 - `FAILED: Prometheus or Alertmanager is not running`: the line under it says why. A volume that
   stays `Pending` means no default storage class or no room under the vSphere Namespace's
   storage limit ([NAMESPACE.md](NAMESPACE.md) step 7).
@@ -454,8 +458,8 @@ Open <http://localhost:3000>, log in as `admin` with the password from step 3, a
 graphs for the cluster.
 
 **If not:**
-- `address already in use`: another program uses port 3000; change both `3000`s (`3001:80`) and
-  open that port.
+- `address already in use`, or no `127.0.0.1` line: another program uses port 3000; change both
+  `3000`s (`3001:80`) and open that port.
 - The login fails after you set a new password in step 3: Grafana reads it when it starts. Run
   `kubectl --kubeconfig <the VKS kubeconfig> -n monitoring rollout restart deployment/prometheus-grafana`,
   then log in again.
@@ -489,6 +493,8 @@ kubectl --kubeconfig $VKS_KUBECONFIG delete namespace monitoring --ignore-not-fo
 
 **Expect:** `release "prometheus" uninstalled`, `service "prometheus-kube-prometheus-kubelet"
 deleted` and `namespace "monitoring" deleted`.
+
+**If not:** `Release not loaded`: it was already uninstalled; the other lines print nothing.
 
 **Delete the CRDs** only if step 1 printed `Prometheus Operator CRDs: 0`: this deletes every
 ServiceMonitor, PrometheusRule and other object of these kinds in the cluster.
