@@ -684,7 +684,7 @@ spec:
       prune: true
       selfHeal: true
     retry:
-      limit: 5
+      limit: 10
       backoff:
         duration: 10s
         factor: 2
@@ -783,7 +783,7 @@ spec:
       prune: true
       selfHeal: true
     retry:
-      limit: 5
+      limit: 10
       backoff:
         duration: 10s
         factor: 2
@@ -857,7 +857,8 @@ if ($LASTEXITCODE -eq 0) {
 - `application destination … is not permitted in project` or `do not match any of the allowed
   destinations`: `ARGOCD_DESTINATION` is not the name ArgoCD shows; run the block above with the
   right one.
-- `Failed` with a message: the message says what failed; ArgoCD tries again up to five times.
+- `Failed` with a message: the message says what failed. ArgoCD tries up to ten times; to try
+  again after that, click the tile in the ArgoCD page, then **SYNC** and **SYNCHRONIZE**.
 - `FAILED: Prometheus or Alertmanager is not running`: as in step 5.
 
 ## 10. Uninstall with ArgoCD (optional)
