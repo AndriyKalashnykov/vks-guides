@@ -39,7 +39,7 @@ The blocks keep their files in `~/.config/vks-guides/harbor` (PowerShell:
 ## 1. Check the Supervisor
 
 This tells you whether the Supervisor already runs a Harbor, and records that it did not, for
-step 12.
+step 13.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -287,7 +287,7 @@ This writes `harbor-data-values.yml` from Broadcom's file and changes only these
 
 Set at the top:
 
-- `HARBOR_FQDN`: Harbor's DNS name. Choose it now: this guide does not cover changing it later.
+- `HARBOR_FQDN`: Harbor's DNS name. To change it later, see step 12.
 - `HARBOR_STORAGE_CLASS`: a name from the list above.
 - `HARBOR_REGISTRY_SIZE`: the volume for your images. `10Gi` fills up in regular use, and this
   guide does not cover growing it.
@@ -713,7 +713,7 @@ ask for. The block may take 20 minutes before it gives up; Ctrl+C stops it.
   pods never started.
 - An address but `http=000` or `http=503`: Harbor's pods are not all running. The block below
   lists them and their volumes; a volume that stays `Pending` means a wrong storage class: uninstall
-  (step 12), fix it in step 4, install again.
+  (step 13), fix it in step 4, install again.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1335,7 +1335,201 @@ spec:
 - `NO ANSWER: …`: run `kubectl --kubeconfig <the VKS kubeconfig> -n default get events` and read
   the last lines.
 
-## 12. Uninstall Harbor (optional)
+## 12. Change Harbor's hostname (optional)
+
+No VKS node is updated: Harbor keeps its CA. But from the restart at the end of this step,
+everything that uses the old name fails: image names, pull secrets, `docker login` and Docker's
+`certs.d/<old name>` folder, CI and ArgoCD sources. Do this in a maintenance window, and change
+them to the new name.
+
+1. Get a DNS record for the new name with Harbor's address (step 7).
+2. Write the new name into `harbor-data-values.yml` with the block below.
+3. In the vSphere Client, select the Supervisor, then **Configure** → **Supervisor Services** →
+   **Overview**. Select **Harbor**, click **MANAGE**, keep the installed version, click **NEXT**
+   twice. In **YAML Service Config**, change only the `hostname:` line to the new name, then click
+   **FINISH**. The box shows Harbor's passwords: do not share your screen.
+4. Restart Harbor's web server with the second block below: until then it serves the
+   certificate for the old name.
+5. Run step 9 (*Save the CA* checks Harbor at the new name; the CA is unchanged) and step 11
+   again.
+
+### Write the new name into the file
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+HARBOR_NEW_FQDN="harbor2.example.test"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+
+VALUES="$HARBOR_DIR/harbor-data-values.yml"
+case "$HARBOR_NEW_FQDN" in ""|harbor2.example.test|*[!a-z0-9.-]*) BAD_NAME=1 ;; *) BAD_NAME="" ;; esac
+if [ -n "$BAD_NAME" ]; then
+  echo "NOT WRITTEN: set HARBOR_NEW_FQDN to Harbor's new DNS name"
+elif [ "$(grep -c '^hostname: ' "$VALUES" 2>/dev/null)" != 1 ]; then
+  echo "NOT WRITTEN: no single hostname line in $VALUES (step 4)"
+elif grep -q -x -F "hostname: $HARBOR_NEW_FQDN" "$VALUES"; then
+  echo "NOT CHANGED: $VALUES already has this name"
+else
+  rm -f "$VALUES.new"
+  ( umask 077; sed "s/^hostname: .*/hostname: $HARBOR_NEW_FQDN/" "$VALUES" > "$VALUES.new" )
+  N="$(diff "$VALUES" "$VALUES.new" | grep -c '^>')"
+  if [ "$N" = 1 ] && grep -q -x -F "hostname: $HARBOR_NEW_FQDN" "$VALUES.new"; then
+    mv "$VALUES.new" "$VALUES"
+    grep '^hostname: ' "$VALUES"
+    echo "lines changed: $N"
+  else
+    rm -f "$VALUES.new"
+    echo "FAILED: the file did not come out as expected and was not changed"
+  fi
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$HARBOR_NEW_FQDN = "harbor2.example.test"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+
+$VALUES = "$HARBOR_DIR\harbor-data-values.yml"
+$TXT = if (Test-Path $VALUES) { [IO.File]::ReadAllLines($VALUES) } else { @() }
+$OLD = @($TXT | Where-Object { $_ -cmatch '^hostname: ' })
+if ($HARBOR_NEW_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $HARBOR_NEW_FQDN -eq 'harbor2.example.test') {
+  "NOT WRITTEN: set HARBOR_NEW_FQDN to Harbor's new DNS name"
+} elseif ($OLD.Count -ne 1) {
+  "NOT WRITTEN: no single hostname line in $VALUES (step 4)"
+} elseif ($OLD[0] -ceq "hostname: $HARBOR_NEW_FQDN") {
+  "NOT CHANGED: $VALUES already has this name"
+} else {
+  $OUT = foreach ($l in $TXT) { if ($l -cmatch '^hostname: ') { "hostname: $HARBOR_NEW_FQDN" } else { $l } }
+  [IO.File]::WriteAllText("$VALUES.new", (($OUT -join "`n") + "`n"))
+  $NEW = [IO.File]::ReadAllLines("$VALUES.new")
+  $N = 0
+  for ($i = 0; $i -lt $TXT.Count; $i++) { if ($TXT[$i] -cne $NEW[$i]) { $N++ } }
+  if ($NEW.Count -eq $TXT.Count -and $N -eq 1) {
+    Move-Item -Force "$VALUES.new" $VALUES
+    $NEW | Where-Object { $_ -cmatch '^hostname: ' }
+    "lines changed: $N"
+  } else {
+    Remove-Item -Force "$VALUES.new"
+    "FAILED: the file did not come out as expected and was not changed"
+  }
+}
+```
+
+</details>
+
+**Expect:** `hostname: <the new name>` and `lines changed: 1`.
+
+**If not:**
+- `NOT WRITTEN: …`: set the value it names, or do the step it names, then run the block again.
+- `FAILED: …`: the file is laid out differently from what step 4 writes; it was not changed.
+
+### Restart Harbor's web server
+
+Run this after **FINISH**. It waits until Harbor's certificate is for the new name (a minute or
+less), then deletes Harbor's web server pod, which starts again with that certificate.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+
+HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
+if [ -z "$HARBOR_FQDN" ]; then
+  echo "FAILED: no hostname in $HARBOR_DIR/harbor-data-values.yml (step 4)"
+elif ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
+  echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
+elif [ -z "$NS" ] || [ "$NS" != "${NS#* }" ]; then
+  echo "FAILED: Harbor namespaces on this Supervisor: '${NS}' (expected exactly one)"
+elif ! S="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get secret -l managed-by=vmware-vRegistry -o name)" \
+     || [ "$(printf '%s\n' "$S" | grep -c .)" != 1 ]; then
+  echo "FAILED: expected one Secret labeled managed-by=vmware-vRegistry in $NS, found: ${S:-none}"
+else
+  OK=""; n=0
+  until [ -n "$OK" ] || [ "$n" -ge 40 ]; do
+    [ "$n" -eq 0 ] || sleep 15
+    n=$((n + 1))
+    kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get "$S" -o go-template='{{with index .data "tls.crt"}}{{base64decode .}}{{end}}' \
+      | openssl x509 -noout -text 2>/dev/null | tr ',' '\n' | sed 's/^ *//' | grep -q -x -F "DNS:$HARBOR_FQDN" && OK=1
+  done
+  if [ -z "$OK" ]; then
+    echo "FAILED: after 10 minutes Harbor's certificate is still not for $HARBOR_FQDN"
+  else
+    echo "certificate for $HARBOR_FQDN: yes"
+    kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" delete pod -l app=harbor,component=nginx \
+      && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" rollout status deployment/harbor-nginx --timeout=300s \
+      || echo "FAILED: restart (see the error above)"
+  fi
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+
+$global:LASTEXITCODE = $null
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
+if (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" }
+elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
+elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
+else {
+  $NS = $NS[0] -replace '^namespace/', ''
+  $S = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get secret -l managed-by=vmware-vRegistry -o name)
+  if ($LASTEXITCODE -ne 0 -or $S.Count -ne 1) {
+    "FAILED: expected one Secret labeled managed-by=vmware-vRegistry in $NS, found: $(if ($S.Count) { $S -join ' ' } else { 'none' })"
+  } else {
+    $TMP = [IO.Path]::GetTempFileName()
+    $OK = $false; $n = 0
+    while (-not $OK -and $n -lt 40) {
+      if ($n -gt 0) { Start-Sleep 15 }
+      $n++
+      $B64 = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get $S[0] -o jsonpath='{.data.tls\.crt}'
+      try {
+        [IO.File]::WriteAllBytes($TMP, [Convert]::FromBase64String("$B64"))
+        $X = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $TMP
+        $WANT = [BitConverter]::ToString([byte[]](@(0x82, $HARBOR_FQDN.Length) + [Text.Encoding]::ASCII.GetBytes($HARBOR_FQDN)))
+        if ($X.Extensions | Where-Object { $_.Oid.Value -eq '2.5.29.17' -and [BitConverter]::ToString($_.RawData).Contains($WANT) }) { $OK = $true }
+      } catch { }
+    }
+    Remove-Item -Force -ErrorAction SilentlyContinue $TMP
+    if (-not $OK) { "FAILED: after 10 minutes Harbor's certificate is still not for $HARBOR_FQDN" }
+    else {
+      "certificate for ${HARBOR_FQDN}: yes"
+      kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS delete pod -l app=harbor,component=nginx
+      if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS rollout status deployment/harbor-nginx --timeout=300s }
+      if ($LASTEXITCODE -ne 0) { "FAILED: restart (see the error above)" }
+    }
+  }
+}
+```
+
+</details>
+
+**Expect:** `certificate for <the new name>: yes`, `pod "harbor-nginx-…" deleted`, then
+`deployment "harbor-nginx" successfully rolled out`.
+
+**If not:**
+- `FAILED: after 10 minutes …`: **FINISH** did not apply the new name, or the name in the file is
+  not the one you typed in the vSphere Client: compare them and do step 3 again.
+- `FAILED: restart` under `Forbidden`: your user may not delete pods in Harbor's namespace; a
+  vCenter administrator must run this block.
+- Other `FAILED: …` lines: as in step 9's **If not**.
+- Step 9 then prints `http=000` although the DNS record is right: Harbor still serves the old
+  certificate; run this block again.
+
+## 13. Uninstall Harbor (optional)
 
 **Uninstalling destroys everything this Harbor holds**: every image, project and robot account.
 A new install starts empty, with a new address and a new CA. **It also updates every node of
