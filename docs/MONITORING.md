@@ -850,14 +850,14 @@ if ($LASTEXITCODE -eq 0) {
 `condition met`, every pod `Running`, and the Prometheus volume `Bound`. Then do steps 6 and 7.
 
 **If not:**
-- `Running` or `OutOfSync` on the first line, `Retrying attempt #…`, `prometheuses… not found` or
-  `doesn't have a resource type "prometheus"`: the install is still going (a first attempt can fail
-  and is tried again); run the block again in a minute.
-- `ComparisonError` or a message with `failed to fetch chart` or a timeout: the Supervisor cannot
-  reach the hosts above. Behind a proxy, see the proxy line in [ARGOCD.md](ARGOCD.md) step 6.
 - `InvalidSpecError` with `there are no clusters with this name`, `is not permitted in project` or
   `do not match any of the allowed destinations`: `ARGOCD_DESTINATION` is not the name ArgoCD
   shows. Run the block above again with the right name; it prints `configured` this time.
+- `ComparisonError` or a message with `failed to fetch chart` or a timeout: the Supervisor cannot
+  reach the hosts above. Behind a proxy, see the proxy line in [ARGOCD.md](ARGOCD.md) step 6.
+- No such error, and `Running` or `OutOfSync` on the first line, `Retrying attempt #…`,
+  `prometheuses… not found` or `doesn't have a resource type "prometheus"`: the install is still
+  going (a first attempt can fail and is tried again); run the block again in a minute.
 - `Failed` with a message: the message says what failed. ArgoCD tries up to ten times; to try
   again after that, click the tile in the ArgoCD page, then **SYNC** and **SYNCHRONIZE**.
 - `FAILED: Prometheus or Alertmanager is not running`: as in step 5.
@@ -906,8 +906,8 @@ deleted`, `service "prometheus-kube-prometheus-kubelet" deleted` and `namespace 
 deleted`. Newer kubectl adds `from <namespace> namespace` to each `deleted` line.
 
 **If not:** `timed out waiting`: ArgoCD cannot reach the VKS cluster. In the ArgoCD page, delete
-the Application with **Non-cascading**, run this block again, then delete what the chart left
-outside the namespace:
+the Application with **Non-cascading**. If the VKS cluster is gone, stop here. Otherwise run this
+block again, then delete what the chart left outside the namespace:
 `kubectl --kubeconfig <the VKS kubeconfig> delete clusterrole,clusterrolebinding,mutatingwebhookconfiguration,validatingwebhookconfiguration -l app.kubernetes.io/instance=prometheus`
 and
 `kubectl --kubeconfig <the VKS kubeconfig> -n kube-system delete service -l app.kubernetes.io/instance=prometheus`.

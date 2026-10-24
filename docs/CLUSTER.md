@@ -292,6 +292,7 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 8. Delete the cluster (optional)
 
+If you installed monitoring with ArgoCD, run [MONITORING.md](MONITORING.md) step 10 first.
 **This destroys the cluster and its virtual machines.** The disks its apps created stay in the
 vSphere Namespace and keep their storage
 ([Broadcom KB 402764](https://knowledge.broadcom.com/external/article/402764)). A cluster that
