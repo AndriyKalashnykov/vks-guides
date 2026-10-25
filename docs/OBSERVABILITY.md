@@ -1544,13 +1544,75 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE label clusters.clu
 
 ### Remove the Metrics Aggregator (vCenter administrator)
 
-Only if step 11.1 recorded that you installed it, and no other VKS cluster still uses it. This
-tells you both, on the machine that ran step 11.1.
+**Only remove a Metrics Aggregator you installed, once no VKS cluster uses it.** This reads
+step 11.1's record, on the machine that ran it, and lists the clusters still `enabled`.
 
-TODO(window B): the MAY/DO NOT UNINSTALL block with the list of clusters still `enabled`, the
-vSphere Client uninstall and delete clicks with screenshots, and what stays behind (measured:
-the AddonInstalls in `vmware-system-vks-public`, the `telegraf-<cluster>` Secrets and
-Certificate in the vSphere Namespace, and the Service `default/metrics-aggregator` in each VKS
-cluster). After the service is removed, leave clusters at `disabled`.
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+OBSERVABILITY_DIR="$HOME/.config/vks-guides/observability"
+
+if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif ! ON="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get clusters.cluster.x-k8s.io -A \
+       -l addons.kubernetes.vmware.com/automated-monitoring=enabled \
+       -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}')"; then
+  echo "FAILED: cannot list the VKS clusters (see the error above)"
+elif [ ! -e "$OBSERVABILITY_DIR/metrics-aggregator-none-before-$SUP" ]; then
+  echo "DO NOT UNINSTALL: this machine has no record that this Supervisor had no Metrics Aggregator before yours"
+elif [ -n "$ON" ]; then
+  printf '%s\n' "$ON" | sed 's/^/still enabled: /'
+  echo "DO NOT UNINSTALL yet: set these clusters to disabled first (ask their owners)"
+else
+  echo "MAY UNINSTALL: you installed it, and no VKS cluster is enabled"
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$OBSERVABILITY_DIR = "$HOME\.config\vks-guides\observability"
+
+$global:LASTEXITCODE = $null
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
+if ($LASTEXITCODE -ne 0 -or -not $SUP) {
+  "FAILED: cannot read the Supervisor (see the error above)"
+} else {
+  $ON = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get clusters.cluster.x-k8s.io -A -l addons.kubernetes.vmware.com/automated-monitoring=enabled -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{''\n''}{end}' | Where-Object { $_ })
+  if ($LASTEXITCODE -ne 0) {
+    "FAILED: cannot list the VKS clusters (see the error above)"
+  } elseif (-not (Test-Path "$OBSERVABILITY_DIR\metrics-aggregator-none-before-$SUP")) {
+    "DO NOT UNINSTALL: this machine has no record that this Supervisor had no Metrics Aggregator before yours"
+  } elseif ($ON.Count) {
+    $ON | ForEach-Object { "still enabled: $_" }
+    "DO NOT UNINSTALL yet: set these clusters to disabled first (ask their owners)"
+  } else {
+    "MAY UNINSTALL: you installed it, and no VKS cluster is enabled"
+  }
+}
+```
+
+</details>
+
+**Expect:** `MAY UNINSTALL: you installed it, and no VKS cluster is enabled`.
+
+**If not:**
+- `DO NOT UNINSTALL: this machine has no record …`: stop. It was there when you began, or you
+  ran step 11.1 on another machine.
+- `DO NOT UNINSTALL yet` with `still enabled:` lines: those clusters still send to VCF
+  Operations. Set each one to `disabled` (block above), then run this again.
+
+TODO(window B): the vSphere Client uninstall and delete clicks with screenshots.
+
+What stays behind: the AddonInstalls in `vmware-system-vks-public` on the Supervisor, the
+`telegraf-<cluster>` Secrets and Certificate in each vSphere Namespace, and the Service
+`default/metrics-aggregator` in each VKS cluster. Leave every cluster at `disabled` once the
+service is gone.
 
 Back to [README](../README.md).
