@@ -1194,7 +1194,8 @@ plane already uses about all its allocatable memory; the add-ons add about 80 Mi
 
 For this step you need:
 
-- a vCenter administrator for steps 11.1 to 11.4 and the Supervisor's kubeconfig
+- a vCenter administrator for steps 11.1 to 11.4, and for step 11.5 the Supervisor's kubeconfig
+  of a user with the Edit role on the vSphere Namespace (or of a vCenter administrator)
   ([LOGIN.md](LOGIN.md)), saved as `~/.kube/supervisor.kubeconfig` (PowerShell:
   `$HOME\.kube\supervisor.kubeconfig`);
 - a Broadcom support portal account for the download;
@@ -1481,7 +1482,8 @@ the Supervisor already labelled), then both `successfully rolled out`.
   [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 - `FAILED: this cluster runs MONITORING.md from before …`: do what it says, then run this again.
 - `must have value 'enabled' or 'disabled'`: the label value is lowercase only.
-- `Forbidden`: run it with a vCenter administrator's Supervisor login.
+- `Forbidden`: log in to the Supervisor as a user with the Edit role on the vSphere Namespace, or
+  as a vCenter administrator.
 - `FAILED: the add-ons did not appear in 10 minutes`: the service is not installed (step 11.4),
   or the Supervisor cannot reach `projects.packages.broadcom.com`.
 
