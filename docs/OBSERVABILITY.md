@@ -10,6 +10,7 @@
 > - [podinfo](https://github.com/stefanprodan/podinfo) (the sample app)
 > - VCF Operations 9.1: [What is vSphere Supervisor Monitoring](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/connect-to-data-sources/vsphere-supervisor-monitoring/what-is-vsphere-supervisor-monitoring.html), [Enabling Monitoring for VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/connect-to-data-sources/vsphere-supervisor-monitoring/steps-to-monitor-vsphere-supervisor-clusters-and-resources/prerequisites-for-vsphere-supervisor-monitoring.html), [Enabling Monitoring for vSphere Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/connect-to-data-sources/vsphere-supervisor-monitoring/steps-to-monitor-vsphere-supervisor-clusters-and-resources/enabling-the-vsphere-supervisor-collection.html) (step 10), [Getting Started with Log Management](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/log-analysis/getting-started-with-log-management.html), [What's New in VCF Operations 9.1](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/release-notes/vmware-cloud-foundation-9-1-0-0-release-notes/what-s-new/whats-new-vcf-ops.html)
 > - [Monitoring VKS Clusters Using VCF Operations](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/operating-tkg-service-clusters/monitoring-vks-clusters-using-vcf-operations.html) (VKS documentation; there is no 9.1-numbered copy)
+> - Supervisor Services 9.1 (step 11): [Add a Supervisor Service to vCenter](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/add-a-vsphere-services-to-vcenter-server.html), [Install a Supervisor Service on a Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/install-a-supervisor-service-on-supervisors.html), [Uninstall a Supervisor Service from a Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/uninstall-a-supervisor-service-version-from-a-supervisor.html), [Delete a Supervisor Service](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/delete-a-vsphere-service.html), [Disable Monitoring on VKS Clusters Using VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/operating-tkg-service-clusters/disable-automated-monitoring-on-vks-clusters-using-vcf-a/disable-monitoring-on-vks-clusters-using-vcf-cli.html) (the label)
 > - [Observability on VKS](https://blogs.vmware.com/cloud-foundation/2026/04/17/observability-on-vks/) (VMware's blog, with diagrams of this design), the [white paper](https://www.vmware.com/docs/observability-vks) (VCF 9.0; the versions and VCF Operations steps differ in 9.1) and its [examples](https://github.com/vmware/vks-consumption-models/tree/main/observability-consumption-model)
 
 This adds logs and traces to the Grafana of [MONITORING.md](MONITORING.md) and runs a sample app
@@ -1454,7 +1455,7 @@ the Supervisor already labelled), both `successfully rolled out`, then
 
 **If not:**
 - `must have value 'enabled' or 'disabled'`: the label value is lowercase only.
-- `Forbidden`: TODO(window B): the role that may set the label.
+- `Forbidden`: run it with a vCenter administrator's Supervisor login.
 - The rollout waits ten minutes and fails, or a Secret is missing: the service is not installed
   (step 11.4), or the Supervisor cannot reach `projects.packages.broadcom.com`.
 
@@ -1617,7 +1618,31 @@ if ($LASTEXITCODE -ne 0 -or -not $SUP) {
 - `DO NOT UNINSTALL yet` with `still enabled:` lines: those clusters still send to VCF
   Operations. Set each one to `disabled` (block above), then run this again.
 
-TODO(window B): the vSphere Client uninstall and delete clicks with screenshots.
+Then, in the vSphere Client:
+
+1. From the menu (☰) choose **Supervisor Management**, open the **Supervisors** tab, click your
+   Supervisor, then **Configure** → **Supervisor Services** → **Overview** → **INSTALLED**.
+   Select **Metrics Aggregator** and click **UNINSTALL**.
+
+   ![The Supervisor's installed services with Metrics Aggregator selected](img/observability/20-ma-uninstall-select.jpg)
+
+2. In **Uninstall Service on supervisor** click **UNINSTALL**. The row shows **Removing**, then
+   disappears within a minute (click the refresh arrow at the top).
+
+   ![The Uninstall Service dialog](img/observability/21-ma-uninstall-confirm.jpg)
+
+3. Open **Supervisor Management** → **Services**. On the **Metrics Aggregator** card, which now
+   shows **Supervisors 0**, click **ACTIONS** → **Delete**. In **Delete Metrics Aggregator**,
+   click **CONFIRM** under **1. Deactivate service**, then **CONFIRM** under **3. Delete all
+   versions of the Service** (2 is already done), then **DELETE**.
+
+   ![The Delete dialog with its three steps done](img/observability/22-ma-delete-steps.jpg)
+
+**Expect:** *'Metrics Aggregator' successfully deleted*, and no **Metrics Aggregator** card.
+
+![The Services tab after the delete](img/observability/23-ma-deleted.jpg)
+
+**If not:** **DELETE** stays grey: one of the three steps has no ✓ yet; do it first.
 
 What stays behind: the AddonInstalls in `vmware-system-vks-public` on the Supervisor, the
 `telegraf-<cluster>` Secrets and Certificate in each vSphere Namespace, and the Service
