@@ -23,10 +23,10 @@ that produces all three signals:
 | the cluster and its node VMs | the vSphere Supervisor integration | VCF Operations | VCF Operations |
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph cluster["VKS cluster"]
     app["podinfo"] -- "OTLP traces" --> jaeger["Jaeger"]
-    app -. "stdout, read from the node's log files" .-> fb["Fluent Bit add-on"] --> loki["Loki"]
+    app -. "node log files" .-> fb["Fluent Bit add-on"] --> loki["Loki"]
     prom["Prometheus"] -- "scrapes" --> app
     grafana["Grafana"] --> prom & loki & jaeger
   end
