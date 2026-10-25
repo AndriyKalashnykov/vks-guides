@@ -1460,14 +1460,19 @@ the Supervisor already labelled), both `successfully rolled out`, then
 
 ### 11.6 Check in VCF Operations
 
-Run step 10 again 30 minutes or more after step 11.5.
+Wait 10 minutes after step 11.5, then run step 10 again and open the cluster's **Metrics** tab.
 
-TODO(window B): screenshot of the filled-in VKS Cluster Summary.
+TODO(window B): screenshot of the VKS cluster's CPU and memory usage.
 
-**Expect:** the cluster's **Summary** shows node, deployment, DaemonSet and namespace counts
-above 0, and its CPU and memory.
+**Expect:** the cluster's **CPU** and **Memory** usage have values from the last few minutes; a
+new one comes every 5 minutes. Its node, deployment, DaemonSet and namespace counts appear in
+the **Summary** within an hour. Pod counts stay `0`.
 
-**If not:** still `0` after an hour: TODO(window B).
+**If not:** no CPU or memory values after 20 minutes: check that step 11.5 printed both Secrets,
+and that the vCenter account in VCF Operations has **Enable vSphere Supervisor Collection** on.
+
+The counts keep their last values after monitoring stops; only fresh CPU and memory values show
+that it works.
 
 ## 12. Uninstall (optional)
 
