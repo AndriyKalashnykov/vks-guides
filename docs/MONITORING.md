@@ -32,7 +32,9 @@ The blocks keep their files in `~/.config/vks-guides/monitoring` (PowerShell:
 ## 1. Check the cluster
 
 This checks the nodes and the default storage class, and that the cluster runs no Prometheus
-yet: neither Broadcom's Prometheus add-on nor another Prometheus Operator.
+yet: no Prometheus server (Broadcom's Prometheus add-on runs one) and no Prometheus Operator.
+Broadcom's monitoring for VCF Operations installs that add-on without a server; it does not
+count.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -44,10 +46,10 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 if kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes \
    && SC="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)" \
    && CRD="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)" \
-   && PKG="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get packageinstalls -A -o custom-columns=PACKAGE:.spec.packageRef.refName --no-headers)"; then
+   && SRV="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get deployments,statefulsets -A -o name)"; then
   echo "default storage class: $(printf '%s' "$SC" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | .metadata.name] | if length == 0 then "NONE" else join(" ") end')"
   echo "Prometheus Operator CRDs: $(printf '%s\n' "$CRD" | grep -c 'monitoring\.coreos\.com$')"
-  echo "Broadcom Prometheus add-on: $(printf '%s\n' "$PKG" | grep -c '^prometheus\.')"
+  echo "Prometheus server workloads: $(printf '%s\n' "$SRV" | grep -c 'prometheus-server$')"
 else
   echo "FAILED: cannot read the cluster (see the error above)"
 fi
@@ -66,12 +68,12 @@ $global:LASTEXITCODE = $null
 kubectl --kubeconfig $VKS_KUBECONFIG get nodes
 if ($LASTEXITCODE -eq 0) { $SC = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) { $CRD = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name) }
-if ($LASTEXITCODE -eq 0) { $PKG = @(kubectl --kubeconfig $VKS_KUBECONFIG get packageinstalls -A -o custom-columns=PACKAGE:.spec.packageRef.refName --no-headers) }
+if ($LASTEXITCODE -eq 0) { $SRV = @(kubectl --kubeconfig $VKS_KUBECONFIG get deployments,statefulsets -A -o name) }
 if ($LASTEXITCODE -eq 0) {
   $D = @((ConvertFrom-Json $SC).items | Where-Object { $_.metadata.annotations.'storageclass.kubernetes.io/is-default-class' -eq 'true' } | ForEach-Object { $_.metadata.name })
   "default storage class: $(if ($D.Count) { $D -join ' ' } else { 'NONE' })"
   "Prometheus Operator CRDs: $(@($CRD | Where-Object { $_ -cmatch 'monitoring\.coreos\.com$' }).Count)"
-  "Broadcom Prometheus add-on: $(@($PKG | Where-Object { $_ -cmatch '^prometheus\.' }).Count)"
+  "Prometheus server workloads: $(@($SRV | Where-Object { $_ -cmatch 'prometheus-server$' }).Count)"
 } else {
   "FAILED: cannot read the cluster (see the error above)"
 }
@@ -80,13 +82,13 @@ if ($LASTEXITCODE -eq 0) {
 </details>
 
 **Expect:** each node `Ready`, `default storage class:` and a name,
-`Prometheus Operator CRDs: 0` and `Broadcom Prometheus add-on: 0`.
+`Prometheus Operator CRDs: 0` and `Prometheus server workloads: 0`.
 
 **If not:**
 - `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
-- `Prometheus Operator CRDs:` or `Broadcom Prometheus add-on:` more than 0, before you ran this
-  guide's step 5 or 9: the cluster already runs a Prometheus. Use it, or a cluster without one; this
-  guide does not cover both.
+- `Prometheus Operator CRDs:` or `Prometheus server workloads:` more than 0, before you ran
+  this guide's step 5 or 9: the cluster already runs a Prometheus. Use it, or a cluster without
+  one; this guide does not cover both.
 - `FAILED: cannot read the cluster`: run
   [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
@@ -218,6 +220,8 @@ This downloads the chart, checks its SHA-256 and writes `values.yaml`: Grafana u
 from step 3, Prometheus keeps its data on a volume of `PROMETHEUS_STORAGE` from the default
 storage class and deletes the oldest data once it passes about 80% of it, and the chart skips
 etcd, the scheduler, the controller manager and kube-proxy, whose metrics VKS does not publish.
+kube-state-metrics is named `monitoring-kube-state-metrics`, so it does not clash with the one
+Broadcom's monitoring for VCF Operations adds.
 node-exporter runs on the pod network, because the VKS node firewall blocks its host port; node
 graphs name each node, and their network panels show the pod's interface.
 
@@ -254,6 +258,8 @@ prometheus:
           resources:
             requests:
               storage: ${PROMETHEUS_STORAGE}
+kube-state-metrics:
+  fullnameOverride: monitoring-kube-state-metrics
 kubeEtcd:
   enabled: false
 kubeScheduler:
@@ -313,6 +319,8 @@ prometheus:
           resources:
             requests:
               storage: $PROMETHEUS_STORAGE
+kube-state-metrics:
+  fullnameOverride: monitoring-kube-state-metrics
 kubeEtcd:
   enabled: false
 kubeScheduler:
@@ -347,6 +355,50 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
   not install it; run the block again.
 
 ## 5. Install
+
+**Run this first.** If Broadcom's monitoring for VCF Operations has taken over the
+kube-state-metrics access rules of an install from before the rename in step 4, this marks them
+so Helm keeps them; otherwise it changes nothing.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+if ! OWNER="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebinding prometheus-kube-state-metrics \
+     --ignore-not-found -o jsonpath='{.subjects[0].namespace}')"; then
+  echo "FAILED: cannot read the cluster (see the error above)"
+elif [ "$OWNER" = "tanzu-system-monitoring" ]; then
+  kubectl --kubeconfig "$VKS_KUBECONFIG" annotate clusterrole/prometheus-kube-state-metrics \
+    clusterrolebinding/prometheus-kube-state-metrics helm.sh/resource-policy=keep --overwrite
+else
+  echo "nothing to keep"
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+$global:LASTEXITCODE = $null
+$OWNER = kubectl --kubeconfig $VKS_KUBECONFIG get clusterrolebinding prometheus-kube-state-metrics --ignore-not-found -o jsonpath='{.subjects[0].namespace}'
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: cannot read the cluster (see the error above)"
+} elseif ($OWNER -eq 'tanzu-system-monitoring') {
+  kubectl --kubeconfig $VKS_KUBECONFIG annotate clusterrole/prometheus-kube-state-metrics clusterrolebinding/prometheus-kube-state-metrics helm.sh/resource-policy=keep --overwrite
+} else {
+  "nothing to keep"
+}
+```
+
+**Expect:** `nothing to keep`, or `clusterrole.rbac.authorization.k8s.io/prometheus-kube-state-metrics
+annotated` and the same for the `clusterrolebinding`.
+
+**If not:** `FAILED: cannot read the cluster`: run
+[Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
 This installs the chart as release `prometheus` and waits until Prometheus and Alertmanager are
 running (a few minutes; the first run downloads the images).
@@ -418,6 +470,9 @@ follow.
 **If not:**
 - `FAILED: helm install` after `namespaces "monitoring" not found`, or after
   `would violate PodSecurity` and `context deadline exceeded`: run step 2, then this block again.
+- `FAILED: helm install` after `ClusterRole "prometheus-kube-state-metrics" … exists and cannot be
+  imported`: your `values.yaml` is from before kube-state-metrics was renamed. Run step 4, then
+  this block again.
 - `FAILED: Prometheus or Alertmanager is not running`: the line under it says why. A volume that
   stays `Pending` means no default storage class or no room under the vSphere Namespace's
   storage limit ([NAMESPACE.md](NAMESPACE.md) step 7).
@@ -492,9 +547,9 @@ graphs for the cluster.
 
 ## 8. Uninstall with Helm (optional)
 
-For an install with ArgoCD, use step 10. **This deletes Prometheus's data and the Grafana
-password.** It removes the release, a Service the Prometheus Operator left in `kube-system`, and
-the namespace. The chart's CRDs stay (see below).
+For an install with ArgoCD, use step 10. Run the first block of step 5 first. **This deletes
+Prometheus's data and the Grafana password.** It removes the release, a Service the Prometheus
+Operator left in `kube-system`, and the namespace. The chart's CRDs stay (see below).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -555,7 +610,9 @@ This installs the same chart, version and values through the ArgoCD instance of
 (the VKS cluster added to ArgoCD), and a Supervisor that reaches
 `prometheus-community.github.io`, `github.com` and `release-assets.githubusercontent.com`.
 ArgoCD downloads the chart by version; there is no SHA-256 check on this path. Do steps 1 to 3
-first.
+first. Run over an install from before the rename in step 4, on a cluster with Broadcom's
+monitoring for VCF Operations, Broadcom's kube-state-metrics gets its access rules back when its
+add-on next reconciles, within 10 minutes.
 
 This checks that nothing has the names this step uses: the ArgoCD project `monitoring`, the
 Application `prometheus`, and a Helm release `prometheus` on the cluster.
@@ -667,6 +724,8 @@ spec:
                   resources:
                     requests:
                       storage: ${PROMETHEUS_STORAGE}
+        kube-state-metrics:
+          fullnameOverride: monitoring-kube-state-metrics
         kubeEtcd:
           enabled: false
         kubeScheduler:
@@ -767,6 +826,8 @@ spec:
                   resources:
                     requests:
                       storage: ${PROMETHEUS_STORAGE}
+        kube-state-metrics:
+          fullnameOverride: monitoring-kube-state-metrics
         kubeEtcd:
           enabled: false
         kubeScheduler:
