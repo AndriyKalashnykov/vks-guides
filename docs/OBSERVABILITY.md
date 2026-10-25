@@ -1171,8 +1171,8 @@ integration, and the cluster's Kubernetes counts once step 11 is done. In VCF Op
 
 **Expect:** the search lists the cluster under **VKS Cluster**, its resource pool, its node VMs
 and the nodes' volumes; each node VM `Powered On` with its CPU and memory use, and both charts.
-Unless the cluster has the namespace `tanzu-system-telegraf` (step 11), its own CPU and memory
-show `No data to display` and its counts `0`.
+Unless the cluster sends its metrics now or did before (step 11), its own CPU and memory show
+`No data to display` and its counts `0`.
 
 **If not:**
 - **Home** and the **Inventory** tree show nothing (`No results found`): use the search box.
@@ -1185,12 +1185,12 @@ show `No data to display` and its counts `0`.
 This installs Broadcom's Metrics Aggregator Supervisor Service by hand and turns it on for your
 VKS cluster. VCF Operations then shows the cluster's node, deployment, DaemonSet and namespace
 counts and its CPU and memory (step 10). Broadcom documents this service only with VCF
-Automation, which installs it by default.
+Automation, which installs it by default; check with Broadcom that your licence covers it.
 
 Once it is installed, the Supervisor labels every new VKS cluster `enabled`, and Broadcom's
-Telegraf and Prometheus add-ons run in it, unless the cluster's label is `disabled`. If a VKS
-cluster on this Supervisor runs [MONITORING.md](MONITORING.md) from before 2026-10-25, run its
-steps 4 and 5 again first.
+Telegraf and Prometheus add-ons run in it (about 400 MiB across its nodes), unless the cluster's
+label is `disabled`. On `best-effort-small` nodes the control plane then uses more memory than
+it has allocatable.
 
 For this step you need:
 
@@ -1405,15 +1405,24 @@ VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-if kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
-     addons.kubernetes.vmware.com/automated-monitoring=enabled --overwrite; then
+addons() {
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-telegraf get daemonset telegraf >/dev/null 2>&1 \
+    && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring get daemonset prometheus-node-exporter >/dev/null 2>&1
+}
+if kubectl --kubeconfig "$VKS_KUBECONFIG" -n monitoring get deployment prometheus-kube-state-metrics >/dev/null 2>&1; then
+  echo "FAILED: this cluster runs MONITORING.md from before kube-state-metrics was renamed; run its steps 4 and 5 (or step 9) again first"
+elif kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
+       addons.kubernetes.vmware.com/automated-monitoring=enabled --overwrite; then
   n=0
-  until kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-telegraf get daemonset telegraf >/dev/null 2>&1 || [ "$n" -ge 40 ]; do
+  until addons || [ "$n" -ge 40 ]; do
     sleep 15; n=$((n + 1))
   done
-  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-telegraf rollout status daemonset/telegraf --timeout=10m
-  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring rollout status daemonset/prometheus-node-exporter --timeout=10m
-  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get secret "telegraf-$VKS_CLUSTER" "telegraf-$VKS_CLUSTER-http-config" -o name
+  if addons; then
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-telegraf rollout status daemonset/telegraf --timeout=10m
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring rollout status daemonset/prometheus-node-exporter --timeout=10m
+  else
+    echo "FAILED: the add-ons did not appear in 10 minutes"
+  fi
 else
   echo "FAILED: label not set (see the error above)"
 fi
@@ -1430,34 +1439,44 @@ $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
+function Test-Addons {
+  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-telegraf get daemonset telegraf 2>$null | Out-Null
+  if ($LASTEXITCODE -ne 0) { return $false }
+  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring get daemonset prometheus-node-exporter 2>$null | Out-Null
+  return ($LASTEXITCODE -eq 0)
+}
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=enabled --overwrite
-if ($LASTEXITCODE -ne 0) {
-  "FAILED: label not set (see the error above)"
+kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring get deployment prometheus-kube-state-metrics 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) {
+  "FAILED: this cluster runs MONITORING.md from before kube-state-metrics was renamed; run its steps 4 and 5 (or step 9) again first"
 } else {
-  $n = 0
-  do {
-    if ($n -gt 0) { Start-Sleep 15 }
-    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-telegraf get daemonset telegraf 2>$null | Out-Null
-    $n++
-  } until ($LASTEXITCODE -eq 0 -or $n -gt 40)
-  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-telegraf rollout status daemonset/telegraf --timeout=10m
-  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring rollout status daemonset/prometheus-node-exporter --timeout=10m
-  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret "telegraf-$VKS_CLUSTER" "telegraf-$VKS_CLUSTER-http-config" -o name
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=enabled --overwrite
+  if ($LASTEXITCODE -ne 0) {
+    "FAILED: label not set (see the error above)"
+  } else {
+    $n = 0
+    while (-not (Test-Addons) -and $n -lt 40) { Start-Sleep 15; $n++ }
+    if (Test-Addons) {
+      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-telegraf rollout status daemonset/telegraf --timeout=10m
+      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring rollout status daemonset/prometheus-node-exporter --timeout=10m
+    } else {
+      "FAILED: the add-ons did not appear in 10 minutes"
+    }
+  }
 }
 ```
 
 </details>
 
 **Expect:** `cluster.cluster.x-k8s.io/<your cluster> labeled` (or `not labeled`, for a cluster
-the Supervisor already labelled), both `successfully rolled out`, then
-`secret/telegraf-<your cluster>` and `secret/telegraf-<your cluster>-http-config`.
+the Supervisor already labelled), then both `successfully rolled out`.
 
 **If not:**
+- `FAILED: this cluster runs MONITORING.md from before …`: do what it says, then run this again.
 - `must have value 'enabled' or 'disabled'`: the label value is lowercase only.
 - `Forbidden`: run it with a vCenter administrator's Supervisor login.
-- The rollout waits ten minutes and fails, or a Secret is missing: the service is not installed
-  (step 11.4), or the Supervisor cannot reach `projects.packages.broadcom.com`.
+- `FAILED: the add-ons did not appear in 10 minutes`: the service is not installed (step 11.4),
+  or the Supervisor cannot reach `projects.packages.broadcom.com`.
 
 ### 11.6 Check in VCF Operations
 
@@ -1476,7 +1495,7 @@ StatefulSets. **No of Pods** stays `0`.
 
 ![The VKS cluster's Summary with CPU, memory and counts](img/observability/18-ops-vks-cluster-filled.jpg)
 
-**If not:** no CPU or memory values after 20 minutes: check that step 11.5 printed both Secrets,
+**If not:** no CPU or memory values after 20 minutes: check that step 11.4 shows **Configured**,
 and that the vCenter account in VCF Operations has **Enable vSphere Supervisor Collection** on.
 
 The counts keep their last values after collection stops; only fresh CPU and memory values show
@@ -1525,8 +1544,8 @@ add-on with LOGGING.md step 8.
 
 ### Turn off VCF Operations' collection (if you did step 11)
 
-This sets your cluster's label to `disabled`; the add-ons leave the cluster within a minute
-(11 seconds on the test cluster).
+This sets your cluster's label to `disabled`, waits a minute, and checks that the add-ons left
+the cluster.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1535,8 +1554,12 @@ VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
-  addons.kubernetes.vmware.com/automated-monitoring=disabled --overwrite
+  addons.kubernetes.vmware.com/automated-monitoring=disabled --overwrite \
+  && sleep 60 \
+  && kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace tanzu-system-telegraf tanzu-system-monitoring
 ```
 
 **Windows (PowerShell):**
@@ -1546,11 +1569,18 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=disabled --overwrite
+if ($LASTEXITCODE -eq 0) {
+  Start-Sleep 60
+  kubectl --kubeconfig $VKS_KUBECONFIG get namespace tanzu-system-telegraf tanzu-system-monitoring
+}
 ```
 
 **Expect:** `cluster.cluster.x-k8s.io/<your cluster> labeled` (`not labeled` if it already
-was `disabled`).
+was `disabled`), then `namespaces "tanzu-system-telegraf" not found` and the same for
+`tanzu-system-monitoring`.
 
 ### Remove the Metrics Aggregator (vCenter administrator)
 
@@ -1610,7 +1640,8 @@ if ($LASTEXITCODE -ne 0 -or -not $SUP) {
 
 </details>
 
-**Expect:** `MAY UNINSTALL: you installed it, and no VKS cluster is enabled`.
+**Expect:** `MAY UNINSTALL: you installed it, and no VKS cluster is enabled`. The record proves
+only what step 11.1 saw: nobody else may have installed it since.
 
 **If not:**
 - `DO NOT UNINSTALL: this machine has no record …`: stop. It was there when you began, or you
@@ -1631,10 +1662,12 @@ Then, in the vSphere Client:
 
    ![The Uninstall Service dialog](img/observability/21-ma-uninstall-confirm.jpg)
 
-3. Open **Supervisor Management** → **Services**. On the **Metrics Aggregator** card, which now
-   shows **Supervisors 0**, click **ACTIONS** → **Delete**. In **Delete Metrics Aggregator**,
-   click **CONFIRM** under **1. Deactivate service**, then **CONFIRM** under **3. Delete all
-   versions of the Service** (2 is already done), then **DELETE**.
+3. Only if no Supervisor of this vCenter runs it and you registered it in step 11.3: open
+   **Supervisor Management** → **Services**. The **Metrics Aggregator** card must show
+   **Supervisors 0**; click **ACTIONS** → **Delete**. In **Delete Metrics Aggregator**, check
+   that **2. Uninstall all versions from Supervisors** has a ✓; otherwise stop and close the
+   window. Click **CONFIRM** under **1. Deactivate service**, then **CONFIRM** under **3. Delete
+   all versions of the Service**, then **DELETE**.
 
    ![The Delete dialog with its three steps done](img/observability/22-ma-delete-steps.jpg)
 
@@ -1643,6 +1676,39 @@ Then, in the vSphere Client:
 ![The Services tab after the delete](img/observability/23-ma-deleted.jpg)
 
 **If not:** **DELETE** stays grey: one of the three steps has no ✓ yet; do it first.
+
+**Remove step 11.1's record**, so a later run does not take a new install for yours:
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+OBSERVABILITY_DIR="$HOME/.config/vks-guides/observability"
+
+if SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" && [ -n "$SUP" ]; then
+  rm -f "$OBSERVABILITY_DIR/metrics-aggregator-none-before-$SUP" && echo "record removed"
+else
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$OBSERVABILITY_DIR = "$HOME\.config\vks-guides\observability"
+
+$global:LASTEXITCODE = $null
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
+if ($LASTEXITCODE -eq 0 -and $SUP) {
+  Remove-Item -Force -ErrorAction SilentlyContinue "$OBSERVABILITY_DIR\metrics-aggregator-none-before-$SUP"
+  "record removed"
+} else {
+  "FAILED: cannot read the Supervisor (see the error above)"
+}
+```
+
+**Expect:** `record removed`.
 
 What stays behind: the AddonInstalls in `vmware-system-vks-public` on the Supervisor, the
 `telegraf-<cluster>` Secrets and Certificate in each vSphere Namespace, and the Service
