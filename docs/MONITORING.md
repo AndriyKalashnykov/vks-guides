@@ -610,7 +610,9 @@ This installs the same chart, version and values through the ArgoCD instance of
 (the VKS cluster added to ArgoCD), and a Supervisor that reaches
 `prometheus-community.github.io`, `github.com` and `release-assets.githubusercontent.com`.
 ArgoCD downloads the chart by version; there is no SHA-256 check on this path. Do steps 1 to 3
-first.
+first. Run over an install from before the rename in step 4, on a cluster with Broadcom's
+monitoring for VCF Operations, this removes that monitoring's kube-state-metrics access rules
+for a few minutes, until Broadcom's add-on puts them back.
 
 This checks that nothing has the names this step uses: the ArgoCD project `monitoring`, the
 Application `prometheus`, and a Helm release `prometheus` on the cluster.

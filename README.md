@@ -100,8 +100,8 @@ and in PowerShell the Grafana password (step 3) was set from bash.
 
 On 2026-10-25 MONITORING.md's kube-state-metrics name, its step 1 check and the step 5 guard were
 run beside Broadcom's monitoring for VCF Operations (its Telegraf and Prometheus add-ons) in bash
-and zsh, in both install orders and as an upgrade; in Windows PowerShell 5.1 the changed blocks
-were run.
+and zsh: in both install orders, as a Helm and an ArgoCD upgrade, and with steps 8 and 10; in
+Windows PowerShell 5.1 step 1 and the guard were run.
 
 LOGGING.md was run on 2026-10-24 with VKS 3.7.2 and Fluent Bit add-on 5.0.9 on Ubuntu (bash;
 steps 5 to 7 also in zsh) and in WSL 2 Ubuntu (bash), installed, checked and uninstalled in each,
