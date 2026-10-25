@@ -1332,12 +1332,63 @@ if (Test-Path -LiteralPath $METRICS_AGGREGATOR_MANIFEST) {
 
 ### 11.3 Register the service with vCenter
 
-TODO(window B): the measured vSphere Client clicks and screenshots, as HARBOR.md step 5.
+Done once per vCenter. If a **Metrics Aggregator** card is already on the page in the first
+picture, skip to step 11.4.
+
+1. Open the vSphere Client. From the menu (☰, top left) choose **Supervisor Management**, then
+   the **Services** tab.
+2. On the **Add New Service** card click **ADD**.
+
+   ![The Services tab of Supervisor Management, with the Add New Service card and its ADD button](img/observability/10-ma-services-add.jpg)
+
+3. In the **New Service** window click **UPLOAD** and choose the manifest from step 11.2. The
+   window shows *YAML was uploaded successfully*, name **Metrics Aggregator**, ID
+   `metrics-aggregator.vmware.com`, version `9.1.1`.
+
+   ![The New Service window after the upload, showing the file name and the service details](img/observability/11-ma-uploaded.jpg)
+
+4. Click **FINISH**.
+
+**Expect:** *Service 'Metrics Aggregator' is successfully registered*, and a **Metrics
+Aggregator** card with **Active Versions 1** and **Supervisors 0**.
+
+![The Services tab after registration, with the green success line and the Metrics Aggregator card](img/observability/12-ma-registered.jpg)
+
+**If not:** no **ADD** button, or the upload is refused: your user may not manage Supervisor
+Services. An error naming the YAML: you chose the wrong file.
 
 ### 11.4 Install the service on your Supervisor
 
-TODO(window B): the measured clicks and screenshots, as HARBOR.md step 6 "Install it". Leave
-**YAML Service Config** empty (TODO(window B): confirm the box).
+1. On the **Metrics Aggregator** card click **ACTIONS**, then **Manage Service**.
+
+   ![The Metrics Aggregator card with its ACTIONS menu open](img/observability/13-ma-actions.jpg)
+
+2. **Configure:** leave **Install Version** at `9.1.1`, select your Supervisor, click **NEXT**.
+
+   ![The Configure step, with the Supervisor selected](img/observability/14-ma-configure.jpg)
+
+3. **Validate:** wait for *Validation completed successfully*, with **Compatibility Check** and
+   **Signature Verification** both **Pass**. Click **NEXT**.
+
+   ![The Validate step: Compatibility Check Pass and Signature Verification Pass](img/observability/15-ma-validate.jpg)
+
+4. **Review:** leave **YAML Service Config (optional)** empty. Click **FINISH**.
+
+   ![The Review step with the empty YAML Service Config box](img/observability/16-ma-review.jpg)
+
+5. Open the **Supervisors** tab, and in your Supervisor's row click **View** in the **Services**
+   column. Wait until the **Metrics Aggregator** row shows **Configured**: about a minute.
+
+**Expect:** **Metrics Aggregator**, `svc-metrics-aggregator-…`, **Configured**, `9.1.1`,
+**Trusted**.
+
+![The Supervisor's installed services, with the Metrics Aggregator Configured](img/observability/17-ma-installed.jpg)
+
+**If not:**
+- A failed check in **Validate**: the message beside it says why.
+- **Configuring** for more than 30 minutes, or an error naming an image: the Supervisor cannot
+  reach `projects.packages.broadcom.com`. An error naming `depot.kube-system.svc`: you
+  registered the manifest without **legacy** (step 11.2).
 
 ### 11.5 Turn it on for your VKS cluster
 
