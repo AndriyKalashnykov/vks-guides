@@ -36,12 +36,12 @@ flowchart TB
 Loki and Jaeger keep their data inside the cluster. The Loki and Jaeger charts are upstream;
 Broadcom does not support them.
 
-What VCF 9.1 itself offers, which this guide does not set up:
+What VCF 9.1 itself offers:
 
 - **Metrics:** Telegraf and Prometheus add-ons in the cluster send metrics through the Metrics
   Aggregator Supervisor service to a Cloud Proxy. The Metrics Aggregator is installed by default
   with VCF Automation. On a Supervisor without it, VCF Operations shows only the cluster and its
-  node VMs (step 10).
+  node VMs (step 10); step 11 installs it by hand.
 - **Logs:** Log Management in VCF Operations; [LOGGING.md](LOGGING.md) sends a cluster's logs
   there.
 - **Traces:** none of these Broadcom pages describes a view of an app's traces; this guide keeps
@@ -1150,7 +1150,7 @@ with that trace ID; and two series, `200` and `500`.
 ## 10. See the cluster in VCF Operations
 
 VCF Operations shows the VKS cluster and its node VMs through its vSphere Supervisor
-integration; nothing runs in the cluster for it. In VCF Operations:
+integration, and the cluster's Kubernetes counts once step 11 is done. In VCF Operations:
 
 1. In the search box at the top, type the cluster's name; under **VKS Cluster**, click it. This
    opens **Operate** → **Inventory** on the cluster's **Summary**.
@@ -1170,7 +1170,8 @@ integration; nothing runs in the cluster for it. In VCF Operations:
 
 **Expect:** the search lists the cluster under **VKS Cluster**, its resource pool, its node VMs
 and the nodes' volumes; each node VM `Powered On` with its CPU and memory use, and both charts.
-The cluster's own CPU, memory and pod counts stay empty: `No data to display` and `0`.
+Unless the cluster has the namespace `tanzu-system-telegraf` (step 11), its own CPU and memory
+show `No data to display` and its counts `0`.
 
 **If not:**
 - **Home** and the **Inventory** tree show nothing (`No results found`): use the search box.
@@ -1178,7 +1179,246 @@ The cluster's own CPU, memory and pod counts stay empty: `No data to display` an
   **Enable vSphere Supervisor Collection** on the vCenter account (**Administration** →
   **Integrations** → **Accounts**).
 
-## 11. Uninstall (optional)
+## 11. Let VCF Operations collect the cluster's Kubernetes metrics (optional)
+
+This installs Broadcom's Metrics Aggregator Supervisor Service by hand and turns it on for your
+VKS cluster. VCF Operations then shows the cluster's node, deployment, DaemonSet and namespace
+counts and its CPU and memory (step 10). Broadcom documents this service only with VCF
+Automation, which installs it by default.
+
+Once it is installed, the Supervisor labels every new VKS cluster `enabled`, and Broadcom's
+Telegraf and Prometheus add-ons run in it, unless the cluster's label is `disabled`. If a VKS
+cluster on this Supervisor runs [MONITORING.md](MONITORING.md) from before 2026-10-25, run its
+steps 4 and 5 again first.
+
+For this step you need:
+
+- a vCenter administrator for steps 11.1 to 11.4 and the Supervisor's kubeconfig
+  ([LOGIN.md](LOGIN.md)), saved as `~/.kube/supervisor.kubeconfig` (PowerShell:
+  `$HOME\.kube\supervisor.kubeconfig`);
+- a Broadcom support portal account for the download;
+- a Supervisor that reaches `projects.packages.broadcom.com`;
+- in VCF Operations, the vCenter account with **Enable vSphere Supervisor Collection** on (the
+  default);
+- about 400 MiB of memory to spare across the cluster's nodes, for the add-ons.
+
+### 11.1 Check the Supervisor
+
+This tells you whether the Supervisor already runs the Metrics Aggregator, records that it did
+not, for step 12, and lists the VKS clusters with their monitoring label.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+OBSERVABILITY_DIR="$HOME/.config/vks-guides/observability"
+
+if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=metrics-aggregator -o name)"; then
+  echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
+else
+  MARK="$OBSERVABILITY_DIR/metrics-aggregator-none-before-$SUP"
+  echo "Metrics Aggregator on this Supervisor: ${M:-none}"
+  if [ -z "$M" ] && [ ! -e "$MARK" ]; then
+    mkdir -p "$OBSERVABILITY_DIR" && : > "$MARK"
+  fi
+  if [ -e "$MARK" ]; then
+    echo "recorded: this Supervisor had no Metrics Aggregator when you began"
+  else
+    echo "recorded: nothing (a Metrics Aggregator was already here)"
+  fi
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get clusters.cluster.x-k8s.io -A \
+    -L addons.kubernetes.vmware.com/automated-monitoring
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$OBSERVABILITY_DIR = "$HOME\.config\vks-guides\observability"
+
+$global:LASTEXITCODE = $null
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
+if ($LASTEXITCODE -ne 0 -or -not $SUP) {
+  "FAILED: cannot read the Supervisor (see the error above)"
+} else {
+  $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=metrics-aggregator -o name
+  if ($LASTEXITCODE -ne 0) {
+    "FAILED: cannot list the Supervisor's namespaces (see the error above)"
+  } else {
+    $MARK = "$OBSERVABILITY_DIR\metrics-aggregator-none-before-$SUP"
+    "Metrics Aggregator on this Supervisor: $(if ($M) { $M -join ' ' } else { 'none' })"
+    if (-not $M -and -not (Test-Path $MARK)) {
+      New-Item -ItemType Directory -Force -Path $OBSERVABILITY_DIR | Out-Null
+      New-Item -ItemType File -Path $MARK | Out-Null
+    }
+    if (Test-Path $MARK) {
+      "recorded: this Supervisor had no Metrics Aggregator when you began"
+    } else {
+      "recorded: nothing (a Metrics Aggregator was already here)"
+    }
+    kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get clusters.cluster.x-k8s.io -A -L addons.kubernetes.vmware.com/automated-monitoring
+  }
+}
+```
+
+</details>
+
+**Expect:** `Metrics Aggregator on this Supervisor: none`, then
+`recorded: this Supervisor had no Metrics Aggregator when you began`, then each VKS cluster
+with an empty `AUTOMATED-MONITORING` column, or `disabled`.
+
+**If not:**
+- `FAILED: …` above `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+  Above `Forbidden`: log in as a vCenter administrator.
+- `namespace/svc-metrics-aggregator-…` and `recorded: nothing …`: the service is already
+  installed. Skip to step 11.5.
+
+### 11.2 Download the manifest
+
+Download this file from Broadcom into `Downloads`. Tick **"I agree to the Terms and
+Conditions"** if the page shows it, or the download icon does nothing.
+
+| file | where to click |
+|---|---|
+| `metrics-aggregator-9.1.1-25665407-legacy.yml` | [Metrics Aggregator 9.1.1](https://support.broadcom.com/group/ecx/productfiles?subFamily=vSphere%20Supervisor%20Services&displayGroup=Metrics%20Aggregator&release=9.1.1&os=&language=EN) → *Installation Package Manifest (packages.broadcom.com will reach EOS at the end of 2027)* |
+
+Take the manifest with **legacy** in its name: it downloads the service from
+`projects.packages.broadcom.com`. The other one needs a VCF Software Depot. Do not put the file
+into a Git repository; it is licensed to your Broadcom account.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+METRICS_AGGREGATOR_MANIFEST="$HOME/Downloads/metrics-aggregator-9.1.1-25665407-legacy.yml"
+
+if [ -f "$METRICS_AGGREGATOR_MANIFEST" ]; then
+  printf '%s  %s\n' "$( (sha256sum "$METRICS_AGGREGATOR_MANIFEST" 2>/dev/null || shasum -a 256 "$METRICS_AGGREGATOR_MANIFEST") | awk '{print $1}')" "$(basename "$METRICS_AGGREGATOR_MANIFEST")"
+else
+  echo "Not found: $METRICS_AGGREGATOR_MANIFEST"
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$METRICS_AGGREGATOR_MANIFEST = "$HOME\Downloads\metrics-aggregator-9.1.1-25665407-legacy.yml"
+
+if (Test-Path -LiteralPath $METRICS_AGGREGATOR_MANIFEST) {
+  "$((Get-FileHash -Algorithm SHA256 -LiteralPath $METRICS_AGGREGATOR_MANIFEST).Hash.ToLower())  $(Split-Path -Leaf $METRICS_AGGREGATOR_MANIFEST)"
+} else {
+  "Not found: $METRICS_AGGREGATOR_MANIFEST"
+}
+```
+
+**Expect:**
+
+```text
+685fda099d8150f0a63b83673bfeab2e81d748e04e604b26b2a541d1b59826d7  metrics-aggregator-9.1.1-25665407-legacy.yml
+```
+
+**If not:**
+- `Not found: …`: the file is not in `Downloads` under that name. Set the variable to where it
+  is.
+- `bb05a178a86aa109e4956835d56aaf56f16934c4cbb4bd88f09d65530950623f`: that is the manifest
+  without **legacy** in its name; download the other one.
+- Any other checksum: a damaged or wrong download. Delete it and download it again.
+
+### 11.3 Register the service with vCenter
+
+TODO(window B): the measured vSphere Client clicks and screenshots, as HARBOR.md step 5.
+
+### 11.4 Install the service on your Supervisor
+
+TODO(window B): the measured clicks and screenshots, as HARBOR.md step 6 "Install it". Leave
+**YAML Service Config** empty (TODO(window B): confirm the box).
+
+### 11.5 Turn it on for your VKS cluster
+
+This sets your cluster's label to `enabled` on the Supervisor, then waits until the add-ons run
+in the VKS cluster.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+if kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
+     addons.kubernetes.vmware.com/automated-monitoring=enabled --overwrite; then
+  n=0
+  until kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-telegraf get daemonset telegraf >/dev/null 2>&1 || [ "$n" -ge 40 ]; do
+    sleep 15; n=$((n + 1))
+  done
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-telegraf rollout status daemonset/telegraf --timeout=10m
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring rollout status daemonset/prometheus-node-exporter --timeout=10m
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get secret "telegraf-$VKS_CLUSTER" "telegraf-$VKS_CLUSTER-http-config" -o name
+else
+  echo "FAILED: label not set (see the error above)"
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+$global:LASTEXITCODE = $null
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=enabled --overwrite
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: label not set (see the error above)"
+} else {
+  $n = 0
+  do {
+    if ($n -gt 0) { Start-Sleep 15 }
+    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-telegraf get daemonset telegraf 2>$null | Out-Null
+    $n++
+  } until ($LASTEXITCODE -eq 0 -or $n -gt 40)
+  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-telegraf rollout status daemonset/telegraf --timeout=10m
+  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring rollout status daemonset/prometheus-node-exporter --timeout=10m
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret "telegraf-$VKS_CLUSTER" "telegraf-$VKS_CLUSTER-http-config" -o name
+}
+```
+
+</details>
+
+**Expect:** `cluster.cluster.x-k8s.io/<your cluster> labeled` (or `not labeled`, for a cluster
+the Supervisor already labelled), both `successfully rolled out`, then
+`secret/telegraf-<your cluster>` and `secret/telegraf-<your cluster>-http-config`.
+
+**If not:**
+- `must have value 'enabled' or 'disabled'`: the label value is lowercase only.
+- `Forbidden`: TODO(window B): the role that may set the label.
+- The rollout waits ten minutes and fails, or a Secret is missing: the service is not installed
+  (step 11.4), or the Supervisor cannot reach `projects.packages.broadcom.com`.
+
+### 11.6 Check in VCF Operations
+
+Run step 10 again 30 minutes or more after step 11.5.
+
+TODO(window B): screenshot of the filled-in VKS Cluster Summary.
+
+**Expect:** the cluster's **Summary** shows node, deployment, DaemonSet and namespace counts
+above 0, and its CPU and memory.
+
+**If not:** still `0` after an hour: TODO(window B).
+
+## 12. Uninstall (optional)
 
 **This deletes the logs in Loki and the traces in Jaeger.** It removes the sample app, the data
 sources (Grafana restarts to drop them), Jaeger, Loki and its volume, and the namespaces.
@@ -1218,5 +1458,43 @@ kubectl --kubeconfig $VKS_KUBECONFIG delete namespace observability --ignore-not
 Then, for Fluent Bit: if you did LOGGING.md, run the block of its step 7 and skip its note about
 this guide's step 5 (Loki is gone), so logs go only to Log Management again; otherwise remove the
 add-on with LOGGING.md step 8.
+
+### Turn off VCF Operations' collection (if you did step 11)
+
+This sets your cluster's label to `disabled`; the add-ons leave the cluster within a minute.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
+  addons.kubernetes.vmware.com/automated-monitoring=disabled --overwrite
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=disabled --overwrite
+```
+
+**Expect:** `cluster.cluster.x-k8s.io/<your cluster> labeled`.
+
+### Remove the Metrics Aggregator (vCenter administrator)
+
+Only if step 11.1 recorded that you installed it, and no other VKS cluster still uses it. This
+tells you both, on the machine that ran step 11.1.
+
+TODO(window B): the MAY/DO NOT UNINSTALL block with the list of clusters still `enabled`, the
+vSphere Client uninstall and delete clicks with screenshots, and what stays behind (measured:
+the AddonInstalls in `vmware-system-vks-public`, the `telegraf-<cluster>` Secrets and
+Certificate in the vSphere Namespace, and the Service `default/metrics-aggregator` in each VKS
+cluster). After the service is removed, leave clusters at `disabled`.
 
 Back to [README](../README.md).
