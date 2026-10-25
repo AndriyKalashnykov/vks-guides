@@ -1460,18 +1460,25 @@ the Supervisor already labelled), both `successfully rolled out`, then
 
 ### 11.6 Check in VCF Operations
 
-Wait 10 minutes after step 11.5, then run step 10 again and open the cluster's **Metrics** tab.
+Wait 10 minutes after step 11.5. In VCF Operations:
 
-TODO(window B): screenshot of the VKS cluster's CPU and memory usage.
+1. In the search box at the top, type the cluster's name; under **VKS Cluster**, click it.
+2. Open **Metrics**, type `Usage` in the metric search, and double-click **CPU** →
+   **Usage (Cores)** and **Memory** → **Usage (GB)**.
 
-**Expect:** the cluster's **CPU** and **Memory** usage have values from the last few minutes; a
-new one comes every 5 minutes. Its node, deployment, DaemonSet and namespace counts appear in
-the **Summary** within an hour. Pod counts stay `0`.
+   ![The VKS cluster's CPU and memory usage](img/observability/19-ops-vks-cluster-usage.jpg)
+
+**Expect:** both charts have values from the last few minutes; a new one comes every 5 minutes.
+Within an hour the **Summary** shows the cluster's DaemonSet and deployment counts and, under
+**VKS Cluster** in the tree, its Kubernetes nodes, namespaces, deployments, DaemonSets and
+StatefulSets. **No of Pods** stays `0`.
+
+![The VKS cluster's Summary with CPU, memory and counts](img/observability/18-ops-vks-cluster-filled.jpg)
 
 **If not:** no CPU or memory values after 20 minutes: check that step 11.5 printed both Secrets,
 and that the vCenter account in VCF Operations has **Enable vSphere Supervisor Collection** on.
 
-The counts keep their last values after monitoring stops; only fresh CPU and memory values show
+The counts keep their last values after collection stops; only fresh CPU and memory values show
 that it works.
 
 ## 12. Uninstall (optional)
@@ -1517,7 +1524,8 @@ add-on with LOGGING.md step 8.
 
 ### Turn off VCF Operations' collection (if you did step 11)
 
-This sets your cluster's label to `disabled`; the add-ons leave the cluster within a minute.
+This sets your cluster's label to `disabled`; the add-ons leave the cluster within a minute
+(11 seconds on the test cluster).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1540,7 +1548,8 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=disabled --overwrite
 ```
 
-**Expect:** `cluster.cluster.x-k8s.io/<your cluster> labeled`.
+**Expect:** `cluster.cluster.x-k8s.io/<your cluster> labeled` (`not labeled` if it already
+was `disabled`).
 
 ### Remove the Metrics Aggregator (vCenter administrator)
 
