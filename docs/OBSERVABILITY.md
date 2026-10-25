@@ -987,12 +987,10 @@ data:
         jsonData:
           tracesToLogsV2:
             datasourceUid: loki
-            filterByTraceID: true
             spanStartTimeShift: '-5m'
             spanEndTimeShift: '5m'
-            tags:
-              - key: service.name
-                value: container
+            customQuery: true
+            query: '{job="fluent-bit"} |= "$${__trace.traceId}"'
 EOF
 ```
 
@@ -1034,12 +1032,10 @@ data:
         jsonData:
           tracesToLogsV2:
             datasourceUid: loki
-            filterByTraceID: true
             spanStartTimeShift: '-5m'
             spanEndTimeShift: '5m'
-            tags:
-              - key: service.name
-                value: container
+            customQuery: true
+            query: '{job="fluent-bit"} |= "$${__trace.traceId}"'
 '@ | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
 ```
 
@@ -1052,16 +1048,28 @@ data:
 Run MONITORING.md step 7 to open Grafana, then:
 
 1. **Connections** → **Data sources** lists `Loki` and `Jaeger`. Open each and click **Test**.
-2. **Explore**, data source **Loki**, query `{container="podinfo"}`, **Run query**. Open a line
-   and click **View trace** next to `TraceID`.
-3. **Explore**, data source **Jaeger**, **Service** `podinfo`, **Run query**. Open a trace and
-   click the log icon on a span.
-4. **Explore**, data source **Prometheus**, query
-   `sum by (status) (rate(http_requests_total{namespace="podinfo"}[5m]))`.
 
-**Expect:** both tests `Data source is working` (Loki: `Data source successfully connected`);
-log lines from podinfo with a `TraceID` link that opens a trace of two spans; traces of
-`podinfo` whose log icon shows the line with the same trace ID; and two series, `200` and `500`.
+   ![Grafana data sources](img/observability/01-grafana-data-sources.jpg)
+
+2. **Explore**, data source **Loki**, query `{container="podinfo"}`, **Run query**. Click a line,
+   then under **Links** click **View trace**.
+
+   ![A podinfo log line with its trace link](img/observability/02-grafana-log-trace-link.jpg)
+
+   ![The trace opened from the log line](img/observability/03-grafana-log-to-trace.jpg)
+
+3. In the trace, click the `podinfo` span, then **Related logs**.
+
+   ![The log line opened from the trace](img/observability/04-grafana-trace-related-logs.jpg)
+
+4. **Explore**, data source **Prometheus**, query
+   `sum by (status) (rate(http_requests_total{namespace="podinfo"}[5m]))`, **Run query**.
+
+   ![podinfo requests by status](img/observability/05-grafana-prometheus-podinfo.jpg)
+
+**Expect:** Loki `Data source successfully connected` and Jaeger `Data source is working`; log
+lines from podinfo whose **View trace** opens a trace of two spans; **Related logs** shows the line
+with that trace ID; and two series, `200` and `500`.
 
 **If not:**
 - `Loki` or `Jaeger` missing: wait a minute after step 8, then reload the page.
@@ -1070,10 +1078,34 @@ log lines from podinfo with a `TraceID` link that opens a trace of two spans; tr
 
 ## 10. See the cluster in VCF Operations
 
-VCF Operations shows the VKS cluster through its vSphere Supervisor integration, with no add-on
-in the cluster.
+VCF Operations shows the VKS cluster and its node VMs through its vSphere Supervisor
+integration; nothing runs in the cluster for it. In VCF Operations:
 
-TODO(window A): measured UI path and screenshots.
+1. In the search box at the top, type the cluster's name; under **VKS Cluster**, click it. This
+   opens **Operate** → **Inventory** on the cluster's **Summary**.
+
+   ![Search for the VKS cluster](img/observability/06-ops-search.jpg)
+
+   ![The VKS cluster in VCF Operations](img/observability/07-ops-vks-cluster.jpg)
+
+2. In the tree on the left, expand **Virtual Machine**, click a node, then **Details**.
+
+   ![A node VM in VCF Operations](img/observability/08-ops-node-vm.jpg)
+
+3. Open **Metrics**, type `Usage` in the metric search, and double-click **CPU** →
+   **Usage (MHz)** and **Memory** → **Usage (%)**.
+
+   ![A node VM's CPU and memory](img/observability/09-ops-node-vm-metrics.jpg)
+
+**Expect:** the search lists the cluster under **VKS Cluster**, its resource pool, its node VMs
+and the nodes' volumes; each node VM `Powered On` with its CPU and memory use, and both charts.
+The cluster's own CPU, memory and pod counts stay empty: `No data to display` and `0`.
+
+**If not:**
+- **Home** and the **Inventory** tree show nothing (`No results found`): use the search box.
+- The search finds no **VKS Cluster**: ask your VCF Operations administrator to turn on
+  **Enable vSphere Supervisor Collection** on the vCenter account (**Administration** →
+  **Integrations** → **Accounts**).
 
 ## 11. Uninstall (optional)
 
