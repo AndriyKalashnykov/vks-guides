@@ -417,7 +417,8 @@ minutes.
 ## 7. Change the destination (optional)
 
 Run step 2 and step 3 with the new name, then this. It replaces the CA in the cluster, updates the
-add-on and restarts Fluent Bit.
+add-on and restarts Fluent Bit. If you did [OBSERVABILITY.md](OBSERVABILITY.md) step 5, run that
+step with the new name instead; this one would stop the logs to Loki.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

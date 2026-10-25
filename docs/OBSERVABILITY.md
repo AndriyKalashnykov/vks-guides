@@ -6,7 +6,7 @@
 > - [Loki Helm chart](https://github.com/grafana-community/helm-charts/tree/main/charts/loki) and [Install the monolithic Helm chart](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/) (Loki)
 > - [Jaeger Helm chart](https://github.com/jaegertracing/helm-charts/tree/main/charts/jaeger) and [Jaeger configuration](https://www.jaegertracing.io/docs/2.20/deployment/configuration/) (traces)
 > - [Fluent Bit Loki output](https://docs.fluentbit.io/manual/pipeline/outputs/loki) and Broadcom's [Fluent Bit Package Reference](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/standard-package-reference/fluent-bit-package-reference.html) (VCF 9.0 page; there is no 9.1 copy)
-> - Grafana: [Provision data sources](https://grafana.com/docs/grafana/latest/administration/provisioning/#data-sources), [Loki data source](https://grafana.com/docs/grafana/latest/datasources/loki/configure-loki-data-source/), [Jaeger data source](https://grafana.com/docs/grafana/latest/datasources/jaeger/configure/)
+> - Grafana: [Provision data sources](https://grafana.com/docs/grafana/latest/administration/provisioning/#data-sources), [Loki data source](https://grafana.com/docs/grafana/latest/datasources/loki/configure/), [Jaeger data source](https://grafana.com/docs/grafana/latest/datasources/jaeger/configure/)
 > - [podinfo](https://github.com/stefanprodan/podinfo) (the sample app)
 > - [Observability on VKS](https://www.vmware.com/docs/observability-vks) and its [examples](https://github.com/vmware/vks-consumption-models/tree/main/observability-consumption-model) (VMware's design this guide follows)
 
@@ -287,6 +287,8 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 - `FAILED: checksum mismatch …`: the download arrived damaged, or that release was rebuilt. Do
   not install it; run the block again.
 - `FAILED: helm install` after `namespaces "observability" not found`: run step 2.
+- `FAILED: helm install` after `client connection lost` and lines ending in `not ready`: the
+  connection to the cluster dropped while Helm waited. Run the block again.
 - The volume stays `Pending`: no default storage class, or no room under the vSphere
   Namespace's storage limit ([NAMESPACE.md](NAMESPACE.md) step 7).
 
@@ -904,7 +906,7 @@ both deployments `successfully rolled out`.
 
 ## 7. Check that the signals arrive
 
-Wait a minute after step 6. This asks Prometheus, Loki and Jaeger, through the cluster's API
+Wait two minutes after step 6. This asks Prometheus, Loki and Jaeger, through the cluster's API
 server, what they have from podinfo.
 
 **Linux, macOS, WSL (bash or zsh):**

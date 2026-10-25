@@ -6,8 +6,8 @@
 Copy-paste guides for VMware vSphere Kubernetes Service (VKS) on VCF 9.1, from an empty machine
 to apps running on a VKS cluster: install `kubectl` and the VCF CLI, log in to the Supervisor,
 create a vSphere Namespace and a VKS cluster, run Harbor as the clusters' private registry,
-deploy clusters and apps from Git with ArgoCD, monitor a cluster with Prometheus and Grafana, and
-send its logs to VCF Operations.
+deploy clusters and apps from Git with ArgoCD, monitor a cluster with Prometheus and Grafana,
+send its logs to VCF Operations, and see its logs and traces in Grafana.
 Each command-line step is a block for bash, zsh or Windows PowerShell, with the output to expect
 and what to do if it differs.
 
@@ -21,8 +21,9 @@ and what to do if it differs.
 ## Guides
 
 Start with Prerequisites. Then install kubectl and the VCF CLI, in either order. Log in needs both. Then create the
-vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harbor, ArgoCD, monitoring and
-logging are optional; monitoring needs Helm or ArgoCD.
+vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harbor, ArgoCD, monitoring,
+logging and observability are optional; monitoring needs Helm or ArgoCD, and observability needs
+monitoring.
 
 | guide | what it is |
 |---|---|
@@ -37,6 +38,7 @@ logging are optional; monitoring needs Helm or ArgoCD.
 | [Install Helm](docs/HELM.md) | the Kubernetes package manager, for installing charts such as the monitoring stack |
 | [Monitor a VKS cluster](docs/MONITORING.md) | Prometheus, Alertmanager and Grafana in a VKS cluster, from the upstream kube-prometheus-stack chart, with Helm or ArgoCD |
 | [Send a VKS cluster's logs to VCF Operations](docs/LOGGING.md) | Broadcom's Fluent Bit add-on, sending the cluster's logs over HTTPS to Log Management in VCF Operations |
+| [See a VKS cluster's logs and traces in Grafana](docs/OBSERVABILITY.md) | Loki and Jaeger in the cluster, Broadcom's Fluent Bit add-on sending logs to Loki, a sample app with linked logs and traces, and the cluster in VCF Operations |
 
 ## Check what is installed
 
@@ -101,6 +103,13 @@ steps 5 to 7 also in zsh) and in WSL 2 Ubuntu (bash), installed, checked and uni
 against a stand-in HTTPS receiver in place of Log Management; step 7 was run with a changed CA.
 In Windows PowerShell 5.1 its steps 2, 3, 5 and 6 were run; steps 1, 4, 7 and 8 were only parsed. On 2026-10-24 PREREQS.md, KUBECTL.md, VCF.md and LOGIN.md were run again
 in WSL 2 Ubuntu, the password login included.
+
+OBSERVABILITY.md was run on 2026-10-24 with VKS 3.7.2, kube-prometheus-stack 92.13.1 and Fluent
+Bit add-on 5.0.9 on Ubuntu, installed, checked and uninstalled in bash, zsh and Windows
+PowerShell 5.1, not on macOS or in WSL. In PowerShell step 5 was only parsed; it ran in bash and
+zsh, as an install, an update, and with `LOGS_FQDN` set against a stand-in name. Its Grafana
+steps were done in Chrome, and its VCF Operations steps in VCF Operations 9.1.1 on VMware vSphere
+Foundation.
 
 Renewing a login that had already expired was run on macOS (zsh) only.
 

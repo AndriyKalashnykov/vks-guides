@@ -2,7 +2,7 @@
 
 Copy-paste how-to guides for VMware vSphere Kubernetes Service (VKS), VCF 9.x: README.md links
 docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, ARGOCD.md,
-HELM.md, MONITORING.md, LOGGING.md (screenshots in docs/img/). Readers paste blocks; there is
+HELM.md, MONITORING.md, LOGGING.md, OBSERVABILITY.md (screenshots in docs/img/). Readers paste blocks; there is
 nothing to build.
 
 ## Rules
@@ -34,9 +34,10 @@ nothing to build.
   on the dev host; use the Windows walkbox from nested-vsphere-lab: `make walkbox-vm-start
   WALKBOX_OS=windows`).
 - A behaviour change is run for real before README's "Platforms" table claims it. On the owner's
-  nested-vsphere-lab the agent logs in itself and never asks the owner to: `make login` (or
-  `make kubectl-login`) in that checkout logs in to the Supervisor with the lab's own secrets, so
-  the agent never handles the password.
+  nested-vsphere-lab the agent logs in itself and never asks the owner to: `make login
+  VCF_CONTEXT=supervisor` (or `make kubectl-login VCF_CONTEXT=supervisor`) in that checkout logs
+  in to the Supervisor with the lab's own secrets, so the agent never handles the password, and
+  names the VCF CLI context `supervisor`, as the guides' `vcf context use supervisor` expects.
 - Coordinate every lab use with the nested-vsphere-lab session (find it with ListAgents, message
   it with SendMessage): announce before installing anything cluster-wide on a VKS cluster (CRDs,
   DaemonSets, host ports) or starting the walkbox, say when the lab is clean, and send it any lab
