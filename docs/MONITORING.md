@@ -548,8 +548,8 @@ graphs for the cluster.
 ## 8. Uninstall with Helm (optional)
 
 For an install with ArgoCD, use step 10. Run the first block of step 5 first. **This deletes
-Prometheus's data and the Grafana password.** It removes the release, a Service the Prometheus Operator left in `kube-system`, and
-the namespace. The chart's CRDs stay (see below).
+Prometheus's data and the Grafana password.** It removes the release, a Service the Prometheus
+Operator left in `kube-system`, and the namespace. The chart's CRDs stay (see below).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -611,8 +611,8 @@ This installs the same chart, version and values through the ArgoCD instance of
 `prometheus-community.github.io`, `github.com` and `release-assets.githubusercontent.com`.
 ArgoCD downloads the chart by version; there is no SHA-256 check on this path. Do steps 1 to 3
 first. Run over an install from before the rename in step 4, on a cluster with Broadcom's
-monitoring for VCF Operations, this removes that monitoring's kube-state-metrics access rules
-for a few minutes, until Broadcom's add-on puts them back.
+monitoring for VCF Operations, Broadcom's kube-state-metrics gets its access rules back when its
+add-on next reconciles, within 10 minutes.
 
 This checks that nothing has the names this step uses: the ArgoCD project `monitoring`, the
 Application `prometheus`, and a Helm release `prometheus` on the cluster.
@@ -931,8 +931,7 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 10. Uninstall with ArgoCD (optional)
 
-Run the first block of step 5 first. **This deletes Prometheus's data and the Grafana
-password.** It deletes the Application (and
+**This deletes Prometheus's data and the Grafana password.** It deletes the Application (and
 with it what ArgoCD installed) and the project, then a Service the Prometheus Operator left in
 `kube-system`, and the namespace. The chart's CRDs stay (measured with ArgoCD 3.4.4); to delete
 them, see step 8.
