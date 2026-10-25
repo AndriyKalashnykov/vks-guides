@@ -8,7 +8,8 @@
 > - [Fluent Bit Loki output](https://docs.fluentbit.io/manual/pipeline/outputs/loki) and Broadcom's [Fluent Bit Package Reference](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/standard-package-reference/fluent-bit-package-reference.html) (VCF 9.0 page; there is no 9.1 copy)
 > - Grafana: [Provision data sources](https://grafana.com/docs/grafana/latest/administration/provisioning/#data-sources), [Loki data source](https://grafana.com/docs/grafana/latest/datasources/loki/configure/), [Jaeger data source](https://grafana.com/docs/grafana/latest/datasources/jaeger/configure/)
 > - [podinfo](https://github.com/stefanprodan/podinfo) (the sample app)
-> - VCF Operations 9.1: [Monitoring VKS Clusters Using VCF Operations](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/operating-tkg-service-clusters/monitoring-vks-clusters-using-vcf-operations.html), [What is vSphere Supervisor Monitoring](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/connect-to-data-sources/vsphere-supervisor-monitoring/what-is-vsphere-supervisor-monitoring.html), [Enabling Monitoring for VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/connect-to-data-sources/vsphere-supervisor-monitoring/steps-to-monitor-vsphere-supervisor-clusters-and-resources/prerequisites-for-vsphere-supervisor-monitoring.html), [Enabling Monitoring for vSphere Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/connect-to-data-sources/vsphere-supervisor-monitoring/steps-to-monitor-vsphere-supervisor-clusters-and-resources/enabling-the-vsphere-supervisor-collection.html) (step 10), [Getting Started with Log Management](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/log-analysis/getting-started-with-log-management.html), [What's New in VCF Operations 9.1](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/release-notes/vmware-cloud-foundation-9-1-0-0-release-notes/what-s-new/whats-new-vcf-ops.html)
+> - VCF Operations 9.1: [What is vSphere Supervisor Monitoring](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/connect-to-data-sources/vsphere-supervisor-monitoring/what-is-vsphere-supervisor-monitoring.html), [Enabling Monitoring for VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/connect-to-data-sources/vsphere-supervisor-monitoring/steps-to-monitor-vsphere-supervisor-clusters-and-resources/prerequisites-for-vsphere-supervisor-monitoring.html), [Enabling Monitoring for vSphere Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/connect-to-data-sources/vsphere-supervisor-monitoring/steps-to-monitor-vsphere-supervisor-clusters-and-resources/enabling-the-vsphere-supervisor-collection.html) (step 10), [Getting Started with Log Management](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/log-analysis/getting-started-with-log-management.html), [What's New in VCF Operations 9.1](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/release-notes/vmware-cloud-foundation-9-1-0-0-release-notes/what-s-new/whats-new-vcf-ops.html)
+> - [Monitoring VKS Clusters Using VCF Operations](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/operating-tkg-service-clusters/monitoring-vks-clusters-using-vcf-operations.html) (VKS documentation; there is no 9.1-numbered copy)
 > - [Observability on VKS](https://blogs.vmware.com/cloud-foundation/2026/04/17/observability-on-vks/) (VMware's blog, with diagrams of this design), the [white paper](https://www.vmware.com/docs/observability-vks) (VCF 9.0; the versions and VCF Operations steps differ in 9.1) and its [examples](https://github.com/vmware/vks-consumption-models/tree/main/observability-consumption-model)
 
 This adds logs and traces to the Grafana of [MONITORING.md](MONITORING.md) and runs a sample app
@@ -25,11 +26,11 @@ that produces all three signals:
 flowchart LR
   subgraph cluster["VKS cluster"]
     app["podinfo"] -- "OTLP traces" --> jaeger["Jaeger"]
-    app -- "log lines" --> fb["Fluent Bit add-on"] --> loki["Loki"]
+    app -. "stdout, read from the node's log files" .-> fb["Fluent Bit add-on"] --> loki["Loki"]
     prom["Prometheus"] -- "scrapes" --> app
     grafana["Grafana"] --> prom & loki & jaeger
   end
-  nodes["node VMs"] -.- sup["vSphere Supervisor integration"] --> ops["VCF Operations"]
+  cluster -.- sup["vSphere Supervisor integration"] --> ops["VCF Operations"]
 ```
 
 Loki and Jaeger keep their data inside the cluster. The Loki and Jaeger charts are upstream;
@@ -37,13 +38,14 @@ Broadcom does not support them.
 
 What VCF 9.1 itself offers, which this guide does not set up:
 
-- **Metrics:** VCF Operations monitors VKS clusters through Telegraf and Prometheus add-ons that
-  push to the Metrics Aggregator Supervisor service and a Cloud Proxy. The Metrics Aggregator is
-  installed by default with VCF Automation. Without it, VCF Operations shows the cluster and its
+- **Metrics:** Telegraf and Prometheus add-ons in the cluster send metrics through the Metrics
+  Aggregator Supervisor service to a Cloud Proxy. The Metrics Aggregator is installed by default
+  with VCF Automation. On a Supervisor without it, VCF Operations shows only the cluster and its
   node VMs (step 10).
 - **Logs:** Log Management in VCF Operations; [LOGGING.md](LOGGING.md) sends a cluster's logs
   there.
-- **Traces:** VCF Operations 9.1 has no trace view.
+- **Traces:** none of these Broadcom pages describes a view of an app's traces; this guide keeps
+  them in Jaeger.
 
 You need:
 
@@ -568,7 +570,10 @@ if [ -n "$BAD_NAME" ]; then
 elif ! kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw /version >/dev/null; then
   echo "FAILED: cannot reach the VKS cluster; get its kubeconfig again (LOGIN.md)"
 elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit >/dev/null 2>&1; then
-  if [ -z "$LOGS_FQDN" ] && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get secret tls-ca-cert >/dev/null 2>&1; then
+  MOUNTS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit \
+    -o jsonpath='{.spec.template.spec.volumes[*].secret.secretName}' 2>/dev/null || true)"
+  case " $MOUNTS " in *" tls-ca-cert "*) TO_OPS=1 ;; *) TO_OPS="" ;; esac
+  if [ -z "$LOGS_FQDN" ] && [ -n "$TO_OPS" ]; then
     echo "FAILED: the add-on also sends to Log Management (LOGGING.md); set LOGS_FQDN to its name"
   elif vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -f "$V" -y; then
     sleep 30
@@ -653,8 +658,8 @@ if ($OK) {
 if ($OK) {
   kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit 2>$null | Out-Null
   $INSTALLED = $LASTEXITCODE -eq 0
-  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get secret tls-ca-cert 2>$null | Out-Null
-  $TO_OPS = $LASTEXITCODE -eq 0
+  $MOUNTS = kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit -o jsonpath='{.spec.template.spec.volumes[*].secret.secretName}' 2>$null
+  $TO_OPS = @("$MOUNTS" -split ' ') -contains 'tls-ca-cert'
   if ($INSTALLED -and $TO_OPS -and -not $LOGS_FQDN) {
     "FAILED: the add-on also sends to Log Management (LOGGING.md); set LOGS_FQDN to its name"
   } elseif ($INSTALLED) {
@@ -1210,7 +1215,8 @@ kubectl --kubeconfig $VKS_KUBECONFIG delete namespace observability --ignore-not
 
 **If not:** `Release not loaded`: it was already uninstalled.
 
-Then, for Fluent Bit: if you did LOGGING.md, run the block of its step 7, so logs go only to Log
-Management again; otherwise remove the add-on with LOGGING.md step 8.
+Then, for Fluent Bit: if you did LOGGING.md, run the block of its step 7 and skip its note about
+this guide's step 5 (Loki is gone), so logs go only to Log Management again; otherwise remove the
+add-on with LOGGING.md step 8.
 
 Back to [README](../README.md).
