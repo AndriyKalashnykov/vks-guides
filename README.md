@@ -115,7 +115,10 @@ PowerShell 5.1, not on macOS or in WSL. In PowerShell step 5's checks and the va
 run, not its add-on install or update; those ran in bash and zsh, with `LOGS_FQDN` empty and set
 against a stand-in name. Its Grafana
 steps were done in Chrome, and its VCF Operations steps in VCF Operations 9.1.1 on VMware vSphere
-Foundation.
+Foundation. Its step 11 (the Metrics Aggregator) was run on 2026-10-25 on that VMware vSphere
+Foundation lab without VCF Automation: the vSphere Client steps as a vCenter administrator, and
+its command blocks in bash, zsh and Windows PowerShell 5.1, with the label set by a vCenter
+administrator, then its undo in step 12 (label, check, uninstall and delete).
 
 Renewing a login that had already expired was run on macOS (zsh) only.
 
