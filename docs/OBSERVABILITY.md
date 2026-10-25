@@ -1078,7 +1078,7 @@ TODO(window A): measured UI path and screenshots.
 ## 11. Uninstall (optional)
 
 **This deletes the logs in Loki and the traces in Jaeger.** It removes the sample app, the data
-sources, Jaeger, Loki and its volume, and the namespaces.
+sources (Grafana restarts to drop them), Jaeger, Loki and its volume, and the namespaces.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1088,6 +1088,7 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace podinfo --ignore-not-found
 kubectl --kubeconfig "$VKS_KUBECONFIG" -n monitoring delete configmap observability-datasources --ignore-not-found
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n monitoring rollout restart deployment/prometheus-grafana
 helm uninstall jaeger loki --kubeconfig "$VKS_KUBECONFIG" -n observability
 kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace observability --ignore-not-found
 ```
@@ -1100,12 +1101,13 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig $VKS_KUBECONFIG delete namespace podinfo --ignore-not-found
 kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring delete configmap observability-datasources --ignore-not-found
+kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring rollout restart deployment/prometheus-grafana
 helm uninstall jaeger loki --kubeconfig $VKS_KUBECONFIG -n observability
 kubectl --kubeconfig $VKS_KUBECONFIG delete namespace observability --ignore-not-found
 ```
 
-**Expect:** `namespace "podinfo" deleted`, `configmap "observability-datasources" deleted`,
-`release "jaeger" uninstalled`, `release "loki" uninstalled` and
+**Expect:** `namespace "podinfo" deleted`, `configmap "observability-datasources" deleted …`,
+`deployment.apps/prometheus-grafana restarted`, `release "jaeger" uninstalled`, `release "loki" uninstalled` and
 `namespace "observability" deleted`.
 
 **If not:** `Release not loaded`: it was already uninstalled.
