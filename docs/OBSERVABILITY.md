@@ -8,7 +8,8 @@
 > - [Fluent Bit Loki output](https://docs.fluentbit.io/manual/pipeline/outputs/loki) and Broadcom's [Fluent Bit Package Reference](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/standard-package-reference/fluent-bit-package-reference.html) (VCF 9.0 page; there is no 9.1 copy)
 > - Grafana: [Provision data sources](https://grafana.com/docs/grafana/latest/administration/provisioning/#data-sources), [Loki data source](https://grafana.com/docs/grafana/latest/datasources/loki/configure/), [Jaeger data source](https://grafana.com/docs/grafana/latest/datasources/jaeger/configure/)
 > - [podinfo](https://github.com/stefanprodan/podinfo) (the sample app)
-> - [Observability on VKS](https://www.vmware.com/docs/observability-vks) and its [examples](https://github.com/vmware/vks-consumption-models/tree/main/observability-consumption-model) (VMware's design this guide follows)
+> - VCF Operations 9.1: [Monitoring VKS Clusters Using VCF Operations](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/operating-tkg-service-clusters/monitoring-vks-clusters-using-vcf-operations.html), [What is vSphere Supervisor Monitoring](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/connect-to-data-sources/vsphere-supervisor-monitoring/what-is-vsphere-supervisor-monitoring.html), [Enabling Monitoring for VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/connect-to-data-sources/vsphere-supervisor-monitoring/steps-to-monitor-vsphere-supervisor-clusters-and-resources/prerequisites-for-vsphere-supervisor-monitoring.html), [Enabling Monitoring for vSphere Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/connect-to-data-sources/vsphere-supervisor-monitoring/steps-to-monitor-vsphere-supervisor-clusters-and-resources/enabling-the-vsphere-supervisor-collection.html) (step 10), [Getting Started with Log Management](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/log-analysis/getting-started-with-log-management.html), [What's New in VCF Operations 9.1](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/release-notes/vmware-cloud-foundation-9-1-0-0-release-notes/what-s-new/whats-new-vcf-ops.html)
+> - [Observability on VKS](https://blogs.vmware.com/cloud-foundation/2026/04/17/observability-on-vks/) (VMware's blog, with diagrams of this design), the [white paper](https://www.vmware.com/docs/observability-vks) (VCF 9.0; the versions and VCF Operations steps differ in 9.1) and its [examples](https://github.com/vmware/vks-consumption-models/tree/main/observability-consumption-model)
 
 This adds logs and traces to the Grafana of [MONITORING.md](MONITORING.md) and runs a sample app
 that produces all three signals:
@@ -20,12 +21,33 @@ that produces all three signals:
 | traces | the app, over OTLP | Jaeger 2.20.0 | Grafana, with a link to the logs |
 | the cluster and its node VMs | the vSphere Supervisor integration | VCF Operations | VCF Operations |
 
+```mermaid
+flowchart LR
+  subgraph cluster["VKS cluster"]
+    app["podinfo"] -- "OTLP traces" --> jaeger["Jaeger"]
+    app -- "log lines" --> fb["Fluent Bit add-on"] --> loki["Loki"]
+    prom["Prometheus"] -- "scrapes" --> app
+    grafana["Grafana"] --> prom & loki & jaeger
+  end
+  nodes["node VMs"] -.- sup["vSphere Supervisor integration"] --> ops["VCF Operations"]
+```
+
 Loki and Jaeger keep their data inside the cluster. The Loki and Jaeger charts are upstream;
 Broadcom does not support them.
 
+What VCF 9.1 itself offers, which this guide does not set up:
+
+- **Metrics:** VCF Operations monitors VKS clusters through Telegraf and Prometheus add-ons that
+  push to the Metrics Aggregator Supervisor service and a Cloud Proxy. The Metrics Aggregator is
+  installed by default with VCF Automation. Without it, VCF Operations shows the cluster and its
+  node VMs (step 10).
+- **Logs:** Log Management in VCF Operations; [LOGGING.md](LOGGING.md) sends a cluster's logs
+  there.
+- **Traces:** VCF Operations 9.1 has no trace view.
+
 You need:
 
-- MONITORING.md steps 1 to 7, or steps 1 to 3 and 9;
+- MONITORING.md steps 1 to 7, or steps 1 to 3 and 9, and [Helm](HELM.md);
 - the [VCF CLI](VCF.md) with its plugins and a [Supervisor login](LOGIN.md), for the Fluent Bit
   add-on;
 - 10 GiB more storage for Loki, inside the vSphere Namespace's storage limit, if one is set;
@@ -295,8 +317,8 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 ## 4. Install Jaeger
 
 This downloads the chart, checks its SHA-256, writes `jaeger-values.yaml` and installs Jaeger
-2.20.0 as one pod. It keeps up to 10,000 traces in memory, so a restart empties it. Jaeger 2.21
-and later dropped the API that Grafana's Jaeger data source calls, which is why this pins 2.20.0.
+2.20.0 as one pod. It keeps up to 10,000 traces in memory, so a restart empties it. Grafana's
+Jaeger data source needs Jaeger 2.20 or earlier.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -503,6 +525,8 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 OBSERVABILITY_DIR="$HOME/.config/vks-guides/observability"
 
 V="$OBSERVABILITY_DIR/fluent-bit-values.yaml"
+BAD_NAME=""
+case "$LOGS_FQDN" in "") ;; logs.example.test|*[!a-z0-9.-]*) BAD_NAME=1 ;; esac
 mkdir -p "$OBSERVABILITY_DIR"
 {
   cat <<'EOF'
@@ -539,11 +563,20 @@ EOF
   fi
 } > "$V"
 vcf context use supervisor
-if kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit >/dev/null 2>&1; then
-  vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -f "$V" -y \
-    && sleep 30 \
-    && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit \
-    && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+if [ -n "$BAD_NAME" ]; then
+  echo "FAILED: set LOGS_FQDN to Log Management's DNS name (LOGGING.md step 3), or leave it empty"
+elif ! kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw /version >/dev/null; then
+  echo "FAILED: cannot reach the VKS cluster; get its kubeconfig again (LOGIN.md)"
+elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit >/dev/null 2>&1; then
+  if [ -z "$LOGS_FQDN" ] && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get secret tls-ca-cert >/dev/null 2>&1; then
+    echo "FAILED: the add-on also sends to Log Management (LOGGING.md); set LOGS_FQDN to its name"
+  elif vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -f "$V" -y; then
+    sleep 30
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+  else
+    echo "FAILED: add-on update (see the error above)"
+  fi
 elif [ -n "$LOGS_FQDN" ]; then
   echo "FAILED: LOGS_FQDN is set but the add-on is not installed; do LOGGING.md first, or leave LOGS_FQDN empty"
 elif vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
@@ -553,6 +586,8 @@ elif vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_
     sleep 15; n=$((n + 1))
   done
   kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+else
+  echo "FAILED: add-on install (see the error above)"
 fi
 ```
 
@@ -606,26 +641,46 @@ if ($LOGS_FQDN) {
 }
 [IO.File]::WriteAllText($V, ($T -replace "`r`n", "`n") + "`n")
 vcf context use supervisor
-kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit 2>$null | Out-Null
-if ($LASTEXITCODE -eq 0) {
-  vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f $V -y
-  if ($LASTEXITCODE -eq 0) {
-    Start-Sleep 30
-    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
-    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
-  }
-} elseif ($LOGS_FQDN) {
-  "FAILED: LOGS_FQDN is set but the add-on is not installed; do LOGGING.md first, or leave LOGS_FQDN empty"
-} else {
-  vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f $V -y
-  if ($LASTEXITCODE -eq 0) {
-    $n = 0
-    do {
-      if ($n -gt 0) { Start-Sleep 15 }
-      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit 2>$null | Out-Null
-      $n++
-    } until ($LASTEXITCODE -eq 0 -or $n -gt 40)
-    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+$OK = $true
+if ($LOGS_FQDN -and ($LOGS_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $LOGS_FQDN -eq 'logs.example.test')) {
+  "FAILED: set LOGS_FQDN to Log Management's DNS name (LOGGING.md step 3), or leave it empty"
+  $OK = $false
+}
+if ($OK) {
+  kubectl --kubeconfig $VKS_KUBECONFIG get --raw /version | Out-Null
+  if ($LASTEXITCODE -ne 0) { "FAILED: cannot reach the VKS cluster; get its kubeconfig again (LOGIN.md)"; $OK = $false }
+}
+if ($OK) {
+  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit 2>$null | Out-Null
+  $INSTALLED = $LASTEXITCODE -eq 0
+  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get secret tls-ca-cert 2>$null | Out-Null
+  $TO_OPS = $LASTEXITCODE -eq 0
+  if ($INSTALLED -and $TO_OPS -and -not $LOGS_FQDN) {
+    "FAILED: the add-on also sends to Log Management (LOGGING.md); set LOGS_FQDN to its name"
+  } elseif ($INSTALLED) {
+    vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f $V -y
+    if ($LASTEXITCODE -eq 0) {
+      Start-Sleep 30
+      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
+      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+    } else {
+      "FAILED: add-on update (see the error above)"
+    }
+  } elseif ($LOGS_FQDN) {
+    "FAILED: LOGS_FQDN is set but the add-on is not installed; do LOGGING.md first, or leave LOGS_FQDN empty"
+  } else {
+    vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f $V -y
+    if ($LASTEXITCODE -eq 0) {
+      $n = 0
+      do {
+        if ($n -gt 0) { Start-Sleep 15 }
+        kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit 2>$null | Out-Null
+        $n++
+      } until ($LASTEXITCODE -eq 0 -or $n -gt 40)
+      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+    } else {
+      "FAILED: add-on install (see the error above)"
+    }
   }
 }
 ```
@@ -633,12 +688,15 @@ if ($LASTEXITCODE -eq 0) {
 </details>
 
 **Expect:** the context lines from LOGGING.md step 1, then `Addon 'fluent-bit' is being
-installed in the cluster …` (or `… is being updated`), then
-`daemon set "fluent-bit" successfully rolled out`.
+installed in the cluster …` (on an update: `Addon 'fluent-bit' in the cluster … is being updated`
+and `daemonset.apps/fluent-bit restarted`), then `daemon set "fluent-bit" successfully rolled out`.
 
 **If not:**
 - `not found` for the release: copy its name again from LOGGING.md step 1.
 - `Unauthorized` or `context supervisor not found`: as in LOGGING.md step 1.
+- `FAILED: the add-on also sends to Log Management`: you did LOGGING.md; set `LOGS_FQDN` to Log
+  Management's name, so this step keeps that output.
+- `FAILED: add-on update` or `FAILED: add-on install`: the line above it says why.
 - The rollout times out: run
   `kubectl --kubeconfig <the VKS kubeconfig> -n tanzu-system-logging get pods` and `describe` the
   one that is not `Running`.
@@ -647,7 +705,7 @@ Fluent Bit's own log shows `error opening plugin /path/to/out_gstdout.so` and, r
 starts, `paused (mem buf overlimit …)`. Both come with the add-on and do no harm.
 
 If you run LOGGING.md step 7 later, it sends logs only to Log Management again; run this step
-after it.
+after it, with `LOGS_FQDN` set.
 
 ## 6. Run the sample app
 
@@ -951,7 +1009,8 @@ This adds the data sources `Loki` and `Jaeger` to Grafana. A ConfigMap carries t
 loads it within a minute, without a restart. Each log line with a trace ID links to its trace,
 and each trace links to its log lines.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -996,7 +1055,10 @@ data:
 EOF
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
@@ -1040,6 +1102,8 @@ data:
             query: '{job="fluent-bit"} |= "$${__trace.traceId}"'
 '@ | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
 ```
+
+</details>
 
 **Expect:** `configmap/observability-datasources created`.
 
@@ -1146,7 +1210,7 @@ kubectl --kubeconfig $VKS_KUBECONFIG delete namespace observability --ignore-not
 
 **If not:** `Release not loaded`: it was already uninstalled.
 
-Then, for Fluent Bit: if you did LOGGING.md, run its step 7 to send logs only to Log
-Management; otherwise remove the add-on with LOGGING.md step 8.
+Then, for Fluent Bit: if you did LOGGING.md, run the block of its step 7, so logs go only to Log
+Management again; otherwise remove the add-on with LOGGING.md step 8.
 
 Back to [README](../README.md).

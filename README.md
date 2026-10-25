@@ -23,7 +23,7 @@ and what to do if it differs.
 Start with Prerequisites. Then install kubectl and the VCF CLI, in either order. Log in needs both. Then create the
 vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harbor, ArgoCD, monitoring,
 logging and observability are optional; monitoring needs Helm or ArgoCD, and observability needs
-monitoring.
+monitoring and Helm.
 
 | guide | what it is |
 |---|---|
@@ -106,8 +106,9 @@ in WSL 2 Ubuntu, the password login included.
 
 OBSERVABILITY.md was run on 2026-10-24 with VKS 3.7.2, kube-prometheus-stack 92.13.1 and Fluent
 Bit add-on 5.0.9 on Ubuntu, installed, checked and uninstalled in bash, zsh and Windows
-PowerShell 5.1, not on macOS or in WSL. In PowerShell step 5 was only parsed; it ran in bash and
-zsh, as an install, an update, and with `LOGS_FQDN` set against a stand-in name. Its Grafana
+PowerShell 5.1, not on macOS or in WSL. In PowerShell step 5 was only parsed, and the values it
+writes were checked to match bash's; it ran in bash and zsh, as an install, an update, and with
+`LOGS_FQDN` set against a stand-in name. Its Grafana
 steps were done in Chrome, and its VCF Operations steps in VCF Operations 9.1.1 on VMware vSphere
 Foundation.
 
