@@ -356,9 +356,9 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 
 ## 5. Install
 
-**If you installed with this guide before kube-state-metrics was renamed** (step 4), run this
-first. When Broadcom's monitoring for VCF Operations has taken over the old kube-state-metrics
-access rules, it marks them so Helm keeps them; otherwise it changes nothing.
+**Run this first.** If Broadcom's monitoring for VCF Operations has taken over the
+kube-state-metrics access rules of an install from before the rename in step 4, this marks them
+so Helm keeps them; otherwise it changes nothing.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -366,9 +366,10 @@ access rules, it marks them so Helm keeps them; otherwise it changes nothing.
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-OWNER="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebinding prometheus-kube-state-metrics \
-  -o jsonpath='{.subjects[0].namespace}' 2>/dev/null || true)"
-if [ "$OWNER" = "tanzu-system-monitoring" ]; then
+if ! OWNER="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebinding prometheus-kube-state-metrics \
+     --ignore-not-found -o jsonpath='{.subjects[0].namespace}')"; then
+  echo "FAILED: cannot read the cluster (see the error above)"
+elif [ "$OWNER" = "tanzu-system-monitoring" ]; then
   kubectl --kubeconfig "$VKS_KUBECONFIG" annotate clusterrole/prometheus-kube-state-metrics \
     clusterrolebinding/prometheus-kube-state-metrics helm.sh/resource-policy=keep --overwrite
 else
@@ -382,8 +383,11 @@ fi
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
-$OWNER = kubectl --kubeconfig $VKS_KUBECONFIG get clusterrolebinding prometheus-kube-state-metrics -o jsonpath='{.subjects[0].namespace}' 2>$null
-if ($OWNER -eq 'tanzu-system-monitoring') {
+$global:LASTEXITCODE = $null
+$OWNER = kubectl --kubeconfig $VKS_KUBECONFIG get clusterrolebinding prometheus-kube-state-metrics --ignore-not-found -o jsonpath='{.subjects[0].namespace}'
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: cannot read the cluster (see the error above)"
+} elseif ($OWNER -eq 'tanzu-system-monitoring') {
   kubectl --kubeconfig $VKS_KUBECONFIG annotate clusterrole/prometheus-kube-state-metrics clusterrolebinding/prometheus-kube-state-metrics helm.sh/resource-policy=keep --overwrite
 } else {
   "nothing to keep"
@@ -392,6 +396,9 @@ if ($OWNER -eq 'tanzu-system-monitoring') {
 
 **Expect:** `nothing to keep`, or `clusterrole.rbac.authorization.k8s.io/prometheus-kube-state-metrics
 annotated` and the same for the `clusterrolebinding`.
+
+**If not:** `FAILED: cannot read the cluster`: run
+[Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
 This installs the chart as release `prometheus` and waits until Prometheus and Alertmanager are
 running (a few minutes; the first run downloads the images).
@@ -540,8 +547,8 @@ graphs for the cluster.
 
 ## 8. Uninstall with Helm (optional)
 
-For an install with ArgoCD, use step 10. **This deletes Prometheus's data and the Grafana
-password.** It removes the release, a Service the Prometheus Operator left in `kube-system`, and
+For an install with ArgoCD, use step 10. Run the first block of step 5 first. **This deletes
+Prometheus's data and the Grafana password.** It removes the release, a Service the Prometheus Operator left in `kube-system`, and
 the namespace. The chart's CRDs stay (see below).
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -922,7 +929,8 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 10. Uninstall with ArgoCD (optional)
 
-**This deletes Prometheus's data and the Grafana password.** It deletes the Application (and
+Run the first block of step 5 first. **This deletes Prometheus's data and the Grafana
+password.** It deletes the Application (and
 with it what ArgoCD installed) and the project, then a Service the Prometheus Operator left in
 `kube-system`, and the namespace. The chart's CRDs stay (measured with ArgoCD 3.4.4); to delete
 them, see step 8.
