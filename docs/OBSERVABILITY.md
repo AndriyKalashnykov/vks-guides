@@ -1171,8 +1171,8 @@ integration, and the cluster's Kubernetes counts once step 11 is done. In VCF Op
 
 **Expect:** the search lists the cluster under **VKS Cluster**, its resource pool, its node VMs
 and the nodes' volumes; each node VM `Powered On` with its CPU and memory use, and both charts.
-Unless the cluster sends its metrics now or did before (step 11), its own CPU and memory show
-`No data to display` and its counts `0`.
+Unless it sends metrics now (step 11), its own CPU and memory show `No data to display`; its
+counts are `0` unless it ever sent them.
 
 **If not:**
 - **Home** and the **Inventory** tree show nothing (`No results found`): use the search box.
@@ -1188,9 +1188,9 @@ counts and its CPU and memory (step 10). Broadcom documents this service only wi
 Automation, which installs it by default; check with Broadcom that your licence covers it.
 
 Once it is installed, the Supervisor labels every new VKS cluster `enabled`, and Broadcom's
-Telegraf and Prometheus add-ons run in it (about 400 MiB across its nodes), unless the cluster's
-label is `disabled`. On `best-effort-small` nodes the control plane then uses more memory than
-it has allocatable.
+Telegraf and Prometheus add-ons run in it (about 100 MiB per node; about 400 MiB on a 3-node
+cluster), unless the cluster's label is `disabled`. On `best-effort-small` nodes the control
+plane already uses about all its allocatable memory; the add-ons add about 80 MiB to it.
 
 For this step you need:
 
@@ -1201,7 +1201,7 @@ For this step you need:
 - a Supervisor that reaches `projects.packages.broadcom.com`;
 - in VCF Operations, the vCenter account with **Enable vSphere Supervisor Collection** on (the
   default);
-- about 400 MiB of memory to spare across the cluster's nodes, for the add-ons.
+- about 100 MiB of memory to spare on each of the cluster's nodes, for the add-ons.
 
 ### 11.1 Check the Supervisor
 
@@ -1409,7 +1409,10 @@ addons() {
   kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-telegraf get daemonset telegraf >/dev/null 2>&1 \
     && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring get daemonset prometheus-node-exporter >/dev/null 2>&1
 }
-if kubectl --kubeconfig "$VKS_KUBECONFIG" -n monitoring get deployment prometheus-kube-state-metrics >/dev/null 2>&1; then
+if ! OLD="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n monitoring get deployment prometheus-kube-state-metrics \
+     --ignore-not-found -o name)"; then
+  echo "FAILED: cannot read the VKS cluster (see the error above)"
+elif [ -n "$OLD" ]; then
   echo "FAILED: this cluster runs MONITORING.md from before kube-state-metrics was renamed; run its steps 4 and 5 (or step 9) again first"
 elif kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
        addons.kubernetes.vmware.com/automated-monitoring=enabled --overwrite; then
@@ -1446,8 +1449,10 @@ function Test-Addons {
   return ($LASTEXITCODE -eq 0)
 }
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring get deployment prometheus-kube-state-metrics 2>$null | Out-Null
-if ($LASTEXITCODE -eq 0) {
+$OLD = kubectl --kubeconfig $VKS_KUBECONFIG -n monitoring get deployment prometheus-kube-state-metrics --ignore-not-found -o name
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: cannot read the VKS cluster (see the error above)"
+} elseif ($OLD) {
   "FAILED: this cluster runs MONITORING.md from before kube-state-metrics was renamed; run its steps 4 and 5 (or step 9) again first"
 } else {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=enabled --overwrite
@@ -1472,6 +1477,8 @@ if ($LASTEXITCODE -eq 0) {
 the Supervisor already labelled), then both `successfully rolled out`.
 
 **If not:**
+- `FAILED: cannot read the VKS cluster`: run
+  [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 - `FAILED: this cluster runs MONITORING.md from before …`: do what it says, then run this again.
 - `must have value 'enabled' or 'disabled'`: the label value is lowercase only.
 - `Forbidden`: run it with a vCenter administrator's Supervisor login.
@@ -1553,7 +1560,6 @@ the cluster.
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
-
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
@@ -1568,7 +1574,6 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
-
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=disabled --overwrite
@@ -1581,6 +1586,8 @@ if ($LASTEXITCODE -eq 0) {
 **Expect:** `cluster.cluster.x-k8s.io/<your cluster> labeled` (`not labeled` if it already
 was `disabled`), then `namespaces "tanzu-system-telegraf" not found` and the same for
 `tanzu-system-monitoring`.
+
+**If not:** a namespace is still listed: wait a minute and run the last command again.
 
 ### Remove the Metrics Aggregator (vCenter administrator)
 
@@ -1641,7 +1648,8 @@ if ($LASTEXITCODE -ne 0 -or -not $SUP) {
 </details>
 
 **Expect:** `MAY UNINSTALL: you installed it, and no VKS cluster is enabled`. The record proves
-only what step 11.1 saw: nobody else may have installed it since.
+only what step 11.1 saw, not who installed the Metrics Aggregator there now; if you are not sure
+it is yours, ask the other vCenter administrators first.
 
 **If not:**
 - `DO NOT UNINSTALL: this machine has no record …`: stop. It was there when you began, or you
@@ -1675,7 +1683,8 @@ Then, in the vSphere Client:
 
 ![The Services tab after the delete](img/observability/23-ma-deleted.jpg)
 
-**If not:** **DELETE** stays grey: one of the three steps has no ✓ yet; do it first.
+**If not:** **DELETE** stays grey: click the **CONFIRM** you missed under 1 or 3. If 2 has no ✓,
+stop (see above).
 
 **Remove step 11.1's record**, so a later run does not take a new install for yours:
 
