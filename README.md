@@ -121,6 +121,12 @@ its command blocks in bash, zsh and Windows PowerShell 5.1, with the label set b
 administrator (and, as a server dry run, by a user with only the Edit role on the vSphere
 Namespace), then its undo in step 12 (label, check, uninstall and delete).
 
+NAMESPACE.md step 10 and CLUSTER.md step 9 (kubectl and YAML files) were run on 2026-10-26
+with VKS 3.7.2 as a vCenter administrator, with the Namespace Service on, on Ubuntu (bash, zsh)
+and Windows PowerShell 5.1, not on macOS or in WSL: in each shell a namespace and a cluster were
+created from the files and deleted with the guides' blocks; in bash and PowerShell they were also
+checked (NAMESPACE.md step 8, CLUSTER.md steps 6 and 7).
+
 Renewing a login that had already expired was run on macOS (zsh) only.
 
 ## License

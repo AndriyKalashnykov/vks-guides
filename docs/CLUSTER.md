@@ -9,6 +9,8 @@
 > - [Using VM Classes with VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/using-vm-classes-with-tkg-service-clusters.html)
 > - [Using the Versioned ClusterClass](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass.html) (`builtin-generic-v3.7.0`, the newest in VKS 3.7.2)
 > - [ClusterClass Variable Reference, VKS 3.7.0](https://developer.broadcom.com/xapis/vmware-vsphere-kubernetes-service/3.7.0/variable-docs.html) (`defaultStorageClass`; for `builtin-generic-v3.7.0`. [Other versions](https://developer.broadcom.com/xapis/vmware-vsphere-kubernetes-service/latest/) match other Cluster Classes)
+> - [Workflow for Provisioning VKS Clusters Using kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/workflow-for-provisioning-tkg-clusters-using-kubectl.html) (step 9)
+> - [Using builtin-generic-v3.6.0 Cluster Class with VKS 3.6.0 and Later](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/using-builtin-generic-v3-6-0-with-vks.html) (step 9: Broadcom's `v1beta2` Cluster YAML; `builtin-generic-v3.7.0` takes the same fields)
 > - [Check VKS Cluster Readiness Using Kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/operating-tkg-service-clusters/check-tkg-cluster-readiness-using-kubectl.html)
 > - [Connect to the VKS Cluster Control Plane as a Kubernetes Administrator](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connect-to-the-tkg-service-cluster-control-plane-as-a-kubernetes-administrator.html) (the kubeconfig)
 > - [Delete a VKS Cluster Using Kubectl or Using VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/delete-a-tkg-cluster-using-kubectl-or-using-the-tanzu-cli.html)
@@ -24,7 +26,8 @@ differ. Steps 3 to 5 were tested as a vCenter administrator; the terminal steps 
 with only **Namespaces Edit**.
 
 You need a vSphere Namespace that passes [Check the namespace](NAMESPACE.md#8-check-the-namespace),
-and the **Edit** role on it.
+and the **Edit** role on it. To create the cluster from a YAML file with kubectl instead of
+clicks, see [step 9](#9-create-the-cluster-with-kubectl-and-a-yaml-file).
 
 ## 1. Check the namespace
 
@@ -95,6 +98,9 @@ used before and deleted; such a name is still not safe.
   [Check the namespace](NAMESPACE.md#8-check-the-namespace).
 
 ## 3. Open the create page
+
+To create the cluster from a YAML file with kubectl instead of steps 3 to 5, see
+[step 9](#9-create-the-cluster-with-kubectl-and-a-yaml-file).
 
 1. In the vSphere Client, from the menu (☰) choose **Supervisor Management**, the **Namespaces**
    tab, and your namespace. Open its **Resources** tab.
@@ -403,3 +409,176 @@ else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete pers
 
 Do not create the next cluster under the same name. The cluster's kubeconfig stays in
 `~/.kube`; delete it yourself.
+
+## 9. Create the cluster with kubectl and a YAML file
+
+This replaces steps 3 to 5: you write the cluster as a YAML file and create it with kubectl. Run
+steps 1 and 2 first. Tested as a vCenter administrator.
+
+1. This lists the values the file needs: the Kubernetes releases you may use, the newest cluster
+   class, and the namespace's VM classes and storage classes.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_NAMESPACE="my-namespace"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+
+if J="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get kr -o json)"; then
+  echo "Kubernetes releases ready to use (version:), newest last:"
+  printf '%s' "$J" | jq -r '[.items[] | select([.status.conditions[]? | select(.type == "Ready" or .type == "Compatible") | .status] | length == 2 and all(. == "True")) | .metadata.name] | sort_by(split("---")[0] | ltrimstr("v") | split(".") | map(tonumber)) | .[]'
+else
+  echo "Kubernetes releases: unknown (see the error above)"
+fi
+if J="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n vmware-system-vks-public get clusterclass -o json)"; then
+  echo "Newest cluster class (classRef name:): $(printf '%s' "$J" | jq -r '[.items[].metadata.name] | sort_by(capture("v(?<v>[0-9.]+)$").v | split(".") | map(tonumber)) | last')"
+else
+  echo "Cluster classes: unknown (see the error above)"
+fi
+echo "VM classes (vmClass:):"
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get virtualmachineclass --no-headers
+echo "Storage classes (storageClass:, defaultStorageClass:):"
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get storagepolicyquota \
+  -o jsonpath='{range .items[*].status.total[*]}{.storageClassName}{"\n"}{end}' | sort -u
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+$global:LASTEXITCODE = $null
+$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get kr -o json
+if ($LASTEXITCODE -eq 0) {
+  "Kubernetes releases ready to use (version:), newest last:"
+  ($J | Out-String | ConvertFrom-Json).items | Where-Object {
+    @($_.status.conditions | Where-Object { ($_.type -eq 'Ready' -or $_.type -eq 'Compatible') -and $_.status -eq 'True' }).Count -eq 2
+  } | ForEach-Object { $_.metadata.name } | Sort-Object { [version](($_ -split '---')[0].TrimStart('v')) }
+} else {
+  "Kubernetes releases: unknown (see the error above)"
+}
+$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n vmware-system-vks-public get clusterclass -o json
+if ($LASTEXITCODE -eq 0) {
+  $N = ($J | Out-String | ConvertFrom-Json).items | ForEach-Object { $_.metadata.name } |
+    Sort-Object { [version]($_ -replace '^.*-v', '') } | Select-Object -Last 1
+  "Newest cluster class (classRef name:): $N"
+} else {
+  "Cluster classes: unknown (see the error above)"
+}
+"VM classes (vmClass:):"
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get virtualmachineclass --no-headers
+"Storage classes (storageClass:, defaultStorageClass:):"
+$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get storagepolicyquota -o json
+if ($LASTEXITCODE -eq 0) {
+  ($J | Out-String | ConvertFrom-Json).items | ForEach-Object { $_.status.total } |
+    ForEach-Object { $_.storageClassName } | Sort-Object -Unique
+}
+```
+
+</details>
+
+**Expect:** one or more release names such as `v1.36.4---vmware.2-vkr.3`, a cluster class such as
+`builtin-generic-v3.7.0`, at least one VM class and at least one storage class.
+
+**If not:** as in [Check the namespace](NAMESPACE.md#8-check-the-namespace).
+
+2. Save this as `cluster.yaml` in your home folder (Windows: `C:\Users\<you>`). Change the lines
+   marked `# <--`, with the values from the block above; leave the rest as it is.
+
+```yaml
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: my-vks-cluster                  # <-- 1. the name from step 2
+  namespace: my-namespace               # <-- 2. your vSphere Namespace
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.95.0.0/16                  # <-- 8. only if your network uses this range
+    services:
+      cidrBlocks:
+        - 10.96.0.0/12                  # <-- 8. only if your network uses this range
+    serviceDomain: cluster.local
+  topology:
+    classRef:
+      name: builtin-generic-v3.7.0      # <-- 3. the newest cluster class
+      namespace: vmware-system-vks-public
+    version: v1.36.4---vmware.2-vkr.3   # <-- 4. a Kubernetes release, usually the newest
+    controlPlane:
+      replicas: 1                       # <-- 5. control-plane nodes: 1 or 3
+    workers:
+      machineDeployments:
+        - class: node-pool
+          name: node-pool-1
+          replicas: 1                   # <-- 6. worker nodes: 1 or more
+    variables:
+      - name: vmClass
+        value: best-effort-small        # <-- 7. a VM class
+      - name: storageClass
+        value: wcp-vmfs                 # <-- 7. a storage class
+      - name: vsphereOptions
+        value:
+          persistentVolumes:
+            defaultStorageClass: wcp-vmfs   # <-- 7. the same storage class
+```
+
+| # | line | what to put |
+|---|---|---|
+| 1 | `metadata.name` | the cluster's name from step 2, never used before in this namespace |
+| 2 | `metadata.namespace` | your vSphere Namespace; the same as `VKS_NAMESPACE` in the block below |
+| 3 | `classRef.name` | the newest cluster class the block lists |
+| 4 | `version` | one name from the block's release list. The cluster stores it shortened: `v1.36.4---vmware.2-vkr.3` becomes `v1.36.4+vmware.2` |
+| 5 | `controlPlane.replicas` | `1`, or `3` for a cluster that must stay up when a node fails |
+| 6 | `machineDeployments` `replicas` | the number of worker nodes |
+| 7 | `vmClass`, `storageClass`, `defaultStorageClass` | a VM class and a storage class from the block (see the table in step 2). `defaultStorageClass` is the class apps get when they do not name one |
+| 8 | `cidrBlocks` | the vSphere Client's create page uses these same values. Change them only if they overlap your Supervisor's workload networks or load balancer addresses; ask a vCenter administrator |
+
+Leave `class: node-pool` (the node pool type the cluster class defines), `serviceDomain` and
+`classRef.namespace` as they are.
+
+3. This checks the file on the Supervisor without creating anything (`--dry-run=server`), then
+   creates the cluster.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_NAMESPACE="my-namespace"
+CLUSTER_YAML="$HOME/cluster.yaml"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" create --dry-run=server -f "$CLUSTER_YAML" \
+  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" create -f "$CLUSTER_YAML"
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$CLUSTER_YAML = "$HOME\cluster.yaml"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+$global:LASTEXITCODE = $null
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE create --dry-run=server -f $CLUSTER_YAML
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE create -f $CLUSTER_YAML }
+```
+
+**Expect:** `cluster.cluster.x-k8s.io/<name> created (server dry run)`, then
+`cluster.cluster.x-k8s.io/<name> created`.
+
+**If not:** nothing is created when the first line fails. Fix the file and run the block again.
+- `AlreadyExists`: choose another name (step 2).
+- `Could not resolve KR/OSImage`: `version` is not a release from the list.
+- `vm class(es): … not found` or `storage class(es): … not found`: line 7 names a class the
+  namespace does not have.
+- `MachineDeploymentClass with name … does not exist`: put back `class: node-pool`.
+- `does not match the namespace`: `metadata.namespace` and `VKS_NAMESPACE` differ.
+- `the path "…" does not exist`: the file is not where `CLUSTER_YAML` says.
+- `Forbidden` with none of these messages: your user needs the **Edit** role on the namespace.
+
+Then go on with [step 6](#6-wait-for-the-cluster). Step 8 deletes a cluster made this way too.
