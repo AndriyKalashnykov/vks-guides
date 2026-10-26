@@ -27,11 +27,11 @@ that produces all three signals:
 flowchart TB
   subgraph cluster["VKS cluster"]
     app["podinfo"] -- "OTLP traces" --> jaeger["Jaeger"]
-    app -. "node log files" .-> fb["Fluent Bit add-on"] --> loki["Loki"]
+    app -. "node log files" .-> fb["Fluent Bit<br>add-on"] --> loki["Loki"]
     prom["Prometheus"] -- "scrapes" --> app
     grafana["Grafana"] --> prom & loki & jaeger
   end
-  cluster -.- sup["vSphere Supervisor integration"] --> ops["VCF Operations"]
+  cluster -.- sup["vSphere<br>Supervisor<br>integration"] --> ops["VCF Operations"]
 ```
 
 Loki and Jaeger keep their data inside the cluster. The Loki and Jaeger charts are upstream;
