@@ -120,7 +120,7 @@ built on it.
 
 ## 3. Create the namespace
 
-To create it from a YAML file with kubectl instead of steps 3 to 6, see
+To create it from a YAML file with kubectl instead of steps 3, 5 and 6, see
 [step 10](#10-create-a-namespace-with-kubectl-and-a-yaml-file).
 
 1. From the menu (☰) choose **Supervisor Management**. On the **Namespaces** tab click **NEW
@@ -403,9 +403,10 @@ not end. Do not create a namespace of the same name meanwhile.
 
 ## 10. Create a namespace with kubectl and a YAML file
 
-This replaces steps 3 to 6. The namespace takes its storage policy, network and VM classes from
-the Supervisor's **Namespace Service** template, so you add none yourself. Tested as a vCenter
-administrator only.
+This replaces steps 3, 5 and 6. The namespace takes its storage policy, network and VM classes
+from the Supervisor's **Namespace Service** template, so you add none yourself. You get a role on
+the namespace; other users get one only from a vCenter administrator
+([step 4](#4-give-users-a-role)). Tested as a vCenter administrator only.
 
 Broadcom is retiring the Namespace Service: the vSphere Client says it *will be deprecated in
 the next major release of VCF* and points to VCF Automation. If VCF Automation creates your
@@ -444,8 +445,8 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG auth can-i create namespaces
 
 **Expect:** `yes`, under the line `Warning: resource 'namespaces' is not namespace scoped`.
 
-**If not:** `no`: the Namespace Service is off, or your user is not under its **Permissions**.
-Ask a vCenter administrator.
+**If not:** `no`: your user is not under the template's **Permissions**, or the Namespace Service
+is off. Ask a vCenter administrator.
 
 3. Save this as `namespace.yaml` in your home folder (Windows: `C:\Users\<you>`). Change only
    the name.
@@ -495,7 +496,10 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG create -f
 
 **Expect:** as in step 8: the template's VM classes under `VM classes:`, and under `Storage
 classes:` a class named after the template's storage policy plus one ending in `-latebinding`.
-In the vSphere Client the namespace is listed under **Supervisor Management** → **Namespaces**.
+In the vSphere Client the namespace is listed under **Supervisor Management** → **Namespaces**,
+**Config Status** **Running**, with the template's **Storage** as its storage limit.
+
+![The Namespaces tab: two namespaces made with kubectl, Running, Storage 0 | 108 GB](img/namespace/16-namespaces-kubectl.png)
 
 To remove the namespace, run the first block of step 9 to check that it is empty, then:
 
@@ -517,7 +521,7 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG delete namespace $VKS_NAMESPACE
 ```
 
-**Expect:** `namespace "<name>" deleted`, and after a minute the namespace is gone from the
-vSphere Client's **Namespaces** tab.
+**Expect:** `namespace "<name>" deleted`. In the vSphere Client's **Namespaces** tab the row shows
+**Config Status** **Removing**, then disappears.
 
 Back to [README](../README.md).
