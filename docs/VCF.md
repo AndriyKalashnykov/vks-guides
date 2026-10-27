@@ -181,4 +181,46 @@ Remove-Item -Recurse -Force $TMP
 - `WARNING: 'vcf' on PATH is …`: another `vcf` is found first. Remove it, or put `INSTALL_DIR`
   first in your `PATH`.
 
+## Stop the essentials message
+
+Once `vcf` has been used on a machine, every command may first print `The vcf cli essential
+plugins have not been installed …` and `Failed to install plugin 'telemetry:v9.0.2'`: `vcf` looks
+online for a plugin version Broadcom has not published. The command still runs. Setting
+`VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION` to `v9.1.1` stops the lookup; Broadcom does not document
+this variable. This sets it for this terminal and for new ones.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+case "$(uname -s)/${BASH_VERSION:+bash}" in
+  Darwin/bash) RC="$HOME/.bash_profile" ;;
+  */bash)      RC="$HOME/.bashrc" ;;
+  *)           RC="$HOME/.zshrc" ;;
+esac
+grep -qs 'VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION' "$RC" \
+  || echo 'export VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION=v9.1.1' >> "$RC"
+if [ "$RC" = "$HOME/.bashrc" ]; then
+  [ -f "$HOME/.bash_profile" ] || [ -f "$HOME/.bash_login" ] || [ -f "$HOME/.profile" ] \
+    || echo '[ -f ~/.bashrc ] && . ~/.bashrc' > "$HOME/.bash_profile"
+fi
+export VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION=v9.1.1
+echo "set in $RC"
+vcf plugin list
+```
+
+**Windows (PowerShell):**
+
+```powershell
+[Environment]::SetEnvironmentVariable('VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION', 'v9.1.1', 'User')
+$env:VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION = 'v9.1.1'
+"set for your Windows user"
+vcf plugin list
+```
+
+**Expect:** `set in …` (or `set for your Windows user`), then the plugins, each `installed`, with
+no `essential plugins` or `telemetry:v9.0.2` line before them.
+
+**If not:** the lines still appear in a terminal opened before this block: close it; terminals
+opened after it have the setting.
+
 Back to [README](../README.md).
