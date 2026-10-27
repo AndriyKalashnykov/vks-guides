@@ -19,25 +19,21 @@ section for your OS, then [Check](#check) (Linux, macOS and WSL; PowerShell need
 sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
 ```
 
-On other distributions, install the same five packages with your package manager.
+On other distributions (except Photon OS, below), install the same five packages with your package
+manager.
 
 ## Photon OS 5
 
-A minimal Photon lacks `unzip`, `jq`, `tr`, `awk` and `diff`, and has only cut-down versions of
-other basic tools, so this also installs `coreutils`, `findutils`, `gawk` and `diffutils`. It refreshes the package list first and installs `openssh` with the rest: installing
-`openssl` upgrades the library SSH uses, and without `openssh` in the same install the machine stops
-accepting SSH logins.
+Keep `openssh openssh-socket` in the line: without them the machine stops accepting SSH logins.
 
 ```sh
-sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar unzip jq openssl coreutils findutils gawk diffutils openssh openssh-socket
+sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar unzip jq openssl coreutils findutils gawk diffutils sed grep openssh openssh-socket
 ```
 
-**Expect:** `Complete!` (or `Nothing to do.` when all are installed).
+**Expect:** the prompt returns with no `Error` line (`Nothing to do.` when all are installed).
+Then run [Check](#check).
 
-**If not:**
-- `sudo: command not found`: run it as `root`, without `sudo`.
-- `curl` then fails with an SSL or certificate error: run
-  `sudo tdnf reinstall -y ca-certificates openssl openssl-libs curl curl-libs`.
+**If not:** `sudo: command not found`: run it as `root`, without `sudo`.
 
 ## macOS
 
@@ -96,12 +92,12 @@ Pick one:
 ## Check
 
 ```sh
-for t in curl tar unzip jq openssl; do
+for t in curl tar unzip jq openssl tr awk diff find; do
   command -v "$t" >/dev/null 2>&1 && echo "ok       $t" || echo "MISSING  $t"
 done
 ```
 
-**Expect:** five `ok` lines.
+**Expect:** nine `ok` lines.
 
 ## sudo (optional)
 

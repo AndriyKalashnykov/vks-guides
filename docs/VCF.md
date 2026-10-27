@@ -165,6 +165,7 @@ Remove-Item -Recurse -Force $TMP
 `WARNING` line.
 
 **If not:**
+- `subsystem request failed` when you copy the files to this machine with `scp`: use `scp -O`.
 - `FAILED: not found: …`: the file is not in `DOWNLOAD_DIR`, or it is from another release
   (download the file with the name in the `FAILED` line). `unsupported` in the name means there is no VCF CLI build for
   this OS/CPU.
