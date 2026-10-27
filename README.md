@@ -22,7 +22,7 @@ and what to do if it differs.
 
 Start with Prerequisites. Then install kubectl and the VCF CLI, in either order. Log in needs both. Then create the
 vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harbor, ArgoCD, Gitea,
-monitoring, logging and observability are optional; monitoring needs Helm or ArgoCD, and observability needs
+Tekton, monitoring, logging and observability are optional; monitoring needs Helm or ArgoCD, and observability needs
 monitoring and Helm.
 
 | guide | what it is |
@@ -36,6 +36,7 @@ monitoring and Helm.
 | [Install Harbor](docs/HARBOR.md) | a vCenter administrator's Harbor registry on the Supervisor, trusted by its VKS clusters |
 | [Create a VKS cluster and deploy an app with ArgoCD](docs/ARGOCD.md) | the ArgoCD Service, a VKS cluster made from Git, and a test app ArgoCD keeps in sync |
 | [Run Gitea in a VKS cluster](docs/GITEA.md) | a self-hosted Git server with a web page, in one pod of a VKS cluster, that other machines such as ArgoCD can clone from |
+| [Run Tekton in a VKS cluster](docs/TEKTON.md) | a CI/CD engine that runs each build step as a pod, with a sample pipeline started by an HTTP request |
 | [Install Helm](docs/HELM.md) | the Kubernetes package manager, for installing charts such as the monitoring stack |
 | [Monitor a VKS cluster](docs/MONITORING.md) | Prometheus, Alertmanager and Grafana in a VKS cluster, from the upstream kube-prometheus-stack chart, with Helm or ArgoCD |
 | [Send a VKS cluster's logs to VCF Operations](docs/LOGGING.md) | Broadcom's Fluent Bit add-on, sending the cluster's logs over HTTPS to Log Management in VCF Operations |
@@ -82,6 +83,7 @@ macOS on Apple silicon. ✅ every block run, "part" some blocks run, — not run
 | [Install Harbor](docs/HARBOR.md) | ✅ | part | ✅ | — | part |
 | [ArgoCD](docs/ARGOCD.md) | ✅ | ✅ | ✅ | — | part |
 | [Run Gitea](docs/GITEA.md) | ✅ | — | ✅ | ✅ | ✅ |
+| [Run Tekton](docs/TEKTON.md) | ✅ | — | ✅ | — | ✅ |
 | [Install Helm](docs/HELM.md) | ✅ | — | ✅ | — | ✅ |
 | [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | — | part | — | part |
 | [Send logs to VCF Operations](docs/LOGGING.md) | part | — | part | ✅ | part |
