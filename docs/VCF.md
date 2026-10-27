@@ -97,8 +97,7 @@ else
   "$DEST/vcf" version | head -1
   "$DEST/vcf" plugin list
   [ "$(command -v vcf)" = "$DEST/vcf" ] || echo "WARNING: 'vcf' on PATH is $(command -v vcf)"
-fi
-rm -rf "$TMP"
+fi; rm -rf "$TMP"
 ```
 
 </details>

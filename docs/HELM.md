@@ -45,8 +45,7 @@ else
   hash -r 2>/dev/null
   "$DEST/helm" version
   [ "$(command -v helm)" = "$DEST/helm" ] || echo "WARNING: 'helm' on PATH is $(command -v helm)"
-fi
-rm -rf "$TMP"
+fi; rm -rf "$TMP"
 ```
 
 </details>

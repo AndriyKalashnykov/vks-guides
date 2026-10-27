@@ -40,6 +40,9 @@ blocks; there is nothing to build.
   found`. Outside single quotes a `!` is followed by a space (`[ ! -f x ]`,
   `if ! cmd`); never in a `case` pattern such as `*[!a-z]*`
   (interactive zsh history-expands it). `[^…]` is not a fix: dash reads it differently.
+- A pasted block's lines wait in the terminal while earlier lines run, and `sudo` reads them (Ubuntu
+  sets `use_pty`): nothing may follow a compound that calls `sudo` except on its last line
+  (`fi; rm -rf "$TMP"`).
 - A behaviour change is run for real before README's "Tested on" table claims it. On the owner's
   nested-vsphere-lab the agent logs in itself and never asks the owner to: `make login
   VCF_CONTEXT=supervisor` (or `make kubectl-login VCF_CONTEXT=supervisor`) in that checkout logs
