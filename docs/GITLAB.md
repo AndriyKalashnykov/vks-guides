@@ -617,9 +617,26 @@ GitLab runs CI jobs on runners. This installs one, GitLab Runner 19.5.1, in the 
 1. In GitLab, open <http://localhost:3400/root/hello/-/runners/new>. Under **Tags** type `vks`,
    leave **Run untagged jobs** cleared, and click **Create runner**.
 2. GitLab shows a **Runner authentication token** that starts with `glrt-`, once. Copy it.
-3. Run the block below. It asks for the token (paste it; it is not shown), keeps it only in the
-   Secret `gitlab-runner-token`, downloads the runner's Helm chart 0.94.1 and checks its SHA-256,
-   then installs it. Set `GITLAB_URL` to your GitLab's address if it is not the one from step 3.
+3. In the terminal you will install from, run this and paste the token at the prompt (it is not
+   shown):
+
+   **Linux, macOS, WSL (bash or zsh):**
+
+   ```sh
+   printf 'Runner token: '; IFS= read -rs RUNNER_TOKEN; echo
+   ```
+
+   **Windows (PowerShell):**
+
+   ```powershell
+   $RUNNER_TOKEN = Read-Host 'Runner token' -AsSecureString
+   ```
+
+   **Expect:** a new prompt. The token stays in this terminal until the next block clears it.
+
+4. In the same terminal, run the block below. It keeps the token only in the Secret
+   `gitlab-runner-token`, downloads the runner's Helm chart 0.94.1 and checks its SHA-256, then
+   installs it. Set `GITLAB_URL` to your GitLab's address if it is not the one from step 3.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -676,11 +693,10 @@ runners:
         memory_request = "1Gi"
         memory_limit = "3Gi"
 EOF
-printf 'Runner token: '; IFS= read -rs RUNNER_TOKEN; echo
 case "$RUNNER_TOKEN" in glrt-?*) BAD="" ;; *) BAD=1 ;; esac
 [ -z "$(printf '%s' "$RUNNER_TOKEN" | LC_ALL=C tr -d 'A-Za-z0-9._-')" ] || BAD=1
 if [ -n "$BAD" ]; then
-  echo "FAILED: that is not a runner authentication token (it starts with glrt-)"
+  echo "FAILED: no runner token starting with glrt- in this terminal; do 3, then run this again"
 elif ! printf 'apiVersion: v1\nkind: Namespace\nmetadata:\n  name: gitlab-runner\n  labels:\n    pod-security.kubernetes.io/enforce: baseline\n    pod-security.kubernetes.io/audit: restricted\n    pod-security.kubernetes.io/warn: restricted\n' \
     | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -; then
   echo "FAILED: cannot create the namespace (see the error above)"
@@ -759,11 +775,10 @@ runners:
         memory_limit = "3Gi"
 '@
 [IO.File]::WriteAllText("$GITLAB_DIR\runner-values.yaml", ($V -replace "`r`n", "`n") + "`n")
-$S = Read-Host 'Runner token' -AsSecureString
-$T = [Net.NetworkCredential]::new('', $S).Password
+$T = if ($RUNNER_TOKEN) { [Net.NetworkCredential]::new('', $RUNNER_TOKEN).Password }
 $global:LASTEXITCODE = $null
 if ($T -cnotmatch '^glrt-[A-Za-z0-9._-]+$') {
-  "FAILED: that is not a runner authentication token (it starts with glrt-)"
+  "FAILED: no runner token starting with glrt- in this terminal; do 3, then run this again"
 } else {
   "apiVersion: v1`nkind: Namespace`nmetadata:`n  name: gitlab-runner`n  labels:`n    pod-security.kubernetes.io/enforce: baseline`n    pod-security.kubernetes.io/audit: restricted`n    pod-security.kubernetes.io/warn: restricted`n" |
     kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
@@ -787,7 +802,7 @@ if ($T -cnotmatch '^glrt-[A-Za-z0-9._-]+$') {
     }
   }
 }
-Remove-Variable S, T
+Remove-Variable -ErrorAction SilentlyContinue RUNNER_TOKEN, T
 Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 ```
 
@@ -799,7 +814,7 @@ one pod `1/1 Running`. Within a minute, <http://localhost:3400/root/hello/-/sett
 **Runners** shows the runner with a green dot (online).
 
 **If not:**
-- `FAILED: that is not a runner authentication token`: copy the whole token, starting at `glrt-`.
+- `FAILED: no runner token …`: do 3 in this terminal, pasting the whole token from `glrt-` on.
   If you lost it, create another runner (1 and 2) and delete the old one on the same page.
 - `helm: command not found`: install Helm ([HELM.md](HELM.md)).
 - `FAILED: download …`: this machine cannot reach `gitlab-charts.s3.amazonaws.com`.
