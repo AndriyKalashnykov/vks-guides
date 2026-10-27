@@ -529,7 +529,8 @@ OBSERVABILITY_DIR="$HOME/.config/vks-guides/observability"
 
 V="$OBSERVABILITY_DIR/fluent-bit-values.yaml"
 BAD_NAME=""
-case "$LOGS_FQDN" in "") ;; logs.example.test|*[!a-z0-9.-]*) BAD_NAME=1 ;; esac
+case "$LOGS_FQDN" in logs.example.test) BAD_NAME=1 ;; esac
+[ -z "$(printf '%s' "$LOGS_FQDN" | LC_ALL=C tr -d 'a-z0-9.-')" ] || BAD_NAME=1
 mkdir -p "$OBSERVABILITY_DIR"
 {
   cat <<'EOF'

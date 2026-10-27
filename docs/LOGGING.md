@@ -138,7 +138,8 @@ add-on keeps its own inputs, filters and parsers.
 LOGS_FQDN="logs.example.test"
 LOGGING_DIR="$HOME/.config/vks-guides/logging"
 
-case "$LOGS_FQDN" in ""|logs.example.test|*[!a-z0-9.-]*) BAD_NAME=1 ;; *) BAD_NAME="" ;; esac
+case "$LOGS_FQDN" in ""|logs.example.test) BAD_NAME=1 ;; *) BAD_NAME="" ;; esac
+[ -z "$(printf '%s' "$LOGS_FQDN" | LC_ALL=C tr -d 'a-z0-9.-')" ] || BAD_NAME=1
 if [ -n "$BAD_NAME" ]; then
   echo "NOT WRITTEN: set LOGS_FQDN to Log Management's DNS name"
 else
