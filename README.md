@@ -38,6 +38,7 @@ monitoring and Helm.
 | [Run Gitea in a VKS cluster](docs/GITEA.md) | a self-hosted Git server with a web page, in one pod of a VKS cluster, that other machines such as ArgoCD can clone from |
 | [Run Tekton in a VKS cluster](docs/TEKTON.md) | a CI/CD engine that runs each build step as a pod, with a sample pipeline started by an HTTP request |
 | [Run GitLab in a VKS cluster](docs/GITLAB.md) | GitLab Community Edition, Git and CI/CD in one product, in one pod of a VKS cluster, with a runner that runs each CI job as a pod; an alternative to Gitea and Tekton |
+| [Build and deploy on every push](docs/CICD.md) | a push to a Git repository builds the image in the VKS cluster, pushes it to Harbor and has ArgoCD roll it out, with Gitea and Tekton or with GitLab |
 | [Install Helm](docs/HELM.md) | the Kubernetes package manager, for installing charts such as the monitoring stack |
 | [Monitor a VKS cluster](docs/MONITORING.md) | Prometheus, Alertmanager and Grafana in a VKS cluster, from the upstream kube-prometheus-stack chart, with Helm or ArgoCD |
 | [Send a VKS cluster's logs to VCF Operations](docs/LOGGING.md) | Broadcom's Fluent Bit add-on, sending the cluster's logs over HTTPS to Log Management in VCF Operations |
@@ -86,6 +87,8 @@ macOS on Apple silicon. ✅ every block run, "part" some blocks run, — not run
 | [Run Gitea](docs/GITEA.md) | ✅ | — | ✅ | ✅ | ✅ |
 | [Run Tekton](docs/TEKTON.md) | ✅ | — | ✅ | — | ✅ |
 | [Run GitLab](docs/GITLAB.md) | ✅ | — | ✅ | — | ✅ |
+| [CI/CD with Gitea and Tekton](docs/CICD.md) | part | — | part | — | — |
+| [CI/CD with GitLab](docs/CICD.md) | — | — | part | — | part |
 | [Install Helm](docs/HELM.md) | ✅ | — | ✅ | — | ✅ |
 | [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | — | part | — | part |
 | [Send logs to VCF Operations](docs/LOGGING.md) | part | — | part | ✅ | part |
