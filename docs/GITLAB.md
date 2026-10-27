@@ -56,7 +56,7 @@ if kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes \
     function b(v) { if (v ~ /Ki$/) return v * 1024; if (v ~ /Mi$/) return v * 1048576; if (v ~ /Gi$/) return v * 1073741824
       if (v ~ /k$/) return v * 1000; if (v ~ /M$/) return v * 1000000; if (v ~ /G$/) return v * 1000000000; return v + 0 }
     $1 == "P" { n = split($3, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") r[$2] += b(a[i]) }
-    $1 == "N" { printf "%s %d\n", $2, (b($3) - r[$2]) / 1073741824 }' \
+    $1 == "N" && NF == 3 { printf "%s %d\n", $2, (b($3) - r[$2]) / 1073741824 }' \
   | while read -r W M; do
       D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "/api/v1/nodes/$W/proxy/stats/summary" </dev/null | jq '.node.runtime.imageFs.availableBytes / 1073741824 | floor')"
       echo "worker $W: $M GiB memory free, ${D:-?} GiB image disk free"
@@ -91,7 +91,8 @@ if ($LASTEXITCODE -eq 0) {
   foreach ($l in $N) {
     $f = -split $l
     $S = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "/api/v1/nodes/$($f[0])/proxy/stats/summary" | Out-String | ConvertFrom-Json
-    $DISK = if ($S) { [math]::Floor($S.node.runtime.imageFs.availableBytes / 1GB) } else { '?' }
+    $A = if ($S) { $S.node.runtime.imageFs.availableBytes }
+    $DISK = if ($null -ne $A) { [math]::Floor($A / 1GB) } else { '?' }
     "worker $($f[0]): $([math]::Floor(((B $f[1]) - $R[$f[0]]) / 1GB)) GiB memory free, $DISK GiB image disk free"
   }
   $D = @((ConvertFrom-Json $SC).items | Where-Object { $_.metadata.annotations.'storageclass.kubernetes.io/is-default-class' -eq 'true' } | ForEach-Object { "$($_.metadata.name) ($($_.volumeBindingMode), reclaim $($_.reclaimPolicy))" })
@@ -662,7 +663,7 @@ GitLab runs CI jobs on runners. This installs one, GitLab Runner 19.5.1, in the 
    $RUNNER_TOKEN = Read-Host 'Runner token' -AsSecureString
    ```
 
-   **Expect:** a new prompt. The token stays in this terminal until the next block clears it.
+   **Expect:** a new prompt. The token stays in this terminal until the next block stores it.
 
 4. In the same terminal, run the block below. It keeps the token only in the Secret
    `gitlab-runner-token`, downloads the runner's Helm chart 0.94.1 and checks its SHA-256, then
@@ -750,13 +751,12 @@ elif [ -n "$RUNNER_TOKEN" ] && ! printf 'apiVersion: v1\nkind: Secret\nmetadata:
 else
   unset RUNNER_TOKEN
   mv "$CHART.new" "$CHART"
-  helm upgrade --install gitlab-runner "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner -f "$GITLAB_DIR/runner-values.yaml" --set gitlabUrl="$GITLAB_URL" --wait --timeout 10m >/dev/null \
+  helm upgrade --install gitlab-runner "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner -f "$GITLAB_DIR/runner-values.yaml" --set gitlabUrl="$GITLAB_URL" >/dev/null \
     && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner rollout restart deployment/gitlab-runner \
     && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner rollout status deployment/gitlab-runner --timeout=5m \
     && helm list --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner \
     && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner get pods
 fi
-unset RUNNER_TOKEN
 rm -f "$CHART.new"
 ```
 
@@ -849,7 +849,7 @@ if (-not $OLD -and $T -cnotmatch '^glrt-[A-Za-z0-9._-]+$') {
     } else {
       Remove-Variable -ErrorAction SilentlyContinue RUNNER_TOKEN, T
       Move-Item -Force "$CHART.new" $CHART
-      helm upgrade --install gitlab-runner $CHART --kubeconfig $VKS_KUBECONFIG -n gitlab-runner -f "$GITLAB_DIR\runner-values.yaml" --set gitlabUrl=$GITLAB_URL --wait --timeout 10m | Out-Null
+      helm upgrade --install gitlab-runner $CHART --kubeconfig $VKS_KUBECONFIG -n gitlab-runner -f "$GITLAB_DIR\runner-values.yaml" --set gitlabUrl=$GITLAB_URL | Out-Null
       if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner rollout restart deployment/gitlab-runner }
       if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner rollout status deployment/gitlab-runner --timeout=5m }
       if ($LASTEXITCODE -eq 0) { helm list --kubeconfig $VKS_KUBECONFIG -n gitlab-runner }
@@ -857,7 +857,7 @@ if (-not $OLD -and $T -cnotmatch '^glrt-[A-Za-z0-9._-]+$') {
     }
   }
 }
-Remove-Variable -ErrorAction SilentlyContinue RUNNER_TOKEN, T
+Remove-Variable -ErrorAction SilentlyContinue T
 Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 ```
 
@@ -880,7 +880,7 @@ dot (online). Run without 3, the block says `no token typed: using the one store
 - `FAILED: download …`: this machine cannot reach `gitlab-charts.s3.amazonaws.com`.
 - `FAILED: checksum mismatch …`: the download arrived damaged, or the chart was rebuilt. Do not
   install it; run the block again.
-- `context deadline exceeded`, or the runner stays offline: `kubectl --kubeconfig <the VKS
+- `timed out waiting for the condition`, or the runner stays offline: `kubectl --kubeconfig <the VKS
   kubeconfig> -n gitlab-runner logs deployment/gitlab-runner` says why. `403 Forbidden` there means
   the token is wrong or the runner was deleted in GitLab: do 1, 2 and 3 again, then run this again.
 
