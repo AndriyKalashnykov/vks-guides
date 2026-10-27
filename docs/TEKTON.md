@@ -20,8 +20,8 @@ You need:
 - [kubectl](KUBECTL.md), and [curl and jq](PREREQS.md);
 - about 200m of free CPU on the workers, at least 100m on one worker for each of Tekton's two
   pods that ask for CPU (step 1 shows it);
-- nodes that reach `ghcr.io` (and `pkg-containers.githubusercontent.com`) for Tekton's images and
-  `cgr.dev` for the demo's; a machine that reaches `github.com` and
+- nodes that reach `ghcr.io` (and `pkg-containers.githubusercontent.com`) and `cgr.dev` for
+  Tekton's images; a machine that reaches `github.com` and
   `release-assets.githubusercontent.com`.
 
 The blocks keep their files in `~/.config/vks-guides/tekton` (PowerShell:
@@ -163,8 +163,9 @@ foreach ($F in $FILES) {
 ## 3. Install Tekton
 
 This installs Pipelines, waits for it, then installs Triggers and its interceptors and waits
-again. Triggers restarts a few times until its interceptors are in; that is expected. It can take
-several minutes while the nodes pull the images.
+again. Triggers is retried until the Pipelines webhook answers, which checks one of its settings,
+and the interceptors until the Triggers webhook answers. It can take several minutes while the nodes pull the
+images.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -174,23 +175,27 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 TEKTON_DIR="$HOME/.config/vks-guides/tekton"
 
-kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
-if ! kc apply --server-side -f "$TEKTON_DIR/tekton-pipelines-v1.17.1.yaml" >/dev/null \
-   || ! kc -n tekton-pipelines wait --for=condition=Available deployment --all --timeout=10m \
-   || ! kc apply --server-side -f "$TEKTON_DIR/tekton-triggers-v0.37.2.yaml" >/dev/null; then
-  echo "FAILED: Tekton Pipelines or Triggers (see the error above)"
+if ! kubectl --kubeconfig "$VKS_KUBECONFIG" apply --server-side -f "$TEKTON_DIR/tekton-pipelines-v1.17.1.yaml" >/dev/null \
+   || ! kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-pipelines wait --for=condition=Available deployment --all --timeout=10m; then
+  echo "FAILED: Tekton Pipelines (see the error above)"
 else
-  OK=""
-  for i in $(seq 20); do
-    if kc apply --server-side -f "$TEKTON_DIR/tekton-interceptors-v0.37.2.yaml" >/dev/null 2>&1; then OK=1; break; fi
-    sleep 15
+  FAILED=""
+  for F in tekton-triggers-v0.37.2.yaml tekton-interceptors-v0.37.2.yaml; do
+    OK=""
+    for i in $(seq 20); do
+      if kubectl --kubeconfig "$VKS_KUBECONFIG" apply --server-side -f "$TEKTON_DIR/$F" >/dev/null 2>&1; then OK=1; break; fi
+      sleep 15
+    done
+    if [ -z "$OK" ]; then
+      kubectl --kubeconfig "$VKS_KUBECONFIG" apply --server-side -f "$TEKTON_DIR/$F" >/dev/null
+      echo "FAILED: $F (see the error above)"; FAILED=1; break
+    fi
   done
-  if [ -z "$OK" ]; then
-    kc apply --server-side -f "$TEKTON_DIR/tekton-interceptors-v0.37.2.yaml" >/dev/null
-    echo "FAILED: Tekton interceptors (see the error above)"
-  elif kc -n tekton-pipelines wait --for=condition=Available deployment --all --timeout=10m \
-       && kc -n tekton-pipelines-resolvers wait --for=condition=Available deployment --all --timeout=10m; then
-    kc -n tekton-pipelines get pods
+  if [ -n "$FAILED" ]; then
+    :
+  elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-pipelines wait --for=condition=Available deployment --all --timeout=10m \
+       && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-pipelines-resolvers wait --for=condition=Available deployment --all --timeout=10m; then
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-pipelines get pods
   fi
 fi
 ```
@@ -208,20 +213,25 @@ $TEKTON_DIR = "$HOME\.config\vks-guides\tekton"
 $global:LASTEXITCODE = $null
 kubectl --kubeconfig $VKS_KUBECONFIG apply --server-side -f "$TEKTON_DIR\tekton-pipelines-v1.17.1.yaml" | Out-Null
 if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-pipelines wait --for=condition=Available deployment --all --timeout=10m }
-if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG apply --server-side -f "$TEKTON_DIR\tekton-triggers-v0.37.2.yaml" | Out-Null }
 if ($LASTEXITCODE -ne 0) {
-  "FAILED: Tekton Pipelines or Triggers (see the error above)"
+  "FAILED: Tekton Pipelines (see the error above)"
 } else {
-  $OK = $false
-  foreach ($i in 1..20) {
-    kubectl --kubeconfig $VKS_KUBECONFIG apply --server-side -f "$TEKTON_DIR\tekton-interceptors-v0.37.2.yaml" 2>$null | Out-Null
-    if ($LASTEXITCODE -eq 0) { $OK = $true; break }
-    Start-Sleep -Seconds 15
+  $FAILED = $false
+  foreach ($F in 'tekton-triggers-v0.37.2.yaml', 'tekton-interceptors-v0.37.2.yaml') {
+    $OK = $false
+    foreach ($i in 1..20) {
+      kubectl --kubeconfig $VKS_KUBECONFIG apply --server-side -f "$TEKTON_DIR\$F" 2>$null | Out-Null
+      if ($LASTEXITCODE -eq 0) { $OK = $true; break }
+      Start-Sleep -Seconds 15
+    }
+    if (-not $OK) {
+      kubectl --kubeconfig $VKS_KUBECONFIG apply --server-side -f "$TEKTON_DIR\$F" | Out-Null
+      "FAILED: $F (see the error above)"
+      $FAILED = $true
+      break
+    }
   }
-  if (-not $OK) {
-    kubectl --kubeconfig $VKS_KUBECONFIG apply --server-side -f "$TEKTON_DIR\tekton-interceptors-v0.37.2.yaml" | Out-Null
-    "FAILED: Tekton interceptors (see the error above)"
-  } else {
+  if (-not $FAILED) {
     kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-pipelines wait --for=condition=Available deployment --all --timeout=10m
     if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-pipelines-resolvers wait --for=condition=Available deployment --all --timeout=10m }
     if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-pipelines get pods }
@@ -239,7 +249,9 @@ controller, webhook and core interceptors.
 - `timed out waiting for the condition`: run `kubectl --kubeconfig <the VKS kubeconfig> -n
   tekton-pipelines get pods`. `ErrImagePull` or `ImagePullBackOff`: the nodes cannot reach
   `ghcr.io`. `Pending`: not enough free CPU (step 1).
-- `FAILED: Tekton interceptors`: the Triggers webhook did not come up; run the block again.
+- `FAILED: tekton-triggers-…` or `FAILED: tekton-interceptors-…` with `failed calling webhook`:
+  the Pipelines or Triggers webhook did not answer within five minutes; run `kubectl --kubeconfig
+  <the VKS kubeconfig> -n tekton-pipelines get pods`, then run the block again.
 
 ## 4. Run a pipeline
 
@@ -365,8 +377,12 @@ for i in $(seq 60); do
   [ "$S" = True ] || [ "$S" = False ] && break
   sleep 5
 done
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-demo get pipelinerun "$PR"
-[ "$S" = True ] && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-demo logs -l "tekton.dev/pipelineRun=$PR,tekton.dev/pipelineTask=second" -c step-show
+if [ -z "$PR" ]; then
+  echo "FAILED: no PipelineRun was created (see the error above)"
+else
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-demo get pipelinerun "$PR"
+  [ "$S" = True ] && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-demo logs -l "tekton.dev/pipelineRun=$PR,tekton.dev/pipelineTask=second" -c step-show
+fi
 ```
 
 </details>
@@ -487,8 +503,12 @@ foreach ($i in 1..60) {
   if ($S -eq 'True' -or $S -eq 'False') { break }
   Start-Sleep -Seconds 5
 }
-kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo get pipelinerun $PR
-if ($S -eq 'True') { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo logs -l "tekton.dev/pipelineRun=$PR,tekton.dev/pipelineTask=second" -c step-show }
+if (-not $PR) {
+  "FAILED: no PipelineRun was created (see the error above)"
+} else {
+  kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo get pipelinerun $PR
+  if ($S -eq 'True') { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo logs -l "tekton.dev/pipelineRun=$PR,tekton.dev/pipelineTask=second" -c step-show }
+}
 ```
 
 </details>
@@ -503,6 +523,7 @@ if ($S -eq 'True') { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo logs -l
   the task run that failed, and `kubectl --kubeconfig <the VKS kubeconfig> -n tekton-demo describe
   taskrun <name>` says why. `violates PodSecurity "restricted…"`: a step lacks the `stepTemplate`
   above. `ErrImagePull`: the nodes cannot reach `cgr.dev`.
+- `FAILED: no PipelineRun was created`: see the error above it.
 - `SUCCEEDED Unknown` after five minutes: the pods are still `Pending` or pulling; run
   `kubectl --kubeconfig <the VKS kubeconfig> -n tekton-demo get pods` and look at the reason.
 - `failed calling webhook "…tekton.dev"`: Tekton is still starting; wait a minute and run the
@@ -741,7 +762,8 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo r
 
 </details>
 
-**Expect:** a `created` line for each of the eight objects (`unchanged` on a second run), then
+**Expect:** a `created` line for each of the eight objects (`unchanged` or `configured` on a second
+run), then
 `eventlistener.triggers.tekton.dev/hello condition met` and
 `deployment "el-hello" successfully rolled out`.
 
@@ -749,6 +771,7 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo r
 - `timed out waiting for the condition`: run `kubectl --kubeconfig <the VKS kubeconfig> -n
   tekton-demo get pods`; a pod `el-hello-…` in `CrashLoopBackOff` right after step 3 is Triggers
   still starting. Run the wait line again in a minute.
+- `namespaces "tekton-demo" not found`: run step 4 first.
 - `clusterroles.rbac.authorization.k8s.io "tekton-triggers-eventlistener-roles" not found`: step 3
   did not finish.
 
@@ -772,7 +795,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo port-forward service/el-hello 8180:8080
 ```
 
-**Expect:** `Forwarding from 127.0.0.1:8180 -> 8080`.
+**Expect:** `Forwarding from 127.0.0.1:8180 -> 8080` (and a `[::1]` line).
 
 **If not:** `address already in use`: another program uses port 8180; stop it and run this again.
 
@@ -801,8 +824,12 @@ else
     [ "$S" = True ] || [ "$S" = False ] && break
     sleep 5
   done
-  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-demo get pipelinerun "$PR"
-  [ "$S" = True ] && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-demo logs -l "tekton.dev/pipelineRun=$PR,tekton.dev/pipelineTask=second" -c step-show
+  if [ -z "$PR" ]; then
+    echo "FAILED: no PipelineRun was started"
+  else
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-demo get pipelinerun "$PR"
+    [ "$S" = True ] && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-demo logs -l "tekton.dev/pipelineRun=$PR,tekton.dev/pipelineTask=second" -c step-show
+  fi
 fi
 ```
 
@@ -832,8 +859,12 @@ if ($LASTEXITCODE -ne 0) {
     if ($S -eq 'True' -or $S -eq 'False') { break }
     Start-Sleep -Seconds 5
   }
-  kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo get pipelinerun $PR
-  if ($S -eq 'True') { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo logs -l "tekton.dev/pipelineRun=$PR,tekton.dev/pipelineTask=second" -c step-show }
+  if (-not $PR) {
+    "FAILED: no PipelineRun was started"
+  } else {
+    kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo get pipelinerun $PR
+    if ($S -eq 'True') { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo logs -l "tekton.dev/pipelineRun=$PR,tekton.dev/pipelineTask=second" -c step-show }
+  }
 }
 ```
 
@@ -844,8 +875,10 @@ if ($LASTEXITCODE -ne 0) {
 
 **If not:**
 - `FAILED: the EventListener did not accept the request`: the port-forward is not running; start it
-  again. An `HTTP 400` above it: the request file is not valid JSON.
-- No run, or `SUCCEEDED False`: see step 4's **If not**.
+  again.
+- `FAILED: no PipelineRun was started`: `kubectl --kubeconfig <the VKS kubeconfig> -n tekton-demo
+  logs deployment/el-hello` says why.
+- `SUCCEEDED False`: see step 4's **If not**.
 
 ## 6. Remove the demo (optional)
 
@@ -880,8 +913,8 @@ deleted` and `clusterrole… "tekton-demo-listener" deleted`.
 ## 7. Uninstall Tekton (optional)
 
 **This deletes every Tekton task, pipeline and run in the cluster, in every namespace.** It first
-checks that the cluster's Tekton is this guide's and that nothing outside `tekton-demo` uses it,
-and stops otherwise. Run step 6 first.
+checks that the cluster's Tekton is this guide's and that no Tekton object outside `tekton-demo`
+exists, and stops otherwise. Run step 6 first.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -891,19 +924,24 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 TEKTON_DIR="$HOME/.config/vks-guides/tekton"
 
-kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
-V="$(kc -n tekton-pipelines get deployment tekton-pipelines-controller -o jsonpath='{.metadata.labels.app\.kubernetes\.io/version}')"
-U="$(kc get tasks,pipelines,pipelineruns,taskruns,eventlisteners -A --no-headers 2>/dev/null | grep -vc '^tekton-demo ')"
-if [ "$V" != v1.17.1 ]; then
-  echo "STOPPED: the Tekton here is '${V:-none}', not this guide's v1.17.1"
-elif [ "$U" -gt 0 ]; then
+if ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)" \
+   || ! A="$(kubectl --kubeconfig "$VKS_KUBECONFIG" api-resources -o name)"; then
+  echo "STOPPED: cannot read the cluster (see the error above)"
+elif [ "$(printf '%s\n' "$C" | grep -c '\.tekton\.dev$')" = 0 ]; then
+  echo "Tekton is not installed"
+elif ! V="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tasks.tekton.dev -o jsonpath='{.metadata.labels.pipeline\.tekton\.dev/release}')" \
+     || [ "$V" != v1.17.1 ]; then
+  echo "STOPPED: the Tekton here is '${V:-unknown}', not this guide's v1.17.1"
+elif ! L="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get "$(printf '%s\n' "$A" | grep '\.tekton\.dev$' | grep -v '^clusterinterceptors\.' | paste -sd, -)" -A --no-headers)"; then
+  echo "STOPPED: cannot list the Tekton objects (see the error above)"
+elif U="$(printf '%s\n' "$L" | grep -v '^$' | grep -vc '^tekton-demo ')"; [ "$U" -gt 0 ]; then
   echo "STOPPED: $U Tekton objects outside tekton-demo use this Tekton"
 else
-  kc delete --ignore-not-found -f "$TEKTON_DIR/tekton-interceptors-v0.37.2.yaml" >/dev/null
-  kc delete --ignore-not-found -f "$TEKTON_DIR/tekton-triggers-v0.37.2.yaml" >/dev/null
-  kc delete --ignore-not-found -f "$TEKTON_DIR/tekton-pipelines-v1.17.1.yaml" >/dev/null
-  kc wait --for=delete namespace/tekton-pipelines namespace/tekton-pipelines-resolvers --timeout=10m 2>/dev/null
-  echo "Tekton CRDs left: $(kc get crd -o name | grep -c '\.tekton\.dev$')"
+  kubectl --kubeconfig "$VKS_KUBECONFIG" delete --ignore-not-found -f "$TEKTON_DIR/tekton-interceptors-v0.37.2.yaml" >/dev/null
+  kubectl --kubeconfig "$VKS_KUBECONFIG" delete --ignore-not-found -f "$TEKTON_DIR/tekton-triggers-v0.37.2.yaml" >/dev/null
+  kubectl --kubeconfig "$VKS_KUBECONFIG" delete --ignore-not-found -f "$TEKTON_DIR/tekton-pipelines-v1.17.1.yaml" >/dev/null
+  kubectl --kubeconfig "$VKS_KUBECONFIG" wait --for=delete namespace/tekton-pipelines namespace/tekton-pipelines-resolvers --timeout=10m 2>/dev/null
+  echo "Tekton CRDs left: $(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name | grep -c '\.tekton\.dev$')"
 fi
 ```
 
@@ -917,30 +955,46 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $TEKTON_DIR = "$HOME\.config\vks-guides\tekton"
 
-$V = kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-pipelines get deployment tekton-pipelines-controller -o jsonpath='{.metadata.labels.app\.kubernetes\.io/version}'
-$U = @(kubectl --kubeconfig $VKS_KUBECONFIG get tasks,pipelines,pipelineruns,taskruns,eventlisteners -A --no-headers 2>$null | Where-Object { $_ -notmatch '^tekton-demo ' }).Count
-if ($V -ne 'v1.17.1') {
-  "STOPPED: the Tekton here is '$(if ($V) { $V } else { 'none' })', not this guide's v1.17.1"
-} elseif ($U -gt 0) {
-  "STOPPED: $U Tekton objects outside tekton-demo use this Tekton"
+$global:LASTEXITCODE = $null
+$C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
+if ($LASTEXITCODE -eq 0) { $A = @(kubectl --kubeconfig $VKS_KUBECONFIG api-resources -o name) }
+if ($LASTEXITCODE -ne 0) {
+  "STOPPED: cannot read the cluster (see the error above)"
+} elseif (@($C | Where-Object { $_ -match '\.tekton\.dev$' }).Count -eq 0) {
+  "Tekton is not installed"
 } else {
-  kubectl --kubeconfig $VKS_KUBECONFIG delete --ignore-not-found -f "$TEKTON_DIR\tekton-interceptors-v0.37.2.yaml" | Out-Null
-  kubectl --kubeconfig $VKS_KUBECONFIG delete --ignore-not-found -f "$TEKTON_DIR\tekton-triggers-v0.37.2.yaml" | Out-Null
-  kubectl --kubeconfig $VKS_KUBECONFIG delete --ignore-not-found -f "$TEKTON_DIR\tekton-pipelines-v1.17.1.yaml" | Out-Null
-  kubectl --kubeconfig $VKS_KUBECONFIG wait --for=delete namespace/tekton-pipelines namespace/tekton-pipelines-resolvers --timeout=10m 2>$null
-  "Tekton CRDs left: $(@(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name | Where-Object { $_ -match '\.tekton\.dev$' }).Count)"
+  $V = kubectl --kubeconfig $VKS_KUBECONFIG get crd tasks.tekton.dev -o jsonpath='{.metadata.labels.pipeline\.tekton\.dev/release}'
+  if ($LASTEXITCODE -ne 0 -or $V -ne 'v1.17.1') {
+    "STOPPED: the Tekton here is '$(if ($V) { $V } else { 'unknown' })', not this guide's v1.17.1"
+  } else {
+    $KINDS = @($A | Where-Object { $_ -match '\.tekton\.dev$' -and $_ -notmatch '^clusterinterceptors\.' }) -join ','
+    $L = @(kubectl --kubeconfig $VKS_KUBECONFIG get $KINDS -A --no-headers)
+    if ($LASTEXITCODE -ne 0) {
+      "STOPPED: cannot list the Tekton objects (see the error above)"
+    } elseif (($U = @($L | Where-Object { $_ -and $_ -notmatch '^tekton-demo ' }).Count) -gt 0) {
+      "STOPPED: $U Tekton objects outside tekton-demo use this Tekton"
+    } else {
+      kubectl --kubeconfig $VKS_KUBECONFIG delete --ignore-not-found -f "$TEKTON_DIR\tekton-interceptors-v0.37.2.yaml" | Out-Null
+      kubectl --kubeconfig $VKS_KUBECONFIG delete --ignore-not-found -f "$TEKTON_DIR\tekton-triggers-v0.37.2.yaml" | Out-Null
+      kubectl --kubeconfig $VKS_KUBECONFIG delete --ignore-not-found -f "$TEKTON_DIR\tekton-pipelines-v1.17.1.yaml" | Out-Null
+      kubectl --kubeconfig $VKS_KUBECONFIG wait --for=delete namespace/tekton-pipelines namespace/tekton-pipelines-resolvers --timeout=10m 2>$null
+      "Tekton CRDs left: $(@(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name | Where-Object { $_ -match '\.tekton\.dev$' }).Count)"
+    }
+  }
 }
 ```
 
 </details>
 
-**Expect:** `Tekton CRDs left: 0`, after the namespaces are gone (a few minutes).
+**Expect:** `Tekton CRDs left: 0`, after the namespaces are gone (a few minutes). On a second run:
+`Tekton is not installed`.
 
 **If not:**
-- `STOPPED: the Tekton here is 'none'`: Tekton is already uninstalled.
-- `STOPPED: the Tekton here is …` with a version: someone else installed this Tekton; leave it.
+- `Tekton CRDs left:` more than 0: run step 2 on this machine (the delete needs its files), then
+  this block again.
+- `STOPPED: the Tekton here is …`: someone else installed this Tekton; leave it.
 - `STOPPED: … objects outside tekton-demo`: list them with `kubectl --kubeconfig <the VKS
-  kubeconfig> get tasks,pipelines,pipelineruns,taskruns,eventlisteners -A`; delete them first if
-  they are yours.
+  kubeconfig> get <kind> -A`; delete them first if they are yours.
+- `STOPPED: cannot …`: see the error above it, and run the block again.
 
 Back to [README](../README.md).
