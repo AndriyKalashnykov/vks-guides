@@ -85,7 +85,7 @@ macOS on Apple silicon. ✅ every block run, "part" some blocks run, — not run
 | [ArgoCD](docs/ARGOCD.md) | ✅ | ✅ | ✅ | — | part |
 | [Run Gitea](docs/GITEA.md) | ✅ | — | ✅ | ✅ | ✅ |
 | [Run Tekton](docs/TEKTON.md) | ✅ | — | ✅ | — | ✅ |
-| [Run GitLab](docs/GITLAB.md) | — | — | — | — | — |
+| [Run GitLab](docs/GITLAB.md) | ✅ | — | ✅ | — | ✅ |
 | [Install Helm](docs/HELM.md) | ✅ | — | ✅ | — | ✅ |
 | [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | — | part | — | part |
 | [Send logs to VCF Operations](docs/LOGGING.md) | part | — | part | ✅ | part |

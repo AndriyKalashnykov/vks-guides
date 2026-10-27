@@ -91,8 +91,8 @@ if ($LASTEXITCODE -eq 0) {
   foreach ($l in $N) {
     $f = -split $l
     $S = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "/api/v1/nodes/$($f[0])/proxy/stats/summary" | Out-String | ConvertFrom-Json
-    $F = if ($S) { [math]::Floor($S.node.runtime.imageFs.availableBytes / 1GB) } else { '?' }
-    "worker $($f[0]): $([math]::Floor(((B $f[1]) - $R[$f[0]]) / 1GB)) GiB memory free, $F GiB image disk free"
+    $DISK = if ($S) { [math]::Floor($S.node.runtime.imageFs.availableBytes / 1GB) } else { '?' }
+    "worker $($f[0]): $([math]::Floor(((B $f[1]) - $R[$f[0]]) / 1GB)) GiB memory free, $DISK GiB image disk free"
   }
   $D = @((ConvertFrom-Json $SC).items | Where-Object { $_.metadata.annotations.'storageclass.kubernetes.io/is-default-class' -eq 'true' } | ForEach-Object { "$($_.metadata.name) ($($_.volumeBindingMode), reclaim $($_.reclaimPolicy))" })
   "default storage class: $(if ($D.Count) { $D -join ' ' } else { 'NONE' })"
@@ -107,7 +107,7 @@ if ($LASTEXITCODE -eq 0) {
 **Expect:** `git version 2.…`, each node `Ready`, a `worker …: … GiB memory free, … GiB image disk
 free` line per worker, `default storage class:` and a name, and `gitlab namespace: 0`. GitLab and
 one CI job need a worker with at least 6 GiB memory and 8 GiB image disk free; a new
-`best-effort-large` worker has about 11 GiB memory free.
+`best-effort-large` worker has about 12 GiB memory free.
 
 **If not:**
 - `git: command not found` (PowerShell: `The term 'git' is not recognized`): install git
@@ -866,7 +866,8 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 **Expect:** `namespace/gitlab-runner created` (`unchanged` on a second run),
 `secret/gitlab-runner-token serverside-applied`, `deployment.apps/gitlab-runner restarted`,
 `deployment "gitlab-runner" successfully rolled out`, a line for the release `gitlab-runner` with
-`STATUS deployed`, and one pod `1/1 Running`. Within a minute,
+`STATUS deployed`, and one pod `1/1 Running` (the old one may still show `Terminating`). Within a
+minute,
 <http://localhost:3400/root/hello/-/settings/ci_cd> under **Runners** shows the runner with a green
 dot (online). Run without 3, the block says `no token typed: using the one stored before`.
 
@@ -923,7 +924,8 @@ if ($LASTEXITCODE -eq 0) {
 }
 ```
 
-**Expect:** after the password, `<old>..<new>  HEAD -> main`. At <http://localhost:3400/root/hello/-/pipelines>
+**Expect:** after the password, `<old>..<new>  HEAD -> main` (on Windows, git may first warn
+`LF will be replaced by CRLF`; that is fine). At <http://localhost:3400/root/hello/-/pipelines>
 the newest pipeline turns **Passed** within a minute or two; its job `hello` prints
 `hello from pod runner-…` and `Job succeeded`.
 
