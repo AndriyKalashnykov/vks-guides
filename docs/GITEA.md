@@ -193,10 +193,10 @@ Remove-Variable S
 ## 4. Install Gitea
 
 Install Gitea one of two ways, A or B; steps 5 to 9 are the same for both. Both run Gitea 28.2.0
-with the same settings, the keys from step 3, restricted pods and one 5 GiB volume; its web page
+with the settings this guide sets, the keys from step 3, restricted pods and one 5 GiB volume; its web page
 addresses itself as `http://localhost:3300`, the port step 6 forwards, and passwords must be at
-least 16 characters. To change from one to the other later, run step 9 first: they keep their data
-differently, and nothing carries over.
+least 16 characters. To change from one to the other later, run step 9, then steps 2 and 3, first:
+they keep their data differently, and nothing carries over.
 
 ### A. With this guide's YAML (recommended)
 
@@ -456,6 +456,8 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get pvc,pods
   (Docker Hub's pull limit; wait and run this again).
 - `timed out waiting for the condition`: run `kubectl --kubeconfig <the VKS kubeconfig> -n gitea
   logs deployment/gitea` and look for the first error.
+- `spec.selector: … field is immutable`: Gitea was installed with B; run step 9, then steps 2 and
+  3, first.
 
 ### B. With Gitea's Helm chart
 
@@ -539,6 +541,7 @@ gitea:
       DB_TYPE: sqlite3
     server:
       DOMAIN: localhost
+      HTTP_PORT: 3000
       ROOT_URL: http://localhost:3300/
       DISABLE_SSH: true
     security:
@@ -676,6 +679,7 @@ gitea:
       DB_TYPE: sqlite3
     server:
       DOMAIN: localhost
+      HTTP_PORT: 3000
       ROOT_URL: http://localhost:3300/
       DISABLE_SSH: true
     security:
@@ -761,7 +765,8 @@ and one pod `1/1 Running`.
 - `FAILED: download …`: this machine cannot reach `dl.gitea.com`.
 - `FAILED: checksum mismatch …`: the download arrived damaged, or the chart was rebuilt. Do not
   install it; run the block again.
-- `cannot be imported into the current release`: Gitea was installed with A; run step 9 first.
+- `cannot be imported into the current release`: Gitea was installed with A; run step 9, then
+  steps 2 and 3, first.
 - `context deadline exceeded`: as A's **If not** above (`describe pod`, `describe pvc`, `logs`).
 
 ## 5. Create the administrator
