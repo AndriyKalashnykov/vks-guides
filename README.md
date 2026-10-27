@@ -83,7 +83,7 @@ macOS on Apple silicon. ✅ every block run, "part" some blocks run, — not run
 | [Install Harbor](docs/HARBOR.md) | ✅ | part | ✅ | — | part |
 | [ArgoCD](docs/ARGOCD.md) | ✅ | ✅ | ✅ | — | part |
 | [Run Gitea](docs/GITEA.md) | ✅ | — | ✅ | ✅ | ✅ |
-| [Run Tekton](docs/TEKTON.md) | ✅ | — | ✅ | — | — |
+| [Run Tekton](docs/TEKTON.md) | ✅ | — | ✅ | — | ✅ |
 | [Install Helm](docs/HELM.md) | ✅ | — | ✅ | — | ✅ |
 | [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | — | part | — | part |
 | [Send logs to VCF Operations](docs/LOGGING.md) | part | — | part | ✅ | part |
