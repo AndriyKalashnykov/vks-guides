@@ -430,8 +430,8 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get pvc,pods
 `Bound` and one pod `1/1 Running` (`unchanged` lines on a second run).
 
 **If not:**
-- `secret "gitea-keys" not found` in `kubectl --kubeconfig <the VKS kubeconfig> -n gitea describe pod` (the pod stays
-  `CreateContainerConfigError`): run step 3.
+- `secret "gitea-keys" not found` in `kubectl --kubeconfig <the VKS kubeconfig> -n gitea describe
+  pod` (the pod stays `CreateContainerConfigError`): run step 3.
 - The claim stays `Pending`: the storage class cannot make the volume. `kubectl --kubeconfig <the
   VKS kubeconfig> -n gitea describe pvc gitea-data` says why; often the vSphere Namespace's
   storage limit is reached.
@@ -722,6 +722,8 @@ for i in $(seq 36); do
   if J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o json)"; then
     N="$(printf '%s' "$J" | jq '[.items[] | select(.spec.claimRef.namespace == "gitea")] | length')"
     [ "$N" = 0 ] && break
+  elif [ "$i" = 1 ]; then
+    break
   fi
   sleep 5
 done
@@ -741,6 +743,8 @@ foreach ($i in 1..36) {
   if ($PV) {
     $N = @($PV.items | Where-Object { $_.spec.claimRef.namespace -ceq 'gitea' }).Count
     if ($N -eq 0) { break }
+  } elseif ($i -eq 1) {
+    break
   }
   Start-Sleep -Seconds 5
 }
@@ -751,8 +755,8 @@ foreach ($i in 1..36) {
 `volumes left from gitea: 0`.
 
 **If not:**
-- `volumes left from gitea: unknown`: kubectl could not read the volumes (see the error above);
-  run this again.
+- `volumes left from gitea: unknown`: kubectl could not read the volumes. Fix the error above
+  (often an expired login: [LOGIN.md](LOGIN.md)), then run this again.
 - `volumes left from gitea:` more than 0: the storage class keeps volumes (step 1 printed
   `reclaim Retain`). Delete them with `kubectl --kubeconfig <the VKS kubeconfig> delete pv <name>`
   when you no longer need the data.
