@@ -89,14 +89,15 @@ if ($LASTEXITCODE -eq 0) {
 
 </details>
 
-**Expect:** `git version 2.…`, each node `Ready`, at least one line `(worker): 4 CPU, 15 GiB
-memory` or more, `default storage class:` and a name, and `gitlab namespace: 0`.
+**Expect:** `git version 2.…`, each node `Ready`, at least one line `(worker): 3920m CPU, 12 GiB
+memory` or more (what a `best-effort-large` worker has left for pods), `default storage class:`
+and a name, and `gitlab namespace: 0`.
 
 **If not:**
 - `git: command not found` (PowerShell: `The term 'git' is not recognized`): install git
   ([git-scm.com](https://git-scm.com/install/); on Photon OS 5, `sudo tdnf install -y git`),
   open a new terminal, and run this again.
-- No worker with 4 CPU and 15 GiB memory: GitLab will not start, or will be stopped when the node
+- No worker with that much CPU and memory: GitLab will not start, or will be stopped when the node
   runs out of memory. Add a node pool with VM class `best-effort-large` ([CLUSTER.md](CLUSTER.md)).
 - `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
 - `gitlab namespace: 1` before you ran step 2: the cluster already has a `gitlab` namespace. Use
@@ -154,7 +155,7 @@ metadata:
 
 This creates the volume, the GitLab StatefulSet and a Service that only the cluster reaches, waits
 for GitLab to answer, then turns off sign-up, so only users you create can log in. The first start
-downloads a 1.5 GB image and sets up the database: allow 5 to 15 minutes.
+downloads a 1.5 GB image and sets up the database, which takes a few minutes.
 
 GitLab addresses itself as `http://gitlab.gitlab.svc.cluster.local`, its name inside the cluster,
 so the runner (step 8) reaches it directly. Your browser reaches it through step 5's port-forward.
@@ -370,7 +371,7 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab get pvc,pods
 **Expect:** a `Warning: would violate PodSecurity "restricted:latest"` line (GitLab runs as root;
 baseline allows it), `persistentvolumeclaim/gitlab-data created`,
 `statefulset.apps/gitlab created`, `service/gitlab created`, then
-`statefulset rolling update complete`, `{:signup_enabled=>false}`, the claim `Bound` and the pod
+`partitioned roll out complete: 1 new pods have been updated...`, `{:signup_enabled=>false}`, the claim `Bound` and the pod
 `gitlab-0` `1/1 Running` (`unchanged` lines on a second run).
 
 **If not:**
@@ -445,7 +446,9 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab port-forward service/gitlab 3400:80
 ```
 
-Open <http://localhost:3400> and sign in as `root` with the password from step 4.
+Open <http://localhost:3400> and sign in as `root` with the password from step 4. GitLab's pages
+and messages name it `http://gitlab.gitlab.svc.cluster.local`, its name in the cluster; from this
+machine, use `http://localhost:3400` instead.
 
 **Expect:** `Forwarding from 127.0.0.1:3400 -> 80`, then GitLab's home page for `root`. The sign-in
 page has no **Register now** link.
