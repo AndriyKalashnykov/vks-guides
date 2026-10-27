@@ -33,7 +33,7 @@ blocks; there is nothing to build.
   `[System.Management.Automation.Language.Parser]::ParseFile` in Windows PowerShell 5.1 (no pwsh
   on the dev host; use the Windows walkbox from nested-vsphere-lab: `make walkbox-vm-start
   WALKBOX_OS=windows`).
-- A behaviour change is run for real before README's "Platforms" table claims it. On the owner's
+- A behaviour change is run for real before README's "Tested on" table claims it. On the owner's
   nested-vsphere-lab the agent logs in itself and never asks the owner to: `make login
   VCF_CONTEXT=supervisor` (or `make kubectl-login VCF_CONTEXT=supervisor`) in that checkout logs
   in to the Supervisor with the lab's own secrets, so the agent never handles the password, and

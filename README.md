@@ -66,75 +66,28 @@ monitoring.
 for `kubectl`, [Install kubectl](docs/KUBECTL.md); for `vcf`, [Install the VCF CLI](docs/VCF.md); for
 `helm`, [Install Helm](docs/HELM.md).
 
-## Platforms
+## Tested on
 
-Run against the Broadcom 9.1.1.0100 files and a vSphere 9.1.1 Supervisor with a VKS cluster.
+Run against VCF 9.1.1 (vSphere 9.1.1 Supervisor, VKS 3.7.2) on amd64 machines. ✅ every block
+run, "part" some blocks run, — not run.
 
-| OS | shell | tested |
-|---|---|---|
-| Ubuntu, amd64 | bash, zsh | ✅ |
-| Linux, arm64 | bash, zsh | ❌ |
-| macOS 26, arm64 (Apple silicon) | bash 3.2, zsh 5.9 | ✅ |
-| macOS, amd64 (Intel) | bash, zsh | ❌ |
-| Windows Server 2025, amd64 | Windows PowerShell 5.1 | ✅ |
-| Windows Server 2025, amd64, WSL 2 Ubuntu | bash, as root | ✅ |
-| Windows, arm64 | Windows PowerShell 5.1; bash in WSL 2 | ❌ |
+| guide | Ubuntu (bash, zsh) | macOS 26 (bash, zsh) | Windows PowerShell 5.1 | WSL 2 Ubuntu (bash) |
+|---|---|---|---|---|
+| [Prerequisites](docs/PREREQS.md) | ✅ | ✅ | ✅ | ✅ |
+| [Install kubectl](docs/KUBECTL.md) | ✅ | ✅ | ✅ | ✅ |
+| [Install the VCF CLI](docs/VCF.md) | ✅ | ✅ | ✅ | ✅ |
+| [Log in](docs/LOGIN.md) | ✅ | ✅ | ✅ | ✅ |
+| [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | part | ✅ | — |
+| [Create a VKS cluster](docs/CLUSTER.md) | ✅ | part | ✅ | — |
+| [Install Harbor](docs/HARBOR.md) | ✅ | ✅ | ✅ | — |
+| [ArgoCD](docs/ARGOCD.md) | ✅ | ✅ | ✅ | — |
+| [Run Gitea](docs/GITEA.md) | ✅ | — | ✅ | ✅ |
+| [Install Helm](docs/HELM.md) | ✅ | — | ✅ | — |
+| [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | — | ✅ | — |
+| [Send logs to VCF Operations](docs/LOGGING.md) | ✅ | — | part | ✅ |
+| [Logs and traces in Grafana](docs/OBSERVABILITY.md) | ✅ | — | part | — |
 
-NAMESPACE.md, CLUSTER.md, HARBOR.md and ARGOCD.md were run on 2026-10-23 with VKS 3.7.2, the
-Harbor Supervisor Service 2.15.2 and the ArgoCD Service 1.2.0, on Ubuntu (bash, zsh), macOS 26
-(bash 3.2, zsh 5.9) and Windows PowerShell 5.1, not in WSL; most blocks as an SSO user whose only
-role was **Namespaces Edit**. Harbor was installed and uninstalled twice, and the VKS cluster
-nodes were updated each time; ArgoCD's certificate renewal (step 7) was run with an app deployed.
-On macOS and in PowerShell, HARBOR.md's admin password blocks ran against a stand-in server. Its
-clipboard blocks ran in a Linux desktop session (Wayland) and in PowerShell, and on macOS only
-without a desktop session. ARGOCD.md's web-page steps were done in Chrome.
-
-HELM.md and MONITORING.md were run on 2026-10-24 with VKS 3.7.2 on Ubuntu (bash, zsh) and
-Windows PowerShell 5.1, not on macOS or in WSL; MONITORING.md was installed and uninstalled
-in each of those shells, and its Grafana login (step 7) was checked from Ubuntu
-with curl through the port-forward.
-
-MONITORING.md's ArgoCD steps (9 and 10) were run on 2026-10-24 with ArgoCD Service 1.2.0 (Argo
-CD 3.4.4) on Ubuntu (bash, zsh) and Windows PowerShell 5.1, installed, checked and uninstalled in
-each; the VKS cluster was added to ArgoCD by the lab's own registration, not by ARGOCD.md step 7,
-and in PowerShell the Grafana password (step 3) was set from bash.
-
-On 2026-10-25 MONITORING.md's kube-state-metrics name, its step 1 check and the step 5 guard were
-run beside Broadcom's monitoring for VCF Operations (its Telegraf and Prometheus add-ons) in bash
-and zsh: in both install orders and as a Helm and an ArgoCD upgrade; steps 8 and 10 were run
-after the rename. In Windows PowerShell 5.1 step 1 and the guard were run.
-
-LOGGING.md was run on 2026-10-24 with VKS 3.7.2 and Fluent Bit add-on 5.0.9 on Ubuntu (bash;
-steps 5 to 7 also in zsh) and in WSL 2 Ubuntu (bash), installed, checked and uninstalled in each,
-against a stand-in HTTPS receiver in place of Log Management; step 7 was run with a changed CA.
-In Windows PowerShell 5.1 its steps 2, 3, 5 and 6 were run; steps 1, 4, 7 and 8 were only parsed. On 2026-10-24 PREREQS.md, KUBECTL.md, VCF.md and LOGIN.md were run again
-in WSL 2 Ubuntu, the password login included.
-
-OBSERVABILITY.md was run on 2026-10-24 with VKS 3.7.2, kube-prometheus-stack 92.13.1 and Fluent
-Bit add-on 5.0.9 on Ubuntu, installed, checked and uninstalled in bash, zsh and Windows
-PowerShell 5.1, not on macOS or in WSL. In PowerShell step 5's checks and the values it writes were
-run, not its add-on install or update; those ran in bash and zsh, with `LOGS_FQDN` empty and set
-against a stand-in name. Its Grafana
-steps were done in Chrome, and its VCF Operations steps in VCF Operations 9.1.1 on VMware vSphere
-Foundation. Its step 11 (the Metrics Aggregator) was run on 2026-10-25 on that VMware vSphere
-Foundation lab without VCF Automation: the vSphere Client steps as a vCenter administrator, and
-its command blocks in bash, zsh and Windows PowerShell 5.1, with the label set by a vCenter
-administrator (and, as a server dry run, by a user with only the Edit role on the vSphere
-Namespace), then its undo in step 12 (label, check, uninstall and delete).
-
-NAMESPACE.md step 10 and CLUSTER.md step 9 (kubectl and YAML files) were run on 2026-10-26
-with VKS 3.7.2 as a vCenter administrator, with the Namespace Service on, on Ubuntu (bash, zsh)
-and Windows PowerShell 5.1, not on macOS or in WSL: in each shell a namespace and a cluster were
-created from the files and deleted with the guides' blocks; in bash and PowerShell they were also
-checked (NAMESPACE.md step 8, CLUSTER.md steps 6 and 7).
-
-GITEA.md was run on 2026-10-26 with VKS 3.7.2 and Gitea 28.2.0 on Ubuntu (bash, zsh) and Windows
-PowerShell 5.1 with Git for Windows 2.56.0, not on macOS or in WSL: in each shell Gitea was
-installed, pushed to and uninstalled. Its web-page parts (steps 6 and 7's page check, and 8's first
-item) were not done in a browser; the password change and the visibility change were made with
-Gitea's command line and API instead.
-
-Renewing a login that had already expired was run on macOS (zsh) only.
+Windows was Windows Server 2025. Linux on arm64, Intel Macs and Windows on arm64 were not tested.
 
 ## License
 
