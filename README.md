@@ -87,8 +87,8 @@ macOS on Apple silicon. ✅ every block run, "part" some blocks run, — not run
 | [Run Gitea](docs/GITEA.md) | ✅ | — | ✅ | ✅ | ✅ |
 | [Run Tekton](docs/TEKTON.md) | ✅ | — | ✅ | — | ✅ |
 | [Run GitLab](docs/GITLAB.md) | ✅ | — | ✅ | — | ✅ |
-| [CI/CD with Gitea and Tekton](docs/CICD.md) | — | — | — | — | — |
-| [CI/CD with GitLab](docs/CICD.md) | — | — | — | — | — |
+| [CI/CD with Gitea and Tekton](docs/CICD.md) | part | — | part | — | — |
+| [CI/CD with GitLab](docs/CICD.md) | — | — | part | — | part |
 | [Install Helm](docs/HELM.md) | ✅ | — | ✅ | — | ✅ |
 | [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | — | part | — | part |
 | [Send logs to VCF Operations](docs/LOGGING.md) | part | — | part | ✅ | part |
