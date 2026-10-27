@@ -15,7 +15,8 @@ Broadcom, then run the install block; it needs no internet access.
 You need a Broadcom support account. Download both files for your platform: `Linux_AMD64`,
 `Linux_ARM64`, `Darwin_ARM64`, `Darwin_AMD64`, or for Windows PowerShell `Windows_AMD64` or
 `Windows_ARM64` (`.zip` instead of `.tar.gz`). In WSL 2, take `Linux_AMD64` (`Linux_ARM64` on an
-Arm PC).
+Arm PC). On a machine without a browser, download them on another one and copy both to
+`DOWNLOAD_DIR`.
 
 | file | where to click | direct link |
 |---|---|---|

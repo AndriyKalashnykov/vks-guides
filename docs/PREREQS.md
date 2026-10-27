@@ -4,6 +4,7 @@
 > **Official documentation for this guide**
 >
 > - Ubuntu: [Install and manage packages](https://ubuntu.com/server/docs/how-to/software/package-management/)
+> - Photon OS 5: [tdnf Commands](https://vmware.github.io/photon/docs-v5/administration-guide/managing-packages-with-tdnf/standard-syntax-for-tndf/commands/)
 > - Homebrew: [Installation](https://docs.brew.sh/Installation); jq: [Download jq](https://jqlang.org/download/)
 > - Microsoft: [Starting Windows PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/starting-windows-powershell?view=powershell-5.1), [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Working across Windows and Linux file systems](https://learn.microsoft.com/en-us/windows/wsl/filesystems)
 > - curl: [curl shipped by Microsoft](https://curl.se/windows/microsoft.html) (`curl.exe` in Windows)
@@ -18,7 +19,26 @@ section for your OS, then [Check](#check) (Linux, macOS and WSL; PowerShell need
 sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
 ```
 
-On other distributions, install the same five packages with your package manager.
+On other distributions (except Photon OS, below), install the same five packages with your
+package manager.
+
+## Photon OS 5
+
+Keep `openssh openssh-socket` in the line: without them the machine stops accepting SSH logins.
+
+```sh
+sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar unzip jq openssl coreutils findutils gawk diffutils sed grep openssh openssh-socket
+```
+
+**Expect:** the prompt returns with no `Error` line (`Nothing to do.` when all are installed).
+Then run [Check](#check).
+
+**If not:**
+- `sudo: command not found`: run it as `root`, without `sudo`.
+- SSH as `root`, or `ssh -L` port forwarding, stops working: the updated SSH server refuses both
+  when you never changed `/etc/ssh/sshd_config`. Log in as another user, or set
+  `PermitRootLogin` and `AllowTcpForwarding` there as you need and run
+  `sudo systemctl restart sshd`.
 
 ## macOS
 
@@ -77,12 +97,12 @@ Pick one:
 ## Check
 
 ```sh
-for t in curl tar unzip jq openssl; do
+for t in curl tar unzip jq openssl tr awk diff find; do
   command -v "$t" >/dev/null 2>&1 && echo "ok       $t" || echo "MISSING  $t"
 done
 ```
 
-**Expect:** five `ok` lines.
+**Expect:** nine `ok` lines.
 
 ## sudo (optional)
 

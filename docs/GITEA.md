@@ -74,7 +74,8 @@ if ($LASTEXITCODE -eq 0) {
 
 **If not:**
 - `git: command not found` (PowerShell: `The term 'git' is not recognized`): install git
-  ([git-scm.com](https://git-scm.com/install/)), open a new terminal, and run this again. On macOS,
+  ([git-scm.com](https://git-scm.com/install/); on Photon OS 5, `sudo tdnf install -y git`),
+  open a new terminal, and run this again. On macOS,
   `git` may open a dialog that installs the Command Line Tools; let it finish.
 - `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
 - `gitea namespace: 1` before you ran step 2: the cluster already has a `gitea` namespace. Use
