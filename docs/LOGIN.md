@@ -216,7 +216,8 @@ if (-not $SSO_PASSWORD) {
 </details>
 
 **Expect:** `Logged in successfully`, a list of contexts, then
-`Switched to context "supervisor"`. The login lasts about 10 hours.
+`Switched to context "supervisor"`. The login lasts about 10 hours. The first login after
+[Log out](#log-out) prints `Initialization done!` lines first.
 
 **If not:**
 - `FAILED: no password in this terminal`: run step 2, then this block again.
@@ -324,7 +325,8 @@ if (-not $SSO_PASSWORD) {
 </details>
 
 **Expect:** `Logged in successfully`, a list of contexts, then
-`Switched to context "supervisor"`. The login lasts about 10 hours.
+`Switched to context "supervisor"`. The login lasts about 10 hours. The first login after
+[Log out](#log-out) prints `Initialization done!` lines first.
 
 **If not:**
 - `FAILED: no password in this terminal`: run step 1, then this block again.
