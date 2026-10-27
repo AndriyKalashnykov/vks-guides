@@ -68,10 +68,10 @@ for `kubectl`, [Install kubectl](docs/KUBECTL.md); for `vcf`, [Install the VCF C
 
 ## Tested on
 
-Run against VCF 9.1.1 (vSphere 9.1.1 Supervisor, VKS 3.7.2) on amd64 machines. ✅ every block
-run, "part" some blocks run, — not run.
+Run against VCF 9.1.1 (vSphere 9.1.1 Supervisor, VKS 3.7.2) from Linux and Windows on amd64 and
+macOS on Apple silicon. ✅ every block run, "part" some blocks run, — not run.
 
-| guide | Ubuntu (bash, zsh) | macOS 26 (bash, zsh) | Windows PowerShell 5.1 | WSL 2 Ubuntu (bash) |
+| guide | Ubuntu (bash, zsh) | macOS 26 (bash, zsh) | Windows PowerShell 5.1 | WSL 2 Ubuntu (bash, as root) |
 |---|---|---|---|---|
 | [Prerequisites](docs/PREREQS.md) | ✅ | ✅ | ✅ | ✅ |
 | [Install kubectl](docs/KUBECTL.md) | ✅ | ✅ | ✅ | ✅ |
@@ -79,12 +79,12 @@ run, "part" some blocks run, — not run.
 | [Log in](docs/LOGIN.md) | ✅ | ✅ | ✅ | ✅ |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | part | ✅ | — |
 | [Create a VKS cluster](docs/CLUSTER.md) | ✅ | part | ✅ | — |
-| [Install Harbor](docs/HARBOR.md) | ✅ | ✅ | ✅ | — |
+| [Install Harbor](docs/HARBOR.md) | ✅ | part | ✅ | — |
 | [ArgoCD](docs/ARGOCD.md) | ✅ | ✅ | ✅ | — |
 | [Run Gitea](docs/GITEA.md) | ✅ | — | ✅ | ✅ |
 | [Install Helm](docs/HELM.md) | ✅ | — | ✅ | — |
-| [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | — | ✅ | — |
-| [Send logs to VCF Operations](docs/LOGGING.md) | ✅ | — | part | ✅ |
+| [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | — | part | — |
+| [Send logs to VCF Operations](docs/LOGGING.md) | part | — | part | ✅ |
 | [Logs and traces in Grafana](docs/OBSERVABILITY.md) | ✅ | — | part | — |
 
 Windows was Windows Server 2025. Linux on arm64, Intel Macs and Windows on arm64 were not tested.
