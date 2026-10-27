@@ -131,9 +131,13 @@ case "$(uname -s)/${BASH_VERSION:+bash}" in
   *)           RC="$HOME/.zshrc" ;;
 esac
 grep -qs '.local/bin' "$RC" || echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$RC"
+if [ "$RC" = "$HOME/.bashrc" ]; then
+  [ -f "$HOME/.bash_profile" ] || [ -f "$HOME/.bash_login" ] || [ -f "$HOME/.profile" ] \
+    || echo '[ -f ~/.bashrc ] && . ~/.bashrc' > "$HOME/.bash_profile"
+fi
 echo "PATH set in $RC"
 ```
 
-**Expect:** `PATH set in …`. New terminals find the tools.
+**Expect:** `PATH set in …`. New terminals, including SSH sessions, find the tools.
 
 Back to [README](../README.md).
