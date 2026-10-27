@@ -460,7 +460,143 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-#PS-4A#
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$GITEA_URL = "http://localhost:3300"
+$CICD_DIR = "$HOME\.config\vks-guides\cicd"
+
+$FILES = @{
+  'app\Dockerfile' = @'
+FROM docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+COPY index.html /usr/share/nginx/html/index.html
+EXPOSE 8080
+'@
+  'app\index.html' = @'
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>test-web-apps</title></head>
+<body>
+<h1>test-web-apps v1</h1>
+</body>
+</html>
+'@
+  'deploy\deployment.yaml' = @'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cicd-demo
+  namespace: cicd-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cicd-demo
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cicd-demo
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: harbor-pull
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: nginx
+          image: docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits: { cpu: 250m, memory: 128Mi }
+          readinessProbe:
+            httpGet: { path: /, port: http }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 64Mi }
+'@
+  'deploy\service.yaml' = @'
+apiVersion: v1
+kind: Service
+metadata:
+  name: cicd-demo
+  namespace: cicd-demo
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: cicd-demo
+  ports:
+    - { name: http, port: 80, targetPort: http }
+'@
+}
+foreach ($F in $FILES.Keys) {
+  New-Item -ItemType Directory -Force -Path (Split-Path "$CICD_DIR\$F") | Out-Null
+  [IO.File]::WriteAllText("$CICD_DIR\$F", ($FILES[$F] -replace "`r`n", "`n") + "`n")
+}
+$global:LASTEXITCODE = $null
+if (-not $GITEA_PASSWORD) {
+  "FAILED: no password in this terminal; type it first (the block above), then run this again"
+} else {
+  $U = @(kubectl --kubeconfig $VKS_KUBECONFIG -n gitea exec deployment/gitea -- gitea admin user list)
+  if ($LASTEXITCODE -ne 0) {
+    "FAILED: cannot run gitea in the pod (see the error above)"
+  } else {
+    $P = [Net.NetworkCredential]::new('', $GITEA_PASSWORD).Password.Replace('\', '\\').Replace('"', '\"')
+    $CFG = [IO.Path]::GetTempFileName(); $BODY = [IO.Path]::GetTempFileName()
+    try {
+      Set-Content -Encoding ascii -Path $CFG -Value "user = `"gitea-admin:$P`""
+      Remove-Variable P
+      if ((curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -w '%{http_code}' "$GITEA_URL/api/v1/user") -ne '200') {
+        "FAILED: Gitea did not accept gitea-admin and this password, or the port-forward is not running"
+      } else {
+        foreach ($R in 'app', 'deploy') {
+          Set-Content -Encoding ascii -Path $BODY -Value ('{"name":"' + $R + '","private":false,"default_branch":"main"}')
+          "repository ${R}: $(curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" "$GITEA_URL/api/v1/user/repos")"
+          foreach ($F in (Get-ChildItem "$CICD_DIR\$R" -File | Sort-Object Name)) {
+            $C = [Convert]::ToBase64String([IO.File]::ReadAllBytes($F.FullName))
+            Set-Content -Encoding ascii -Path $BODY -Value ('{"content":"' + $C + '","message":"add ' + $F.Name + '","branch":"main"}')
+            "  $($F.Name): $(curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" "$GITEA_URL/api/v1/repos/gitea-admin/$R/contents/$($F.Name)")"
+          }
+        }
+        if (-not @($U | Where-Object { (-split $_)[1] -ceq 'cicd-bot' }).Count) {
+          kubectl --kubeconfig $VKS_KUBECONFIG -n gitea exec deployment/gitea -- gitea admin user create `
+            --username cicd-bot --email cicd-bot@localhost --random-password --must-change-password=false | Out-Null
+          if ($LASTEXITCODE -eq 0) { "user cicd-bot: created" }
+        }
+        Set-Content -Encoding ascii -Path $BODY -Value '{"permission":"write"}'
+        "cicd-bot writes deploy: $(curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -w '%{http_code}' -X PUT -H 'Content-Type: application/json' --data-binary "@$BODY" "$GITEA_URL/api/v1/repos/gitea-admin/deploy/collaborators/cicd-bot")"
+        kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-ci get secret git-writeback -o name 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+          "kept: secret git-writeback in cicd-ci"
+        } else {
+          $T = (kubectl --kubeconfig $VKS_KUBECONFIG -n gitea exec deployment/gitea -- gitea admin user generate-access-token `
+            --username cicd-bot --token-name "cicd-writeback-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" --scopes write:repository --raw | Out-String).Trim()
+          if ($T -cmatch '^[0-9a-f]{40}$') {
+            "apiVersion: v1`nkind: Secret`nmetadata:`n  name: git-writeback`n  namespace: cicd-ci`nstringData:`n  username: cicd-bot`n  token: $T`n" |
+              kubectl --kubeconfig $VKS_KUBECONFIG create -f -
+          } else {
+            "FAILED: Gitea did not return a token (see the error above)"
+          }
+          Remove-Variable T
+        }
+      }
+    } finally {
+      Remove-Item -Force $CFG, $BODY
+    }
+  }
+}
 ```
 
 </details>
@@ -554,7 +690,64 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-#PS-5#
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$GIT_SERVER = "gitea"
+
+if ($GIT_SERVER -eq 'gitea') {
+  $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get service gitea-public -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  $REPO = "http://${IP}:3000/gitea-admin/deploy.git"
+} else {
+  $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab get service gitlab-public -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  $REPO = "http://${IP}/cicd/deploy.git"
+}
+if (-not $IP) {
+  "FAILED: no load-balancer address for $GIT_SERVER; do GITEA.md step 8 or GITLAB.md step 7"
+} else {
+  "deploy repository: $REPO"
+  @"
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cicd-demo
+spec:
+  description: cicd-demo from $GIT_SERVER into $VKS_CLUSTER
+  sourceRepos:
+    - $REPO
+  destinations:
+    - name: $VKS_CLUSTER-$VKS_NAMESPACE
+      namespace: cicd-demo
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: ""
+      kind: Service
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cicd-demo
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: cicd-demo
+  source:
+    repoURL: $REPO
+    targetRevision: main
+    path: .
+  destination:
+    name: $VKS_CLUSTER-$VKS_NAMESPACE
+    namespace: cicd-demo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+"@ | kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE apply -f -
+}
 ```
 
 </details>
@@ -586,13 +779,32 @@ done
 echo "ArgoCD: $(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get application cicd-demo -o jsonpath='{.status.sync.status} {.status.health.status} {.status.sync.revision}')"
 echo "page at http://${IP:-?}/: ${V:-nothing}"
 echo "image: $(kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-demo get deployment cicd-demo -o jsonpath='{.spec.template.spec.containers[0].image}')"
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-demo get pods -o jsonpath='{range .items[*]}{.metadata.name} {.status.containerStatuses[0].imageID}{"\n"}{end}'
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-demo get pods --no-headers -o custom-columns=POD:.metadata.name,IMAGE:.status.containerStatuses[0].imageID
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-#PS-CHECK#
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$WANT = "Welcome to nginx"
+
+$V = $null; $IP = $null
+foreach ($i in 1..60) {
+  $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-demo get service cicd-demo -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>$null
+  if ($IP) {
+    $H = curl.exe -s --connect-timeout 5 --max-time 10 "http://$IP/" | Out-String
+    $V = if ($H -match '<h1>(.*)</h1>') { $Matches[1] } else { $null }
+  }
+  if ($V -and $V.StartsWith($WANT)) { break }
+  Start-Sleep -Seconds 10
+}
+"ArgoCD: $(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get application cicd-demo -o jsonpath='{.status.sync.status} {.status.health.status} {.status.sync.revision}')"
+"page at http://$(if ($IP) { $IP } else { '?' })/: $(if ($V) { $V } else { 'nothing' })"
+"image: $(kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-demo get deployment cicd-demo -o jsonpath='{.spec.template.spec.containers[0].image}')"
+kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-demo get pods --no-headers -o custom-columns=POD:.metadata.name,IMAGE:.status.containerStatuses[0].imageID
 ```
 
 **If not:** 
@@ -810,7 +1022,186 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-#PS-6A#
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+
+@'
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: cicd-build, namespace: cicd-ci}
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: cicd-writeback, namespace: cicd-ci}
+automountServiceAccountToken: false
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: build, namespace: cicd-ci}
+spec:
+  params:
+    - {name: app-url, type: string}
+    - {name: image, type: string}
+    - {name: registry, type: string}
+  results:
+    - name: commit
+    - name: digest
+  volumes:
+    - name: src
+      emptyDir: {}
+    - name: push
+      secret: {secretName: harbor-push}
+    - name: ca
+      configMap: {name: harbor-ca}
+  steps:
+    - name: clone
+      image: docker.io/alpine/git:v2.54.0@sha256:e8ceedc73bd80992ae8d58a7d24c58b8322146c354f1d2e81a97db4452068ec0
+      env:
+        - {name: HOME, value: /tmp}
+        - {name: URL, value: $(params.app-url)}
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 65532
+        capabilities: {drop: ["ALL"]}
+        seccompProfile: {type: RuntimeDefault}
+      volumeMounts:
+        - {name: src, mountPath: /src}
+      script: |
+        #!/bin/sh
+        set -eu
+        git clone -q --depth 1 "$URL" /src/app
+        git -C /src/app rev-parse HEAD | tr -d '\n' > "$(results.commit.path)"
+        rm -rf /src/app/.git
+        echo "cloned $(cat "$(results.commit.path)")"
+    - name: kaniko
+      image: ghcr.io/osscontainertools/kaniko:v1.29.0-debug@sha256:350929376b8a69afb1d8b362086c809e4ef6799fa1bcb317c2806ae1447b3845
+      volumeMounts:
+        - {name: src, mountPath: /src}
+        - {name: push, mountPath: /kaniko/.docker, readOnly: true}
+        - {name: ca, mountPath: /run/ca, readOnly: true}
+      env:
+        - {name: REGISTRY, value: $(params.registry)}
+        - {name: IMAGE, value: $(params.image)}
+      script: |
+        #!/busybox/sh
+        set -eu
+        /kaniko/executor --context=/src/app --dockerfile=/src/app/Dockerfile \
+          --destination="${REGISTRY}/${IMAGE}:$(cat "$(results.commit.path)")" \
+          --registry-certificate="${REGISTRY}=/run/ca/ca.crt" \
+          --digest-file="$(results.digest.path)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: write-back, namespace: cicd-ci}
+spec:
+  params:
+    - {name: deploy-url, type: string}
+    - {name: image, type: string}
+    - {name: registry, type: string}
+    - {name: digest, type: string}
+    - {name: commit, type: string}
+  volumes:
+    - name: token
+      secret: {secretName: git-writeback}
+  stepTemplate:
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      runAsUser: 65532
+      capabilities: {drop: ["ALL"]}
+      seccompProfile: {type: RuntimeDefault}
+  steps:
+    - name: write-back
+      image: docker.io/alpine/git:v2.54.0@sha256:e8ceedc73bd80992ae8d58a7d24c58b8322146c354f1d2e81a97db4452068ec0
+      env:
+        - {name: HOME, value: /tmp}
+        - {name: GIT_CONFIG_NOSYSTEM, value: "1"}
+        - {name: URL, value: $(params.deploy-url)}
+        - {name: IMAGE, value: $(params.registry)/$(params.image)}
+        - {name: DIGEST, value: $(params.digest)}
+        - {name: COMMIT, value: $(params.commit)}
+      volumeMounts:
+        - {name: token, mountPath: /run/git, readOnly: true}
+      script: |
+        #!/bin/sh
+        set -eu
+        DIGEST="$(printf '%s' "$DIGEST" | tr -d '[:space:]')"
+        printf '%s\n' "$DIGEST" | grep -Eqx 'sha256:[0-9a-f]{64}' || { echo "refused: not a digest"; exit 1; }
+        printf '%s\n' "$COMMIT" | grep -Eqx '[0-9a-f]{40}' || { echo "refused: not a commit"; exit 1; }
+        H="${URL#http://}"; H="${H%%/*}"
+        U="$(cat /run/git/username)"
+        printf 'http://%s:%s@%s\n' "$U" "$(cat /run/git/token)" "$H" > /tmp/cred
+        set -- -c core.hooksPath=/dev/null -c credential.helper= -c "credential.helper=store --file=/tmp/cred"
+        git "$@" clone -q --depth 1 "$URL" /tmp/deploy
+        sed -i "s|^\( *image: \).*|\1${IMAGE}@${DIGEST}|" /tmp/deploy/deployment.yaml
+        if git -C /tmp/deploy diff --quiet; then echo "deploy already at ${DIGEST}"; rm -f /tmp/cred; exit 0; fi
+        git -C /tmp/deploy "$@" -c user.name="$U" -c user.email="$U@localhost" commit -qam "app ${COMMIT}: ${DIGEST}"
+        git -C /tmp/deploy "$@" push -q origin HEAD
+        rm -f /tmp/cred
+        echo "deploy now at ${IMAGE}@${DIGEST}"
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata: {name: cicd-demo, namespace: cicd-ci}
+spec:
+  params:
+    - {name: app-url, type: string}
+    - {name: deploy-url, type: string}
+    - {name: image, type: string}
+    - {name: registry, type: string}
+  tasks:
+    - name: build
+      taskRef: {name: build}
+      params:
+        - {name: app-url, value: $(params.app-url)}
+        - {name: image, value: $(params.image)}
+        - {name: registry, value: $(params.registry)}
+    - name: write-back
+      taskRef: {name: write-back}
+      params:
+        - {name: deploy-url, value: $(params.deploy-url)}
+        - {name: image, value: $(params.image)}
+        - {name: registry, value: $(params.registry)}
+        - {name: digest, value: $(tasks.build.results.digest)}
+        - {name: commit, value: $(tasks.build.results.commit)}
+'@ | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$global:LASTEXITCODE = $null
+if (-not $HARBOR_FQDN) {
+  "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml"
+} else {
+  $PR = @"
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: cicd-demo-
+  namespace: cicd-ci
+spec:
+  pipelineRef: {name: cicd-demo}
+  params:
+    - {name: app-url, value: "http://gitea-http.gitea.svc:3000/gitea-admin/app.git"}
+    - {name: deploy-url, value: "http://gitea-http.gitea.svc:3000/gitea-admin/deploy.git"}
+    - {name: image, value: cicd-demo/test-web-apps}
+    - {name: registry, value: "$HARBOR_FQDN"}
+  taskRunSpecs:
+    - {pipelineTaskName: build, serviceAccountName: cicd-build}
+    - {pipelineTaskName: write-back, serviceAccountName: cicd-writeback}
+"@ | kubectl --kubeconfig $VKS_KUBECONFIG create -o name -f -
+  if ($LASTEXITCODE -eq 0) {
+    "started $PR"
+    foreach ($i in 1..90) {
+      $ST = kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-ci get $PR -o jsonpath='{.status.conditions[0].status}'
+      if ($ST -eq 'True' -or $ST -eq 'False') { break }
+      Start-Sleep -Seconds 10
+    }
+    kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-ci get $PR -o jsonpath='{.status.conditions[0].reason}: {.status.conditions[0].message}'
+    ""
+    kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-ci logs -l "tekton.dev/pipelineRun=$($PR -replace '^.*/', ''),tekton.dev/pipelineTask=write-back" -c step-write-back --tail=1
+  }
+}
 ```
 
 </details>
@@ -962,7 +1353,135 @@ kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-ci wait --for=condition=Ready eve
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-#PS-7A#
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$GITEA_URL = "http://localhost:3300"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+
+$HOOK = "http://el-cicd-demo.cicd-ci.svc.cluster.local:8080"
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+@'
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: cicd-listener, namespace: cicd-ci}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: cicd-listener, namespace: cicd-ci}
+subjects: [{kind: ServiceAccount, name: cicd-listener, namespace: cicd-ci}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: tekton-triggers-eventlistener-roles}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: cicd-listener}
+rules:
+  - apiGroups: ["triggers.tekton.dev"]
+    resources: ["clusterinterceptors", "clustertriggerbindings"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: cicd-listener}
+subjects: [{kind: ServiceAccount, name: cicd-listener, namespace: cicd-ci}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: cicd-listener}
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata: {name: cicd-demo, namespace: cicd-ci}
+spec:
+  params:
+    - name: app-url
+    - name: deploy-url
+    - name: image
+    - name: registry
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata: {generateName: cicd-demo-}
+      spec:
+        pipelineRef: {name: cicd-demo}
+        params:
+          - {name: app-url, value: $(tt.params.app-url)}
+          - {name: deploy-url, value: $(tt.params.deploy-url)}
+          - {name: image, value: $(tt.params.image)}
+          - {name: registry, value: $(tt.params.registry)}
+        taskRunSpecs:
+          - {pipelineTaskName: build, serviceAccountName: cicd-build}
+          - {pipelineTaskName: write-back, serviceAccountName: cicd-writeback}
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata: {name: cicd-demo, namespace: cicd-ci}
+spec:
+  serviceAccountName: cicd-listener
+  triggers:
+    - name: push-to-main
+      interceptors:
+        - ref: {name: github, kind: ClusterInterceptor}
+          params:
+            - name: secretRef
+              value: {secretName: cicd-webhook, secretKey: token}
+            - name: eventTypes
+              value: ["push"]
+        - ref: {name: cel, kind: ClusterInterceptor}
+          params:
+            - name: filter
+              value: body.ref == 'refs/heads/main'
+      bindings: [{ref: cicd-demo}]
+      template: {ref: cicd-demo}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: cicd-listener, namespace: cicd-ci}
+spec:
+  podSelector: {matchLabels: {eventlistener: cicd-demo}}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gitea}}
+'@ | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
+@"
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata: {name: cicd-demo, namespace: cicd-ci}
+spec:
+  params:
+    - {name: app-url, value: "http://gitea-http.gitea.svc:3000/gitea-admin/app.git"}
+    - {name: deploy-url, value: "http://gitea-http.gitea.svc:3000/gitea-admin/deploy.git"}
+    - {name: image, value: cicd-demo/test-web-apps}
+    - {name: registry, value: "$HARBOR_FQDN"}
+"@ | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
+$global:LASTEXITCODE = $null
+kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-ci get secret cicd-webhook -o name 2>$null | Out-Null
+if ($LASTEXITCODE -ne 0) {
+  $B = New-Object byte[] 20
+  [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($B)
+  "apiVersion: v1`nkind: Secret`nmetadata:`n  name: cicd-webhook`n  namespace: cicd-ci`nstringData:`n  token: $(-join ($B | ForEach-Object { $_.ToString('x2') }))`n" |
+    kubectl --kubeconfig $VKS_KUBECONFIG create -f -
+  Remove-Variable B
+}
+if (-not $GITEA_PASSWORD) {
+  "FAILED: no Gitea password in this terminal; type it (step 4), then run this again"
+} else {
+  $P = [Net.NetworkCredential]::new('', $GITEA_PASSWORD).Password.Replace('\', '\\').Replace('"', '\"')
+  $CFG = [IO.Path]::GetTempFileName(); $BODY = [IO.Path]::GetTempFileName()
+  try {
+    Set-Content -Encoding ascii -Path $CFG -Value "user = `"gitea-admin:$P`""
+    Remove-Variable P
+    $H = curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks" | Out-String | ConvertFrom-Json
+    foreach ($ID in @($H | Where-Object { $_.config.url -ceq $HOOK } | ForEach-Object { $_.id })) {
+      curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -X DELETE "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks/$ID"
+      "replaced webhook $ID"
+    }
+    $W = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String((kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-ci get secret cicd-webhook -o jsonpath='{.data.token}')))
+    Set-Content -Encoding ascii -Path $BODY -Value ('{"type":"gitea","active":true,"events":["push"],"branch_filter":"main","config":{"url":"' + $HOOK + '","content_type":"json","secret":"' + $W + '"}}')
+    Remove-Variable W
+    "webhook: $(curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks")"
+  } finally {
+    Remove-Item -Force $CFG, $BODY
+  }
+}
+kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-ci wait --for=condition=Ready eventlistener/cicd-demo --timeout=5m
 ```
 
 </details>
@@ -1011,7 +1530,21 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-#PS-8#
+$GIT_SERVER = "gitea"
+$APP_DIR = "$HOME\.config\vks-guides\cicd\app-work"
+$EMAIL = "you@example.com"
+
+$URL = if ($GIT_SERVER -eq 'gitea') { "http://gitea-admin@localhost:3300/gitea-admin/app.git" } else { "http://root@localhost:3400/cicd/app.git" }
+$global:LASTEXITCODE = 0
+if (-not (Test-Path "$APP_DIR\.git")) { git clone -q $URL $APP_DIR }
+if ($LASTEXITCODE -eq 0) {
+  git -C $APP_DIR -c credential.helper= pull -q --ff-only $URL main
+  $H = [IO.File]::ReadAllText("$APP_DIR\index.html") -replace 'test-web-apps v[0-9]*', 'test-web-apps v2'
+  [IO.File]::WriteAllText("$APP_DIR\index.html", $H)
+  git -C $APP_DIR diff --quiet
+  if ($LASTEXITCODE -ne 0) { git -C $APP_DIR -c user.name=cicd -c user.email=$EMAIL -c commit.gpgsign=false commit -qam "page v2" }
+  git -C $APP_DIR -c credential.helper= push $URL HEAD:main
+}
 ```
 
 **Expect:** after the password, `<old>..<new>  HEAD -> main`. With Gitea, within a minute
@@ -1097,7 +1630,60 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-#PS-9#
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$GIT_SERVER = "gitea"
+$HARBOR_PROJECT = "cicd-demo"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$GITEA_URL = "http://localhost:3300"
+
+$global:LASTEXITCODE = $null
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete application cicd-demo --ignore-not-found --timeout=5m
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject cicd-demo --ignore-not-found }
+kubectl --kubeconfig $VKS_KUBECONFIG delete namespace cicd-demo --ignore-not-found --timeout=10m
+if ($GIT_SERVER -eq 'gitea') {
+  kubectl --kubeconfig $VKS_KUBECONFIG delete namespace cicd-ci --ignore-not-found --timeout=10m
+  kubectl --kubeconfig $VKS_KUBECONFIG delete clusterrolebinding,clusterrole cicd-listener --ignore-not-found
+  if (-not $GITEA_PASSWORD) {
+    "skipped: Gitea repositories (no Gitea password in this terminal; type it with step 4's first block)"
+  } else {
+    $P = [Net.NetworkCredential]::new('', $GITEA_PASSWORD).Password.Replace('\', '\\').Replace('"', '\"')
+    $CFG = [IO.Path]::GetTempFileName()
+    try {
+      Set-Content -Encoding ascii -Path $CFG -Value "user = `"gitea-admin:$P`""
+      Remove-Variable P
+      foreach ($R in 'app', 'deploy') {
+        "repository ${R}: $(curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -w '%{http_code}' -X DELETE "$GITEA_URL/api/v1/repos/gitea-admin/$R")"
+      }
+    } finally {
+      Remove-Item -Force $CFG
+    }
+  }
+  kubectl --kubeconfig $VKS_KUBECONFIG -n gitea exec deployment/gitea -- gitea admin user delete --username cicd-bot --purge 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) { "user cicd-bot: deleted" }
+} else {
+#9B-PS#
+}
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$S = @{}
+foreach ($l in Get-Content "$HARBOR_DIR\secrets.env" -ErrorAction SilentlyContinue) { if ($l -cmatch "^(HARBOR_[A-Z_]+)='(.*)'$") { $S[$Matches[1]] = $Matches[2] } }
+if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not $S['HARBOR_ADMIN_PASSWORD']) {
+  "skipped: Harbor (harbor-data-values.yml, harbor-ca.crt or secrets.env is missing in $HARBOR_DIR)"
+} else {
+  $P = $S['HARBOR_ADMIN_PASSWORD'].Replace('\', '\\').Replace('"', '\"')
+  $CFG = [IO.Path]::GetTempFileName()
+  try {
+    Set-Content -Encoding ascii -Path $CFG -Value "user = `"admin:$P`""
+    foreach ($U in "projects/$HARBOR_PROJECT/repositories/test-web-apps", "projects/$HARBOR_PROJECT") {
+      "Harbor $($U -replace '^projects/', ''): $(curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG -o NUL -w '%{http_code}' -X DELETE "https://$HARBOR_FQDN/api/v2.0/$U")"
+    }
+  } finally {
+    Remove-Item -Force $CFG
+    Remove-Variable P, S
+  }
+}
 ```
 
 </details>
