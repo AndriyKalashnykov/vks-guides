@@ -4,6 +4,7 @@
 > **Official Broadcom documentation (VCF 9.1.1) for this guide**
 >
 > - [Installing the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/install-the-vcf-cli%283%29.html) (install the downloaded binary)
+> - [VCF CLI `context` commands](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/command-reference2/system-commands%281%29/context2.html) (how contexts use kubeconfig files)
 > - [Installing the VCF CLI in Internet Restricted Environments](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/installing-the-vcf-cli-in-internet-restricted-environments%282%29.html) (the download and the plugin bundle)
 
 `vcf` is VMware's command-line tool; you use it to [log in to the Supervisor](LOGIN.md). The
@@ -222,5 +223,91 @@ no `essential plugins` or `telemetry:v9.0.2` line before them.
 
 **If not:** the lines still appear in a terminal opened before this block: close it; terminals
 opened after it have the setting.
+
+## How `vcf` contexts use kubeconfig files
+
+A `vcf` *context* is a saved login. `vcf` keeps its contexts in `~/.config/vcf/config.yaml`
+(Windows: `%USERPROFILE%\.config\vcf\config.yaml`), and each one records a kubeconfig file and a
+context name in it. `kubectl` reads only the kubeconfig. Logging in to the Supervisor
+([LOGIN.md](LOGIN.md)) creates one context per vSphere Namespace as well, named
+`<name>:<namespace>`, all in the same kubeconfig.
+
+```mermaid
+flowchart LR
+  subgraph CFG["~/.config/vcf/config.yaml"]
+    C1["context supervisor<br/>kubeconfig: ~/.kube/supervisor.kubeconfig<br/>kube context: supervisor"]
+    C2["context supervisor:my-namespace<br/>(one per vSphere Namespace)"]
+    CUR["currentContext: set by vcf context use"]
+  end
+  subgraph KC["~/.kube/supervisor.kubeconfig"]
+    K["contexts supervisor, supervisor:my-namespace<br/>cluster, user and its token<br/>current-context"]
+  end
+  C1 -- recorded file --> KC
+  C2 -- recorded file --> KC
+  L["vcf context create --endpoint<br/>(log in)"] -- "writes the file KUBECONFIG names" --> KC
+  V["vcf context use / delete"] -- "writes the recorded file,<br/>whatever KUBECONFIG is now" --> KC
+  KUBECTL["kubectl"] -- "--kubeconfig or KUBECONFIG" --> KC
+```
+
+What each command writes:
+
+| command | `config.yaml` | kubeconfig |
+|---|---|---|
+| `vcf context create <name> --endpoint …` (log in) | adds `<name>` and its `<name>:<namespace>` contexts; does not make one active | adds their contexts, cluster and user to the file `KUBECONFIG` names (or `~/.kube/config` when `KUBECONFIG` is not set), creating it if missing |
+| `vcf context create <name> --kubeconfig F --kubecontext C` | adds `<name>`, recording `F` and `C` (give `F` as a full path) | none |
+| `vcf context use <name>` | sets `currentContext` | sets the recorded file's current-context to the recorded context, and writes that whole file again (its comments are lost); `KUBECONFIG` is ignored |
+| `vcf context list`, `get` | none | none |
+| `vcf context unset <name>` | clears `currentContext` (the active context only) | none |
+| `vcf context delete <name> -y`, for a login or a `--kubeconfig` context | removes `<name>` and its `<name>:<namespace>` contexts | removes their contexts, cluster and user from the recorded file, even ones another context still uses, and clears its current-context |
+| `vcf context delete <name>:<namespace> -y` | removes that context | removes only that context |
+| `vcf context delete <name> -y --skip-delete-kubeconfig-context` | removes `<name>` and its `<name>:<namespace>` contexts | none |
+
+What this means for you:
+
+- Give `vcf` a kubeconfig of its own, as LOGIN.md does with `KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"`.
+  A login made while `KUBECONFIG` names another file (a VKS cluster's kubeconfig, or the shared
+  `~/.kube/config`) writes into that file, and every later `vcf context use` or `delete` changes it
+  again.
+- `vcf context use` can print `failed to discover plugin sources …` and exit with an error even
+  though it switched (on a Supervisor with no system Harbor registry). Check the switch with
+  `kubectl --kubeconfig <the file> config current-context`, not with the exit code. A login whose
+  token has expired makes `vcf context use` ask for the password.
+- To stop `vcf context use` from changing the kubeconfig, set
+  `VCF_CLI_SKIP_UPDATE_KUBECONFIG_ON_CONTEXT_USE=true`. Broadcom does not document this variable.
+- `no current context set for type "kubernetes"` from a command such as `vcf cluster list`: no
+  context is active (a login does not make one active); `vcf context use <name>` does.
+
+This shows your contexts, the file each one uses, and the current-context of each file:
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+vcf context list --wide
+vcf context list --wide -o json | jq -r '.[].kubeconfigpath // empty' | sort -u | while IFS= read -r F; do
+  if [ -f "$F" ]; then
+    echo "$F: current-context $(kubectl --kubeconfig "$F" config current-context 2>&1)"
+  else
+    echo "$F: missing"
+  fi
+done
+```
+
+**Windows (PowerShell):**
+
+```powershell
+vcf context list --wide
+$L = vcf context list --wide -o json | Out-String | ConvertFrom-Json
+foreach ($F in @($L | Where-Object { $_.kubeconfigpath } | ForEach-Object { $_.kubeconfigpath } | Sort-Object -Unique)) {
+  if (Test-Path $F) { "${F}: current-context $(kubectl --kubeconfig $F config current-context 2>&1)" } else { "${F}: missing" }
+}
+```
+
+**Expect:** a table with the columns `NAME`, `CURRENT`, `TYPE`, `ENDPOINT`, `KUBECONFIGPATH` and
+`KUBECONTEXT`, `true` under `CURRENT` for the active context if there is one (all `false` until
+`vcf context use`), then one line per kubeconfig file with its current-context.
+
+**If not:** `error: current-context is not set` for a file: no context is selected in it; `vcf
+context use <name>` sets one. `missing` for a file: it was deleted; `vcf context delete <name> -y
+--skip-delete-kubeconfig-context` removes the contexts that use it, and you can log in again.
 
 Back to [README](../README.md).
