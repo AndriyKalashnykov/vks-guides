@@ -98,7 +98,7 @@ Remove-Item -Recurse -Force $TMP
 
 </details>
 
-**Expect:** for each CA, a `subject=` line (vCenter's own starts `subject=CN=CA, DC=vsphere`) and a
+**Expect:** for each CA, a `subject=` line (vCenter's own contains `CN=CA` and `DC=vsphere`) and a
 `sha256 Fingerprint=…` line (`SHA256 Fingerprint=` on macOS), then `saved as …`. Every CA listed
 will be trusted for the login, so each fingerprint must match one from your administrator,
 ignoring colons and upper/lower case.

@@ -19,8 +19,8 @@ section for your OS, then [Check](#check) (Linux, macOS and WSL; PowerShell need
 sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
 ```
 
-On other distributions (except Photon OS, below), install the same five packages with your package
-manager.
+On other distributions (except Photon OS, below), install the same five packages with your
+package manager.
 
 ## Photon OS 5
 
@@ -33,7 +33,12 @@ sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificat
 **Expect:** the prompt returns with no `Error` line (`Nothing to do.` when all are installed).
 Then run [Check](#check).
 
-**If not:** `sudo: command not found`: run it as `root`, without `sudo`.
+**If not:**
+- `sudo: command not found`: run it as `root`, without `sudo`.
+- SSH as `root`, or `ssh -L` port forwarding, stops working: the updated SSH server refuses both
+  when you never changed `/etc/ssh/sshd_config`. Log in as another user, or set
+  `PermitRootLogin` and `AllowTcpForwarding` there as you need and run
+  `sudo systemctl restart sshd`.
 
 ## macOS
 
