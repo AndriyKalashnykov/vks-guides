@@ -1034,7 +1034,8 @@ spec:
 
 **If not:** `strict decoding error: unknown field "spec.clusterResourceWhitelist[0].name"`: your
 ArgoCD is older than 3.3. Delete the line `name: test-web-apps` under `kind: Namespace` and run it
-again; the project may then create a namespace with any name.
+again (the Application then shows `unchanged`); the project may then create a namespace with any
+name.
 
 This checks the app. It needs the VKS cluster's kubeconfig from
 [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig). Run it again until
