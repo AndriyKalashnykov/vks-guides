@@ -2074,6 +2074,8 @@ run: `kept: secret …` and `writeback: success unchanged: …` or a new digest.
 Then run step 5's check with `WANT="test-web-apps v1"`.
 
 **If not:**
+- `FAILED: no runner chart …`: run this on the machine where you did GITLAB.md step 8, or do that
+  step here.
 - `build runners for cicd/app: 0`: no runner has the tag `vks`; do GITLAB.md step 8.
 - `build: failed`: `http://localhost:3400/cicd/app/-/jobs` shows the log. `waiting for pod running:
   timed out` means `harbor-push` or `harbor-ca` is missing in `gitlab-runner` (step 3 with
@@ -2373,6 +2375,8 @@ run), `webhook: 201` (after `replaced webhook <n>` on a second run) and
   cluster's Service range is not `10.96.0.0/12` (CLUSTER.md, item 8), put yours with `:8080` in
   `ALLOWED_HOST_LIST` there.
 - `FAILED: no Gitea password …`: type it with step 4's first block, then run this again.
+- `Failed to connect to localhost port 3300`: the port-forward stopped (its terminal says `lost
+  connection to pod`; it can drop while idle). Start GITEA.md step 6 again, then run this again.
 
 ### With GitLab
 
@@ -2439,6 +2443,8 @@ the page says `test-web-apps v2`, `image:` ends in a new `@sha256:…`, and ever
 in that digest.
 
 **If not:**
+- `Failed to connect to localhost port 3300` (or `3400`): the port-forward stopped; start GITEA.md
+  step 6 (or GITLAB.md step 5) again, then run this again.
 - `Everything up-to-date`: the page already said v2; change `v2` to `v3` in the block and run it
   again.
 - With Gitea, no new PipelineRun: see step 7's **If not**.
