@@ -494,7 +494,7 @@ created!`.
   it; then do step 6 again.
 
   ```sh
-  kubectl --kubeconfig "$HOME/.kube/my-vks-cluster.kubeconfig" -n gitea exec deployment/gitea -- sh -c 'P="$(head -c 15 /dev/urandom | base64)"; gitea admin user change-password --username gitea-admin --password "$P" --must-change-password && echo "new password: $P"'
+  kubectl --kubeconfig "$HOME/.kube/my-vks-cluster.kubeconfig" -n gitea exec deployment/gitea -- sh -c 'P=$(head -c 15 /dev/urandom | base64); gitea admin user change-password --username gitea-admin --password $P --must-change-password && echo new password: $P'
   ```
 
   In PowerShell, put the kubeconfig path in place of `"$HOME/.kube/my-vks-cluster.kubeconfig"`
@@ -574,7 +574,7 @@ git -C $REPO rev-parse -q --verify HEAD 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) {
   New-Item -ItemType Directory -Force -Path $REPO | Out-Null
   git -C $REPO init -q
-  Set-Content -Encoding Ascii -Path "$REPO\README.md" -Value "# hello`n`nMy first repository in Gitea."
+  Set-Content -Encoding Ascii -Path "$REPO\README.md" -Value "# hello`r`n`r`nMy first repository in Gitea."
   git -C $REPO add README.md
   git -C $REPO -c user.name=gitea-admin -c user.email=$GITEA_ADMIN_EMAIL commit -q -m "first commit"
 }
@@ -601,8 +601,8 @@ the Supervisor) can clone public repositories without a login. **The address is 
 anyone who reaches it can try passwords.** Never sign in, push or send a token through it; use
 step 6's `localhost:3300` for that.
 
-1. Make the repository public: at <http://localhost:3300/gitea-admin/hello/settings>, clear
-   **Make repository private** and **Update Settings**.
+1. Make the repository public: at <http://localhost:3300/gitea-admin/hello/settings>, under
+   **Danger Zone**, click **Make Public**, then **Make Public** in the dialog.
 2. Create the Service `gitea-public` and wait for its address:
 
 <details>

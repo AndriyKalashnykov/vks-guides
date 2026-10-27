@@ -21,8 +21,8 @@ and what to do if it differs.
 ## Guides
 
 Start with Prerequisites. Then install kubectl and the VCF CLI, in either order. Log in needs both. Then create the
-vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harbor, ArgoCD, monitoring,
-logging and observability are optional; monitoring needs Helm or ArgoCD, and observability needs
+vSphere Namespace (a vCenter administrator's task) and a VKS cluster in it. Harbor, ArgoCD, Gitea,
+monitoring, logging and observability are optional; monitoring needs Helm or ArgoCD, and observability needs
 monitoring and Helm.
 
 | guide | what it is |
@@ -35,6 +35,7 @@ monitoring and Helm.
 | [Create a VKS cluster](docs/CLUSTER.md) | a VKS cluster made in the vSphere Client, checked, and deleted |
 | [Install Harbor](docs/HARBOR.md) | a vCenter administrator's Harbor registry on the Supervisor, trusted by its VKS clusters |
 | [Create a VKS cluster and deploy an app with ArgoCD](docs/ARGOCD.md) | the ArgoCD Service, a VKS cluster made from Git, and a test app ArgoCD keeps in sync |
+| [Run Gitea in a VKS cluster](docs/GITEA.md) | a self-hosted Git server with a web page, in one pod of a VKS cluster, that other machines such as ArgoCD can clone from |
 | [Install Helm](docs/HELM.md) | the Kubernetes package manager, for installing charts such as the monitoring stack |
 | [Monitor a VKS cluster](docs/MONITORING.md) | Prometheus, Alertmanager and Grafana in a VKS cluster, from the upstream kube-prometheus-stack chart, with Helm or ArgoCD |
 | [Send a VKS cluster's logs to VCF Operations](docs/LOGGING.md) | Broadcom's Fluent Bit add-on, sending the cluster's logs over HTTPS to Log Management in VCF Operations |
@@ -126,6 +127,11 @@ with VKS 3.7.2 as a vCenter administrator, with the Namespace Service on, on Ubu
 and Windows PowerShell 5.1, not on macOS or in WSL: in each shell a namespace and a cluster were
 created from the files and deleted with the guides' blocks; in bash and PowerShell they were also
 checked (NAMESPACE.md step 8, CLUSTER.md steps 6 and 7).
+
+GITEA.md was run on 2026-10-26 with VKS 3.7.2 and Gitea 28.2.0 on Ubuntu (bash, zsh) and Windows
+PowerShell 5.1 with Git for Windows 2.56.0, not on macOS or in WSL: in each shell Gitea was installed,
+pushed to and uninstalled. Its web-page steps (6 and 8's first item) were not run in a browser;
+the password change and the visibility change were made with Gitea's command line and API instead.
 
 Renewing a login that had already expired was run on macOS (zsh) only.
 
