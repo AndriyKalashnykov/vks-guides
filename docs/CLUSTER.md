@@ -247,6 +247,44 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE describe clusters.cluster.x-k8s.io $VKS_CLUSTER
 ```
 
+If no event says why, this shows whether vSphere could make each node's virtual machine.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get vspheremachines.vmware.infrastructure.cluster.x-k8s.io -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" -o json \
+  | jq -r '.items[] | "\(.metadata.name): " + ([.status.conditions[]? | select(.type == "VirtualMachineProvisioned") | "\(.status) \(.reason // "") \(.message // "")"] | join(""))'
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+$global:LASTEXITCODE = $null
+$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get vspheremachines.vmware.infrastructure.cluster.x-k8s.io -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" -o json | Out-String
+if ($LASTEXITCODE -eq 0) {
+  foreach ($M in (ConvertFrom-Json $J).items) { $C = @($M.status.conditions | Where-Object { $_.type -eq 'VirtualMachineProvisioned' })[0]; "$($M.metadata.name): $($C.status) $($C.reason) $($C.message)" }
+}
+```
+
+**Expect:** a line per machine, `True Provisioned` once vSphere made its virtual machine.
+
+**If not:**
+- `False` and a message that ends in `insufficient storage quota`: the vSphere Namespace's storage
+  limit is full. A cluster of one control-plane node and two best-effort-small workers needs about
+  72 GiB, and 96 GiB while it updates. Free storage in the namespace, or ask your vCenter
+  administrator to raise its limit.
+- Nothing printed: check `VKS_NAMESPACE` and `VKS_CLUSTER`, or wait until the first block of this
+  step lists machines.
+- `Forbidden`: ask your vCenter administrator to run it.
+
 Never switch the cluster's virtual machines on or off in the vSphere Client: VKS owns them.
 
 ## 7. Get the kubeconfig and check the cluster
