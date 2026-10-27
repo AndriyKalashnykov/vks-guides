@@ -23,16 +23,21 @@ On other distributions, install the same five packages with your package manager
 
 ## Photon OS 5
 
-Refresh the package list first: on Photon an install from a stale list can leave `openssl` half
-upgraded, and HTTPS then fails.
+Photon lacks `unzip`, `jq`, `tr`, `awk` and `diff`, so this also installs `coreutils`, `gawk` and
+`diffutils`. It refreshes the package list first and installs `openssh` with the rest: installing
+`openssl` upgrades the library SSH uses, and without `openssh` in the same install the machine stops
+accepting SSH logins.
 
 ```sh
-sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar unzip jq openssl
+sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar unzip jq openssl coreutils gawk diffutils openssh openssh-socket
 ```
 
 **Expect:** `Complete!` (or `Nothing to do.` when all are installed).
 
-**If not:** `sudo: command not found`: run it as `root`, without `sudo`.
+**If not:**
+- `sudo: command not found`: run it as `root`, without `sudo`.
+- `curl` then fails with an SSL or certificate error: run
+  `sudo tdnf reinstall -y ca-certificates openssl openssl-libs curl curl-libs`.
 
 ## macOS
 
