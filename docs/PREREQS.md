@@ -23,13 +23,13 @@ On other distributions, install the same five packages with your package manager
 
 ## Photon OS 5
 
-Photon lacks `unzip`, `jq`, `tr`, `awk` and `diff`, so this also installs `coreutils`, `gawk` and
-`diffutils`. It refreshes the package list first and installs `openssh` with the rest: installing
+A minimal Photon lacks `unzip`, `jq`, `tr`, `awk` and `diff`, and has only cut-down versions of
+other basic tools, so this also installs `coreutils`, `findutils`, `gawk` and `diffutils`. It refreshes the package list first and installs `openssh` with the rest: installing
 `openssl` upgrades the library SSH uses, and without `openssh` in the same install the machine stops
 accepting SSH logins.
 
 ```sh
-sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar unzip jq openssl coreutils gawk diffutils openssh openssh-socket
+sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar unzip jq openssl coreutils findutils gawk diffutils openssh openssh-socket
 ```
 
 **Expect:** `Complete!` (or `Nothing to do.` when all are installed).
