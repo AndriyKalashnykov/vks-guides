@@ -5,6 +5,7 @@
 >
 > - Gitea 28.2: [Installation with Docker (rootless)](https://docs.gitea.com/installation/install-with-docker-rootless/) (the image this guide runs), [Use environment variables to set up Gitea](https://docs.gitea.com/administration/config-cheat-sheet/#use-environment-variables-to-setup-gitea), [Configuration Cheat Sheet](https://docs.gitea.com/administration/config-cheat-sheet/)
 > - Gitea 28.2: [Gitea Command Line](https://docs.gitea.com/administration/command-line/) (`gitea admin user`), [Push To Create](https://docs.gitea.com/usage/repository/push/)
+> - Gitea: [Helm chart for Gitea](https://gitea.com/gitea/helm-gitea) (step 4, option B)
 > - Git: [Install](https://git-scm.com/install/), [gitcredentials](https://git-scm.com/docs/gitcredentials) (why the push turns the credential helper off)
 > - Kubernetes: [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/), [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
 
@@ -17,7 +18,8 @@ You need:
 
 - a VKS cluster with a default storage class ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
-- [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md), and [git](https://git-scm.com/install/);
+- [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md), [git](https://git-scm.com/install/), and for
+  step 4 option B [Helm](HELM.md);
 - nodes that reach `docker.io`;
 - for step 8, one free load-balancer address.
 
@@ -190,9 +192,22 @@ Remove-Variable S
 
 ## 4. Install Gitea
 
+Install Gitea one of two ways, A or B; steps 5 to 9 are the same for both. Both run Gitea 28.2.0
+with the same settings, the keys from step 3, restricted pods and one 5 GiB volume; its web page
+addresses itself as `http://localhost:3300`, the port step 6 forwards, and passwords must be at
+least 16 characters. To change from one to the other later, run step 9 first: they keep their data
+differently, and nothing carries over.
+
+### A. With this guide's YAML (recommended)
+
+> [!NOTE]
+> **Why this is the default:** it needs only kubectl, and every setting is in the one manifest
+> below. It runs one container, with no init containers, no extra Services and no chart defaults to
+> switch off, and Gitea reads its settings from the manifest at every start, so a changed setting
+> takes effect when you run this block again.
+
 This creates the volume, the Gitea Deployment and a Service that only the cluster reaches, then
-waits for Gitea to answer. Its web page addresses itself as `http://localhost:3300`, the port step
-6 forwards. Passwords must be at least 16 characters.
+waits for Gitea to answer.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -441,6 +456,313 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get pvc,pods
   (Docker Hub's pull limit; wait and run this again).
 - `timed out waiting for the condition`: run `kubectl --kubeconfig <the VKS kubeconfig> -n gitea
   logs deployment/gitea` and look for the first error.
+
+### B. With Gitea's Helm chart
+
+This installs Gitea with its own Helm chart, 12.7.0, and values that make it the same Gitea as A.
+It needs [Helm](HELM.md). The block writes the values to
+`~/.config/vks-guides/gitea/values.yaml`, downloads the chart and checks its SHA-256, then installs
+and waits for Gitea to answer.
+
+> [!NOTE]
+> **Limits of the Helm way:**
+> - Chart 12.7.0 is built for Gitea 1.27; these values run Gitea 28.2.0, the image A uses.
+>   `helm list` shows the chart's `1.27.0`.
+> - Gitea writes its settings into a file on the volume at its first start. Removing a value from
+>   `values.yaml` later does not undo it, and the keys from step 3 are read only then. To start
+>   over, run step 9.
+> - The pod has three init containers, and the chart adds a Service `gitea-ssh` that nothing
+>   answers.
+> - Without these values the chart also installs a PostgreSQL cluster, a cache cluster and an
+>   administrator with a published password; keep `-f values.yaml` on every run.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+GITEA_DIR="$HOME/.config/vks-guides/gitea"
+CHART_SHA256="5881ef9c59400bee2d5547e77c4cd0efb925143c2f5d93fb4f38446db76b0167"
+
+CHART="$GITEA_DIR/gitea-12.7.0.tgz"
+URL="https://dl.gitea.com/charts/gitea-12.7.0.tgz"
+mkdir -p "$GITEA_DIR"
+cat > "$GITEA_DIR/values.yaml" <<'EOF'
+image:
+  registry: docker.io
+  repository: gitea/gitea
+  tag: 28.2.0
+  digest: sha256:94807314454f6525994a3b76286ba12bc7e7f8cd14f61d9e67431767f8103306
+  rootless: true
+strategy:
+  type: Recreate
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+service:
+  http:
+    type: ClusterIP
+    clusterIP: ""
+    port: 3000
+serviceAccount:
+  create: true
+  automountServiceAccountToken: false
+persistence:
+  claimName: gitea-data
+  size: 5Gi
+  annotations:
+    helm.sh/resource-policy: null
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+gitea:
+  admin:
+    username: ""
+    password: ""
+  config:
+    database:
+      DB_TYPE: sqlite3
+    server:
+      DOMAIN: localhost
+      ROOT_URL: http://localhost:3300/
+      DISABLE_SSH: true
+    security:
+      INSTALL_LOCK: true
+      MIN_PASSWORD_LENGTH: 16
+    service:
+      DISABLE_REGISTRATION: true
+    repository:
+      ENABLE_PUSH_CREATE_USER: true
+    oauth2:
+      ENABLED: false
+  additionalConfigFromEnvs:
+    - name: GITEA__SECURITY__SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: gitea-keys
+          key: secret-key
+    - name: GITEA__SECURITY__INTERNAL_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: gitea-keys
+          key: internal-token
+  podAnnotations:
+    kubectl.kubernetes.io/default-container: gitea
+  startupProbe:
+    enabled: true
+    tcpSocket: null
+    httpGet:
+      path: /api/healthz
+      port: http
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    failureThreshold: 60
+  readinessProbe:
+    tcpSocket: null
+    httpGet:
+      path: /api/healthz
+      port: http
+    initialDelaySeconds: 0
+    periodSeconds: 5
+  livenessProbe:
+    tcpSocket: null
+    httpGet:
+      path: /api/healthz
+      port: http
+    initialDelaySeconds: 0
+    periodSeconds: 15
+    timeoutSeconds: 5
+valkey-cluster:
+  enabled: false
+valkey:
+  enabled: false
+postgresql-ha:
+  enabled: false
+postgresql:
+  enabled: false
+test:
+  enabled: false
+EOF
+if ! curl -fsSL --connect-timeout 20 --speed-time 60 -o "$CHART.new" "$URL"; then
+  echo "FAILED: download of $URL"
+elif [ "$( (sha256sum "$CHART.new" 2>/dev/null || shasum -a 256 "$CHART.new") | cut -d' ' -f1)" != "$CHART_SHA256" ]; then
+  echo "FAILED: checksum mismatch for $URL"
+else
+  mv "$CHART.new" "$CHART"
+  helm upgrade --install gitea "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitea -f "$GITEA_DIR/values.yaml" --wait --timeout 10m >/dev/null \
+    && helm list --kubeconfig "$VKS_KUBECONFIG" -n gitea \
+    && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get pvc,pods
+fi
+rm -f "$CHART.new"
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$GITEA_DIR = "$HOME\.config\vks-guides\gitea"
+$CHART_SHA256 = "5881ef9c59400bee2d5547e77c4cd0efb925143c2f5d93fb4f38446db76b0167"
+
+$CHART = "$GITEA_DIR\gitea-12.7.0.tgz"
+$URL = "https://dl.gitea.com/charts/gitea-12.7.0.tgz"
+New-Item -ItemType Directory -Force -Path $GITEA_DIR | Out-Null
+$V = @'
+image:
+  registry: docker.io
+  repository: gitea/gitea
+  tag: 28.2.0
+  digest: sha256:94807314454f6525994a3b76286ba12bc7e7f8cd14f61d9e67431767f8103306
+  rootless: true
+strategy:
+  type: Recreate
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+service:
+  http:
+    type: ClusterIP
+    clusterIP: ""
+    port: 3000
+serviceAccount:
+  create: true
+  automountServiceAccountToken: false
+persistence:
+  claimName: gitea-data
+  size: 5Gi
+  annotations:
+    helm.sh/resource-policy: null
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+gitea:
+  admin:
+    username: ""
+    password: ""
+  config:
+    database:
+      DB_TYPE: sqlite3
+    server:
+      DOMAIN: localhost
+      ROOT_URL: http://localhost:3300/
+      DISABLE_SSH: true
+    security:
+      INSTALL_LOCK: true
+      MIN_PASSWORD_LENGTH: 16
+    service:
+      DISABLE_REGISTRATION: true
+    repository:
+      ENABLE_PUSH_CREATE_USER: true
+    oauth2:
+      ENABLED: false
+  additionalConfigFromEnvs:
+    - name: GITEA__SECURITY__SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: gitea-keys
+          key: secret-key
+    - name: GITEA__SECURITY__INTERNAL_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: gitea-keys
+          key: internal-token
+  podAnnotations:
+    kubectl.kubernetes.io/default-container: gitea
+  startupProbe:
+    enabled: true
+    tcpSocket: null
+    httpGet:
+      path: /api/healthz
+      port: http
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    failureThreshold: 60
+  readinessProbe:
+    tcpSocket: null
+    httpGet:
+      path: /api/healthz
+      port: http
+    initialDelaySeconds: 0
+    periodSeconds: 5
+  livenessProbe:
+    tcpSocket: null
+    httpGet:
+      path: /api/healthz
+      port: http
+    initialDelaySeconds: 0
+    periodSeconds: 15
+    timeoutSeconds: 5
+valkey-cluster:
+  enabled: false
+valkey:
+  enabled: false
+postgresql-ha:
+  enabled: false
+postgresql:
+  enabled: false
+test:
+  enabled: false
+'@
+[IO.File]::WriteAllText("$GITEA_DIR\values.yaml", ($V -replace "`r`n", "`n") + "`n")
+$global:LASTEXITCODE = $null
+curl.exe -fsSL --connect-timeout 20 --speed-time 60 -o "$CHART.new" $URL
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: download of $URL"
+} elseif ((Get-FileHash -Algorithm SHA256 "$CHART.new").Hash -ne $CHART_SHA256) {
+  "FAILED: checksum mismatch for $URL"
+} else {
+  Move-Item -Force "$CHART.new" $CHART
+  helm upgrade --install gitea $CHART --kubeconfig $VKS_KUBECONFIG -n gitea -f "$GITEA_DIR\values.yaml" --wait --timeout 10m | Out-Null
+  if ($LASTEXITCODE -eq 0) { helm list --kubeconfig $VKS_KUBECONFIG -n gitea }
+  if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get pvc,pods }
+}
+Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
+```
+
+</details>
+
+**Expect:** a line for the release `gitea` with `STATUS deployed`, the claim `gitea-data` `Bound`
+and one pod `1/1 Running`.
+
+**If not:**
+- `helm: command not found`: install Helm ([HELM.md](HELM.md)).
+- `FAILED: download …`: this machine cannot reach `dl.gitea.com`.
+- `FAILED: checksum mismatch …`: the download arrived damaged, or the chart was rebuilt. Do not
+  install it; run the block again.
+- `cannot be imported into the current release`: Gitea was installed with A; run step 9 first.
+- `context deadline exceeded`: as A's **If not** above (`describe pod`, `describe pvc`, `logs`).
 
 ## 5. Create the administrator
 
