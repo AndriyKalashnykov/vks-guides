@@ -487,7 +487,7 @@ if ($LASTEXITCODE -ne 0) {
 </details>
 
 **Expect:** `generated random password is '…'` and `New user 'gitea-admin' has been successfully
-created!`. Lines that start with a date and `[W]` are Gitea's warnings and do not matter here.
+created!`.
 
 **If not:**
 - `gitea-admin exists already` and you lost the password: this sets a new random one and prints
@@ -535,6 +535,7 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitea port-forward service/gitea-http 33
 - `address already in use`, or no `127.0.0.1` line: another program uses port 3300. Stop it, or
   change both `3300`s (`3301:3000`) and use that port in step 7.
 - `Username or password is incorrect`: use the line under step 5's **If not**.
+- `error: lost connection to pod`: Gitea restarted; run this block again.
 
 ## 7. Create a repository by pushing to it
 
@@ -583,14 +584,15 @@ git -C $REPO -c credential.helper= push http://gitea-admin@localhost:3300/gitea-
 </details>
 
 **Expect:** `Password for 'http://gitea-admin@localhost:3300':`, then after the password
-`* [new branch]      HEAD -> main`. <http://localhost:3300/gitea-admin/hello> shows the README
-and **Private**.
+`* [new branch]      HEAD -> main` (`Everything up-to-date` on a second run).
+<http://localhost:3300/gitea-admin/hello> shows the README and **Private**.
 
 **If not:**
 - `Authentication failed` with `remote: Update your password` before it: finish step 6's
   password change, then push again.
 - `Authentication failed` alone: the password is wrong; push again.
-- `Failed to connect to localhost port 3300`: step 6's port-forward is not running.
+- `Failed to connect to localhost port 3300` or `Empty reply from server`: step 6's port-forward
+  is not running or lost Gitea; run step 6 again.
 
 ## 8. Let other machines clone (optional)
 
@@ -678,7 +680,7 @@ if (-not $IP) {
 </details>
 
 **Expect:** `service/gitea-public created`, `clone address: http://<address>:3000/gitea-admin/hello.git`,
-then a line with 40 hex characters and `refs/heads/main`.
+then two lines with the same 40 hex characters, ending in `HEAD` and `refs/heads/main`.
 
 **If not:**
 - `FAILED: no load-balancer address`: the Supervisor has no free load-balancer address; ask your
@@ -697,8 +699,12 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace gitea --ignore-not-found --timeout=10m
-kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o json \
-  | jq -r '"volumes left from gitea: \([.items[] | select(.spec.claimRef.namespace == "gitea")] | length)"'
+for i in $(seq 36); do
+  N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o json | jq '[.items[] | select(.spec.claimRef.namespace == "gitea")] | length')" || break
+  [ "$N" = 0 ] && break
+  sleep 5
+done
+echo "volumes left from gitea: $N"
 ```
 
 **Windows (PowerShell):**
@@ -708,11 +714,17 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig $VKS_KUBECONFIG delete namespace gitea --ignore-not-found --timeout=10m
-$PV = kubectl --kubeconfig $VKS_KUBECONFIG get pv -o json | Out-String | ConvertFrom-Json
-if ($PV) { "volumes left from gitea: $(@($PV.items | Where-Object { $_.spec.claimRef.namespace -ceq 'gitea' }).Count)" }
+foreach ($i in 1..36) {
+  $PV = kubectl --kubeconfig $VKS_KUBECONFIG get pv -o json | Out-String | ConvertFrom-Json
+  if (-not $PV) { break }
+  $N = @($PV.items | Where-Object { $_.spec.claimRef.namespace -ceq 'gitea' }).Count
+  if ($N -eq 0) { break }
+  Start-Sleep -Seconds 5
+}
+"volumes left from gitea: $N"
 ```
 
-**Expect:** `namespace "gitea" deleted` (it can take a few minutes), then
+**Expect:** `namespace "gitea" deleted`, then, within a few minutes,
 `volumes left from gitea: 0`.
 
 **If not:** `volumes left from gitea:` more than 0: the storage class keeps volumes (step 1 printed
