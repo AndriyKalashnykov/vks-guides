@@ -470,9 +470,9 @@ and waits for Gitea to answer.
 > **Limits of the Helm way:**
 > - Chart 12.7.0 is built for Gitea 1.27; these values run Gitea 28.2.0, the image A uses.
 >   `helm list` shows the chart's `1.27.0`.
-> - Gitea writes its settings into a file on the volume at its first start. Removing a value from
->   `values.yaml` later does not undo it, and the keys from step 3 are read only then. To start
->   over, run step 9.
+> - Gitea keeps its settings in a file on the volume. A changed value takes effect when you run
+>   this block again, but a value you remove stays set, and the keys from step 3 are read only at
+>   the first start. To start over, run step 9.
 > - The pod has three init containers, and the chart adds a Service `gitea-ssh` that nothing
 >   answers.
 > - Without these values the chart also installs a PostgreSQL cluster, a cache cluster and an
