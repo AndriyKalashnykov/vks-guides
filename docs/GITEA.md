@@ -195,8 +195,9 @@ Remove-Variable S
 Install Gitea one of two ways, A or B; steps 5 to 9 are the same for both. Both run Gitea 28.2.0
 with the settings this guide sets, the keys from step 3, restricted pods and one 5 GiB volume; its web page
 addresses itself as `http://localhost:3300`, the port step 6 forwards, passwords must be at
-least 16 characters, and webhooks may call only port 8080 of the cluster's Services (`10.96.0.0/12`,
-a VKS cluster's default Service range; [CICD.md](CICD.md) step 7 uses it). To change from one to the other later, run step 9, then steps 2 and 3, first:
+least 16 characters, and webhooks may call public addresses and, inside the cluster, only port 8080 of
+its Services ([CICD.md](CICD.md) step 7 uses it). `10.96.0.0/12` is a VKS cluster's default Service
+range; if you changed it in CLUSTER.md, put yours in `ALLOWED_HOST_LIST`. To change from one to the other later, run step 9, then steps 2 and 3, first:
 they keep their data differently, and nothing carries over.
 
 ### A. With this guide's YAML (recommended)

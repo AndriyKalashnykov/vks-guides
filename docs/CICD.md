@@ -16,13 +16,14 @@ second repository, `deploy`; ArgoCD on the Supervisor sees the new commit and ro
 VKS cluster. The app is [`argocd/test-web-apps`](../argocd/test-web-apps): a page that says
 `test-web-apps v1`.
 
-You can do it with Gitea and Tekton, or with GitLab. Steps 1, 2, 3, 5, 8 and 9 are the same; steps
-4, 6 and 7 have a section for each.
+You can do it with Gitea and Tekton, or with GitLab. Steps 4, 6 and 7 have a section for each; the
+other steps are the same, and their blocks start with `GIT_SERVER="gitea"`: with GitLab, change it
+to `GIT_SERVER="gitlab"`.
 
 | | With Gitea and Tekton | With GitLab |
 |---|---|---|
 | done first | [HARBOR.md](HARBOR.md) 1-9, [ARGOCD.md](ARGOCD.md) 3, 4 and 7, [GITEA.md](GITEA.md) 1-8, [TEKTON.md](TEKTON.md) 1-3 | [HARBOR.md](HARBOR.md) 1-9, [ARGOCD.md](ARGOCD.md) 3, 4 and 7, [GITLAB.md](GITLAB.md) 1-8 |
-| builds in | namespace `cicd-ci` | namespace `gitlab-runner` (GitLab.md's runner) |
+| builds in | namespace `cicd-ci` | namespace `gitlab-runner` (GITLAB.md's runner) |
 | writes back from | a Tekton Task with a Gitea bot user's token | a second, locked runner with a deploy token |
 | starts on a push | a signed Gitea webhook (step 7) | by itself |
 
@@ -32,24 +33,29 @@ You need:
   `$HOME\.config\vks-guides\harbor`): `harbor-data-values.yml`, `harbor-ca.crt` and `secrets.env`;
 - the VKS cluster from ARGOCD.md step 7, its kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig))
   and your Supervisor kubeconfig;
-- the Git server's port-forward running in a second terminal ([GITEA.md](GITEA.md) step 6, or
+- the Git server's port-forward running in its own terminal ([GITEA.md](GITEA.md) step 6, or
   [GITLAB.md](GITLAB.md) step 5) and its load-balancer address ([GITEA.md](GITEA.md) step 8, or
-  [GITLAB.md](GITLAB.md) step 7);
+  [GITLAB.md](GITLAB.md) step 7). Run this guide's blocks in one other terminal.
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md) and git.
 
 > [!WARNING]
 > **For tests only.** ArgoCD reads `deploy` over plain HTTP, so anyone between the Git server and
-> ArgoCD can change what is deployed into `cicd-demo`. The build runs the app's Dockerfile as root
-> and can read the Harbor robot that pushes, which may push only to the project `cicd-demo`.
+> ArgoCD can change what is deployed into `cicd-demo`, and run pods there that read the Harbor
+> robot that pulls. The build runs the app's Dockerfile as root and can read the Harbor robot that
+> pushes, which may push only to the project `cicd-demo`. With GitLab, every job on GITLAB.md's
+> runner can read that robot, and the build can read its job's token while the job runs.
 
 The blocks keep their files in `~/.config/vks-guides/cicd` (PowerShell:
 `$HOME\.config\vks-guides\cicd`).
 
 ## 1. Check what is in place
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
@@ -64,12 +70,19 @@ else
   for N in gitea tekton-pipelines gitlab gitlab-runner cicd-demo; do
     echo "namespace ${N}: $(printf '%s\n' "$NS" | grep -cx "namespace/$N")"
   done
+  echo "ArgoCD destinations: $(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get secret -l argocd.argoproj.io/secret-type=cluster -o json \
+    | jq -r '[.items[].data.name | @base64d] | join(" ")')"
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
@@ -87,13 +100,18 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
     foreach ($N in 'gitea', 'tekton-pipelines', 'gitlab', 'gitlab-runner', 'cicd-demo') {
       "namespace ${N}: $(@($NS | Where-Object { $_ -ceq "namespace/$N" }).Count)"
     }
+    $C = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get secret -l argocd.argoproj.io/secret-type=cluster -o json | Out-String | ConvertFrom-Json
+    "ArgoCD destinations: $(@($C.items | ForEach-Object { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_.data.name)) }) -join ' ')"
   }
 }
 ```
 
+</details>
+
 **Expect:** `Harbor <name>: 200`, then `namespace cicd-demo: 0`, and with Gitea and Tekton
 `namespace gitea: 1` and `namespace tekton-pipelines: 1`, or with GitLab `namespace gitlab: 1` and
-`namespace gitlab-runner: 1`.
+`namespace gitlab-runner: 1`, and `ArgoCD destinations:` with `<your cluster>-<its vSphere
+Namespace>` among the names.
 
 **If not:**
 - `FAILED: … is missing`: run this on the machine where you did HARBOR.md, or copy that folder
@@ -101,19 +119,24 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 - `Harbor <name>:` other than `200`: see [HARBOR.md](HARBOR.md) step 9.
 - A `0` for your Git server or Tekton: do its guide first (the table above).
 - `namespace cicd-demo: 1`: an earlier run of this guide is still there; remove it with step 9.
+- `ArgoCD destinations:` empty, or an error before it: log in again ([LOGIN.md](LOGIN.md)), or add
+  the cluster with [ARGOCD.md](ARGOCD.md) step 7. If the cluster is there under another name, put
+  that name in step 5's `DESTINATION`.
 
 ## 2. Create the namespaces
 
 `cicd-demo` runs the app, restricted. The build runs the Dockerfile as root, so its namespace
 allows baseline pods: `cicd-ci` with Gitea and Tekton, GITLAB.md's `gitlab-runner` with GitLab.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-CI_NAMESPACE="cicd-ci"
+GIT_SERVER="gitea"
 
+case "$GIT_SERVER" in gitea) CI_NAMESPACE="cicd-ci" ;; *) CI_NAMESPACE="gitlab-runner" ;; esac
 kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - <<EOF
 apiVersion: v1
 kind: Namespace
@@ -135,13 +158,17 @@ metadata:
 EOF
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-$CI_NAMESPACE = "cicd-ci"
+$GIT_SERVER = "gitea"
 
+$CI_NAMESPACE = if ($GIT_SERVER -eq 'gitea') { 'cicd-ci' } else { 'gitlab-runner' }
 @"
 apiVersion: v1
 kind: Namespace
@@ -163,7 +190,7 @@ metadata:
 "@ | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
 ```
 
-With GitLab, set `CI_NAMESPACE` to `gitlab-runner`, here and in step 3.
+</details>
 
 **Expect:** `namespace/cicd-demo created` and `namespace/cicd-ci created` (with GitLab,
 `namespace/gitlab-runner unchanged`; `unchanged` on a second run).
@@ -183,10 +210,11 @@ beside `harbor-push`. The block signs in to Harbor as `admin` with the password 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-CI_NAMESPACE="cicd-ci"
+GIT_SERVER="gitea"
 HARBOR_PROJECT="cicd-demo"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
+case "$GIT_SERVER" in gitea) CI_NAMESPACE="cicd-ci" ;; *) CI_NAMESPACE="gitlab-runner" ;; esac
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
 if [ -z "$HARBOR_FQDN" ] || [ ! -s "$HARBOR_DIR/harbor-ca.crt" ] || [ ! -r "$HARBOR_DIR/secrets.env" ]; then
   echo "FAILED: harbor-data-values.yml, harbor-ca.crt or secrets.env is missing in $HARBOR_DIR"
@@ -239,10 +267,11 @@ fi
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-$CI_NAMESPACE = "cicd-ci"
+$GIT_SERVER = "gitea"
 $HARBOR_PROJECT = "cicd-demo"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
+$CI_NAMESPACE = if ($GIT_SERVER -eq 'gitea') { 'cicd-ci' } else { 'gitlab-runner' }
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $S = @{}
 foreach ($l in Get-Content "$HARBOR_DIR\secrets.env" -ErrorAction SilentlyContinue) { if ($l -cmatch "^(HARBOR_[A-Z_]+)='(.*)'$") { $S[$Matches[1]] = $Matches[2] } }
@@ -292,12 +321,11 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 - `FAILED: robot push: CONFLICT …` (or `pull`): the robot exists in Harbor but its Secret is gone,
   and Harbor shows a robot's secret only once. In Harbor's web page, **Projects** → `cicd-demo` →
   **Robot Accounts**, delete the robot, then run this again.
-- `secrets "harbor-push" already exists` cannot happen here; `namespaces "…" not found`: run step 2
-  first, then delete the robot as above and run this again.
+- `namespaces "…" not found`: run step 2 first, then delete the robot as above and run this again.
 - `project:` `401`: the password in `secrets.env` is not Harbor's `admin` password any more.
 - In 90 days the robots expire and builds or pulls fail with `unauthorized`: delete both robots in
-  Harbor and both Secrets (`kubectl --kubeconfig <the VKS kubeconfig> -n <namespace> delete secret
-  harbor-push`), then run this again.
+  Harbor and both Secrets (`kubectl --kubeconfig <the VKS kubeconfig> -n <cicd-ci or gitlab-runner>
+  delete secret harbor-push` and `… -n cicd-demo delete secret harbor-pull`), then run this again.
 
 ## 4. Create the repositories
 
@@ -306,12 +334,10 @@ Both ways create two repositories: `app`, with the Dockerfile and page from
 ArgoCD applies. Both are public, so the build and ArgoCD read them without a login. `deploy`
 starts with the stock nginx image; the first build replaces it.
 
-The block writes the files to `~/.config/vks-guides/cicd/app` and `~/.config/vks-guides/cicd/deploy`
-first. Run it in the second terminal, with the port-forward running.
-
 ### With Gitea and Tekton
 
-This adds the user `cicd-bot`, with no password anyone knows, who may write only to `deploy`,
+The block writes the files to `~/.config/vks-guides/cicd/app` and `~/.config/vks-guides/cicd/deploy`,
+then creates the repositories through GITEA.md step 6's port-forward. It also adds the user `cicd-bot`, with no password anyone knows, who may write only to `deploy`,
 and puts a token for it in the Secret `git-writeback` in `cicd-ci`. The admin password is needed
 for Gitea's API; type it first:
 
@@ -428,7 +454,8 @@ else
   else
     for R in app deploy; do
       echo "repository $R: $(api -o /dev/null -w '%{http_code}' -X POST -d "{\"name\":\"$R\",\"private\":false,\"default_branch\":\"main\"}" "$GITEA_URL/api/v1/user/repos")"
-      for F in $(cd "$CICD_DIR/$R" && ls); do
+      for F in Dockerfile index.html deployment.yaml service.yaml; do
+        [ -f "$CICD_DIR/$R/$F" ] || continue
         jq -n --arg c "$(base64 < "$CICD_DIR/$R/$F" | tr -d '\n')" --arg f "$F" '{content: $c, message: "add \($f)", branch: "main"}' \
           | api -o /dev/null -w "  $F: %{http_code}\n" -X POST --data-binary @- "$GITEA_URL/api/v1/repos/gitea-admin/$R/contents/$F"
       done
@@ -445,8 +472,8 @@ else
       kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea exec deployment/gitea -- gitea admin user generate-access-token \
           --username cicd-bot --token-name "cicd-writeback-$(date +%s)" --scopes write:repository --raw \
         | tr -d '\r\n' \
-        | jq -R '{apiVersion: "v1", kind: "Secret", metadata: {name: "git-writeback", namespace: "cicd-ci"},
-                  stringData: {username: "cicd-bot", token: .}}' \
+        | jq -R 'if test("^[0-9a-f]{40}$") then {apiVersion: "v1", kind: "Secret", metadata: {name: "git-writeback", namespace: "cicd-ci"},
+                  stringData: {username: "cicd-bot", token: .}} else error("Gitea did not return a token") end' \
         | kubectl --kubeconfig "$VKS_KUBECONFIG" create -f -
     fi
   fi
@@ -556,7 +583,7 @@ if (-not $GITEA_PASSWORD) {
     $P = [Net.NetworkCredential]::new('', $GITEA_PASSWORD).Password.Replace('\', '\\').Replace('"', '\"')
     $CFG = [IO.Path]::GetTempFileName(); $BODY = [IO.Path]::GetTempFileName()
     try {
-      Set-Content -Encoding ascii -Path $CFG -Value "user = `"gitea-admin:$P`""
+      [IO.File]::WriteAllText($CFG, "user = `"gitea-admin:$P`"`n", (New-Object Text.UTF8Encoding $false))
       Remove-Variable P
       if ((curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -w '%{http_code}' "$GITEA_URL/api/v1/user") -ne '200') {
         "FAILED: Gitea did not accept gitea-admin and this password, or the port-forward is not running"
@@ -615,7 +642,8 @@ and `422`, and `kept: secret git-writeback in cicd-ci`.
 This creates, inside GitLab, the public group `cicd` with three projects: `app` and `deploy`
 (public) and `ci` (private), which holds the pipeline, `.gitlab-ci.yml`. `app` builds with
 `ci`'s file, so someone who may push to `app` cannot add jobs or reach the runner that writes to
-`deploy`; give your developers the Developer role on `cicd/app` only. Each project's `main` is
+`deploy`; give your developers the Developer role on `cicd/app` and the Reporter role on
+`cicd/ci`, which lets them read the pipeline but not change it. Each project's `main` is
 protected: Developers may push, nobody may force-push. The block runs a Ruby script in GitLab's
 pod with `gitlab-rails`, so no GitLab token reaches this machine; it takes about a minute.
 
@@ -695,6 +723,7 @@ files = {
             artifacts: true
         variables:
           GIT_STRATEGY: none
+        resource_group: deploy
         cache: []
         rules:
           - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -706,6 +735,7 @@ files = {
             IMAGE="HARBOR_FQDN/cicd-demo/test-web-apps@$D"
             export HOME=/tmp/wb
             unset GIT_CONFIG_GLOBAL
+            if [ "$(git ls-remote http://gitlab.gitlab.svc.cluster.local/cicd/app.git refs/heads/main | cut -c1-40)" != "$CI_COMMIT_SHA" ]; then echo "skipped: cicd/app has moved on from $CI_COMMIT_SHA"; exit 0; fi
             umask 077
             mkdir -p "$HOME"
             printf 'http://writeback:%s@gitlab.gitlab.svc.cluster.local\n' "$(tr -d ' \t\r\n' < /run/deploy/token)" > "$HOME/.git-credentials"
@@ -891,6 +921,7 @@ files = {
             artifacts: true
         variables:
           GIT_STRATEGY: none
+        resource_group: deploy
         cache: []
         rules:
           - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -902,6 +933,7 @@ files = {
             IMAGE="HARBOR_FQDN/cicd-demo/test-web-apps@$D"
             export HOME=/tmp/wb
             unset GIT_CONFIG_GLOBAL
+            if [ "$(git ls-remote http://gitlab.gitlab.svc.cluster.local/cicd/app.git refs/heads/main | cut -c1-40)" != "$CI_COMMIT_SHA" ]; then echo "skipped: cicd/app has moved on from $CI_COMMIT_SHA"; exit 0; fi
             umask 077
             mkdir -p "$HOME"
             printf 'http://writeback:%s@gitlab.gitlab.svc.cluster.local\n' "$(tr -d ' \t\r\n' < /run/deploy/token)" > "$HOME/.git-credentials"
@@ -1014,7 +1046,7 @@ puts "cicd/app builds with #{app.reload.ci_config_path}"
 **Expect:** `group cicd: created`, `project cicd/app: created`, `files: Dockerfile index.html`,
 `project cicd/ci: created`, `files: .gitlab-ci.yml`, `project cicd/deploy: created`,
 `files: deployment.yaml service.yaml` and `cicd/app builds with .gitlab-ci.yml@cicd/ci`. On a
-second run every line says `kept`.
+second run the group, the projects and their files say `kept`.
 
 **If not:**
 - `pods "gitlab-0" not found`: do GITLAB.md steps 1 to 4 first.
@@ -1038,6 +1070,7 @@ VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 GIT_SERVER="gitea"
+DESTINATION="${VKS_CLUSTER}-${VKS_NAMESPACE}"
 
 case "$GIT_SERVER" in
   gitea) IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get service gitea-public -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
@@ -1059,7 +1092,7 @@ spec:
   sourceRepos:
     - ${REPO}
   destinations:
-    - name: ${VKS_CLUSTER}-${VKS_NAMESPACE}
+    - name: ${DESTINATION}
       namespace: cicd-demo
   clusterResourceWhitelist: []
   namespaceResourceWhitelist:
@@ -1081,7 +1114,7 @@ spec:
     targetRevision: main
     path: .
   destination:
-    name: ${VKS_CLUSTER}-${VKS_NAMESPACE}
+    name: ${DESTINATION}
     namespace: cicd-demo
   syncPolicy:
     automated:
@@ -1103,6 +1136,7 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $GIT_SERVER = "gitea"
+$DESTINATION = "${VKS_CLUSTER}-${VKS_NAMESPACE}"
 
 if ($GIT_SERVER -eq 'gitea') {
   $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get service gitea-public -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
@@ -1125,7 +1159,7 @@ spec:
   sourceRepos:
     - $REPO
   destinations:
-    - name: $VKS_CLUSTER-$VKS_NAMESPACE
+    - name: $DESTINATION
       namespace: cicd-demo
   clusterResourceWhitelist: []
   namespaceResourceWhitelist:
@@ -1147,7 +1181,7 @@ spec:
     targetRevision: main
     path: .
   destination:
-    name: $VKS_CLUSTER-$VKS_NAMESPACE
+    name: $DESTINATION
     namespace: cicd-demo
   syncPolicy:
     automated:
@@ -1160,14 +1194,15 @@ spec:
 </details>
 
 **Expect:** `deploy repository: http://<address>…/deploy.git`, `appproject.argoproj.io/cicd-demo
-created` and `application.argoproj.io/cicd-demo created` (`unchanged` on a second run). Within
-about 3 minutes, the block below prints `Synced Healthy` and the app's page shows nginx's own
-welcome page.
+created`, a `Warning:` about the finalizer's name (as in ARGOCD.md step 8), and
+`application.argoproj.io/cicd-demo created` (`unchanged` on a second run). Within about 5 minutes,
+the block below prints `Synced Healthy` and the app's page shows nginx's own welcome page.
 
 Check it with this block. It waits until ArgoCD has synced and the page shows `WANT`; steps 6
 and 8 use it again with another `WANT`.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1183,13 +1218,16 @@ for i in $(seq 60); do
   case "$V" in "$WANT"*) break ;; esac
   sleep 10
 done
-echo "ArgoCD: $(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get application cicd-demo -o jsonpath='{.status.sync.status} {.status.health.status} {.status.sync.revision}')"
+echo "ArgoCD: $(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get applications.argoproj.io cicd-demo -o jsonpath='{.status.sync.status} {.status.health.status} {.status.sync.revision}')"
 echo "page at http://${IP:-?}/: ${V:-nothing}"
 echo "image: $(kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-demo get deployment cicd-demo -o jsonpath='{.spec.template.spec.containers[0].image}')"
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-demo get pods --no-headers -o custom-columns=POD:.metadata.name,IMAGE:.status.containerStatuses[0].imageID
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-demo get pods --no-headers -o 'custom-columns=POD:.metadata.name,IMAGE:.status.containerStatuses[0].imageID'
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
@@ -1208,20 +1246,24 @@ foreach ($i in 1..60) {
   if ($V -and $V.StartsWith($WANT)) { break }
   Start-Sleep -Seconds 10
 }
-"ArgoCD: $(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get application cicd-demo -o jsonpath='{.status.sync.status} {.status.health.status} {.status.sync.revision}')"
+"ArgoCD: $(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get applications.argoproj.io cicd-demo -o jsonpath='{.status.sync.status} {.status.health.status} {.status.sync.revision}')"
 "page at http://$(if ($IP) { $IP } else { '?' })/: $(if ($V) { $V } else { 'nothing' })"
 "image: $(kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-demo get deployment cicd-demo -o jsonpath='{.spec.template.spec.containers[0].image}')"
-kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-demo get pods --no-headers -o custom-columns=POD:.metadata.name,IMAGE:.status.containerStatuses[0].imageID
+kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-demo get pods --no-headers -o 'custom-columns=POD:.metadata.name,IMAGE:.status.containerStatuses[0].imageID'
 ```
 
+</details>
+
 **If not:** 
+- `there are no clusters with this name` in ArgoCD's web page under **cicd-demo**: set
+  `DESTINATION` to a name from step 1's `ArgoCD destinations:` and run this again.
 - `ArgoCD: OutOfSync` or `Unknown`, with a message in ArgoCD's web page under **cicd-demo**:
   `repository not accessible` means the Supervisor cannot reach the address in `deploy
   repository:` (try it from your machine with `git ls-remote <address>`); `not permitted in project`
   means a file in `deploy` names another namespace or kind.
 - `page at …: nothing` and pods `ErrImagePull`: see `kubectl --kubeconfig <the VKS kubeconfig> -n
   cicd-demo describe pods`; `unauthorized` points at `harbor-pull` (step 3), `x509` at the nodes'
-  trust of Harbor ([HARBOR.md](HARBOR.md) step 8).
+  trust of Harbor ([HARBOR.md](HARBOR.md) steps 8 and 11).
 - `FAILED: no load-balancer address`: do GITEA.md step 8 or GITLAB.md step 7.
 
 ## 6. Build it once
@@ -1237,9 +1279,8 @@ This creates the Tasks and the Pipeline in `cicd-ci`, then runs it once.
 - The Task `write-back` runs in a second pod with `git-writeback`: it checks that the digest from
   `build` is a digest, clones `deploy`, sets the image to that digest, and pushes as `cicd-bot`.
 
-Each pod runs under its own ServiceAccount, with no Kubernetes token mounted.
-
-Then run step 5's check with `WANT="test-web-apps v1"`.
+Each pod runs under its own ServiceAccount, with no Kubernetes token mounted. If another push
+reached `app` while the build ran, the write-back leaves `deploy` to that push's run.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1321,6 +1362,7 @@ kind: Task
 metadata: {name: write-back, namespace: cicd-ci}
 spec:
   params:
+    - {name: app-url, type: string}
     - {name: deploy-url, type: string}
     - {name: image, type: string}
     - {name: registry, type: string}
@@ -1342,6 +1384,7 @@ spec:
       env:
         - {name: HOME, value: /tmp}
         - {name: GIT_CONFIG_NOSYSTEM, value: "1"}
+        - {name: APP_URL, value: $(params.app-url)}
         - {name: URL, value: $(params.deploy-url)}
         - {name: IMAGE, value: $(params.registry)/$(params.image)}
         - {name: DIGEST, value: $(params.digest)}
@@ -1354,6 +1397,7 @@ spec:
         DIGEST="$(printf '%s' "$DIGEST" | tr -d '[:space:]')"
         printf '%s\n' "$DIGEST" | grep -Eqx 'sha256:[0-9a-f]{64}' || { echo "refused: not a digest"; exit 1; }
         printf '%s\n' "$COMMIT" | grep -Eqx '[0-9a-f]{40}' || { echo "refused: not a commit"; exit 1; }
+        if [ "$(git ls-remote "$APP_URL" refs/heads/main | cut -c1-40)" != "$COMMIT" ]; then echo "skipped: app has moved on from ${COMMIT}"; exit 0; fi
         H="${URL#http://}"; H="${H%%/*}"
         U="$(cat /run/git/username)"
         printf 'http://%s:%s@%s\n' "$U" "$(cat /run/git/token)" "$H" > /tmp/cred
@@ -1385,6 +1429,7 @@ spec:
     - name: write-back
       taskRef: {name: write-back}
       params:
+        - {name: app-url, value: $(params.app-url)}
         - {name: deploy-url, value: $(params.deploy-url)}
         - {name: image, value: $(params.image)}
         - {name: registry, value: $(params.registry)}
@@ -1505,6 +1550,7 @@ kind: Task
 metadata: {name: write-back, namespace: cicd-ci}
 spec:
   params:
+    - {name: app-url, type: string}
     - {name: deploy-url, type: string}
     - {name: image, type: string}
     - {name: registry, type: string}
@@ -1526,6 +1572,7 @@ spec:
       env:
         - {name: HOME, value: /tmp}
         - {name: GIT_CONFIG_NOSYSTEM, value: "1"}
+        - {name: APP_URL, value: $(params.app-url)}
         - {name: URL, value: $(params.deploy-url)}
         - {name: IMAGE, value: $(params.registry)/$(params.image)}
         - {name: DIGEST, value: $(params.digest)}
@@ -1538,6 +1585,7 @@ spec:
         DIGEST="$(printf '%s' "$DIGEST" | tr -d '[:space:]')"
         printf '%s\n' "$DIGEST" | grep -Eqx 'sha256:[0-9a-f]{64}' || { echo "refused: not a digest"; exit 1; }
         printf '%s\n' "$COMMIT" | grep -Eqx '[0-9a-f]{40}' || { echo "refused: not a commit"; exit 1; }
+        if [ "$(git ls-remote "$APP_URL" refs/heads/main | cut -c1-40)" != "$COMMIT" ]; then echo "skipped: app has moved on from ${COMMIT}"; exit 0; fi
         H="${URL#http://}"; H="${H%%/*}"
         U="$(cat /run/git/username)"
         printf 'http://%s:%s@%s\n' "$U" "$(cat /run/git/token)" "$H" > /tmp/cred
@@ -1569,6 +1617,7 @@ spec:
     - name: write-back
       taskRef: {name: write-back}
       params:
+        - {name: app-url, value: $(params.app-url)}
         - {name: deploy-url, value: $(params.deploy-url)}
         - {name: image, value: $(params.image)}
         - {name: registry, value: $(params.registry)}
@@ -1613,21 +1662,40 @@ spec:
 
 </details>
 
+**Expect:** the `created` (or `unchanged`/`configured`) lines, `started pipelinerun.tekton.dev/cicd-demo-<x>`,
+then within a few minutes `Succeeded: Tasks Completed: 2 (Failed: 0, Cancelled 0), Skipped: 0` and
+`deploy now at <Harbor>/cicd-demo/test-web-apps@sha256:…`. Then run step 5's check with
+`WANT="test-web-apps v1"`. A second run builds again and writes the new digest.
+
+**If not:**
+- `Failed: …`: `kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci logs -l
+  tekton.dev/pipelineTask=build --all-containers` shows the build's log. `x509: certificate signed
+  by unknown authority` means `harbor-ca` is missing in `cicd-ci`, `UNAUTHORIZED` that `harbor-push`
+  is missing or expired (step 3); `toomanyrequests` is Docker Hub's pull limit (wait and run this
+  again).
+- `Failed` in `write-back` with `Authentication failed`: `git-writeback` is wrong; delete it
+  (`kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci delete secret git-writeback`) and run step 4
+  again.
+- No `Succeeded` or `Failed` after 15 minutes: `kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci
+  get pods` shows a pod `Pending` or `ImagePullBackOff`; `describe` it.
+
 ### With GitLab
 
 This puts the pipeline in place and runs it once.
 
 - GITLAB.md step 8's runner (tag `vks`) also takes jobs from `cicd/app`. It is installed again
   with Harbor's CA (`harbor-ca`) and the push robot (`harbor-push`) mounted into its job pods, and
-  with `FF_GIT_URLS_WITHOUT_TOKENS`, so the job's token is not written into the checkout.
+  with `FF_GIT_URLS_WITHOUT_TOKENS`, so the job's token is not written into the checkout's git
+  settings (the job can still read it while it runs).
 - A second runner, `gitlab-writeback`, in its own namespace with restricted pods, takes only jobs
   tagged `writeback` from protected branches of `cicd/app`. It alone mounts `deploy-token`: a token
   of `cicd/deploy` that may push for 30 days.
 - The pipeline is `cicd/ci`'s `.gitlab-ci.yml`: `build` runs Kaniko and keeps the digest as an
   artifact; `writeback` checks it is a digest, clones `deploy`, sets the image and pushes.
 
-The block makes the runner and the token inside GitLab's pod, so neither reaches this machine. It
-needs the runner chart that GITLAB.md step 8 downloaded.
+GitLab makes the runner and the token in its pod; they go straight into the Secrets and are never
+shown or saved on this machine. The block needs the runner chart that GITLAB.md step 8 downloaded.
+If another push reached `cicd/app` while a build ran, its write-back leaves `deploy` to that push.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1752,7 +1820,7 @@ runners:
           mount_path = "/run/deploy"
           read_only = true
 EOF
-gl() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>/dev/null | tail -1 | tr -d '\r\n'; }
+gitlab_rails() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>/dev/null | tail -1 | tr -d '\r\n'; }
 if [ "$( (sha256sum "$CHART" 2>/dev/null || shasum -a 256 "$CHART" 2>/dev/null) | cut -d' ' -f1)" != "$CHART_SHA256" ]; then
   echo "FAILED: no runner chart in $GITLAB_DIR; do GITLAB.md step 8 first"
 else
@@ -1768,7 +1836,7 @@ metadata:
 EOF
   echo "build runners for cicd/app: $(echo "app = Project.find_by_full_path('cicd/app'); root = User.find_by_username('root')
     rs = Ci::Runner.project_type.tagged_with('vks').to_a; rs.each { |r| r.assign_to(app, root) unless r.projects.include?(app) }
-    puts rs.size" | gl)"
+    puts rs.size" | gitlab_rails)"
   for T in gitlab-writeback-token deploy-token; do
     if kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback get secret "$T" -o name >/dev/null 2>&1; then
       echo "kept: secret $T in gitlab-writeback"
@@ -1787,14 +1855,15 @@ EOF
         print r.payload[:runner].token"
       K=runner-token
     fi
-    printf '%s' "$R" | gl \
+    printf '%s' "$R" | gitlab_rails \
       | jq -R --arg n "$T" --arg k "$K" 'if test("^gl[a-z]+-[A-Za-z0-9._-]+$") then
           {apiVersion: "v1", kind: "Secret", metadata: {name: $n, namespace: "gitlab-writeback"},
            stringData: ({($k): .} + if $k == "runner-token" then {"runner-registration-token": ""} else {} end)}
           else error("GitLab did not return a token") end' \
       | kubectl --kubeconfig "$VKS_KUBECONFIG" create -f -
   done
-  helm upgrade --install gitlab-runner "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner -f "$GITLAB_DIR/cicd-build-values.yaml" --set gitlabUrl="$GITLAB_URL" >/dev/null \
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback get secret gitlab-writeback-token deploy-token -o name >/dev/null \
+    && helm upgrade --install gitlab-runner "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner -f "$GITLAB_DIR/cicd-build-values.yaml" --set gitlabUrl="$GITLAB_URL" >/dev/null \
     && helm upgrade --install gitlab-writeback "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback -f "$GITLAB_DIR/cicd-writeback-values.yaml" --set gitlabUrl="$GITLAB_URL" >/dev/null \
     && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner rollout restart deployment/gitlab-runner \
     && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback rollout restart deployment/gitlab-writeback-gitlab-runner \
@@ -1943,22 +2012,22 @@ runners:
 '@
 [IO.File]::WriteAllText("$GITLAB_DIR\cicd-build-values.yaml", ($BV -replace "`r`n", "`n") + "`n")
 [IO.File]::WriteAllText("$GITLAB_DIR\cicd-writeback-values.yaml", ($WV -replace "`r`n", "`n") + "`n")
-function Gl($Ruby) { ($Ruby | kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>$null | Select-Object -Last 1 | Out-String).Trim() }
+function Invoke-GitLabRails($Ruby) { ($Ruby | kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>$null | Select-Object -Last 1 | Out-String).Trim() }
 if (-not (Test-Path $CHART) -or (Get-FileHash -Algorithm SHA256 $CHART).Hash -ne $CHART_SHA256) {
   "FAILED: no runner chart in $GITLAB_DIR; do GITLAB.md step 8 first"
 } else {
   "apiVersion: v1`nkind: Namespace`nmetadata:`n  name: gitlab-writeback`n  labels:`n    pod-security.kubernetes.io/enforce: restricted`n    pod-security.kubernetes.io/audit: restricted`n    pod-security.kubernetes.io/warn: restricted`n" |
     kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
-  "build runners for cicd/app: $(Gl "app = Project.find_by_full_path('cicd/app'); root = User.find_by_username('root')`nrs = Ci::Runner.project_type.tagged_with('vks').to_a; rs.each { |r| r.assign_to(app, root) unless r.projects.include?(app) }`nputs rs.size")"
+  "build runners for cicd/app: $(Invoke-GitLabRails "app = Project.find_by_full_path('cicd/app'); root = User.find_by_username('root')`nrs = Ci::Runner.project_type.tagged_with('vks').to_a; rs.each { |r| r.assign_to(app, root) unless r.projects.include?(app) }`nputs rs.size")"
   foreach ($T in 'gitlab-writeback-token', 'deploy-token') {
     $global:LASTEXITCODE = $null
     kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback get secret $T -o name 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) { "kept: secret $T in gitlab-writeback"; continue }
     if ($T -eq 'deploy-token') {
-      $V = Gl "deploy = Project.find_by_full_path('cicd/deploy'); root = User.find_by_username('root')`nr = ResourceAccessTokens::CreateService.new(root, deploy, name: 'writeback', scopes: [:write_repository], access_level: Gitlab::Access::DEVELOPER, expires_at: 30.days.from_now.to_date).execute`nprint r.payload[:access_token].token"
+      $V = Invoke-GitLabRails "deploy = Project.find_by_full_path('cicd/deploy'); root = User.find_by_username('root')`nr = ResourceAccessTokens::CreateService.new(root, deploy, name: 'writeback', scopes: [:write_repository], access_level: Gitlab::Access::DEVELOPER, expires_at: 30.days.from_now.to_date).execute`nprint r.payload[:access_token].token"
       $D = "  token: $V"
     } else {
-      $V = Gl "r = Ci::Runners::CreateRunnerService.new(user: User.find_by_username('root'), params: { runner_type: 'project_type', scope: Project.find_by_full_path('cicd/app'), tag_list: ['writeback'], run_untagged: false, locked: true, access_level: 'ref_protected', description: 'cicd-writeback' }).execute`nprint r.payload[:runner].token"
+      $V = Invoke-GitLabRails "r = Ci::Runners::CreateRunnerService.new(user: User.find_by_username('root'), params: { runner_type: 'project_type', scope: Project.find_by_full_path('cicd/app'), tag_list: ['writeback'], run_untagged: false, locked: true, access_level: 'ref_protected', description: 'cicd-writeback' }).execute`nprint r.payload[:runner].token"
       $D = "  runner-token: $V`n  runner-registration-token: `"`""
     }
     if ($V -cmatch '^gl[a-z]+-[A-Za-z0-9._-]+$') {
@@ -1968,7 +2037,8 @@ if (-not (Test-Path $CHART) -or (Get-FileHash -Algorithm SHA256 $CHART).Hash -ne
     }
     Remove-Variable V, D
   }
-  helm upgrade --install gitlab-runner $CHART --kubeconfig $VKS_KUBECONFIG -n gitlab-runner -f "$GITLAB_DIR\cicd-build-values.yaml" --set gitlabUrl=$GITLAB_URL | Out-Null
+  kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback get secret gitlab-writeback-token deploy-token -o name | Out-Null
+  if ($LASTEXITCODE -eq 0) { helm upgrade --install gitlab-runner $CHART --kubeconfig $VKS_KUBECONFIG -n gitlab-runner -f "$GITLAB_DIR\cicd-build-values.yaml" --set gitlabUrl=$GITLAB_URL | Out-Null }
   if ($LASTEXITCODE -eq 0) { helm upgrade --install gitlab-writeback $CHART --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback -f "$GITLAB_DIR\cicd-writeback-values.yaml" --set gitlabUrl=$GITLAB_URL | Out-Null }
   if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner rollout restart deployment/gitlab-runner }
   if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback rollout restart deployment/gitlab-writeback-gitlab-runner }
@@ -2005,9 +2075,11 @@ Then run step 5's check with `WANT="test-web-apps v1"`.
 
 **If not:**
 - `build runners for cicd/app: 0`: no runner has the tag `vks`; do GITLAB.md step 8.
-- `build: failed`: `http://localhost:3400/cicd/app/-/jobs` shows the log. `x509: certificate signed
-  by unknown authority` means `harbor-ca` is missing in `gitlab-runner` (step 3 with
-  `CI_NAMESPACE="gitlab-runner"`); `UNAUTHORIZED` means `harbor-push` is.
+- `build: failed`: `http://localhost:3400/cicd/app/-/jobs` shows the log. `waiting for pod running:
+  timed out` means `harbor-push` or `harbor-ca` is missing in `gitlab-runner` (step 3 with
+  `GIT_SERVER="gitlab"`); `UNAUTHORIZED` means the push robot expired (step 3).
+- `secrets "deploy-token" not found` (or `gitlab-writeback-token`) and nothing after it: GitLab did
+  not return a token; the line before says why. Run this again.
 - `writeback: failed` with `not allowed to push`: `deploy-token` expired (30 days). Delete it
   (`kubectl --kubeconfig <the VKS kubeconfig> -n gitlab-writeback delete secret deploy-token`) and
   run this again.
@@ -2114,7 +2186,8 @@ spec:
     - from:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gitea}}
 EOF
-kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - <<EOF
+[ -n "$HARBOR_FQDN" ] || echo "FAILED: no hostname in $HARBOR_DIR/harbor-data-values.yml"
+[ -n "$HARBOR_FQDN" ] && kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - <<EOF
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata: {name: cicd-demo, namespace: cicd-ci}
@@ -2243,7 +2316,7 @@ spec:
     - from:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gitea}}
 '@ | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
-@"
+if (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml" } else { @"
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata: {name: cicd-demo, namespace: cicd-ci}
@@ -2253,7 +2326,7 @@ spec:
     - {name: deploy-url, value: "http://gitea-http.gitea.svc:3000/gitea-admin/deploy.git"}
     - {name: image, value: cicd-demo/test-web-apps}
     - {name: registry, value: "$HARBOR_FQDN"}
-"@ | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
+"@ | kubectl --kubeconfig $VKS_KUBECONFIG apply -f - }
 $global:LASTEXITCODE = $null
 kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-ci get secret cicd-webhook -o name 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) {
@@ -2269,7 +2342,7 @@ if (-not $GITEA_PASSWORD) {
   $P = [Net.NetworkCredential]::new('', $GITEA_PASSWORD).Password.Replace('\', '\\').Replace('"', '\"')
   $CFG = [IO.Path]::GetTempFileName(); $BODY = [IO.Path]::GetTempFileName()
   try {
-    Set-Content -Encoding ascii -Path $CFG -Value "user = `"gitea-admin:$P`""
+    [IO.File]::WriteAllText($CFG, "user = `"gitea-admin:$P`"`n", (New-Object Text.UTF8Encoding $false))
     Remove-Variable P
     $H = curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks" | Out-String | ConvertFrom-Json
     foreach ($ID in @($H | Where-Object { $_.config.url -ceq $HOOK } | ForEach-Object { $_.id })) {
@@ -2296,7 +2369,9 @@ run), `webhook: 201` (after `replaced webhook <n>` on a second run) and
 **If not:**
 - After step 8's push, no new PipelineRun, and Gitea's log
   (`kubectl --kubeconfig <the VKS kubeconfig> -n gitea logs deployment/gitea`) says `denied by
-  egress policy`: your Gitea predates GITEA.md's webhook setting; run GITEA.md step 4 again.
+  egress policy`: your Gitea predates GITEA.md's webhook setting; run GITEA.md step 4 again. If your
+  cluster's Service range is not `10.96.0.0/12` (CLUSTER.md, item 8), put yours with `:8080` in
+  `ALLOWED_HOST_LIST` there.
 - `FAILED: no Gitea password …`: type it with step 4's first block, then run this again.
 
 ### With GitLab
@@ -2309,11 +2384,12 @@ Edit the page in `app` and push it. With Gitea, Gitea's webhook starts the pipel
 GitLab does. The build writes the new digest into `deploy`, and ArgoCD rolls it out. Run this in
 the second terminal; git asks for `gitea-admin`'s password (with GitLab, `root`'s).
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 GIT_SERVER="gitea"
-APP_DIR="$HOME/.config/vks-guides/cicd/app-work"
+APP_DIR="$HOME/.config/vks-guides/cicd/app-$GIT_SERVER"
 EMAIL="you@example.com"
 
 case "$GIT_SERVER" in
@@ -2330,11 +2406,14 @@ if [ -d "$APP_DIR/.git" ] || git clone -q "$URL" "$APP_DIR"; then
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $GIT_SERVER = "gitea"
-$APP_DIR = "$HOME\.config\vks-guides\cicd\app-work"
+$APP_DIR = "$HOME\.config\vks-guides\cicd\app-$GIT_SERVER"
 $EMAIL = "you@example.com"
 
 $URL = if ($GIT_SERVER -eq 'gitea') { "http://gitea-admin@localhost:3300/gitea-admin/app.git" } else { "http://root@localhost:3400/cicd/app.git" }
@@ -2350,10 +2429,12 @@ if ($LASTEXITCODE -eq 0) {
 }
 ```
 
+</details>
+
 **Expect:** after the password, `<old>..<new>  HEAD -> main`. With Gitea, within a minute
 `kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci get pipelineruns` lists a new run that turns
 `Succeeded`; with GitLab, `http://localhost:3400/cicd/app/-/pipelines` shows a new pipeline that
-turns **Passed**. Then run step 5's check with `WANT="test-web-apps v2"`: within about 3 minutes
+turns **Passed**. Then run step 5's check with `WANT="test-web-apps v2"`: within about 5 minutes
 the page says `test-web-apps v2`, `image:` ends in a new `@sha256:…`, and every pod's image ID ends
 in that digest.
 
@@ -2362,7 +2443,10 @@ in that digest.
   again.
 - With Gitea, no new PipelineRun: see step 7's **If not**.
 - The page still shows v1 after 5 minutes but the run succeeded: in ArgoCD's web page, open
-  **cicd-demo** and click **Refresh**; ArgoCD checks `deploy` for changes every few minutes.
+  **cicd-demo** and click **Refresh** → **Hard Refresh**; ArgoCD checks `deploy` only every few
+  minutes.
+- `Not possible to fast-forward`: the repository was made again; delete
+  `~/.config/vks-guides/cicd/app-gitea` (or `app-gitlab`) and run this again.
 
 ## 9. Clean up (optional)
 
@@ -2384,9 +2468,12 @@ HARBOR_PROJECT="cicd-demo"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 GITEA_URL="http://localhost:3300"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete application cicd-demo --ignore-not-found --timeout=5m \
-  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appproject cicd-demo --ignore-not-found
+if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete applications.argoproj.io cicd-demo --ignore-not-found --timeout=5m; then
+  echo "FAILED: the Application is still there; nothing else deleted"
+else
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appprojects.argoproj.io cicd-demo --ignore-not-found
 kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace cicd-demo --ignore-not-found --timeout=10m
+rm -rf "$HOME/.config/vks-guides/cicd/app-$GIT_SERVER"
 case "$GIT_SERVER" in
   gitea)
     kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace cicd-ci --ignore-not-found --timeout=10m
@@ -2410,16 +2497,19 @@ case "$GIT_SERVER" in
   *)
     helm uninstall gitlab-writeback --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback 2>/dev/null
     kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace gitlab-writeback --ignore-not-found --timeout=10m
-    if [ -s "$HOME/.config/vks-guides/gitlab/runner-values.yaml" ] && [ -s "$HOME/.config/vks-guides/gitlab/gitlab-runner-0.94.1.tgz" ]; then
-      helm upgrade gitlab-runner "$HOME/.config/vks-guides/gitlab/gitlab-runner-0.94.1.tgz" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner \
-          -f "$HOME/.config/vks-guides/gitlab/runner-values.yaml" --reuse-values >/dev/null \
-        && echo "runner gitlab-runner: back to GITLAB.md step 8's settings"
+    if [ -s "$HOME/.config/vks-guides/gitlab/runner-values.yaml" ] && [ -s "$HOME/.config/vks-guides/gitlab/gitlab-runner-0.94.1.tgz" ] \
+       && helm upgrade gitlab-runner "$HOME/.config/vks-guides/gitlab/gitlab-runner-0.94.1.tgz" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner \
+          -f "$HOME/.config/vks-guides/gitlab/runner-values.yaml" --reuse-values >/dev/null; then
+      echo "runner gitlab-runner: back to GITLAB.md step 8's settings"
+      kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner delete secret harbor-push --ignore-not-found
+      kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner delete configmap harbor-ca --ignore-not-found
+    else
+      echo "FAILED: could not put the runner back (needs runner-values.yaml and the chart from GITLAB.md step 8); harbor-push and harbor-ca kept"
     fi
-    kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner delete secret harbor-push --ignore-not-found
-    kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner delete configmap harbor-ca --ignore-not-found
     printf '%s\n' "Ci::Runner.where(description: 'cicd-writeback').each(&:destroy)" \
       "g = Group.find_by_full_path('cicd'); puts(g ? (Groups::DestroyService.new(g, User.find_by_username('root')).execute && 'group cicd: deleted') : 'group cicd: none')" \
-      | kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>/dev/null
+      | kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>&1 | grep -v '^\s*from '
+
     ;;
 esac
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
@@ -2435,6 +2525,7 @@ else
       -w "Harbor ${U#projects/}: %{http_code}\n" -X DELETE "https://${HARBOR_FQDN}/api/v2.0/$U"
   done
   rm -f "$CFG"
+fi
 fi
 ```
 
@@ -2454,9 +2545,13 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 $GITEA_URL = "http://localhost:3300"
 
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete application cicd-demo --ignore-not-found --timeout=5m
-if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject cicd-demo --ignore-not-found }
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applications.argoproj.io cicd-demo --ignore-not-found --timeout=5m
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: the Application is still there; nothing else deleted"
+} else {
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appprojects.argoproj.io cicd-demo --ignore-not-found
 kubectl --kubeconfig $VKS_KUBECONFIG delete namespace cicd-demo --ignore-not-found --timeout=10m
+Remove-Item -Recurse -Force "$HOME\.config\vks-guides\cicd\app-$GIT_SERVER" -ErrorAction SilentlyContinue
 if ($GIT_SERVER -eq 'gitea') {
   kubectl --kubeconfig $VKS_KUBECONFIG delete namespace cicd-ci --ignore-not-found --timeout=10m
   kubectl --kubeconfig $VKS_KUBECONFIG delete clusterrolebinding,clusterrole cicd-listener --ignore-not-found
@@ -2466,7 +2561,7 @@ if ($GIT_SERVER -eq 'gitea') {
     $P = [Net.NetworkCredential]::new('', $GITEA_PASSWORD).Password.Replace('\', '\\').Replace('"', '\"')
     $CFG = [IO.Path]::GetTempFileName()
     try {
-      Set-Content -Encoding ascii -Path $CFG -Value "user = `"gitea-admin:$P`""
+      [IO.File]::WriteAllText($CFG, "user = `"gitea-admin:$P`"`n", (New-Object Text.UTF8Encoding $false))
       Remove-Variable P
       foreach ($R in 'app', 'deploy') {
         "repository ${R}: $(curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -w '%{http_code}' -X DELETE "$GITEA_URL/api/v1/repos/gitea-admin/$R")"
@@ -2483,12 +2578,16 @@ if ($GIT_SERVER -eq 'gitea') {
   if ((Test-Path "$HOME\.config\vks-guides\gitlab\runner-values.yaml") -and (Test-Path "$HOME\.config\vks-guides\gitlab\gitlab-runner-0.94.1.tgz")) {
     helm upgrade gitlab-runner "$HOME\.config\vks-guides\gitlab\gitlab-runner-0.94.1.tgz" --kubeconfig $VKS_KUBECONFIG -n gitlab-runner `
       -f "$HOME\.config\vks-guides\gitlab\runner-values.yaml" --reuse-values | Out-Null
-    if ($LASTEXITCODE -eq 0) { "runner gitlab-runner: back to GITLAB.md step 8's settings" }
+  } else { $global:LASTEXITCODE = 1 }
+  if ($LASTEXITCODE -eq 0) {
+    "runner gitlab-runner: back to GITLAB.md step 8's settings"
+    kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner delete secret harbor-push --ignore-not-found
+    kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner delete configmap harbor-ca --ignore-not-found
+  } else {
+    "FAILED: could not put the runner back (needs runner-values.yaml and the chart from GITLAB.md step 8); harbor-push and harbor-ca kept"
   }
-  kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner delete secret harbor-push --ignore-not-found
-  kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner delete configmap harbor-ca --ignore-not-found
   "Ci::Runner.where(description: 'cicd-writeback').each(&:destroy)`ng = Group.find_by_full_path('cicd'); puts(g ? (Groups::DestroyService.new(g, User.find_by_username('root')).execute && 'group cicd: deleted') : 'group cicd: none')" |
-    kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>$null
+    kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>&1 | Where-Object { "$_" -notmatch '^\s*from ' }
 }
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $S = @{}
@@ -2508,6 +2607,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
     Remove-Variable P, S
   }
 }
+}
 ```
 
 </details>
@@ -2518,10 +2618,14 @@ deleted`, `namespace "cicd-demo" deleted`, then with Gitea `namespace "cicd-ci" 
 `release "gitlab-writeback" uninstalled`, `namespace "gitlab-writeback" deleted`, `runner
 gitlab-runner: back to GITLAB.md step 8's settings`, the `harbor-push` and `harbor-ca` deletes and
 `group cicd: deleted`; and last
-`Harbor cicd-demo/repositories/test-web-apps: 200` and `Harbor cicd-demo: 200`. On a second run
-the deletes print nothing and Harbor prints `404`.
+`Harbor cicd-demo/repositories/test-web-apps: 200` and `Harbor cicd-demo: 200`. On a second run:
+with Gitea `repository app: 404` and `repository deploy: 404`; with GitLab `runner gitlab-runner:
+back to …` and `group cicd: none`; Harbor `404`.
 
 **If not:**
+- `FAILED: the Application is still there` after `timed out waiting for the condition`: ArgoCD
+  cannot reach the cluster or cannot delete the app. See [ARGOCD.md](ARGOCD.md) step 9's **If not**,
+  then run this again.
 - `Harbor cicd-demo: 412`: the project still holds something; delete it in Harbor's web page
   (**Projects** → `cicd-demo`), then run this again.
 
