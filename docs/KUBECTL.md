@@ -54,8 +54,7 @@ else
   hash -r 2>/dev/null
   "$DEST/kubectl" version --client
   [ "$(command -v kubectl)" = "$DEST/kubectl" ] || echo "WARNING: 'kubectl' on PATH is $(command -v kubectl)"
-fi
-rm -rf "$TMP"
+fi; rm -rf "$TMP"
 ```
 
 </details>
@@ -158,8 +157,7 @@ else
   hash -r 2>/dev/null
   "$DEST/kubectl" version --client
   [ "$(command -v kubectl)" = "$DEST/kubectl" ] || echo "WARNING: 'kubectl' on PATH is $(command -v kubectl)"
-fi
-rm -rf "$TMP"
+fi; rm -rf "$TMP"
 ```
 
 </details>
