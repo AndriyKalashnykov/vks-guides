@@ -593,7 +593,8 @@ if ($LASTEXITCODE -ne 0) {
 git -C $REPO -c credential.helper= push http://gitea-admin@localhost:3300/gitea-admin/hello.git HEAD:main
 ```
 
-**Expect:** `Password for 'http://gitea-admin@localhost:3300':`, then after the password
+**Expect:** `Password for 'http://gitea-admin@localhost:3300':` (some git versions first ask
+`Username for 'http://localhost:3300':`; type `gitea-admin`), then after the password
 `* [new branch]      HEAD -> main` (`Everything up-to-date` on a second run).
 <http://localhost:3300/gitea-admin/hello> shows the README and **Private**.
 
