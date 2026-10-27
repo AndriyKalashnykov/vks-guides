@@ -231,9 +231,9 @@ if ($LASTEXITCODE -ne 0) {
 
 </details>
 
-**Expect:** `deployment.apps/… condition met` lines, then seven pods `1/1 Running` in
-`tekton-pipelines` (the Pipelines controller, events controller and webhook, and the Triggers
-controller, webhook and core interceptors).
+**Expect:** `deployment.apps/… condition met` lines, then six pods `1/1 Running` in
+`tekton-pipelines`: the Pipelines controller, events controller and webhook, and the Triggers
+controller, webhook and core interceptors.
 
 **If not:**
 - `timed out waiting for the condition`: run `kubectl --kubeconfig <the VKS kubeconfig> -n
@@ -494,14 +494,15 @@ if ($S -eq 'True') { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo logs -l
 </details>
 
 **Expect:** `namespace/tekton-demo created`, `task.tekton.dev/say-hello created`,
-`task.tekton.dev/show-it created` and `pipeline.tekton.dev/hello created` (`unchanged` on a
-second run), then the run with `SUCCEEDED True` and `REASON Succeeded`, then
+`task.tekton.dev/show-it created` and `pipeline.tekton.dev/hello created` (`unchanged` or
+`configured` on a second run), then the run with `SUCCEEDED True` and `REASON Succeeded`, then
 `received: Hello, VKS`.
 
 **If not:**
-- `SUCCEEDED False`: `kubectl --kubeconfig <the VKS kubeconfig> -n tekton-demo get taskruns -o
-  wide` names the task that failed and why. `violates PodSecurity "restricted…"`: a step lacks the
-  `stepTemplate` above. `ErrImagePull`: the nodes cannot reach `cgr.dev`.
+- `SUCCEEDED False`: `kubectl --kubeconfig <the VKS kubeconfig> -n tekton-demo get taskruns` names
+  the task run that failed, and `kubectl --kubeconfig <the VKS kubeconfig> -n tekton-demo describe
+  taskrun <name>` says why. `violates PodSecurity "restricted…"`: a step lacks the `stepTemplate`
+  above. `ErrImagePull`: the nodes cannot reach `cgr.dev`.
 - `SUCCEEDED Unknown` after five minutes: the pods are still `Pending` or pulling; run
   `kubectl --kubeconfig <the VKS kubeconfig> -n tekton-demo get pods` and look at the reason.
 - `failed calling webhook "…tekton.dev"`: Tekton is still starting; wait a minute and run the
@@ -622,7 +623,8 @@ spec:
       eventlistener: hello
   policyTypes: ["Ingress"]
 EOF
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-demo wait --for=condition=Ready eventlistener/hello --timeout=5m
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-demo wait --for=condition=Ready eventlistener/hello --timeout=5m \
+  && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-demo rollout status deployment/el-hello --timeout=5m
 ```
 
 </details>
@@ -732,13 +734,16 @@ spec:
       eventlistener: hello
   policyTypes: ["Ingress"]
 '@ | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
+$global:LASTEXITCODE = $null
 kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo wait --for=condition=Ready eventlistener/hello --timeout=5m
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo rollout status deployment/el-hello --timeout=5m }
 ```
 
 </details>
 
 **Expect:** a `created` line for each of the eight objects (`unchanged` on a second run), then
-`eventlistener.triggers.tekton.dev/hello condition met`.
+`eventlistener.triggers.tekton.dev/hello condition met` and
+`deployment "el-hello" successfully rolled out`.
 
 **If not:**
 - `timed out waiting for the condition`: run `kubectl --kubeconfig <the VKS kubeconfig> -n
@@ -932,7 +937,8 @@ if ($V -ne 'v1.17.1') {
 **Expect:** `Tekton CRDs left: 0`, after the namespaces are gone (a few minutes).
 
 **If not:**
-- `STOPPED: the Tekton here is …`: someone else installed this Tekton; leave it.
+- `STOPPED: the Tekton here is 'none'`: Tekton is already uninstalled.
+- `STOPPED: the Tekton here is …` with a version: someone else installed this Tekton; leave it.
 - `STOPPED: … objects outside tekton-demo`: list them with `kubectl --kubeconfig <the VKS
   kubeconfig> get tasks,pipelines,pipelineruns,taskruns,eventlisteners -A`; delete them first if
   they are yours.
