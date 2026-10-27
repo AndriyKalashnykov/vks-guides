@@ -1702,8 +1702,9 @@ This puts the pipeline in place and runs it once.
   artifact; `writeback` checks it is a digest, clones `deploy`, sets the image and pushes.
 
 GitLab makes the runner and the token in its pod; they go straight into the Secrets and are never
-shown or saved on this machine. The block needs the runner chart and `runner-values.yaml` from GITLAB.md step 8.
-If another push reached `cicd/app` while a build ran, its write-back leaves `deploy` to that push.
+shown or saved on this machine. The block needs the runner chart and `runner-values.yaml` from
+GITLAB.md step 8. If another push reached `cicd/app` while a build ran, its write-back leaves
+`deploy` to that push.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1742,6 +1743,11 @@ runners:
 EOF
 cat > "$GITLAB_DIR/cicd-writeback-values.yaml" <<'EOF'
 concurrent: 1
+podSecurityContext:
+  runAsUser: 100
+  fsGroup: 65533
+  seccompProfile:
+    type: RuntimeDefault
 runners:
   secret: gitlab-writeback-token
   config: |
@@ -1874,6 +1880,11 @@ runners:
 '@
 $WV = @'
 concurrent: 1
+podSecurityContext:
+  runAsUser: 100
+  fsGroup: 65533
+  seccompProfile:
+    type: RuntimeDefault
 runners:
   secret: gitlab-writeback-token
   config: |
@@ -1905,7 +1916,7 @@ runners:
 [IO.File]::WriteAllText("$GITLAB_DIR\cicd-build-values.yaml", ($BV -replace "`r`n", "`n") + "`n")
 [IO.File]::WriteAllText("$GITLAB_DIR\cicd-writeback-values.yaml", ($WV -replace "`r`n", "`n") + "`n")
 function Invoke-GitLabRails($Ruby) { ($Ruby | kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>$null | Select-Object -Last 1 | Out-String).Trim() }
-if (-not (Test-Path $CHART) -or (Get-FileHash -Algorithm SHA256 $CHART).Hash -ne $CHART_SHA256 -or -not (Test-Path "$GITLAB_DIR\runner-values.yaml")) {
+if (-not (Test-Path $CHART) -or (Get-FileHash -Algorithm SHA256 $CHART).Hash -ne $CHART_SHA256 -or -not (Test-Path "$GITLAB_DIR\runner-values.yaml") -or (Get-Item "$GITLAB_DIR\runner-values.yaml").Length -eq 0) {
   "FAILED: no runner chart or runner-values.yaml in $GITLAB_DIR; do GITLAB.md step 8 first"
 } else {
   "apiVersion: v1`nkind: Namespace`nmetadata:`n  name: gitlab-writeback`n  labels:`n    pod-security.kubernetes.io/enforce: restricted`n    pod-security.kubernetes.io/audit: restricted`n    pod-security.kubernetes.io/warn: restricted`n" |
