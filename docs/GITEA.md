@@ -194,8 +194,9 @@ Remove-Variable S
 
 Install Gitea one of two ways, A or B; steps 5 to 9 are the same for both. Both run Gitea 28.2.0
 with the settings this guide sets, the keys from step 3, restricted pods and one 5 GiB volume; its web page
-addresses itself as `http://localhost:3300`, the port step 6 forwards, and passwords must be at
-least 16 characters. To change from one to the other later, run step 9, then steps 2 and 3, first:
+addresses itself as `http://localhost:3300`, the port step 6 forwards, passwords must be at
+least 16 characters, and webhooks may call only port 8080 of the cluster's Services (`10.96.0.0/12`,
+a VKS cluster's default Service range; [CICD.md](CICD.md) step 7 uses it). To change from one to the other later, run step 9, then steps 2 and 3, first:
 they keep their data differently, and nothing carries over.
 
 ### A. With this guide's YAML (recommended)
@@ -267,6 +268,8 @@ spec:
             - { name: GITEA__server__DISABLE_SSH, value: "true" }
             - { name: GITEA__security__INSTALL_LOCK, value: "true" }
             - { name: GITEA__security__MIN_PASSWORD_LENGTH, value: "16" }
+            - { name: GITEA__security__ALLOWED_HOST_LIST, value: "10.96.0.0/12:8080" }
+            - { name: GITEA__security__EGRESS_MODE, value: "lax" }
             - { name: GITEA__service__DISABLE_REGISTRATION, value: "true" }
             - { name: GITEA__repository__ENABLE_PUSH_CREATE_USER, value: "true" }
             - { name: GITEA__oauth2__ENABLED, value: "false" }
@@ -383,6 +386,8 @@ spec:
             - { name: GITEA__server__DISABLE_SSH, value: "true" }
             - { name: GITEA__security__INSTALL_LOCK, value: "true" }
             - { name: GITEA__security__MIN_PASSWORD_LENGTH, value: "16" }
+            - { name: GITEA__security__ALLOWED_HOST_LIST, value: "10.96.0.0/12:8080" }
+            - { name: GITEA__security__EGRESS_MODE, value: "lax" }
             - { name: GITEA__service__DISABLE_REGISTRATION, value: "true" }
             - { name: GITEA__repository__ENABLE_PUSH_CREATE_USER, value: "true" }
             - { name: GITEA__oauth2__ENABLED, value: "false" }
@@ -547,6 +552,8 @@ gitea:
     security:
       INSTALL_LOCK: true
       MIN_PASSWORD_LENGTH: 16
+      ALLOWED_HOST_LIST: 10.96.0.0/12:8080
+      EGRESS_MODE: lax
     service:
       DISABLE_REGISTRATION: true
     repository:
@@ -685,6 +692,8 @@ gitea:
     security:
       INSTALL_LOCK: true
       MIN_PASSWORD_LENGTH: 16
+      ALLOWED_HOST_LIST: 10.96.0.0/12:8080
+      EGRESS_MODE: lax
     service:
       DISABLE_REGISTRATION: true
     repository:
