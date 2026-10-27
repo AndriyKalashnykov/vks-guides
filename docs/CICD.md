@@ -17,8 +17,8 @@ VKS cluster. The app is [`argocd/test-web-apps`](../argocd/test-web-apps): a pag
 `test-web-apps v1`.
 
 You can do it with Gitea and Tekton, or with GitLab. Steps 4, 6 and 7 have a section for each; the
-other steps are the same, and their blocks start with `GIT_SERVER="gitea"`: with GitLab, change it
-to `GIT_SERVER="gitlab"`.
+other steps are the same, and where their blocks set `GIT_SERVER="gitea"`, change it to
+`GIT_SERVER="gitlab"` with GitLab.
 
 | | With Gitea and Tekton | With GitLab |
 |---|---|---|
@@ -71,7 +71,7 @@ else
     echo "namespace ${N}: $(printf '%s\n' "$NS" | grep -cx "namespace/$N")"
   done
   echo "ArgoCD destinations: $(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get secret -l argocd.argoproj.io/secret-type=cluster -o json \
-    | jq -r '[.items[].data.name | @base64d] | join(" ")')"
+    | jq -r '[.items[].data.name // empty | @base64d] | join(" ")')"
 fi
 ```
 
@@ -101,7 +101,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
       "namespace ${N}: $(@($NS | Where-Object { $_ -ceq "namespace/$N" }).Count)"
     }
     $C = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get secret -l argocd.argoproj.io/secret-type=cluster -o json | Out-String | ConvertFrom-Json
-    "ArgoCD destinations: $(@($C.items | ForEach-Object { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_.data.name)) }) -join ' ')"
+    "ArgoCD destinations: $(@($C.items | Where-Object { $_.data.name } | ForEach-Object { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_.data.name)) }) -join ' ')"
   }
 }
 ```
@@ -591,7 +591,7 @@ if (-not $GITEA_PASSWORD) {
         foreach ($R in 'app', 'deploy') {
           Set-Content -Encoding ascii -Path $BODY -Value ('{"name":"' + $R + '","private":false,"default_branch":"main"}')
           "repository ${R}: $(curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" "$GITEA_URL/api/v1/user/repos")"
-          foreach ($F in (Get-ChildItem "$CICD_DIR\$R" -File | Sort-Object Name)) {
+          foreach ($F in (Get-Item "$CICD_DIR\$R\*" -Include Dockerfile, index.html, deployment.yaml, service.yaml)) {
             $C = [Convert]::ToBase64String([IO.File]::ReadAllBytes($F.FullName))
             Set-Content -Encoding ascii -Path $BODY -Value ('{"content":"' + $C + '","message":"add ' + $F.Name + '","branch":"main"}')
             "  $($F.Name): $(curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" "$GITEA_URL/api/v1/repos/gitea-admin/$R/contents/$($F.Name)")"
@@ -735,7 +735,8 @@ files = {
             IMAGE="HARBOR_FQDN/cicd-demo/test-web-apps@$D"
             export HOME=/tmp/wb
             unset GIT_CONFIG_GLOBAL
-            if [ "$(git ls-remote http://gitlab.gitlab.svc.cluster.local/cicd/app.git refs/heads/main | cut -c1-40)" != "$CI_COMMIT_SHA" ]; then echo "skipped: cicd/app has moved on from $CI_COMMIT_SHA"; exit 0; fi
+            M="$(git ls-remote --exit-code http://gitlab.gitlab.svc.cluster.local/cicd/app.git refs/heads/main)" || { echo "FAILED: cannot read cicd/app's main"; exit 1; }
+            [ "${M%%[[:space:]]*}" = "$CI_COMMIT_SHA" ] || { echo "skipped: cicd/app has moved on from $CI_COMMIT_SHA"; exit 0; }
             umask 077
             mkdir -p "$HOME"
             printf 'http://writeback:%s@gitlab.gitlab.svc.cluster.local\n' "$(tr -d ' \t\r\n' < /run/deploy/token)" > "$HOME/.git-credentials"
@@ -933,7 +934,8 @@ files = {
             IMAGE="HARBOR_FQDN/cicd-demo/test-web-apps@$D"
             export HOME=/tmp/wb
             unset GIT_CONFIG_GLOBAL
-            if [ "$(git ls-remote http://gitlab.gitlab.svc.cluster.local/cicd/app.git refs/heads/main | cut -c1-40)" != "$CI_COMMIT_SHA" ]; then echo "skipped: cicd/app has moved on from $CI_COMMIT_SHA"; exit 0; fi
+            M="$(git ls-remote --exit-code http://gitlab.gitlab.svc.cluster.local/cicd/app.git refs/heads/main)" || { echo "FAILED: cannot read cicd/app's main"; exit 1; }
+            [ "${M%%[[:space:]]*}" = "$CI_COMMIT_SHA" ] || { echo "skipped: cicd/app has moved on from $CI_COMMIT_SHA"; exit 0; }
             umask 077
             mkdir -p "$HOME"
             printf 'http://writeback:%s@gitlab.gitlab.svc.cluster.local\n' "$(tr -d ' \t\r\n' < /run/deploy/token)" > "$HOME/.git-credentials"
@@ -1397,7 +1399,8 @@ spec:
         DIGEST="$(printf '%s' "$DIGEST" | tr -d '[:space:]')"
         printf '%s\n' "$DIGEST" | grep -Eqx 'sha256:[0-9a-f]{64}' || { echo "refused: not a digest"; exit 1; }
         printf '%s\n' "$COMMIT" | grep -Eqx '[0-9a-f]{40}' || { echo "refused: not a commit"; exit 1; }
-        if [ "$(git ls-remote "$APP_URL" refs/heads/main | cut -c1-40)" != "$COMMIT" ]; then echo "skipped: app has moved on from ${COMMIT}"; exit 0; fi
+        M="$(git ls-remote --exit-code "$APP_URL" refs/heads/main)" || { echo "FAILED: cannot read app's main"; exit 1; }
+        [ "${M%%[[:space:]]*}" = "$COMMIT" ] || { echo "skipped: app has moved on from ${COMMIT}"; exit 0; }
         H="${URL#http://}"; H="${H%%/*}"
         U="$(cat /run/git/username)"
         printf 'http://%s:%s@%s\n' "$U" "$(cat /run/git/token)" "$H" > /tmp/cred
@@ -1585,7 +1588,8 @@ spec:
         DIGEST="$(printf '%s' "$DIGEST" | tr -d '[:space:]')"
         printf '%s\n' "$DIGEST" | grep -Eqx 'sha256:[0-9a-f]{64}' || { echo "refused: not a digest"; exit 1; }
         printf '%s\n' "$COMMIT" | grep -Eqx '[0-9a-f]{40}' || { echo "refused: not a commit"; exit 1; }
-        if [ "$(git ls-remote "$APP_URL" refs/heads/main | cut -c1-40)" != "$COMMIT" ]; then echo "skipped: app has moved on from ${COMMIT}"; exit 0; fi
+        M="$(git ls-remote --exit-code "$APP_URL" refs/heads/main)" || { echo "FAILED: cannot read app's main"; exit 1; }
+        [ "${M%%[[:space:]]*}" = "$COMMIT" ] || { echo "skipped: app has moved on from ${COMMIT}"; exit 0; }
         H="${URL#http://}"; H="${H%%/*}"
         U="$(cat /run/git/username)"
         printf 'http://%s:%s@%s\n' "$U" "$(cat /run/git/token)" "$H" > /tmp/cred
@@ -1665,7 +1669,9 @@ spec:
 **Expect:** the `created` (or `unchanged`/`configured`) lines, `started pipelinerun.tekton.dev/cicd-demo-<x>`,
 then within a few minutes `Succeeded: Tasks Completed: 2 (Failed: 0, Cancelled 0), Skipped: 0` and
 `deploy now at <Harbor>/cicd-demo/test-web-apps@sha256:…`. Then run step 5's check with
-`WANT="test-web-apps v1"`. A second run builds again and writes the new digest.
+`WANT="test-web-apps v1"`. A second run builds again and writes the new digest. If someone pushed to
+`app` while it ran, the last line is `skipped: app has moved on …` and that push's run updates
+`deploy`.
 
 **If not:**
 - `Failed: …`: `kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci logs -l
@@ -1676,6 +1682,8 @@ then within a few minutes `Succeeded: Tasks Completed: 2 (Failed: 0, Cancelled 0
 - `Failed` in `write-back` with `Authentication failed`: `git-writeback` is wrong; delete it
   (`kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci delete secret git-writeback`) and run step 4
   again.
+- `FAILED: cannot read app's main`: the write-back could not reach Gitea; check that Gitea runs
+  (`kubectl --kubeconfig <the VKS kubeconfig> -n gitea get pods`) and run this again.
 - No `Succeeded` or `Failed` after 15 minutes: `kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci
   get pods` shows a pod `Pending` or `ImagePullBackOff`; `describe` it.
 
@@ -1878,8 +1886,8 @@ t = Time.now
 sleep 5 until pl.reload.complete? || Time.now - t > 900
 puts "pipeline #{pl.id}: #{pl.status}"
 pl.builds.sort_by(&:id).each do |b|
-  l = b.trace.raw.to_s.gsub(/\e\[[0-9;]*[A-Za-z]/, '').lines.grep(/Pushed |wrote |unchanged:|refused:|ERROR/).last.to_s
-  puts "#{b.name}: #{b.status} #{l[/(Pushed|wrote|unchanged:|refused:|ERROR).*/]}"
+  l = b.trace.raw.to_s.gsub(/\e\[[0-9;]*[A-Za-z]/, '').lines.grep(/Pushed |wrote |unchanged:|refused:|skipped:|FAILED:|fatal:|ERROR/).last.to_s
+  puts "#{b.name}: #{b.status} #{l[/(Pushed|wrote|unchanged:|refused:|skipped:|FAILED:|fatal:|ERROR).*/]}"
 end
 EOF
 fi
@@ -2054,8 +2062,8 @@ t = Time.now
 sleep 5 until pl.reload.complete? || Time.now - t > 900
 puts "pipeline #{pl.id}: #{pl.status}"
 pl.builds.sort_by(&:id).each do |b|
-  l = b.trace.raw.to_s.gsub(/\e\[[0-9;]*[A-Za-z]/, '').lines.grep(/Pushed |wrote |unchanged:|refused:|ERROR/).last.to_s
-  puts "#{b.name}: #{b.status} #{l[/(Pushed|wrote|unchanged:|refused:|ERROR).*/]}"
+  l = b.trace.raw.to_s.gsub(/\e\[[0-9;]*[A-Za-z]/, '').lines.grep(/Pushed |wrote |unchanged:|refused:|skipped:|FAILED:|fatal:|ERROR/).last.to_s
+  puts "#{b.name}: #{b.status} #{l[/(Pushed|wrote|unchanged:|refused:|skipped:|FAILED:|fatal:|ERROR).*/]}"
 end
 '@ | kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>$null
   }
@@ -2080,6 +2088,9 @@ Then run step 5's check with `WANT="test-web-apps v1"`.
 - `build: failed`: `http://localhost:3400/cicd/app/-/jobs` shows the log. `waiting for pod running:
   timed out` means `harbor-push` or `harbor-ca` is missing in `gitlab-runner` (step 3 with
   `GIT_SERVER="gitlab"`); `UNAUTHORIZED` means the push robot expired (step 3).
+- `writeback: success skipped: cicd/app has moved on …`: someone pushed meanwhile; that push's
+  pipeline updates `deploy`. `writeback: failed FAILED: cannot read cicd/app's main`: the job could
+  not reach GitLab; run this again.
 - `secrets "deploy-token" not found` (or `gitlab-writeback-token`) and nothing after it: GitLab did
   not return a token; the line before says why. Run this again.
 - `writeback: failed` with `not allowed to push`: `deploy-token` expired (30 days). Delete it
@@ -2385,8 +2396,7 @@ Nothing to do: GitLab starts the pipeline on every push to `main` of `cicd/app`.
 ## 8. Change the page
 
 Edit the page in `app` and push it. With Gitea, Gitea's webhook starts the pipeline; with GitLab,
-GitLab does. The build writes the new digest into `deploy`, and ArgoCD rolls it out. Run this in
-the second terminal; git asks for `gitea-admin`'s password (with GitLab, `root`'s).
+GitLab does. The build writes the new digest into `deploy`, and ArgoCD rolls it out. Git asks for `gitea-admin`'s password (with GitLab, `root`'s).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2629,6 +2639,10 @@ with Gitea `repository app: 404` and `repository deploy: 404`; with GitLab `runn
 back to …` and `group cicd: none`; Harbor `404`.
 
 **If not:**
+- `FAILED: could not put the runner back`: do GITLAB.md step 8 again, then delete `harbor-push` and
+  `harbor-ca` in `gitlab-runner` (`kubectl --kubeconfig <the VKS kubeconfig> -n gitlab-runner delete
+  secret harbor-push` and `… delete configmap harbor-ca`); step 3 would otherwise keep the expired
+  robot.
 - `FAILED: the Application is still there` after `timed out waiting for the condition`: ArgoCD
   cannot reach the cluster or cannot delete the app. See [ARGOCD.md](ARGOCD.md) step 9's **If not**,
   then run this again.
