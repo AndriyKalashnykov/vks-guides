@@ -33,6 +33,11 @@ blocks; there is nothing to build.
   `[System.Management.Automation.Language.Parser]::ParseFile` in Windows PowerShell 5.1 (no pwsh
   on the dev host; use the Windows walkbox from nested-vsphere-lab: `make walkbox-vm-start
   WALKBOX_OS=windows`).
+- Readers paste blocks into an interactive shell, so a block is run pasted, not only as a script:
+  feed it to `bash -i` and `zsh -i` under a pseudo-terminal (`script -qec "zsh -i" /dev/null <
+  block.sh`, with an empty `.zshrc` in a scratch `HOME`/`ZDOTDIR`) and check for `event not
+  found`. A `!` goes only inside single quotes; never in a `case` pattern such as `*[!a-z]*`
+  (interactive zsh history-expands it). `[^…]` is not a fix: dash reads it differently.
 - A behaviour change is run for real before README's "Tested on" table claims it. On the owner's
   nested-vsphere-lab the agent logs in itself and never asks the owner to: `make login
   VCF_CONTEXT=supervisor` (or `make kubectl-login VCF_CONTEXT=supervisor`) in that checkout logs
