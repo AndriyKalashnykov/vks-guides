@@ -612,7 +612,414 @@ and `422`, and `kept: secret git-writeback in cicd-ci`.
 
 ### With GitLab
 
-#4B#
+This creates, inside GitLab, the public group `cicd` with three projects: `app` and `deploy`
+(public) and `ci` (private), which holds the pipeline, `.gitlab-ci.yml`. `app` builds with
+`ci`'s file, so someone who may push to `app` cannot add jobs or reach the runner that writes to
+`deploy`; give your developers the Developer role on `cicd/app` only. Each project's `main` is
+protected: Developers may push, nobody may force-push. The block runs a Ruby script in GitLab's
+pod with `gitlab-rails`, so no GitLab token reaches this machine; it takes about a minute.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+
+HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
+if [ -z "$HARBOR_FQDN" ]; then
+  echo "FAILED: no hostname in $HARBOR_DIR/harbor-data-values.yml"
+else
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab exec -i gitlab-0 -- env HARBOR_FQDN="$HARBOR_FQDN" gitlab-rails runner - <<'EOF'
+root = User.find_by_username('root')
+registry = ENV.fetch('HARBOR_FQDN')
+group = Group.find_by_full_path('cicd')
+if group
+  puts 'group cicd: kept'
+else
+  r = Groups::CreateService.new(root, name: 'cicd', path: 'cicd', visibility_level: Gitlab::VisibilityLevel::PUBLIC,
+    organization_id: Organizations::Organization.default_organization.id).execute
+  group = r.respond_to?(:payload) ? r.payload[:group] : r
+  raise "group cicd: #{group.errors.full_messages.join(', ')}" unless group&.persisted?
+  puts 'group cicd: created'
+end
+files = {
+  'app' => {
+    'Dockerfile' => <<~'TXT',
+      FROM docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+      COPY index.html /usr/share/nginx/html/index.html
+      EXPOSE 8080
+    TXT
+    'index.html' => <<~'TXT',
+      <!doctype html>
+      <html lang="en">
+      <head><meta charset="utf-8"><title>test-web-apps</title></head>
+      <body>
+      <h1>test-web-apps v1</h1>
+      </body>
+      </html>
+    TXT
+  },
+  'ci' => {
+    '.gitlab-ci.yml' => <<~'TXT',
+      stages: [build, writeback]
+
+      build:
+        stage: build
+        tags: [vks]
+        image:
+          name: ghcr.io/osscontainertools/kaniko:v1.29.0-debug@sha256:350929376b8a69afb1d8b362086c809e4ef6799fa1bcb317c2806ae1447b3845
+          entrypoint: [""]
+        rules:
+          - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+        script:
+          - /kaniko/executor
+            --context "$CI_PROJECT_DIR"
+            --dockerfile "$CI_PROJECT_DIR/Dockerfile"
+            --destination "HARBOR_FQDN/cicd-demo/test-web-apps:$CI_COMMIT_SHA"
+            --registry-certificate "HARBOR_FQDN=/run/ca/ca.crt"
+            --digest-file "$CI_PROJECT_DIR/digest"
+        artifacts:
+          paths: [digest]
+          expire_in: 1 day
+
+      writeback:
+        stage: writeback
+        tags: [writeback]
+        image:
+          name: docker.io/alpine/git:v2.54.0@sha256:e8ceedc73bd80992ae8d58a7d24c58b8322146c354f1d2e81a97db4452068ec0
+          entrypoint: [""]
+        needs:
+          - job: build
+            artifacts: true
+        variables:
+          GIT_STRATEGY: none
+        cache: []
+        rules:
+          - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+        script:
+          - |
+            set -eu
+            D="$(tr -d ' \t\r\n' < digest)"
+            if printf '%s\n' "$D" | grep -Eqx 'sha256:[0-9a-f]{64}'; then :; else echo "refused: the digest is not sha256:<64 hex>"; exit 1; fi
+            IMAGE="HARBOR_FQDN/cicd-demo/test-web-apps@$D"
+            export HOME=/tmp/wb
+            unset GIT_CONFIG_GLOBAL
+            umask 077
+            mkdir -p "$HOME"
+            printf 'http://writeback:%s@gitlab.gitlab.svc.cluster.local\n' "$(tr -d ' \t\r\n' < /run/deploy/token)" > "$HOME/.git-credentials"
+            git -c core.hooksPath=/dev/null clone -q http://gitlab.gitlab.svc.cluster.local/cicd/deploy.git "$HOME/deploy"
+            cd "$HOME/deploy"
+            sed -i "s|^\( *\)image: .*|\1image: $IMAGE|" deployment.yaml
+            if git diff --quiet; then echo "unchanged: deployment.yaml already uses $IMAGE"; exit 0; fi
+            git -c user.name=writeback -c user.email=writeback@noreply.invalid commit -q -am "test-web-apps $CI_COMMIT_SHORT_SHA"
+            git -c core.hooksPath=/dev/null -c credential.helper= -c credential.helper="store --file=$HOME/.git-credentials" push -q origin HEAD:main
+            echo "wrote $IMAGE"
+    TXT
+  },
+  'deploy' => {
+    'deployment.yaml' => <<~'TXT',
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: cicd-demo
+        namespace: cicd-demo
+      spec:
+        replicas: 2
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: cicd-demo
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: cicd-demo
+          spec:
+            automountServiceAccountToken: false
+            imagePullSecrets:
+              - name: harbor-pull
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 101
+              runAsGroup: 101
+              seccompProfile:
+                type: RuntimeDefault
+            containers:
+              - name: nginx
+                image: docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+                ports:
+                  - name: http
+                    containerPort: 8080
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: true
+                  capabilities:
+                    drop: ["ALL"]
+                resources:
+                  requests: { cpu: 50m, memory: 32Mi }
+                  limits: { cpu: 250m, memory: 128Mi }
+                readinessProbe:
+                  httpGet: { path: /, port: http }
+                volumeMounts:
+                  - { name: tmp, mountPath: /tmp }
+            volumes:
+              - name: tmp
+                emptyDir: { sizeLimit: 64Mi }
+    TXT
+    'service.yaml' => <<~'TXT',
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: cicd-demo
+        namespace: cicd-demo
+      spec:
+        type: LoadBalancer
+        selector:
+          app.kubernetes.io/name: cicd-demo
+        ports:
+          - { name: http, port: 80, targetPort: http }
+    TXT
+  },
+}
+files.each do |name, content|
+  p = Project.find_by_full_path("cicd/#{name}")
+  if p
+    puts "project cicd/#{name}: kept"
+  else
+    p = Projects::CreateService.new(root, name: name, path: name, namespace_id: group.id,
+      visibility_level: name == 'ci' ? Gitlab::VisibilityLevel::PRIVATE : Gitlab::VisibilityLevel::PUBLIC).execute
+    raise "project cicd/#{name}: #{p.errors.full_messages.join(', ')}" unless p.persisted?
+    puts "project cicd/#{name}: created"
+  end
+  if p.repository.exists? && !p.repository.empty?
+    puts "  files: kept"
+  else
+    actions = content.map { |f, c| { action: :create, file_path: f, content: c.delete("\r").gsub('HARBOR_FQDN', registry) } }
+    p.repository.commit_files(root, branch_name: 'main', message: 'first commit', actions: actions)
+    puts "  files: #{content.keys.join(' ')}"
+  end
+  p.change_head('main')
+  ProtectedBranch.where(project: p, name: 'main').destroy_all
+  ProtectedBranches::CreateService.new(p, root, name: 'main', allow_force_push: false,
+    push_access_levels_attributes: [{ access_level: Gitlab::Access::DEVELOPER }],
+    merge_access_levels_attributes: [{ access_level: Gitlab::Access::MAINTAINER }]).execute
+end
+app = Project.find_by_full_path('cicd/app')
+app.update!(ci_config_path: '.gitlab-ci.yml@cicd/ci')
+app.ci_cd_settings.update!(pipeline_variables_minimum_override_role: 'no_one_allowed')
+Project.find_by_full_path('cicd/ci').project_feature.update!(builds_access_level: ProjectFeature::DISABLED)
+puts "cicd/app builds with #{app.reload.ci_config_path}"
+EOF
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+if (-not $HARBOR_FQDN) {
+  "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml"
+} else {
+  @'
+root = User.find_by_username('root')
+registry = ENV.fetch('HARBOR_FQDN')
+group = Group.find_by_full_path('cicd')
+if group
+  puts 'group cicd: kept'
+else
+  r = Groups::CreateService.new(root, name: 'cicd', path: 'cicd', visibility_level: Gitlab::VisibilityLevel::PUBLIC,
+    organization_id: Organizations::Organization.default_organization.id).execute
+  group = r.respond_to?(:payload) ? r.payload[:group] : r
+  raise "group cicd: #{group.errors.full_messages.join(', ')}" unless group&.persisted?
+  puts 'group cicd: created'
+end
+files = {
+  'app' => {
+    'Dockerfile' => <<~'TXT',
+      FROM docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+      COPY index.html /usr/share/nginx/html/index.html
+      EXPOSE 8080
+    TXT
+    'index.html' => <<~'TXT',
+      <!doctype html>
+      <html lang="en">
+      <head><meta charset="utf-8"><title>test-web-apps</title></head>
+      <body>
+      <h1>test-web-apps v1</h1>
+      </body>
+      </html>
+    TXT
+  },
+  'ci' => {
+    '.gitlab-ci.yml' => <<~'TXT',
+      stages: [build, writeback]
+
+      build:
+        stage: build
+        tags: [vks]
+        image:
+          name: ghcr.io/osscontainertools/kaniko:v1.29.0-debug@sha256:350929376b8a69afb1d8b362086c809e4ef6799fa1bcb317c2806ae1447b3845
+          entrypoint: [""]
+        rules:
+          - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+        script:
+          - /kaniko/executor
+            --context "$CI_PROJECT_DIR"
+            --dockerfile "$CI_PROJECT_DIR/Dockerfile"
+            --destination "HARBOR_FQDN/cicd-demo/test-web-apps:$CI_COMMIT_SHA"
+            --registry-certificate "HARBOR_FQDN=/run/ca/ca.crt"
+            --digest-file "$CI_PROJECT_DIR/digest"
+        artifacts:
+          paths: [digest]
+          expire_in: 1 day
+
+      writeback:
+        stage: writeback
+        tags: [writeback]
+        image:
+          name: docker.io/alpine/git:v2.54.0@sha256:e8ceedc73bd80992ae8d58a7d24c58b8322146c354f1d2e81a97db4452068ec0
+          entrypoint: [""]
+        needs:
+          - job: build
+            artifacts: true
+        variables:
+          GIT_STRATEGY: none
+        cache: []
+        rules:
+          - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+        script:
+          - |
+            set -eu
+            D="$(tr -d ' \t\r\n' < digest)"
+            if printf '%s\n' "$D" | grep -Eqx 'sha256:[0-9a-f]{64}'; then :; else echo "refused: the digest is not sha256:<64 hex>"; exit 1; fi
+            IMAGE="HARBOR_FQDN/cicd-demo/test-web-apps@$D"
+            export HOME=/tmp/wb
+            unset GIT_CONFIG_GLOBAL
+            umask 077
+            mkdir -p "$HOME"
+            printf 'http://writeback:%s@gitlab.gitlab.svc.cluster.local\n' "$(tr -d ' \t\r\n' < /run/deploy/token)" > "$HOME/.git-credentials"
+            git -c core.hooksPath=/dev/null clone -q http://gitlab.gitlab.svc.cluster.local/cicd/deploy.git "$HOME/deploy"
+            cd "$HOME/deploy"
+            sed -i "s|^\( *\)image: .*|\1image: $IMAGE|" deployment.yaml
+            if git diff --quiet; then echo "unchanged: deployment.yaml already uses $IMAGE"; exit 0; fi
+            git -c user.name=writeback -c user.email=writeback@noreply.invalid commit -q -am "test-web-apps $CI_COMMIT_SHORT_SHA"
+            git -c core.hooksPath=/dev/null -c credential.helper= -c credential.helper="store --file=$HOME/.git-credentials" push -q origin HEAD:main
+            echo "wrote $IMAGE"
+    TXT
+  },
+  'deploy' => {
+    'deployment.yaml' => <<~'TXT',
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: cicd-demo
+        namespace: cicd-demo
+      spec:
+        replicas: 2
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: cicd-demo
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: cicd-demo
+          spec:
+            automountServiceAccountToken: false
+            imagePullSecrets:
+              - name: harbor-pull
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 101
+              runAsGroup: 101
+              seccompProfile:
+                type: RuntimeDefault
+            containers:
+              - name: nginx
+                image: docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+                ports:
+                  - name: http
+                    containerPort: 8080
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: true
+                  capabilities:
+                    drop: ["ALL"]
+                resources:
+                  requests: { cpu: 50m, memory: 32Mi }
+                  limits: { cpu: 250m, memory: 128Mi }
+                readinessProbe:
+                  httpGet: { path: /, port: http }
+                volumeMounts:
+                  - { name: tmp, mountPath: /tmp }
+            volumes:
+              - name: tmp
+                emptyDir: { sizeLimit: 64Mi }
+    TXT
+    'service.yaml' => <<~'TXT',
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: cicd-demo
+        namespace: cicd-demo
+      spec:
+        type: LoadBalancer
+        selector:
+          app.kubernetes.io/name: cicd-demo
+        ports:
+          - { name: http, port: 80, targetPort: http }
+    TXT
+  },
+}
+files.each do |name, content|
+  p = Project.find_by_full_path("cicd/#{name}")
+  if p
+    puts "project cicd/#{name}: kept"
+  else
+    p = Projects::CreateService.new(root, name: name, path: name, namespace_id: group.id,
+      visibility_level: name == 'ci' ? Gitlab::VisibilityLevel::PRIVATE : Gitlab::VisibilityLevel::PUBLIC).execute
+    raise "project cicd/#{name}: #{p.errors.full_messages.join(', ')}" unless p.persisted?
+    puts "project cicd/#{name}: created"
+  end
+  if p.repository.exists? && !p.repository.empty?
+    puts "  files: kept"
+  else
+    actions = content.map { |f, c| { action: :create, file_path: f, content: c.delete("\r").gsub('HARBOR_FQDN', registry) } }
+    p.repository.commit_files(root, branch_name: 'main', message: 'first commit', actions: actions)
+    puts "  files: #{content.keys.join(' ')}"
+  end
+  p.change_head('main')
+  ProtectedBranch.where(project: p, name: 'main').destroy_all
+  ProtectedBranches::CreateService.new(p, root, name: 'main', allow_force_push: false,
+    push_access_levels_attributes: [{ access_level: Gitlab::Access::DEVELOPER }],
+    merge_access_levels_attributes: [{ access_level: Gitlab::Access::MAINTAINER }]).execute
+end
+app = Project.find_by_full_path('cicd/app')
+app.update!(ci_config_path: '.gitlab-ci.yml@cicd/ci')
+app.ci_cd_settings.update!(pipeline_variables_minimum_override_role: 'no_one_allowed')
+Project.find_by_full_path('cicd/ci').project_feature.update!(builds_access_level: ProjectFeature::DISABLED)
+puts "cicd/app builds with #{app.reload.ci_config_path}"
+'@ | kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -i gitlab-0 -- env HARBOR_FQDN=$HARBOR_FQDN gitlab-rails runner -
+}
+```
+
+</details>
+
+**Expect:** `group cicd: created`, `project cicd/app: created`, `files: Dockerfile index.html`,
+`project cicd/ci: created`, `files: .gitlab-ci.yml`, `project cicd/deploy: created`,
+`files: deployment.yaml service.yaml` and `cicd/app builds with .gitlab-ci.yml@cicd/ci`. On a
+second run every line says `kept`.
+
+**If not:**
+- `pods "gitlab-0" not found`: do GITLAB.md steps 1 to 4 first.
+- A Ruby error such as `… (RuntimeError)`: the line names what GitLab refused; fix it in GitLab's web
+  page, or delete the group `cicd` there, then run this again.
 
 ## 5. Let ArgoCD deploy it
 
@@ -1208,7 +1615,403 @@ spec:
 
 ### With GitLab
 
-#6B#
+This puts the pipeline in place and runs it once.
+
+- GITLAB.md step 8's runner (tag `vks`) also takes jobs from `cicd/app`. It is installed again
+  with Harbor's CA (`harbor-ca`) and the push robot (`harbor-push`) mounted into its job pods, and
+  with `FF_GIT_URLS_WITHOUT_TOKENS`, so the job's token is not written into the checkout.
+- A second runner, `gitlab-writeback`, in its own namespace with restricted pods, takes only jobs
+  tagged `writeback` from protected branches of `cicd/app`. It alone mounts `deploy-token`: a token
+  of `cicd/deploy` that may push for 30 days.
+- The pipeline is `cicd/ci`'s `.gitlab-ci.yml`: `build` runs Kaniko and keeps the digest as an
+  artifact; `writeback` checks it is a digest, clones `deploy`, sets the image and pushes.
+
+The block makes the runner and the token inside GitLab's pod, so neither reaches this machine. It
+needs the runner chart that GITLAB.md step 8 downloaded.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+GITLAB_URL="http://gitlab.gitlab.svc.cluster.local"
+GITLAB_DIR="$HOME/.config/vks-guides/gitlab"
+CHART_SHA256="2403187ea4f50199814f22019b6a3a88b271dcfe67d26bd44c6d93b47065ffad"
+
+CHART="$GITLAB_DIR/gitlab-runner-0.94.1.tgz"
+mkdir -p "$GITLAB_DIR"
+cat > "$GITLAB_DIR/cicd-build-values.yaml" <<'EOF'
+image:
+  registry: registry.gitlab.com
+  repository: gitlab-org/gitlab-runner
+  tag: alpine-v19.5.1@sha256:86a371df46b076bb4c510bca1751d428177d2567bd88e4047613bc7fa92d1a0e
+rbac:
+  create: true
+  rules:
+    - resources: ["events"]
+      verbs: ["get", "list", "watch"]
+    - resources: ["pods"]
+      verbs: ["create", "delete", "get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods/attach", "pods/exec"]
+      verbs: ["get", "create", "patch", "delete"]
+    - apiGroups: [""]
+      resources: ["pods/log"]
+      verbs: ["get", "list"]
+    - resources: ["secrets"]
+      verbs: ["create", "delete", "get", "update"]
+    - resources: ["serviceaccounts"]
+      verbs: ["get"]
+serviceAccount:
+  create: true
+concurrent: 2
+podSecurityContext:
+  runAsUser: 100
+  fsGroup: 65533
+  seccompProfile:
+    type: RuntimeDefault
+runners:
+  secret: gitlab-runner-token
+  config: |
+    [[runners]]
+      [runners.feature_flags]
+        FF_GIT_URLS_WITHOUT_TOKENS = true
+      [runners.kubernetes]
+        namespace = "gitlab-runner"
+        image = "docker.io/library/alpine:3.22.2@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412"
+        helper_image = "registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper:x86_64-v19.5.1@sha256:ca7cc8f66a6c6931281aa2ae974b62f80111a4f578cabc442b1d39388a0dee91"
+        automount_service_account_token = false
+        cpu_request = "500m"
+        memory_request = "1Gi"
+        memory_limit = "3Gi"
+        [[runners.kubernetes.volumes.secret]]
+          name = "harbor-push"
+          mount_path = "/kaniko/.docker"
+          read_only = true
+        [[runners.kubernetes.volumes.config_map]]
+          name = "harbor-ca"
+          mount_path = "/run/ca"
+          read_only = true
+EOF
+cat > "$GITLAB_DIR/cicd-writeback-values.yaml" <<'EOF'
+image:
+  registry: registry.gitlab.com
+  repository: gitlab-org/gitlab-runner
+  tag: alpine-v19.5.1@sha256:86a371df46b076bb4c510bca1751d428177d2567bd88e4047613bc7fa92d1a0e
+rbac:
+  create: true
+  rules:
+    - resources: ["events"]
+      verbs: ["get", "list", "watch"]
+    - resources: ["pods"]
+      verbs: ["create", "delete", "get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods/attach", "pods/exec"]
+      verbs: ["get", "create", "patch", "delete"]
+    - apiGroups: [""]
+      resources: ["pods/log"]
+      verbs: ["get", "list"]
+    - resources: ["secrets"]
+      verbs: ["create", "delete", "get", "update"]
+    - resources: ["serviceaccounts"]
+      verbs: ["get"]
+serviceAccount:
+  create: true
+concurrent: 1
+podSecurityContext:
+  runAsUser: 100
+  fsGroup: 65533
+  seccompProfile:
+    type: RuntimeDefault
+runners:
+  secret: gitlab-writeback-token
+  config: |
+    [[runners]]
+      [runners.feature_flags]
+        FF_GIT_URLS_WITHOUT_TOKENS = true
+      [runners.kubernetes]
+        namespace = "gitlab-writeback"
+        image = "docker.io/alpine/git:v2.54.0@sha256:e8ceedc73bd80992ae8d58a7d24c58b8322146c354f1d2e81a97db4452068ec0"
+        helper_image = "registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper:x86_64-v19.5.1@sha256:ca7cc8f66a6c6931281aa2ae974b62f80111a4f578cabc442b1d39388a0dee91"
+        automount_service_account_token = false
+        cpu_request = "100m"
+        memory_request = "128Mi"
+        memory_limit = "512Mi"
+        allow_privilege_escalation = false
+        cap_drop = ["ALL"]
+        [runners.kubernetes.pod_security_context]
+          run_as_non_root = true
+          run_as_user = 1000
+          run_as_group = 1000
+          fs_group = 1000
+          [runners.kubernetes.pod_security_context.seccomp_profile]
+            type = "RuntimeDefault"
+        [[runners.kubernetes.volumes.secret]]
+          name = "deploy-token"
+          mount_path = "/run/deploy"
+          read_only = true
+EOF
+gl() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>/dev/null | tail -1 | tr -d '\r\n'; }
+if [ "$( (sha256sum "$CHART" 2>/dev/null || shasum -a 256 "$CHART" 2>/dev/null) | cut -d' ' -f1)" != "$CHART_SHA256" ]; then
+  echo "FAILED: no runner chart in $GITLAB_DIR; do GITLAB.md step 8 first"
+else
+  kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - <<'EOF'
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitlab-writeback
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+EOF
+  echo "build runners for cicd/app: $(echo "app = Project.find_by_full_path('cicd/app'); root = User.find_by_username('root')
+    rs = Ci::Runner.project_type.tagged_with('vks').to_a; rs.each { |r| r.assign_to(app, root) unless r.projects.include?(app) }
+    puts rs.size" | gl)"
+  for T in gitlab-writeback-token deploy-token; do
+    if kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback get secret "$T" -o name >/dev/null 2>&1; then
+      echo "kept: secret $T in gitlab-writeback"
+      continue
+    fi
+    if [ "$T" = deploy-token ]; then
+      R="deploy = Project.find_by_full_path('cicd/deploy'); root = User.find_by_username('root')
+        r = ResourceAccessTokens::CreateService.new(root, deploy, name: 'writeback', scopes: [:write_repository],
+          access_level: Gitlab::Access::DEVELOPER, expires_at: 30.days.from_now.to_date).execute
+        print r.payload[:access_token].token"
+      K=token
+    else
+      R="r = Ci::Runners::CreateRunnerService.new(user: User.find_by_username('root'), params: { runner_type: 'project_type',
+          scope: Project.find_by_full_path('cicd/app'), tag_list: ['writeback'], run_untagged: false, locked: true,
+          access_level: 'ref_protected', description: 'cicd-writeback' }).execute
+        print r.payload[:runner].token"
+      K=runner-token
+    fi
+    printf '%s' "$R" | gl \
+      | jq -R --arg n "$T" --arg k "$K" 'if test("^gl[a-z]+-[A-Za-z0-9._-]+$") then
+          {apiVersion: "v1", kind: "Secret", metadata: {name: $n, namespace: "gitlab-writeback"},
+           stringData: ({($k): .} + if $k == "runner-token" then {"runner-registration-token": ""} else {} end)}
+          else error("GitLab did not return a token") end' \
+      | kubectl --kubeconfig "$VKS_KUBECONFIG" create -f -
+  done
+  helm upgrade --install gitlab-runner "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner -f "$GITLAB_DIR/cicd-build-values.yaml" --set gitlabUrl="$GITLAB_URL" >/dev/null \
+    && helm upgrade --install gitlab-writeback "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback -f "$GITLAB_DIR/cicd-writeback-values.yaml" --set gitlabUrl="$GITLAB_URL" >/dev/null \
+    && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner rollout restart deployment/gitlab-runner \
+    && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback rollout restart deployment/gitlab-writeback-gitlab-runner \
+    && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner rollout status deployment/gitlab-runner --timeout=5m \
+    && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback rollout status deployment/gitlab-writeback-gitlab-runner --timeout=5m \
+    && sleep 30 \
+    && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>/dev/null <<'EOF'
+app = Project.find_by_full_path('cicd/app')
+pl = Ci::CreatePipelineService.new(app, User.find_by_username('root'), ref: 'main').execute(:web).payload
+puts "pipeline #{pl.id}: started"
+t = Time.now
+sleep 5 until pl.reload.complete? || Time.now - t > 900
+puts "pipeline #{pl.id}: #{pl.status}"
+pl.builds.sort_by(&:id).each do |b|
+  l = b.trace.raw.to_s.gsub(/\e\[[0-9;]*[A-Za-z]/, '').lines.grep(/Pushed |wrote |unchanged:|refused:|ERROR/).last.to_s
+  puts "#{b.name}: #{b.status} #{l[/(Pushed|wrote|unchanged:|refused:|ERROR).*/]}"
+end
+EOF
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$GITLAB_URL = "http://gitlab.gitlab.svc.cluster.local"
+$GITLAB_DIR = "$HOME\.config\vks-guides\gitlab"
+$CHART_SHA256 = "2403187ea4f50199814f22019b6a3a88b271dcfe67d26bd44c6d93b47065ffad"
+
+$CHART = "$GITLAB_DIR\gitlab-runner-0.94.1.tgz"
+New-Item -ItemType Directory -Force -Path $GITLAB_DIR | Out-Null
+$BV = @'
+image:
+  registry: registry.gitlab.com
+  repository: gitlab-org/gitlab-runner
+  tag: alpine-v19.5.1@sha256:86a371df46b076bb4c510bca1751d428177d2567bd88e4047613bc7fa92d1a0e
+rbac:
+  create: true
+  rules:
+    - resources: ["events"]
+      verbs: ["get", "list", "watch"]
+    - resources: ["pods"]
+      verbs: ["create", "delete", "get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods/attach", "pods/exec"]
+      verbs: ["get", "create", "patch", "delete"]
+    - apiGroups: [""]
+      resources: ["pods/log"]
+      verbs: ["get", "list"]
+    - resources: ["secrets"]
+      verbs: ["create", "delete", "get", "update"]
+    - resources: ["serviceaccounts"]
+      verbs: ["get"]
+serviceAccount:
+  create: true
+concurrent: 2
+podSecurityContext:
+  runAsUser: 100
+  fsGroup: 65533
+  seccompProfile:
+    type: RuntimeDefault
+runners:
+  secret: gitlab-runner-token
+  config: |
+    [[runners]]
+      [runners.feature_flags]
+        FF_GIT_URLS_WITHOUT_TOKENS = true
+      [runners.kubernetes]
+        namespace = "gitlab-runner"
+        image = "docker.io/library/alpine:3.22.2@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412"
+        helper_image = "registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper:x86_64-v19.5.1@sha256:ca7cc8f66a6c6931281aa2ae974b62f80111a4f578cabc442b1d39388a0dee91"
+        automount_service_account_token = false
+        cpu_request = "500m"
+        memory_request = "1Gi"
+        memory_limit = "3Gi"
+        [[runners.kubernetes.volumes.secret]]
+          name = "harbor-push"
+          mount_path = "/kaniko/.docker"
+          read_only = true
+        [[runners.kubernetes.volumes.config_map]]
+          name = "harbor-ca"
+          mount_path = "/run/ca"
+          read_only = true
+'@
+$WV = @'
+image:
+  registry: registry.gitlab.com
+  repository: gitlab-org/gitlab-runner
+  tag: alpine-v19.5.1@sha256:86a371df46b076bb4c510bca1751d428177d2567bd88e4047613bc7fa92d1a0e
+rbac:
+  create: true
+  rules:
+    - resources: ["events"]
+      verbs: ["get", "list", "watch"]
+    - resources: ["pods"]
+      verbs: ["create", "delete", "get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods/attach", "pods/exec"]
+      verbs: ["get", "create", "patch", "delete"]
+    - apiGroups: [""]
+      resources: ["pods/log"]
+      verbs: ["get", "list"]
+    - resources: ["secrets"]
+      verbs: ["create", "delete", "get", "update"]
+    - resources: ["serviceaccounts"]
+      verbs: ["get"]
+serviceAccount:
+  create: true
+concurrent: 1
+podSecurityContext:
+  runAsUser: 100
+  fsGroup: 65533
+  seccompProfile:
+    type: RuntimeDefault
+runners:
+  secret: gitlab-writeback-token
+  config: |
+    [[runners]]
+      [runners.feature_flags]
+        FF_GIT_URLS_WITHOUT_TOKENS = true
+      [runners.kubernetes]
+        namespace = "gitlab-writeback"
+        image = "docker.io/alpine/git:v2.54.0@sha256:e8ceedc73bd80992ae8d58a7d24c58b8322146c354f1d2e81a97db4452068ec0"
+        helper_image = "registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper:x86_64-v19.5.1@sha256:ca7cc8f66a6c6931281aa2ae974b62f80111a4f578cabc442b1d39388a0dee91"
+        automount_service_account_token = false
+        cpu_request = "100m"
+        memory_request = "128Mi"
+        memory_limit = "512Mi"
+        allow_privilege_escalation = false
+        cap_drop = ["ALL"]
+        [runners.kubernetes.pod_security_context]
+          run_as_non_root = true
+          run_as_user = 1000
+          run_as_group = 1000
+          fs_group = 1000
+          [runners.kubernetes.pod_security_context.seccomp_profile]
+            type = "RuntimeDefault"
+        [[runners.kubernetes.volumes.secret]]
+          name = "deploy-token"
+          mount_path = "/run/deploy"
+          read_only = true
+'@
+[IO.File]::WriteAllText("$GITLAB_DIR\cicd-build-values.yaml", ($BV -replace "`r`n", "`n") + "`n")
+[IO.File]::WriteAllText("$GITLAB_DIR\cicd-writeback-values.yaml", ($WV -replace "`r`n", "`n") + "`n")
+function Gl($Ruby) { ($Ruby | kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>$null | Select-Object -Last 1 | Out-String).Trim() }
+if (-not (Test-Path $CHART) -or (Get-FileHash -Algorithm SHA256 $CHART).Hash -ne $CHART_SHA256) {
+  "FAILED: no runner chart in $GITLAB_DIR; do GITLAB.md step 8 first"
+} else {
+  "apiVersion: v1`nkind: Namespace`nmetadata:`n  name: gitlab-writeback`n  labels:`n    pod-security.kubernetes.io/enforce: restricted`n    pod-security.kubernetes.io/audit: restricted`n    pod-security.kubernetes.io/warn: restricted`n" |
+    kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
+  "build runners for cicd/app: $(Gl "app = Project.find_by_full_path('cicd/app'); root = User.find_by_username('root')`nrs = Ci::Runner.project_type.tagged_with('vks').to_a; rs.each { |r| r.assign_to(app, root) unless r.projects.include?(app) }`nputs rs.size")"
+  foreach ($T in 'gitlab-writeback-token', 'deploy-token') {
+    $global:LASTEXITCODE = $null
+    kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback get secret $T -o name 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) { "kept: secret $T in gitlab-writeback"; continue }
+    if ($T -eq 'deploy-token') {
+      $V = Gl "deploy = Project.find_by_full_path('cicd/deploy'); root = User.find_by_username('root')`nr = ResourceAccessTokens::CreateService.new(root, deploy, name: 'writeback', scopes: [:write_repository], access_level: Gitlab::Access::DEVELOPER, expires_at: 30.days.from_now.to_date).execute`nprint r.payload[:access_token].token"
+      $D = "  token: $V"
+    } else {
+      $V = Gl "r = Ci::Runners::CreateRunnerService.new(user: User.find_by_username('root'), params: { runner_type: 'project_type', scope: Project.find_by_full_path('cicd/app'), tag_list: ['writeback'], run_untagged: false, locked: true, access_level: 'ref_protected', description: 'cicd-writeback' }).execute`nprint r.payload[:runner].token"
+      $D = "  runner-token: $V`n  runner-registration-token: `"`""
+    }
+    if ($V -cmatch '^gl[a-z]+-[A-Za-z0-9._-]+$') {
+      "apiVersion: v1`nkind: Secret`nmetadata:`n  name: $T`n  namespace: gitlab-writeback`nstringData:`n$D`n" | kubectl --kubeconfig $VKS_KUBECONFIG create -f -
+    } else {
+      "FAILED: GitLab did not return a token for $T"
+    }
+    Remove-Variable V, D
+  }
+  helm upgrade --install gitlab-runner $CHART --kubeconfig $VKS_KUBECONFIG -n gitlab-runner -f "$GITLAB_DIR\cicd-build-values.yaml" --set gitlabUrl=$GITLAB_URL | Out-Null
+  if ($LASTEXITCODE -eq 0) { helm upgrade --install gitlab-writeback $CHART --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback -f "$GITLAB_DIR\cicd-writeback-values.yaml" --set gitlabUrl=$GITLAB_URL | Out-Null }
+  if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner rollout restart deployment/gitlab-runner }
+  if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback rollout restart deployment/gitlab-writeback-gitlab-runner }
+  if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner rollout status deployment/gitlab-runner --timeout=5m }
+  if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback rollout status deployment/gitlab-writeback-gitlab-runner --timeout=5m }
+  if ($LASTEXITCODE -eq 0) {
+    Start-Sleep -Seconds 30
+    @'
+app = Project.find_by_full_path('cicd/app')
+pl = Ci::CreatePipelineService.new(app, User.find_by_username('root'), ref: 'main').execute(:web).payload
+puts "pipeline #{pl.id}: started"
+t = Time.now
+sleep 5 until pl.reload.complete? || Time.now - t > 900
+puts "pipeline #{pl.id}: #{pl.status}"
+pl.builds.sort_by(&:id).each do |b|
+  l = b.trace.raw.to_s.gsub(/\e\[[0-9;]*[A-Za-z]/, '').lines.grep(/Pushed |wrote |unchanged:|refused:|ERROR/).last.to_s
+  puts "#{b.name}: #{b.status} #{l[/(Pushed|wrote|unchanged:|refused:|ERROR).*/]}"
+end
+'@ | kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>$null
+  }
+}
+```
+
+</details>
+
+**Expect:** `namespace/gitlab-writeback created`, `build runners for cicd/app: 1`,
+`secret/gitlab-writeback-token created`, `secret/deploy-token created`, the two `restarted` and
+`successfully rolled out` lines, then `pipeline <n>: started`, `pipeline <n>: success`,
+`build: success Pushed <Harbor>/cicd-demo/test-web-apps@sha256:…` and
+`writeback: success wrote <Harbor>/cicd-demo/test-web-apps@sha256:…`, the same digest. On a second
+run: `kept: secret …` and `writeback: success unchanged: …` or a new digest.
+
+Then run step 5's check with `WANT="test-web-apps v1"`.
+
+**If not:**
+- `build runners for cicd/app: 0`: no runner has the tag `vks`; do GITLAB.md step 8.
+- `build: failed`: `http://localhost:3400/cicd/app/-/jobs` shows the log. `x509: certificate signed
+  by unknown authority` means `harbor-ca` is missing in `gitlab-runner` (step 3 with
+  `CI_NAMESPACE="gitlab-runner"`); `UNAUTHORIZED` means `harbor-push` is.
+- `writeback: failed` with `not allowed to push`: `deploy-token` expired (30 days). Delete it
+  (`kubectl --kubeconfig <the VKS kubeconfig> -n gitlab-writeback delete secret deploy-token`) and
+  run this again.
+- `pipeline <n>: pending` or `created` after 15 minutes: a runner is offline; see GITLAB.md step 8.
 
 ## 7. Build on every push
 
@@ -1605,7 +2408,18 @@ case "$GIT_SERVER" in
       && echo "user cicd-bot: deleted"
     ;;
   *)
-#9B-SH#
+    helm uninstall gitlab-writeback --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback 2>/dev/null
+    kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace gitlab-writeback --ignore-not-found --timeout=10m
+    if [ -s "$HOME/.config/vks-guides/gitlab/runner-values.yaml" ] && [ -s "$HOME/.config/vks-guides/gitlab/gitlab-runner-0.94.1.tgz" ]; then
+      helm upgrade gitlab-runner "$HOME/.config/vks-guides/gitlab/gitlab-runner-0.94.1.tgz" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner \
+          -f "$HOME/.config/vks-guides/gitlab/runner-values.yaml" --reuse-values >/dev/null \
+        && echo "runner gitlab-runner: back to GITLAB.md step 8's settings"
+    fi
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner delete secret harbor-push --ignore-not-found
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner delete configmap harbor-ca --ignore-not-found
+    printf '%s\n' "Ci::Runner.where(description: 'cicd-writeback').each(&:destroy)" \
+      "g = Group.find_by_full_path('cicd'); puts(g ? (Groups::DestroyService.new(g, User.find_by_username('root')).execute && 'group cicd: deleted') : 'group cicd: none')" \
+      | kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>/dev/null
     ;;
 esac
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
@@ -1664,7 +2478,17 @@ if ($GIT_SERVER -eq 'gitea') {
   kubectl --kubeconfig $VKS_KUBECONFIG -n gitea exec deployment/gitea -- gitea admin user delete --username cicd-bot --purge 2>$null | Out-Null
   if ($LASTEXITCODE -eq 0) { "user cicd-bot: deleted" }
 } else {
-#9B-PS#
+  helm uninstall gitlab-writeback --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback 2>$null
+  kubectl --kubeconfig $VKS_KUBECONFIG delete namespace gitlab-writeback --ignore-not-found --timeout=10m
+  if ((Test-Path "$HOME\.config\vks-guides\gitlab\runner-values.yaml") -and (Test-Path "$HOME\.config\vks-guides\gitlab\gitlab-runner-0.94.1.tgz")) {
+    helm upgrade gitlab-runner "$HOME\.config\vks-guides\gitlab\gitlab-runner-0.94.1.tgz" --kubeconfig $VKS_KUBECONFIG -n gitlab-runner `
+      -f "$HOME\.config\vks-guides\gitlab\runner-values.yaml" --reuse-values | Out-Null
+    if ($LASTEXITCODE -eq 0) { "runner gitlab-runner: back to GITLAB.md step 8's settings" }
+  }
+  kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner delete secret harbor-push --ignore-not-found
+  kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner delete configmap harbor-ca --ignore-not-found
+  "Ci::Runner.where(description: 'cicd-writeback').each(&:destroy)`ng = Group.find_by_full_path('cicd'); puts(g ? (Groups::DestroyService.new(g, User.find_by_username('root')).execute && 'group cicd: deleted') : 'group cicd: none')" |
+    kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>$null
 }
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $S = @{}
@@ -1690,7 +2514,10 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 
 **Expect:** `application.argoproj.io "cicd-demo" deleted`, `appproject.argoproj.io "cicd-demo"
 deleted`, `namespace "cicd-demo" deleted`, then with Gitea `namespace "cicd-ci" deleted`,
-`repository app: 204`, `repository deploy: 204` and `user cicd-bot: deleted`, and last
+`repository app: 204`, `repository deploy: 204` and `user cicd-bot: deleted`, or with GitLab
+`release "gitlab-writeback" uninstalled`, `namespace "gitlab-writeback" deleted`, `runner
+gitlab-runner: back to GITLAB.md step 8's settings`, the `harbor-push` and `harbor-ca` deletes and
+`group cicd: deleted`; and last
 `Harbor cicd-demo/repositories/test-web-apps: 200` and `Harbor cicd-demo: 200`. On a second run
 the deletes print nothing and Harbor prints `404`.
 
