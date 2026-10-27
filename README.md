@@ -130,7 +130,7 @@ checked (NAMESPACE.md step 8, CLUSTER.md steps 6 and 7).
 
 GITEA.md was run on 2026-10-26 with VKS 3.7.2 and Gitea 28.2.0 on Ubuntu (bash, zsh) and Windows
 PowerShell 5.1 with Git for Windows 2.56.0, not on macOS or in WSL: in each shell Gitea was installed,
-pushed to and uninstalled. Its web-page steps (6 and 8's first item) were not run in a browser;
+pushed to and uninstalled. Its web-page parts (steps 6 and 7's page check, and 8's first item) were not done in a browser;
 the password change and the visibility change were made with Gitea's command line and API instead.
 
 Renewing a login that had already expired was run on macOS (zsh) only.

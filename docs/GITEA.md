@@ -173,6 +173,7 @@ $K = foreach ($i in 1, 2) {
 Remove-Variable K, B
 $S = kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get secret gitea-keys -o json | Out-String | ConvertFrom-Json
 if ($S) { "key lengths: $([Convert]::FromBase64String($S.data.'secret-key').Length) $([Convert]::FromBase64String($S.data.'internal-token').Length)" }
+Remove-Variable S
 ```
 
 </details>
@@ -269,6 +270,7 @@ spec:
           livenessProbe:
             httpGet: { path: /api/healthz, port: http }
             periodSeconds: 15
+            timeoutSeconds: 5
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { cpu: "1", memory: 1Gi }
@@ -384,6 +386,7 @@ spec:
           livenessProbe:
             httpGet: { path: /api/healthz, port: http }
             periodSeconds: 15
+            timeoutSeconds: 5
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { cpu: "1", memory: 1Gi }
@@ -424,15 +427,17 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get pvc,pods
 
 **Expect:** `persistentvolumeclaim/gitea-data created`, `deployment.apps/gitea created`,
 `service/gitea-http created`, then `deployment "gitea" successfully rolled out`, the claim
-`Bound` and one pod `1/1 Running`.
+`Bound` and one pod `1/1 Running` (`unchanged` lines on a second run).
 
 **If not:**
-- `secret "gitea-keys" not found` in `kubectl -n gitea describe pod` (the pod stays
+- `secret "gitea-keys" not found` in `kubectl --kubeconfig <the VKS kubeconfig> -n gitea describe pod` (the pod stays
   `CreateContainerConfigError`): run step 3.
 - The claim stays `Pending`: the storage class cannot make the volume. `kubectl --kubeconfig <the
   VKS kubeconfig> -n gitea describe pvc gitea-data` says why; often the vSphere Namespace's
   storage limit is reached.
-- The pod is `ErrImagePull` or `ImagePullBackOff`: the nodes cannot reach `docker.io`.
+- The pod is `ErrImagePull` or `ImagePullBackOff`: `kubectl --kubeconfig <the VKS kubeconfig> -n
+  gitea describe pod` says why: the nodes cannot reach `docker.io`, or `toomanyrequests`
+  (Docker Hub's pull limit; wait and run this again).
 - `timed out waiting for the condition`: run `kubectl --kubeconfig <the VKS kubeconfig> -n gitea
   logs deployment/gitea` and look for the first error.
 
@@ -487,25 +492,36 @@ if ($LASTEXITCODE -ne 0) {
 </details>
 
 **Expect:** `generated random password is '…'` and `New user 'gitea-admin' has been successfully
-created!`.
+created!` (`gitea-admin exists already` on a second run).
 
 **If not:**
 - `gitea-admin exists already` and you lost the password: this sets a new random one and prints
-  it; then do step 6 again.
+  it (`new password: …`); then do step 6 again.
+
+  **Linux, macOS, WSL (bash or zsh):**
 
   ```sh
-  kubectl --kubeconfig "$HOME/.kube/my-vks-cluster.kubeconfig" -n gitea exec deployment/gitea -- sh -c 'P=$(head -c 15 /dev/urandom | base64); gitea admin user change-password --username gitea-admin --password $P --must-change-password && echo new password: $P'
+  VKS_CLUSTER="my-vks-cluster"
+  VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea exec deployment/gitea -- sh -c 'P=$(head -c 15 /dev/urandom | base64); gitea admin user change-password --username gitea-admin --password $P --must-change-password && echo new password: $P'
   ```
 
-  In PowerShell, put the kubeconfig path in place of `"$HOME/.kube/my-vks-cluster.kubeconfig"`
-  and run the same line.
+  **Windows (PowerShell):**
+
+  ```powershell
+  $VKS_CLUSTER = "my-vks-cluster"
+  $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+  kubectl --kubeconfig $VKS_KUBECONFIG -n gitea exec deployment/gitea -- sh -c 'P=$(head -c 15 /dev/urandom | base64); gitea admin user change-password --username gitea-admin --password $P --must-change-password && echo new password: $P'
+  ```
 - `FAILED: cannot run gitea in the pod`: run step 4 first, and wait for
   `successfully rolled out`.
 
 ## 6. Open Gitea
 
 This forwards Gitea to port 3300 on this machine until you press **Ctrl+C**. Keep it running for
-step 7.
+steps 7 and 8.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -532,8 +548,8 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitea port-forward service/gitea-http 33
 **Expect:** `Forwarding from 127.0.0.1:3300 -> 3000`, then Gitea's dashboard for `gitea-admin`.
 
 **If not:**
-- `address already in use`, or no `127.0.0.1` line: another program uses port 3300. Stop it, or
-  change both `3300`s (`3301:3000`) and use that port in step 7.
+- `address already in use`, or no `127.0.0.1` line: another program uses port 3300 (Gitea's links
+  expect it); stop it and run this again.
 - `Username or password is incorrect`: use the line under step 5's **If not**.
 - `error: lost connection to pod`: Gitea restarted; run this block again.
 
@@ -544,8 +560,7 @@ Run this in a second terminal while step 6 runs. It makes a local repository wit
 `gitea-admin/hello`. Git asks for the password you set in step 6. `credential.helper=` stops git
 from saving it.
 
-<details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 GITEA_ADMIN_EMAIL="you@example.com"
@@ -555,15 +570,12 @@ if ! git -C "$REPO" rev-parse -q --verify HEAD >/dev/null 2>&1; then
   mkdir -p "$REPO" && git -C "$REPO" init -q \
     && printf '# hello\n\nMy first repository in Gitea.\n' > "$REPO/README.md" \
     && git -C "$REPO" add README.md \
-    && git -C "$REPO" -c user.name=gitea-admin -c user.email="$GITEA_ADMIN_EMAIL" commit -q -m "first commit"
+    && git -C "$REPO" -c user.name=gitea-admin -c user.email="$GITEA_ADMIN_EMAIL" -c commit.gpgsign=false commit -q -m "first commit"
 fi
 git -C "$REPO" -c credential.helper= push http://gitea-admin@localhost:3300/gitea-admin/hello.git HEAD:main
 ```
 
-</details>
-
-<details>
-<summary><b>Windows (PowerShell)</b></summary>
+**Windows (PowerShell):**
 
 ```powershell
 $GITEA_ADMIN_EMAIL = "you@example.com"
@@ -576,12 +588,10 @@ if ($LASTEXITCODE -ne 0) {
   git -C $REPO init -q
   Set-Content -Encoding Ascii -Path "$REPO\README.md" -Value "# hello`r`n`r`nMy first repository in Gitea."
   git -C $REPO add README.md
-  git -C $REPO -c user.name=gitea-admin -c user.email=$GITEA_ADMIN_EMAIL commit -q -m "first commit"
+  git -C $REPO -c user.name=gitea-admin -c user.email=$GITEA_ADMIN_EMAIL -c commit.gpgsign=false commit -q -m "first commit"
 }
 git -C $REPO -c credential.helper= push http://gitea-admin@localhost:3300/gitea-admin/hello.git HEAD:main
 ```
-
-</details>
 
 **Expect:** `Password for 'http://gitea-admin@localhost:3300':`, then after the password
 `* [new branch]      HEAD -> main` (`Everything up-to-date` on a second run).
@@ -598,7 +608,8 @@ git -C $REPO -c credential.helper= push http://gitea-admin@localhost:3300/gitea-
 
 This puts Gitea on a load-balancer address, port 3000, so machines outside the cluster (ArgoCD on
 the Supervisor) can clone public repositories without a login. **The address is plain HTTP and
-anyone who reaches it can try passwords.** Never sign in, push or send a token through it; use
+anyone who reaches it can try passwords, and anyone between it and ArgoCD can change what is
+cloned.** Use it for test repositories only. Never sign in, push or send a token through it; use
 step 6's `localhost:3300` for that.
 
 1. Make the repository public: at <http://localhost:3300/gitea-admin/hello/settings>, under
@@ -626,13 +637,13 @@ spec:
     - { name: http, port: 3000, targetPort: http }
 EOF
 IP=""
-for i in $(seq 60); do
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get service gitea-public -o name && for i in $(seq 60); do
   IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get service gitea-public -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
   [ -n "$IP" ] && break
   sleep 5
 done
 if [ -z "$IP" ]; then
-  echo "FAILED: no load-balancer address after 5 minutes"
+  echo "FAILED: no load-balancer address"
 else
   echo "clone address: http://$IP:3000/gitea-admin/hello.git"
   GIT_TERMINAL_PROMPT=0 git -c credential.helper= ls-remote "http://$IP:3000/gitea-admin/hello.git"
@@ -662,13 +673,15 @@ spec:
     - { name: http, port: 3000, targetPort: http }
 '@ | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
 $IP = $null
-foreach ($i in 1..60) {
+$global:LASTEXITCODE = $null
+kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get service gitea-public -o name
+if ($LASTEXITCODE -eq 0) { foreach ($i in 1..60) {
   $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get service gitea-public -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
   if ($IP) { break }
   Start-Sleep -Seconds 5
-}
+} }
 if (-not $IP) {
-  "FAILED: no load-balancer address after 5 minutes"
+  "FAILED: no load-balancer address"
 } else {
   "clone address: http://${IP}:3000/gitea-admin/hello.git"
   $env:GIT_TERMINAL_PROMPT = '0'
@@ -679,13 +692,18 @@ if (-not $IP) {
 
 </details>
 
-**Expect:** `service/gitea-public created`, `clone address: http://<address>:3000/gitea-admin/hello.git`,
-then two lines with the same 40 hex characters, ending in `HEAD` and `refs/heads/main`.
+**Expect:** `service/gitea-public created` (`unchanged` on a second run), `service/gitea-public`,
+`clone address: http://<address>:3000/gitea-admin/hello.git`, then two lines with the same 40 hex
+characters, ending in `HEAD` and `refs/heads/main`.
 
 **If not:**
-- `FAILED: no load-balancer address`: the Supervisor has no free load-balancer address; ask your
-  vCenter administrator.
-- git asks for a username, or `terminal prompts disabled`: the repository is still private; do 1.
+- `FAILED: no load-balancer address`: if an error is printed above it, fix that first. Otherwise
+  `kubectl --kubeconfig <the VKS kubeconfig> -n gitea describe service gitea-public` says why;
+  often the Supervisor has no free load-balancer address (ask your vCenter administrator).
+- `Failed to connect` or `timed out` after the clone address: the address is new; wait a minute
+  and run this again.
+- git asks for a username or password, or prints `terminal prompts disabled`: the repository is
+  still private. Type nothing; cancel, then do 1.
 
 ## 9. Uninstall (optional)
 
@@ -699,9 +717,12 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace gitea --ignore-not-found --timeout=10m
+N="unknown"
 for i in $(seq 36); do
-  N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o json | jq '[.items[] | select(.spec.claimRef.namespace == "gitea")] | length')" || break
-  [ "$N" = 0 ] && break
+  if J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o json)"; then
+    N="$(printf '%s' "$J" | jq '[.items[] | select(.spec.claimRef.namespace == "gitea")] | length')"
+    [ "$N" = 0 ] && break
+  fi
   sleep 5
 done
 echo "volumes left from gitea: $N"
@@ -714,11 +735,13 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig $VKS_KUBECONFIG delete namespace gitea --ignore-not-found --timeout=10m
+$N = 'unknown'
 foreach ($i in 1..36) {
   $PV = kubectl --kubeconfig $VKS_KUBECONFIG get pv -o json | Out-String | ConvertFrom-Json
-  if (-not $PV) { break }
-  $N = @($PV.items | Where-Object { $_.spec.claimRef.namespace -ceq 'gitea' }).Count
-  if ($N -eq 0) { break }
+  if ($PV) {
+    $N = @($PV.items | Where-Object { $_.spec.claimRef.namespace -ceq 'gitea' }).Count
+    if ($N -eq 0) { break }
+  }
   Start-Sleep -Seconds 5
 }
 "volumes left from gitea: $N"
@@ -727,9 +750,12 @@ foreach ($i in 1..36) {
 **Expect:** `namespace "gitea" deleted`, then, within a few minutes,
 `volumes left from gitea: 0`.
 
-**If not:** `volumes left from gitea:` more than 0: the storage class keeps volumes (step 1 printed
-`reclaim Retain`). Delete them with `kubectl --kubeconfig <the VKS kubeconfig> delete pv <name>`
-when you no longer need the data.
+**If not:**
+- `volumes left from gitea: unknown`: kubectl could not read the volumes (see the error above);
+  run this again.
+- `volumes left from gitea:` more than 0: the storage class keeps volumes (step 1 printed
+  `reclaim Retain`). Delete them with `kubectl --kubeconfig <the VKS kubeconfig> delete pv <name>`
+  when you no longer need the data.
 
 The local repository stays in `~/.config/vks-guides/gitea/hello`; delete the folder if you do not
 need it.
