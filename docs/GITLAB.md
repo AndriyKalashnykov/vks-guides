@@ -23,14 +23,16 @@ backups are not covered.
 You need:
 
 - a VKS cluster with a default storage class ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), with a worker of at least 4 CPU and
-  16 GiB memory (VM class `best-effort-large`): GitLab alone uses about 4 GiB;
+  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), with a worker that has 6 GiB memory and
+  8 GiB disk free, such as a new `best-effort-large` worker (4 CPU, 16 GiB): GitLab alone uses
+  about 4 GiB;
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md), [git](https://git-scm.com/install/), and for
   step 8 [Helm](HELM.md);
 - nodes that reach `docker.io` and `registry.gitlab.com`;
 - for step 7, one free load-balancer address.
 
-Already run GitLab? Do steps 8 and 9 against it.
+Already run GitLab? Step 8 installs only the runner: set `GITLAB_URL` in it to your GitLab, and
+create the runner in your own project.
 
 The blocks keep their files in `~/.config/vks-guides/gitlab` (PowerShell:
 `$HOME\.config\vks-guides\gitlab`).
@@ -46,11 +48,19 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 git --version
 if kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes \
-   && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o json)" \
+   && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory')" \
+   && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory')" \
    && SC="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)" \
    && NS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace -o name)"; then
-  printf '%s' "$N" | jq -r 'def gib: if endswith("Ki") then rtrimstr("Ki") | tonumber / 1048576 elif endswith("Mi") then rtrimstr("Mi") | tonumber / 1024 elif endswith("Gi") then rtrimstr("Gi") | tonumber else tonumber / 1073741824 end | floor;
-    .items[] | "\(.metadata.name) (\(if .metadata.labels["node-role.kubernetes.io/control-plane"] == null then "worker" else "control plane" end)): \(.status.allocatable.cpu) CPU, \(.status.allocatable.memory | gib) GiB memory, \(.status.allocatable["ephemeral-storage"] | gib) GiB disk"'
+  { printf '%s\n' "$P" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
+    function b(v) { if (v ~ /Ki$/) return v * 1024; if (v ~ /Mi$/) return v * 1048576; if (v ~ /Gi$/) return v * 1073741824
+      if (v ~ /k$/) return v * 1000; if (v ~ /M$/) return v * 1000000; if (v ~ /G$/) return v * 1000000000; return v + 0 }
+    $1 == "P" { n = split($3, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") r[$2] += b(a[i]) }
+    $1 == "N" { printf "%s %d\n", $2, (b($3) - r[$2]) / 1073741824 }' \
+  | while read -r W M; do
+      D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "/api/v1/nodes/$W/proxy/stats/summary" </dev/null | jq '.node.runtime.imageFs.availableBytes / 1073741824 | floor')"
+      echo "worker $W: $M GiB memory free, ${D:-?} GiB image disk free"
+    done
   echo "default storage class: $(printf '%s' "$SC" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | "\(.metadata.name) (\(.volumeBindingMode), reclaim \(.reclaimPolicy))"] | if length == 0 then "NONE" else join(" ") end')"
   echo "gitlab namespace: $(printf '%s\n' "$NS" | grep -cx 'namespace/gitlab')"
 else
@@ -70,14 +80,19 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 git --version
 $global:LASTEXITCODE = $null
 kubectl --kubeconfig $VKS_KUBECONFIG get nodes
-if ($LASTEXITCODE -eq 0) { $N = kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o json | Out-String }
+if ($LASTEXITCODE -eq 0) { $N = @(kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory') }
+if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory') }
 if ($LASTEXITCODE -eq 0) { $SC = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) { $NS = @(kubectl --kubeconfig $VKS_KUBECONFIG get namespace -o name) }
 if ($LASTEXITCODE -eq 0) {
-  $GiB = { param($Q) if ($Q -match '^(\d+)Ki$') { [math]::Floor([double]$Matches[1] / 1MB) } elseif ($Q -match '^(\d+)Mi$') { [math]::Floor([double]$Matches[1] / 1KB) } elseif ($Q -match '^(\d+)Gi$') { [int]$Matches[1] } else { [math]::Floor([double]$Q / 1GB) } }
-  foreach ($I in (ConvertFrom-Json $N).items) {
-    $R = if ($I.metadata.labels.'node-role.kubernetes.io/control-plane' -eq $null) { 'worker' } else { 'control plane' }
-    "$($I.metadata.name) (${R}): $($I.status.allocatable.cpu) CPU, $(& $GiB $I.status.allocatable.memory) GiB memory, $(& $GiB $I.status.allocatable.'ephemeral-storage') GiB disk"
+  function B($v) { if ($v -cmatch '^([\d.]+)(Ki|Mi|Gi|k|M|G)?$') { [double]$Matches[1] * @{ '' = 1; 'Ki' = 1KB; 'Mi' = 1MB; 'Gi' = 1GB; 'k' = 1e3; 'M' = 1e6; 'G' = 1e9 }[[string]$Matches[2]] } else { 0 } }
+  $R = @{}
+  foreach ($l in $P) { $f = -split $l; foreach ($c in ($f[1] -split ',')) { if ($c -and $c -ne '<none>') { $R[$f[0]] += (B $c) } } }
+  foreach ($l in $N) {
+    $f = -split $l
+    $S = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "/api/v1/nodes/$($f[0])/proxy/stats/summary" | Out-String | ConvertFrom-Json
+    $F = if ($S) { [math]::Floor($S.node.runtime.imageFs.availableBytes / 1GB) } else { '?' }
+    "worker $($f[0]): $([math]::Floor(((B $f[1]) - $R[$f[0]]) / 1GB)) GiB memory free, $F GiB image disk free"
   }
   $D = @((ConvertFrom-Json $SC).items | Where-Object { $_.metadata.annotations.'storageclass.kubernetes.io/is-default-class' -eq 'true' } | ForEach-Object { "$($_.metadata.name) ($($_.volumeBindingMode), reclaim $($_.reclaimPolicy))" })
   "default storage class: $(if ($D.Count) { $D -join ' ' } else { 'NONE' })"
@@ -89,16 +104,20 @@ if ($LASTEXITCODE -eq 0) {
 
 </details>
 
-**Expect:** `git version 2.…`, each node `Ready`, at least one line `(worker): 3920m CPU, 12 GiB
-memory` or more (what a `best-effort-large` worker has left for pods), `default storage class:`
-and a name, and `gitlab namespace: 0`.
+**Expect:** `git version 2.…`, each node `Ready`, a `worker …: … GiB memory free, … GiB image disk
+free` line per worker, `default storage class:` and a name, and `gitlab namespace: 0`. GitLab and
+one CI job need a worker with at least 6 GiB memory and 8 GiB image disk free; a new
+`best-effort-large` worker has about 11 GiB memory free.
 
 **If not:**
 - `git: command not found` (PowerShell: `The term 'git' is not recognized`): install git
   ([git-scm.com](https://git-scm.com/install/); on Photon OS 5, `sudo tdnf install -y git`),
   open a new terminal, and run this again.
-- No worker with that much CPU and memory: GitLab will not start, or will be stopped when the node
-  runs out of memory. Add a node pool with VM class `best-effort-large` ([CLUSTER.md](CLUSTER.md)).
+- No worker with that much free: add a node pool with VM class `best-effort-large`
+  ([CLUSTER.md](CLUSTER.md)); its new nodes start with an empty disk. New nodes count against the
+  vSphere Namespace's limits.
+- `? GiB image disk free`: your kubeconfig cannot read the node's statistics; ask the cluster's
+  administrator whether a worker has 8 GiB free.
 - `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
 - `gitlab namespace: 1` before you ran step 2: the cluster already has a `gitlab` namespace. Use
   another cluster, or remove it with step 10 if it is an earlier run of this guide.
@@ -155,7 +174,8 @@ metadata:
 
 This creates the volume, the GitLab StatefulSet and a Service that only the cluster reaches, waits
 for GitLab to answer, then turns off sign-up, so only users you create can log in. The first start
-downloads a 1.5 GB image and sets up the database, which takes a few minutes.
+downloads a 1.7 GB image, which takes about 6 GB of the node's disk, and sets up the database; it
+takes a few minutes.
 
 GitLab addresses itself as `http://gitlab.gitlab.svc.cluster.local`, its name inside the cluster,
 so the runner (step 8) reaches it directly. Your browser reaches it through step 5's port-forward.
@@ -231,8 +251,9 @@ spec:
             exec: { command: ["curl", "-fsS", "--max-time", "5", "http://127.0.0.1/-/liveness"] }
             periodSeconds: 20
             timeoutSeconds: 10
+            failureThreshold: 6
           resources:
-            requests: { cpu: "1", memory: 4Gi }
+            requests: { cpu: "1", memory: 5Gi }
             limits: { memory: 6Gi }
           volumeMounts:
             - { name: data, mountPath: /etc/gitlab, subPath: etc }
@@ -333,8 +354,9 @@ spec:
             exec: { command: ["curl", "-fsS", "--max-time", "5", "http://127.0.0.1/-/liveness"] }
             periodSeconds: 20
             timeoutSeconds: 10
+            failureThreshold: 6
           resources:
-            requests: { cpu: "1", memory: 4Gi }
+            requests: { cpu: "1", memory: 5Gi }
             limits: { memory: 6Gi }
           volumeMounts:
             - { name: data, mountPath: /etc/gitlab, subPath: etc }
@@ -378,12 +400,14 @@ baseline allows it), `persistentvolumeclaim/gitlab-data created`,
 - The claim stays `Pending`: the storage class cannot make the volume. `kubectl --kubeconfig <the
   VKS kubeconfig> -n gitlab describe pvc gitlab-data` says why; often the vSphere Namespace's
   storage limit is reached.
-- The pod is `Pending` with `Insufficient memory`: no worker has 4 GiB free; see step 1.
+- The pod is `Pending` with `Insufficient memory`: no worker has 5 GiB free; see step 1.
 - The pod is `ErrImagePull` or `ImagePullBackOff`: `kubectl --kubeconfig <the VKS kubeconfig> -n
   gitlab describe pod gitlab-0` says why: the nodes cannot reach `docker.io`, `toomanyrequests`
   (Docker Hub's pull limit; wait and run this again), or `no space left on device` (the node's
   disk is too small for the image).
-- The pod restarts with `OOMKilled`: the node has too little free memory; see step 1.
+- The pod restarts with `OOMKilled`, or `describe pod` shows `Liveness probe failed`: the node, or
+  the ESXi host under it, is short of memory; see step 1.
+- No `{:signup_enabled=>false}` line: sign-up may still be on. Run this block again.
 - `timed out waiting for the condition`: run `kubectl --kubeconfig <the VKS kubeconfig> -n gitlab
   logs gitlab-0` and look for the first error.
 
@@ -420,6 +444,8 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -it gitlab-0 -- gitlab-rake 
   again with another password.
 - `Passwords do not match`: run this again.
 - `pods "gitlab-0" not found` or `container not found`: run step 3 first.
+- `Unable to use a TTY - input is not a terminal`: the password would show as you type. Press
+  **Ctrl+C**, and run this from a terminal window (not PowerShell ISE or an editor's output pane).
 
 You can run this again at any time to set a new root password.
 
@@ -457,6 +483,7 @@ page has no **Register now** link.
 - `address already in use`, or no `127.0.0.1` line: another program uses port 3400; stop it and
   run this again.
 - `Invalid login or password`: set the password again with step 4.
+- `Your account is locked.`: ten wrong passwords lock `root` for 10 minutes; wait, then sign in.
 - `error: lost connection to pod`: GitLab restarted; run this block again.
 
 ## 6. Create a project by pushing to it
@@ -678,6 +705,7 @@ rbac:
       verbs: ["get"]
 serviceAccount:
   create: true
+concurrent: 2
 podSecurityContext:
   runAsUser: 100
   fsGroup: 65533
@@ -696,23 +724,35 @@ runners:
         memory_request = "1Gi"
         memory_limit = "3Gi"
 EOF
-case "$RUNNER_TOKEN" in glrt-?*) BAD="" ;; *) BAD=1 ;; esac
-[ -z "$(printf '%s' "$RUNNER_TOKEN" | LC_ALL=C tr -d 'A-Za-z0-9._-')" ] || BAD=1
+if [ -n "$RUNNER_TOKEN" ]; then
+  case "$RUNNER_TOKEN" in glrt-?*) BAD="" ;; *) BAD=1 ;; esac
+  [ -z "$(printf '%s' "$RUNNER_TOKEN" | LC_ALL=C tr -d 'A-Za-z0-9._-')" ] || BAD=1
+elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner get secret gitlab-runner-token -o name >/dev/null 2>&1; then
+  BAD=""
+  echo "no token typed: using the one stored before"
+else
+  BAD=1
+fi
 if [ -n "$BAD" ]; then
   echo "FAILED: no runner token starting with glrt- in this terminal; do 3, then run this again"
-elif ! printf 'apiVersion: v1\nkind: Namespace\nmetadata:\n  name: gitlab-runner\n  labels:\n    pod-security.kubernetes.io/enforce: baseline\n    pod-security.kubernetes.io/audit: restricted\n    pod-security.kubernetes.io/warn: restricted\n' \
-    | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -; then
-  echo "FAILED: cannot create the namespace (see the error above)"
-elif ! printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: gitlab-runner-token\n  namespace: gitlab-runner\nstringData:\n  runner-token: %s\n  runner-registration-token: ""\n' "$RUNNER_TOKEN" \
-    | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -; then
-  echo "FAILED: cannot store the token (see the error above)"
+elif ! command -v helm >/dev/null; then
+  echo "FAILED: helm not found; install Helm (HELM.md), then run this again"
 elif ! curl -fsSL --connect-timeout 20 --speed-time 60 -o "$CHART.new" "$URL"; then
   echo "FAILED: download of $URL"
 elif [ "$( (sha256sum "$CHART.new" 2>/dev/null || shasum -a 256 "$CHART.new") | cut -d' ' -f1)" != "$CHART_SHA256" ]; then
   echo "FAILED: checksum mismatch for $URL"
+elif ! printf 'apiVersion: v1\nkind: Namespace\nmetadata:\n  name: gitlab-runner\n  labels:\n    pod-security.kubernetes.io/enforce: baseline\n    pod-security.kubernetes.io/audit: restricted\n    pod-security.kubernetes.io/warn: restricted\n' \
+    | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -; then
+  echo "FAILED: cannot create the namespace (see the error above)"
+elif [ -n "$RUNNER_TOKEN" ] && ! printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: gitlab-runner-token\n  namespace: gitlab-runner\nstringData:\n  runner-token: %s\n  runner-registration-token: ""\n' "$RUNNER_TOKEN" \
+    | kubectl --kubeconfig "$VKS_KUBECONFIG" apply --server-side -f -; then
+  echo "FAILED: cannot store the token (see the error above)"
 else
+  unset RUNNER_TOKEN
   mv "$CHART.new" "$CHART"
   helm upgrade --install gitlab-runner "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner -f "$GITLAB_DIR/runner-values.yaml" --set gitlabUrl="$GITLAB_URL" --wait --timeout 10m >/dev/null \
+    && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner rollout restart deployment/gitlab-runner \
+    && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner rollout status deployment/gitlab-runner --timeout=5m \
     && helm list --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner \
     && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner get pods
 fi
@@ -759,6 +799,7 @@ rbac:
       verbs: ["get"]
 serviceAccount:
   create: true
+concurrent: 2
 podSecurityContext:
   runAsUser: 100
   fsGroup: 65533
@@ -779,27 +820,38 @@ runners:
 '@
 [IO.File]::WriteAllText("$GITLAB_DIR\runner-values.yaml", ($V -replace "`r`n", "`n") + "`n")
 $T = if ($RUNNER_TOKEN) { [Net.NetworkCredential]::new('', $RUNNER_TOKEN).Password }
-$global:LASTEXITCODE = $null
-if ($T -cnotmatch '^glrt-[A-Za-z0-9._-]+$') {
+$OLD = $false
+if (-not $T) {
+  kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner get secret gitlab-runner-token -o name 2>$null | Out-Null
+  $OLD = $LASTEXITCODE -eq 0
+  if ($OLD) { "no token typed: using the one stored before" }
+}
+if (-not $OLD -and $T -cnotmatch '^glrt-[A-Za-z0-9._-]+$') {
   "FAILED: no runner token starting with glrt- in this terminal; do 3, then run this again"
+} elseif (-not (Get-Command helm -ErrorAction SilentlyContinue)) {
+  "FAILED: helm not found; install Helm (HELM.md), then run this again"
 } else {
-  "apiVersion: v1`nkind: Namespace`nmetadata:`n  name: gitlab-runner`n  labels:`n    pod-security.kubernetes.io/enforce: baseline`n    pod-security.kubernetes.io/audit: restricted`n    pod-security.kubernetes.io/warn: restricted`n" |
-    kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
-  if ($LASTEXITCODE -eq 0) {
-    "apiVersion: v1`nkind: Secret`nmetadata:`n  name: gitlab-runner-token`n  namespace: gitlab-runner`nstringData:`n  runner-token: $T`n  runner-registration-token: `"`"`n" |
-      kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
-  }
+  $global:LASTEXITCODE = $null
+  curl.exe -fsSL --connect-timeout 20 --speed-time 60 -o "$CHART.new" $URL
   if ($LASTEXITCODE -ne 0) {
-    "FAILED: cannot store the token (see the error above)"
+    "FAILED: download of $URL"
+  } elseif ((Get-FileHash -Algorithm SHA256 "$CHART.new").Hash -ne $CHART_SHA256) {
+    "FAILED: checksum mismatch for $URL"
   } else {
-    curl.exe -fsSL --connect-timeout 20 --speed-time 60 -o "$CHART.new" $URL
+    "apiVersion: v1`nkind: Namespace`nmetadata:`n  name: gitlab-runner`n  labels:`n    pod-security.kubernetes.io/enforce: baseline`n    pod-security.kubernetes.io/audit: restricted`n    pod-security.kubernetes.io/warn: restricted`n" |
+      kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
+    if ($LASTEXITCODE -eq 0 -and $T) {
+      "apiVersion: v1`nkind: Secret`nmetadata:`n  name: gitlab-runner-token`n  namespace: gitlab-runner`nstringData:`n  runner-token: $T`n  runner-registration-token: `"`"`n" |
+        kubectl --kubeconfig $VKS_KUBECONFIG apply --server-side -f -
+    }
     if ($LASTEXITCODE -ne 0) {
-      "FAILED: download of $URL"
-    } elseif ((Get-FileHash -Algorithm SHA256 "$CHART.new").Hash -ne $CHART_SHA256) {
-      "FAILED: checksum mismatch for $URL"
+      "FAILED: cannot create the namespace or store the token (see the error above)"
     } else {
+      Remove-Variable -ErrorAction SilentlyContinue RUNNER_TOKEN, T
       Move-Item -Force "$CHART.new" $CHART
       helm upgrade --install gitlab-runner $CHART --kubeconfig $VKS_KUBECONFIG -n gitlab-runner -f "$GITLAB_DIR\runner-values.yaml" --set gitlabUrl=$GITLAB_URL --wait --timeout 10m | Out-Null
+      if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner rollout restart deployment/gitlab-runner }
+      if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner rollout status deployment/gitlab-runner --timeout=5m }
       if ($LASTEXITCODE -eq 0) { helm list --kubeconfig $VKS_KUBECONFIG -n gitlab-runner }
       if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner get pods }
     }
@@ -811,21 +863,25 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 
 </details>
 
-**Expect:** `namespace/gitlab-runner created`, `secret/gitlab-runner-token created` (`configured`
-or `unchanged` on a second run), a line for the release `gitlab-runner` with `STATUS deployed`, and
-one pod `1/1 Running`. Within a minute, <http://localhost:3400/root/hello/-/settings/ci_cd> under
-**Runners** shows the runner with a green dot (online).
+**Expect:** `namespace/gitlab-runner created` (`unchanged` on a second run),
+`secret/gitlab-runner-token serverside-applied`, `deployment.apps/gitlab-runner restarted`,
+`deployment "gitlab-runner" successfully rolled out`, a line for the release `gitlab-runner` with
+`STATUS deployed`, and one pod `1/1 Running`. Within a minute,
+<http://localhost:3400/root/hello/-/settings/ci_cd> under **Runners** shows the runner with a green
+dot (online). Run without 3, the block says `no token typed: using the one stored before`.
 
 **If not:**
 - `FAILED: no runner token …`: do 3 in this terminal, pasting the whole token from `glrt-` on.
-  If you lost it, create another runner (1 and 2) and delete the old one on the same page.
-- `helm: command not found`: install Helm ([HELM.md](HELM.md)).
+  If you lost it, create another runner (1 and 2), do 3, and delete the old runner on the same
+  page.
+- `FAILED: helm not found`: install Helm ([HELM.md](HELM.md)), then run this again; the token
+  you typed is kept until the block stores it.
 - `FAILED: download …`: this machine cannot reach `gitlab-charts.s3.amazonaws.com`.
 - `FAILED: checksum mismatch …`: the download arrived damaged, or the chart was rebuilt. Do not
   install it; run the block again.
 - `context deadline exceeded`, or the runner stays offline: `kubectl --kubeconfig <the VKS
   kubeconfig> -n gitlab-runner logs deployment/gitlab-runner` says why. `403 Forbidden` there means
-  the token is wrong or the runner was deleted in GitLab: do 1 and 2 again and run this again.
+  the token is wrong or the runner was deleted in GitLab: do 1, 2 and 3 again, then run this again.
 
 ## 9. Run a pipeline
 
@@ -867,7 +923,7 @@ if ($LASTEXITCODE -eq 0) {
 }
 ```
 
-**Expect:** after the password, `main -> main`. At <http://localhost:3400/root/hello/-/pipelines>
+**Expect:** after the password, `<old>..<new>  HEAD -> main`. At <http://localhost:3400/root/hello/-/pipelines>
 the newest pipeline turns **Passed** within a minute or two; its job `hello` prints
 `hello from pod runner-…` and `Job succeeded`.
 
@@ -929,6 +985,7 @@ for i in $(seq 36); do
   fi
   sleep 5
 done
+[ -n "$N" ] || N="unknown"
 echo "volumes left from gitlab: $N"
 ```
 
@@ -957,6 +1014,8 @@ foreach ($i in 1..36) {
 `volumes left from gitlab: 0`.
 
 **If not:**
+- `timed out waiting for the condition`: the cluster is still removing the load-balancer address
+  or the volume; wait a few minutes and run this again.
 - `volumes left from gitlab: unknown`: kubectl could not read the volumes. Fix the error above
   (often an expired login: [LOGIN.md](LOGIN.md)), then run this again.
 - `volumes left from gitlab:` more than 0: the storage class keeps volumes (step 1 printed
