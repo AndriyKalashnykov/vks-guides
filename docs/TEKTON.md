@@ -186,8 +186,7 @@ else
       if kubectl --kubeconfig "$VKS_KUBECONFIG" apply --server-side -f "$TEKTON_DIR/$F" >/dev/null 2>&1; then OK=1; break; fi
       sleep 15
     done
-    if [ -z "$OK" ]; then
-      kubectl --kubeconfig "$VKS_KUBECONFIG" apply --server-side -f "$TEKTON_DIR/$F" >/dev/null
+    if [ -z "$OK" ] && ! kubectl --kubeconfig "$VKS_KUBECONFIG" apply --server-side -f "$TEKTON_DIR/$F" >/dev/null; then
       echo "FAILED: $F (see the error above)"; FAILED=1; break
     fi
   done
@@ -226,9 +225,11 @@ if ($LASTEXITCODE -ne 0) {
     }
     if (-not $OK) {
       kubectl --kubeconfig $VKS_KUBECONFIG apply --server-side -f "$TEKTON_DIR\$F" | Out-Null
-      "FAILED: $F (see the error above)"
-      $FAILED = $true
-      break
+      if ($LASTEXITCODE -ne 0) {
+        "FAILED: $F (see the error above)"
+        $FAILED = $true
+        break
+      }
     }
   }
   if (-not $FAILED) {
@@ -932,6 +933,10 @@ elif [ "$(printf '%s\n' "$C" | grep -c '\.tekton\.dev$')" = 0 ]; then
 elif ! V="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tasks.tekton.dev -o jsonpath='{.metadata.labels.pipeline\.tekton\.dev/release}')" \
      || [ "$V" != v1.17.1 ]; then
   echo "STOPPED: the Tekton here is '${V:-unknown}', not this guide's v1.17.1"
+elif printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/eventlisteners.triggers.tekton.dev' \
+     && { ! T="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd eventlisteners.triggers.tekton.dev -o jsonpath='{.metadata.labels.triggers\.tekton\.dev/release}')" \
+          || [ "$T" != v0.37.2 ]; }; then
+  echo "STOPPED: the Tekton Triggers here is '${T:-unknown}', not this guide's v0.37.2"
 elif ! L="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get "$(printf '%s\n' "$A" | grep '\.tekton\.dev$' | grep -v '^clusterinterceptors\.' | paste -sd, -)" -A --no-headers)"; then
   echo "STOPPED: cannot list the Tekton objects (see the error above)"
 elif U="$(printf '%s\n' "$L" | grep -v '^$' | grep -vc '^tekton-demo ')"; [ "$U" -gt 0 ]; then
@@ -941,7 +946,11 @@ else
   kubectl --kubeconfig "$VKS_KUBECONFIG" delete --ignore-not-found -f "$TEKTON_DIR/tekton-triggers-v0.37.2.yaml" >/dev/null
   kubectl --kubeconfig "$VKS_KUBECONFIG" delete --ignore-not-found -f "$TEKTON_DIR/tekton-pipelines-v1.17.1.yaml" >/dev/null
   kubectl --kubeconfig "$VKS_KUBECONFIG" wait --for=delete namespace/tekton-pipelines namespace/tekton-pipelines-resolvers --timeout=10m 2>/dev/null
-  echo "Tekton CRDs left: $(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name | grep -c '\.tekton\.dev$')"
+  if C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
+    echo "Tekton CRDs left: $(printf '%s\n' "$C" | grep -c '\.tekton\.dev$')"
+  else
+    echo "FAILED: cannot read the cluster (see the error above)"
+  fi
 fi
 ```
 
@@ -964,8 +973,16 @@ if ($LASTEXITCODE -ne 0) {
   "Tekton is not installed"
 } else {
   $V = kubectl --kubeconfig $VKS_KUBECONFIG get crd tasks.tekton.dev -o jsonpath='{.metadata.labels.pipeline\.tekton\.dev/release}'
-  if ($LASTEXITCODE -ne 0 -or $V -ne 'v1.17.1') {
+  $VOK = ($LASTEXITCODE -eq 0 -and $V -eq 'v1.17.1')
+  $T = 'v0.37.2'
+  if ($C -contains 'customresourcedefinition.apiextensions.k8s.io/eventlisteners.triggers.tekton.dev') {
+    $T = kubectl --kubeconfig $VKS_KUBECONFIG get crd eventlisteners.triggers.tekton.dev -o jsonpath='{.metadata.labels.triggers\.tekton\.dev/release}'
+    if ($LASTEXITCODE -ne 0) { $T = $null }
+  }
+  if (-not $VOK) {
     "STOPPED: the Tekton here is '$(if ($V) { $V } else { 'unknown' })', not this guide's v1.17.1"
+  } elseif ($T -ne 'v0.37.2') {
+    "STOPPED: the Tekton Triggers here is '$(if ($T) { $T } else { 'unknown' })', not this guide's v0.37.2"
   } else {
     $KINDS = @($A | Where-Object { $_ -match '\.tekton\.dev$' -and $_ -notmatch '^clusterinterceptors\.' }) -join ','
     $L = @(kubectl --kubeconfig $VKS_KUBECONFIG get $KINDS -A --no-headers)
@@ -978,7 +995,12 @@ if ($LASTEXITCODE -ne 0) {
       kubectl --kubeconfig $VKS_KUBECONFIG delete --ignore-not-found -f "$TEKTON_DIR\tekton-triggers-v0.37.2.yaml" | Out-Null
       kubectl --kubeconfig $VKS_KUBECONFIG delete --ignore-not-found -f "$TEKTON_DIR\tekton-pipelines-v1.17.1.yaml" | Out-Null
       kubectl --kubeconfig $VKS_KUBECONFIG wait --for=delete namespace/tekton-pipelines namespace/tekton-pipelines-resolvers --timeout=10m 2>$null
-      "Tekton CRDs left: $(@(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name | Where-Object { $_ -match '\.tekton\.dev$' }).Count)"
+      $C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
+      if ($LASTEXITCODE -eq 0) {
+        "Tekton CRDs left: $(@($C | Where-Object { $_ -match '\.tekton\.dev$' }).Count)"
+      } else {
+        "FAILED: cannot read the cluster (see the error above)"
+      }
     }
   }
 }
@@ -992,9 +1014,10 @@ if ($LASTEXITCODE -ne 0) {
 **If not:**
 - `Tekton CRDs left:` more than 0: run step 2 on this machine (the delete needs its files), then
   this block again.
-- `STOPPED: the Tekton here is …`: someone else installed this Tekton; leave it.
+- `STOPPED: the Tekton here is …` or `STOPPED: the Tekton Triggers here is …`: someone else
+  installed this Tekton; leave it.
 - `STOPPED: … objects outside tekton-demo`: list them with `kubectl --kubeconfig <the VKS
   kubeconfig> get <kind> -A`; delete them first if they are yours.
-- `STOPPED: cannot …`: see the error above it, and run the block again.
+- `STOPPED: cannot …` or `FAILED: cannot …`: see the error above it, and run the block again.
 
 Back to [README](../README.md).
