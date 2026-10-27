@@ -247,6 +247,35 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE describe clusters.cluster.x-k8s.io $VKS_CLUSTER
 ```
 
+If no event says why, this shows whether vSphere could make each node's virtual machine.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get vspheremachines -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" -o json \
+  | jq -r '.items[] | "\(.metadata.name): " + ([.status.conditions[]? | select(.type == "VirtualMachineProvisioned") | "\(.status) \(.reason // "") \(.message // "")"] | join(""))'
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get vspheremachines -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" -o json | Out-String | ConvertFrom-Json
+foreach ($M in $J.items) { $C = @($M.status.conditions | Where-Object { $_.type -eq 'VirtualMachineProvisioned' })[0]; "$($M.metadata.name): $($C.status) $($C.reason) $($C.message)" }
+```
+
+**Expect:** each machine with `True Provisioned`. `insufficient storage quota`: the vSphere
+Namespace's storage limit is full. A cluster of one control-plane node and two best-effort-small
+workers needs about 72 GiB, and 96 GiB while it updates. Ask your vCenter administrator to raise
+the limit, or delete what uses the storage.
+
 Never switch the cluster's virtual machines on or off in the vSphere Client: VKS owns them.
 
 ## 7. Get the kubeconfig and check the cluster
