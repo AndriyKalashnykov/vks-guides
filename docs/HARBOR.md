@@ -306,9 +306,12 @@ SECRETS="$HARBOR_DIR/secrets.env"
 VALUES="$HARBOR_DIR/harbor-data-values.yml"
 WANT=52167e43d58bad377c7f10dde87bb9b8e27faacacd9a3d9e1810cb8815f53805
 GOT="$( (sha256sum "$HARBOR_VALUES_TEMPLATE" 2>/dev/null || shasum -a 256 "$HARBOR_VALUES_TEMPLATE" 2>/dev/null) | awk '{print $1}')"
-case "$HARBOR_FQDN" in ""|harbor.example.test|*[!a-z0-9.-]*) BAD_NAME=1 ;; *) BAD_NAME="" ;; esac
-case "$HARBOR_STORAGE_CLASS" in ""|my-storage-class|*[!a-z0-9.-]*) BAD_SC=1 ;; *) BAD_SC="" ;; esac
-case "$HARBOR_REGISTRY_SIZE" in ""|*[!0-9A-Za-z]*) BAD_SIZE=1 ;; *) BAD_SIZE="" ;; esac
+case "$HARBOR_FQDN" in ""|harbor.example.test) BAD_NAME=1 ;; *) BAD_NAME="" ;; esac
+[ -z "$(printf '%s' "$HARBOR_FQDN" | LC_ALL=C tr -d 'a-z0-9.-')" ] || BAD_NAME=1
+case "$HARBOR_STORAGE_CLASS" in ""|my-storage-class) BAD_SC=1 ;; *) BAD_SC="" ;; esac
+[ -z "$(printf '%s' "$HARBOR_STORAGE_CLASS" | LC_ALL=C tr -d 'a-z0-9.-')" ] || BAD_SC=1
+case "$HARBOR_REGISTRY_SIZE" in "") BAD_SIZE=1 ;; *) BAD_SIZE="" ;; esac
+[ -z "$(printf '%s' "$HARBOR_REGISTRY_SIZE" | LC_ALL=C tr -d '0-9A-Za-z')" ] || BAD_SIZE=1
 if [ -n "$BAD_NAME" ]; then
   echo "NOT WRITTEN: set HARBOR_FQDN to this Harbor's DNS name"
 elif [ -n "$BAD_SC" ] || [ -n "$BAD_SIZE" ]; then
@@ -1363,7 +1366,8 @@ HARBOR_NEW_FQDN="harbor2.example.test"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 VALUES="$HARBOR_DIR/harbor-data-values.yml"
-case "$HARBOR_NEW_FQDN" in ""|harbor2.example.test|*[!a-z0-9.-]*) BAD_NAME=1 ;; *) BAD_NAME="" ;; esac
+case "$HARBOR_NEW_FQDN" in ""|harbor2.example.test) BAD_NAME=1 ;; *) BAD_NAME="" ;; esac
+[ -z "$(printf '%s' "$HARBOR_NEW_FQDN" | LC_ALL=C tr -d 'a-z0-9.-')" ] || BAD_NAME=1
 if [ -n "$BAD_NAME" ]; then
   echo "NOT WRITTEN: set HARBOR_NEW_FQDN to Harbor's new DNS name"
 elif [ "$(grep -c '^hostname: ' "$VALUES" 2>/dev/null)" != 1 ]; then
