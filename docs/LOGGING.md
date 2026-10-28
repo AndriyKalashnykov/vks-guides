@@ -219,7 +219,7 @@ Set `FLUENT_BIT_RELEASE` to the release name from step 1.
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-FLUENT_BIT_RELEASE="fluent-bit.kubernetes.vmware.com.5.0.9-vmware.1-vks.1"
+FLUENT_BIT_RELEASE="fluent-bit.kubernetes.vmware.com.5.1.2-vmware.1-vks.1"
 LOGGING_DIR="$HOME/.config/vks-guides/logging"
 
 vcf context use supervisor </dev/null
@@ -232,7 +232,7 @@ vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMES
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$FLUENT_BIT_RELEASE = "fluent-bit.kubernetes.vmware.com.5.0.9-vmware.1-vks.1"
+$FLUENT_BIT_RELEASE = "fluent-bit.kubernetes.vmware.com.5.1.2-vmware.1-vks.1"
 $LOGGING_DIR = "$HOME\.config\vks-guides\logging"
 
 $null | vcf context use supervisor
