@@ -1110,10 +1110,6 @@ on macOS), `Harbor at https://<your Harbor name> with this CA: http=200`, then `
   answered with a certificate this CA did not sign: the name leads to another server. The `curl`
   error is not shown; nothing was kept.
 
-The browser warns about Harbor's certificate until the CA is in its trust store. Safari and
-Chrome on macOS refuse the page even then: the certificate is valid for ten years, and macOS
-accepts at most 825 days from a private CA.
-
 ### Log in as admin
 
 This logs in to Harbor's API as `admin` with the password from the secrets file.
@@ -1180,8 +1176,22 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
   leads to another server can also give this (PowerShell: `UNTRUSTED_ROOT`). If DNS is right,
   `harbor-ca.crt` is not this Harbor's; run *Save the CA* again.
 
-Harbor's web page is `https://<your Harbor name>`; log in there as `admin`. This prints the
-password **on your screen**: run it only when nobody can see the screen, then clear the terminal.
+### Log in with a browser (optional)
+
+Harbor's web page is `https://<your Harbor name>`. The browser warns about Harbor's certificate
+until Harbor's CA (`harbor-ca.crt` in `~/.config/vks-guides/harbor`, saved in *Save the CA*) is in
+its trust store:
+- Linux: Firefox: **Settings** → **Privacy & Security** → **View Certificates** → **Authorities**
+  → **Import**, tick **Trust this CA to identify websites**. Chrome: **Settings** → **Privacy and
+  security** → **Security** → **Manage certificates**, import it as a trusted certificate.
+- macOS: Safari and Chrome refuse the page even then: the certificate is valid for ten years, and
+  macOS accepts at most 825 days from a private CA. Use your organization's certificate (step 13).
+- Windows: double-click `harbor-ca.crt` → **Install Certificate** → **Current User** → **Place all
+  certificates in the following store** → **Trusted Root Certification Authorities** → **Finish**
+  → **Yes**. Chrome and Edge use it after a restart.
+
+Log in as `admin`. This prints the password **on your screen**: run it only when nobody can see
+the screen, then clear the terminal.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1199,34 +1209,47 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 (Get-Content "$HARBOR_DIR\secrets.env" | Where-Object { $_ -cmatch "^HARBOR_ADMIN_PASSWORD='" }) -creplace "^HARBOR_ADMIN_PASSWORD='(.*)'$", '$1'
 ```
 
-**Expect:** the password, on a line of its own.
+**Expect:** the password, on a line of its own. After logging in, **Projects** lists `library`
+and your projects.
+
+**If not:** the page does not open: run step 7's *Check the DNS record*. `Invalid user name or
+password`: see *Log in as admin* above.
 
 ## 10. Create a project and a robot account
 
 ### Create the project
 
-This creates a **private** project for your images: a VKS cluster then needs a pull secret to
-pull from it. Set `HARBOR_PROJECT` to lower-case letters, digits and `-`.
+This creates a project for your images. Set `HARBOR_PROJECT` to lower-case letters, digits and
+`-`. `HARBOR_PROJECT_PUBLIC="false"` makes it **private**: a VKS cluster then needs a pull secret to
+pull from it. `"true"` makes it **public**: anyone who reaches Harbor can pull its images without
+logging in; pushing still needs a login. In Harbor's web page the same is **Projects** → **NEW
+PROJECT**, with **Public** ticked or not under **Access Level**.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_PROJECT="my-project"
+HARBOR_PROJECT_PUBLIC="false"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
 if [ -z "$HARBOR_FQDN" ] || [ ! -s "$HARBOR_DIR/harbor-ca.crt" ] || [ ! -r "$HARBOR_DIR/secrets.env" ]; then
   echo "FAILED: harbor-data-values.yml, harbor-ca.crt or secrets.env is missing in $HARBOR_DIR"
+elif [ "$HARBOR_PROJECT_PUBLIC" != "true" ] && [ "$HARBOR_PROJECT_PUBLIC" != "false" ]; then
+  echo "FAILED: HARBOR_PROJECT_PUBLIC must be true or false"
 else
   CFG="$(mktemp)"
   ( . "$HARBOR_DIR/secrets.env"
     P="$(printf '%s' "$HARBOR_ADMIN_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
     printf 'user = "admin:%s"\n' "$P" > "$CFG" )
-  jq -nc --arg p "$HARBOR_PROJECT" '{project_name: $p, public: false}' \
+  jq -nc --arg p "$HARBOR_PROJECT" --arg pub "$HARBOR_PROJECT_PUBLIC" '{project_name: $p, metadata: {public: $pub}}' \
     | curl -sS --cacert "$HARBOR_DIR/harbor-ca.crt" --connect-timeout 20 --max-time 30 -K "$CFG" \
         -X POST -H 'Content-Type: application/json' --data-binary @- \
         -o /dev/null -w 'create project: http=%{http_code}\n' "https://${HARBOR_FQDN}/api/v2.0/projects"
+  curl -sS --cacert "$HARBOR_DIR/harbor-ca.crt" --connect-timeout 20 --max-time 30 -K "$CFG" -H 'X-Is-Resource-Name: true' \
+      "https://${HARBOR_FQDN}/api/v2.0/projects/${HARBOR_PROJECT}" \
+    | jq -r 'if .name then "project \(.name), public: \(.metadata.public)" else "ERROR \(.errors[0].code): \(.errors[0].message)" end'
   rm -f "$CFG"
 fi
 ```
@@ -1238,6 +1261,7 @@ fi
 
 ```powershell
 $HARBOR_PROJECT = "my-project"
+$HARBOR_PROJECT_PUBLIC = "false"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
@@ -1247,15 +1271,20 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
   "FAILED: harbor-data-values.yml, harbor-ca.crt or secrets.env is missing in $HARBOR_DIR"
 } elseif ($HARBOR_PROJECT -cnotmatch '^[a-z0-9][a-z0-9._-]*$') {
   "FAILED: HARBOR_PROJECT may hold only lower-case letters, digits, '.', '_' and '-'"
+} elseif ($HARBOR_PROJECT_PUBLIC -cnotmatch '^(true|false)$') {
+  "FAILED: HARBOR_PROJECT_PUBLIC must be true or false"
 } else {
   $P = $S['HARBOR_ADMIN_PASSWORD'].Replace('\', '\\').Replace('"', '\"')
   $CFG = [IO.Path]::GetTempFileName(); $BODY = [IO.Path]::GetTempFileName()
   try {
     Set-Content -Encoding ascii -Path $CFG -Value "user = `"admin:$P`""
-    Set-Content -Encoding ascii -Path $BODY -Value ('{"project_name":"' + $HARBOR_PROJECT + '","public":false}')
+    Set-Content -Encoding ascii -Path $BODY -Value ('{"project_name":"' + $HARBOR_PROJECT + '","metadata":{"public":"' + $HARBOR_PROJECT_PUBLIC + '"}}')
     curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG `
       -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" `
       -o NUL -w 'create project: http=%{http_code}\n' "https://$HARBOR_FQDN/api/v2.0/projects"
+    $R = curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG -H 'X-Is-Resource-Name: true' `
+      "https://$HARBOR_FQDN/api/v2.0/projects/$HARBOR_PROJECT" | Out-String | ConvertFrom-Json
+    if ($R.name) { "project $($R.name), public: $($R.metadata.public)" } else { "ERROR $($R.errors[0].code): $($R.errors[0].message)" }
   } finally {
     Remove-Item -Force $CFG, $BODY
   }
@@ -1265,7 +1294,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 </details>
 
 **Expect:** `create project: http=201`, or `http=409` when the project already exists (it is left
-as it is).
+as it is), then `project my-project, public: false` (`true` for a public project).
 
 **If not:** `http=401`: see *Log in as admin*. `http=400`: Harbor refused the name; use lower-case
 letters and digits.
@@ -1386,6 +1415,9 @@ fi
 **Expect:** `subject=CN = Harbor CA` (or your organization's CA, step 13) and a `sha256
 Fingerprint=` line. When it is the same as your administrator's, keep the file:
 
+**If not:** the fingerprints differ: delete `harbor-ca.crt.new` and stop; this is not your
+Harbor's CA. `FAILED: …`: run step 7's *Check the DNS record*.
+
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
@@ -1438,13 +1470,13 @@ unset HARBOR_ROBOT_SECRET
 **With docker:** add Harbor's CA to the system's trust store and restart docker, as a line of its
 own (it runs `sudo`).
 
-**Ubuntu, Debian, WSL (bash or zsh):**
+**Ubuntu, Debian, Docker Engine in WSL (bash or zsh):**
 
 ```sh
 sudo install -m 0644 "$HOME/.config/vks-guides/harbor/harbor-ca.crt" /usr/local/share/ca-certificates/harbor-ca.crt && sudo update-ca-certificates && sudo systemctl restart docker
 ```
 
-**AlmaLinux (bash)**, with docker from Docker's own repository (AlmaLinux has none):
+**AlmaLinux, docker from Docker's own repository (bash):**
 
 ```sh
 sudo install -m 0644 "$HOME/.config/vks-guides/harbor/harbor-ca.crt" /etc/pki/ca-trust/source/anchors/harbor-ca.crt && sudo update-ca-trust && sudo systemctl restart docker
@@ -1452,6 +1484,10 @@ sudo install -m 0644 "$HOME/.config/vks-guides/harbor/harbor-ca.crt" /etc/pki/ca
 
 **Expect:** a new prompt (Ubuntu also prints `Updating certificates …`, a harmless `rehash:
 warning` and `done.`).
+
+**If not:** `Unit docker.service not found`: Docker Desktop (also in WSL) does not use this trust
+store; add `harbor-ca.crt` to Windows' or macOS's trust store (step 9, *Log in with a browser*)
+and restart Docker Desktop.
 
 Then, after typing the secret again if this is a new terminal:
 
@@ -1646,7 +1682,8 @@ them to the new name.
 3. In the vSphere Client, select the Supervisor, then **Configure** → **Supervisor Services** →
    **Overview**. Select **Harbor**, click **MANAGE**, keep the installed version, click **NEXT**
    twice. In **YAML Service Config**, change only the `hostname:` line to the new name, then click
-   **FINISH**. The box shows Harbor's passwords: do not share your screen.
+   **FINISH**. The box shows Harbor's passwords (and your key with step 13): do not share your
+   screen. If you pasted the file, then step 6 *Empty the clipboard*.
 4. Restart Harbor's web server with the second block below: until then it serves the
    certificate for the old name.
 5. Run step 9 (*Save the CA* checks Harbor at the new name; the CA is unchanged) and step 11
@@ -1756,7 +1793,7 @@ else
     [ "$n" -eq 0 ] || sleep 15
     n=$((n + 1))
     kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get "$S" -o go-template='{{with index .data "tls.crt"}}{{base64decode .}}{{end}}' \
-      | openssl x509 -noout -text 2>/dev/null | tr ',' '\n' | sed 's/^ *//' | grep -q -x -F "DNS:$HARBOR_FQDN" && OK=1
+      | openssl x509 -noout -text 2>/dev/null | tr ',' '\n' | sed 's/^ *//' | grep -q -x -F -e "DNS:$HARBOR_FQDN" -e "DNS:*.${HARBOR_FQDN#*.}" && OK=1
   done
   if [ -z "$OK" ]; then
     echo "FAILED: after 10 minutes Harbor's certificate is still not for $HARBOR_FQDN"
@@ -1799,8 +1836,10 @@ else {
       try {
         [IO.File]::WriteAllBytes($TMP, [Convert]::FromBase64String("$B64"))
         $X = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $TMP
+        $WILD = '*.' + ($HARBOR_FQDN -replace '^[^.]*\.', '')
         $WANT = [BitConverter]::ToString([byte[]](@(0x82, $HARBOR_FQDN.Length) + [Text.Encoding]::ASCII.GetBytes($HARBOR_FQDN)))
-        if ($X.Extensions | Where-Object { $_.Oid.Value -eq '2.5.29.17' -and [BitConverter]::ToString($_.RawData).Contains($WANT) }) { $OK = $true }
+        $WANT2 = [BitConverter]::ToString([byte[]](@(0x82, $WILD.Length) + [Text.Encoding]::ASCII.GetBytes($WILD)))
+        if ($X.Extensions | Where-Object { $_.Oid.Value -eq '2.5.29.17' -and ([BitConverter]::ToString($_.RawData).Contains($WANT) -or [BitConverter]::ToString($_.RawData).Contains($WANT2)) }) { $OK = $true }
       } catch { }
     }
     Remove-Item -Force -ErrorAction SilentlyContinue $TMP
@@ -1837,16 +1876,18 @@ also need a certificate valid for 825 days or less, which Harbor's own is not.
 
 You need three PEM files from your certificate team:
 
-- the server certificate for `HARBOR_FQDN` (a subject alternative name `DNS:<HARBOR_FQDN>`, usage
+- the server certificate for `HARBOR_FQDN` (a subject alternative name `DNS:<HARBOR_FQDN>` or a
+  wildcard such as `DNS:*.<its domain>`, usage
   *TLS Web Server Authentication*), followed by any intermediate CA certificates;
 - its private key, not protected by a passphrase;
 - the root CA certificate that signed them. VKS gives it to every VKS cluster's nodes.
 
 Nothing renews this certificate: before it expires, get a new one and do this step again.
 
-- **Before the install:** run the block below after step 4, then go on with step 6.
-- **On an installed Harbor:** this replaces Harbor's CA, so every node of every VKS cluster on the
-  Supervisor is replaced, and pulls from Harbor fail on some nodes until that ends. Do it in a
+- **Before the install:** run the block below after step 4, then go on with step 5.
+- **On an installed Harbor:** this replaces Harbor's CA. VKS gives the new CA to every node of
+  every VKS cluster on the Supervisor by replacing the nodes, and pulls from Harbor fail on some
+  nodes until that ends. Do it in a
   maintenance window:
   1. Step 6 *Record the VKS cluster machines*.
   2. The block below.
@@ -1854,7 +1895,7 @@ Nothing renews this certificate: before it expires, get a new one and do this st
      **Overview**. Select **Harbor**, click **MANAGE**, keep the installed version, click **NEXT**
      twice. In **YAML Service Config**, replace everything with the file (step 6 *Copy the
      configuration*), then click **FINISH**. The box shows Harbor's passwords and your key: do not
-     share your screen.
+     share your screen. Then step 6 *Empty the clipboard*.
   4. *Restart Harbor's web server* below.
   5. Steps 8, 9 and 11, then give the new `harbor-ca.crt` to whatever uses Harbor.
 
@@ -1884,18 +1925,20 @@ elif [ -n "$HARBOR_TLS_CRT$HARBOR_TLS_KEY$HARBOR_CA_CRT" ]; then
   for f in "$HARBOR_TLS_CRT" "$HARBOR_TLS_KEY" "$HARBOR_CA_CRT"; do [ -s "$f" ] || ERR="not found: $f"; done
   if [ -z "$ERR" ]; then
     ( umask 077
-      for p in "tls.crt $HARBOR_TLS_CRT" "tls.key $HARBOR_TLS_KEY" "ca.crt $HARBOR_CA_CRT"; do
-        tr -d '\r' < "${p#* }" | sed -n '/^-----BEGIN /,/^-----END /p' > "$TMP/${p%% *}"
-      done
+      tr -d '\r' < "$HARBOR_TLS_CRT" | sed -n '/^-----BEGIN CERTIFICATE-----$/,/^-----END CERTIFICATE-----$/p' > "$TMP/tls.crt"
+      tr -d '\r' < "$HARBOR_CA_CRT" | sed -n '/^-----BEGIN CERTIFICATE-----$/,/^-----END CERTIFICATE-----$/p' > "$TMP/ca.crt"
+      tr -d '\r' < "$HARBOR_TLS_KEY" | sed -n '/^-----BEGIN .*PRIVATE KEY-----$/,/^-----END .*PRIVATE KEY-----$/p' > "$TMP/tls.key"
       awk '/^-----BEGIN CERTIFICATE-----/ { n++ } { print > (n == 1 ? "'"$TMP"'/leaf.crt" : "'"$TMP"'/chain.crt") }' "$TMP/tls.crt" )
     touch "$TMP/chain.crt"
-    if ! grep -q '^-----BEGIN CERTIFICATE-----' "$TMP/leaf.crt" 2>/dev/null; then
+    if grep -q 'PRIVATE KEY' "$HARBOR_TLS_CRT" "$HARBOR_CA_CRT"; then
+      ERR="a private key is in $HARBOR_TLS_CRT or $HARBOR_CA_CRT: give it only in HARBOR_TLS_KEY"
+    elif ! grep -q '^-----BEGIN CERTIFICATE-----' "$TMP/leaf.crt" 2>/dev/null; then
       ERR="no PEM certificate in $HARBOR_TLS_CRT"
     elif ! grep -q '^-----BEGIN .*PRIVATE KEY-----' "$TMP/tls.key" || grep -q 'ENCRYPTED' "$TMP/tls.key"; then
       ERR="$HARBOR_TLS_KEY is not a PEM private key without a passphrase"
     elif [ "$(grep -c '^-----BEGIN CERTIFICATE-----' "$TMP/ca.crt")" != 1 ]; then
       ERR="$HARBOR_CA_CRT must hold exactly one PEM certificate, the root CA"
-    elif ! openssl x509 -in "$TMP/leaf.crt" -noout -text | tr ',' '\n' | sed 's/^ *//' | grep -q -x -F "DNS:$HARBOR_FQDN"; then
+    elif ! openssl x509 -in "$TMP/leaf.crt" -noout -text | tr ',' '\n' | sed 's/^ *//' | grep -q -x -F -e "DNS:$HARBOR_FQDN" -e "DNS:*.${HARBOR_FQDN#*.}"; then
       ERR="the certificate is not for $HARBOR_FQDN (no DNS:$HARBOR_FQDN)"
     elif ! openssl x509 -in "$TMP/leaf.crt" -noout -text | grep -q 'TLS Web Server Authentication'; then
       ERR="the certificate is not for TLS Web Server Authentication"
@@ -1971,10 +2014,11 @@ elseif ("$HARBOR_TLS_CRT$HARBOR_TLS_KEY$HARBOR_CA_CRT") {
     [IO.File]::WriteAllText("$TMP\tls.key", "$($KEY[0])`n")
     [IO.File]::WriteAllText("$TMP\ca.crt", "$($CA[0])`n")
     $TEXT = (openssl.exe x509 -in "$TMP\leaf.crt" -noout -text 2>$null) -join "`n"
-    if ($CRT.Count -lt 1) { $ERR = "no PEM certificate in $HARBOR_TLS_CRT" }
+    if (([IO.File]::ReadAllText($HARBOR_TLS_CRT) + [IO.File]::ReadAllText($HARBOR_CA_CRT)) -cmatch 'PRIVATE KEY') { $ERR = "a private key is in $HARBOR_TLS_CRT or ${HARBOR_CA_CRT}: give it only in HARBOR_TLS_KEY" }
+    elseif ($CRT.Count -lt 1) { $ERR = "no PEM certificate in $HARBOR_TLS_CRT" }
     elseif ($KEY.Count -ne 1 -or $KEY[0] -cmatch 'ENCRYPTED') { $ERR = "$HARBOR_TLS_KEY is not a PEM private key without a passphrase" }
     elseif ($CA.Count -ne 1) { $ERR = "$HARBOR_CA_CRT must hold exactly one PEM certificate, the root CA" }
-    elseif (-not (($TEXT -split '[,\n]' | ForEach-Object { $_.Trim() }) -ceq "DNS:$HARBOR_FQDN")) { $ERR = "the certificate is not for $HARBOR_FQDN (no DNS:$HARBOR_FQDN)" }
+    elseif (-not (($TEXT -split '[,\n]' | ForEach-Object { $_.Trim() }) -ceq "DNS:$HARBOR_FQDN") -and -not (($TEXT -split '[,\n]' | ForEach-Object { $_.Trim() }) -ceq ('DNS:*.' + ($HARBOR_FQDN -replace '^[^.]*\.', '')))) { $ERR = "the certificate is not for $HARBOR_FQDN (no DNS:$HARBOR_FQDN)" }
     elseif ($TEXT -notmatch 'TLS Web Server Authentication') { $ERR = 'the certificate is not for TLS Web Server Authentication' }
     elseif ($(openssl.exe x509 -in "$TMP\leaf.crt" -noout -checkend 0 | Out-Null; $LASTEXITCODE) -ne 0) { $ERR = 'the certificate has expired' }
     elseif ("$(openssl.exe x509 -in "$TMP\leaf.crt" -noout -pubkey)" -cne "$(openssl.exe pkey -in "$TMP\tls.key" -pubout)") { $ERR = "$HARBOR_TLS_KEY is not the key of $HARBOR_TLS_CRT" }
@@ -2033,7 +2077,9 @@ HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 VALUES="$HARBOR_DIR/harbor-data-values.yml"
 WANT="$(awk '/^  tls\.crt: \|/ { f = 1; next } f && /^    / { sub(/^    /, ""); print; next } { f = 0 }' "$VALUES" 2>/dev/null \
   | openssl x509 -noout -fingerprint -sha256 2>/dev/null)"
-if ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
+if [ ! -r "$VALUES" ]; then
+  echo "FAILED: no $VALUES (step 4)"
+elif ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
   echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
 elif [ -z "$NS" ] || [ "$NS" != "${NS#* }" ]; then
   echo "FAILED: Harbor namespaces on this Supervisor: '${NS}' (expected exactly one)"
@@ -2077,14 +2123,15 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 $global:LASTEXITCODE = $null
 $VALUES = "$HARBOR_DIR\harbor-data-values.yml"
 $WANT = ''; $f = $false
-foreach ($l in [IO.File]::ReadAllLines($VALUES)) {
+foreach ($l in $(if (Test-Path $VALUES) { [IO.File]::ReadAllLines($VALUES) })) {
   if ($l -ceq '  tls.crt: |') { $f = $true; continue }
   if ($f -and $l -cmatch '^    (.*)$') { $WANT += $Matches[1] + "`n" } else { $f = $false }
 }
 function Body($t) { if ("$t" -cmatch '(?s)-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----') { $Matches[1] -replace '\s', '' } else { '' } }
 $WANT = Body $WANT
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
-if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
+if (-not (Test-Path $VALUES)) { "FAILED: no $VALUES (step 4)" }
+elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
 elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
 else {
   $NS = $NS[0] -replace '^namespace/', ''
@@ -2275,6 +2322,23 @@ else { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $HARBOR_DIR; "d
 **Expect:** `deleted …`.
 
 **If not:** `Nothing deleted: a Harbor is still …`: these files belong to it; keep them.
+
+If you added Harbor's CA to the system's trust store for docker (step 10), remove it, as a line of
+its own (it runs `sudo`):
+
+**Ubuntu, Debian, Docker Engine in WSL (bash or zsh):**
+
+```sh
+sudo rm -f /usr/local/share/ca-certificates/harbor-ca.crt && sudo update-ca-certificates --fresh && sudo systemctl restart docker
+```
+
+**AlmaLinux, docker from Docker's own repository (bash):**
+
+```sh
+sudo rm -f /etc/pki/ca-trust/source/anchors/harbor-ca.crt && sudo update-ca-trust && sudo systemctl restart docker
+```
+
+**Expect:** a new prompt.
 
 ## Fix common problems
 
