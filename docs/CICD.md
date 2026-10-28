@@ -67,9 +67,11 @@ elif ! NS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace -o name)"; the
   echo "FAILED: cannot read the cluster (see the error above)"
 else
   echo "Harbor ${HARBOR_FQDN}: $(curl -sS --cacert "$HARBOR_DIR/harbor-ca.crt" --connect-timeout 20 --max-time 30 -o /dev/null -w '%{http_code}' "https://${HARBOR_FQDN}/api/v2.0/ping")"
-  for N in gitea tekton-pipelines gitlab gitlab-runner cicd-demo; do
+  for N in gitea gitlab gitlab-runner cicd-demo; do
     echo "namespace ${N}: $(printf '%s\n' "$NS" | grep -cx "namespace/$N")"
   done
+  T="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterinterceptor/github clusterinterceptor/cel clusterrole/tekton-triggers-eventlistener-roles -o name 2>/dev/null)"
+  echo "Tekton Triggers objects: $(printf '%s\n' "$T" | grep -c .)"
   echo "ArgoCD destinations: $(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get secret -l argocd.argoproj.io/secret-type=cluster -o json \
     | jq -r '[.items[].data.name // empty | @base64d] | join(" ")')"
 fi
@@ -97,9 +99,11 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
     "FAILED: cannot read the cluster (see the error above)"
   } else {
     "Harbor ${HARBOR_FQDN}: $(curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -o NUL -w '%{http_code}' "https://$HARBOR_FQDN/api/v2.0/ping")"
-    foreach ($N in 'gitea', 'tekton-pipelines', 'gitlab', 'gitlab-runner', 'cicd-demo') {
+    foreach ($N in 'gitea', 'gitlab', 'gitlab-runner', 'cicd-demo') {
       "namespace ${N}: $(@($NS | Where-Object { $_ -ceq "namespace/$N" }).Count)"
     }
+    $T = @(kubectl --kubeconfig $VKS_KUBECONFIG get clusterinterceptor/github clusterinterceptor/cel clusterrole/tekton-triggers-eventlistener-roles -o name 2>$null)
+    "Tekton Triggers objects: $(@($T | Where-Object { $_ }).Count)"
     $C = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get secret -l argocd.argoproj.io/secret-type=cluster -o json | Out-String | ConvertFrom-Json
     "ArgoCD destinations: $(@($C.items | Where-Object { $_.data.name } | ForEach-Object { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_.data.name)) }) -join ' ')"
   }
@@ -109,7 +113,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 </details>
 
 **Expect:** `Harbor <name>: 200`, then `namespace cicd-demo: 0`, and with Gitea and Tekton
-`namespace gitea: 1` and `namespace tekton-pipelines: 1`, or with GitLab `namespace gitlab: 1` and
+`namespace gitea: 1` and `Tekton Triggers objects: 3`, or with GitLab `namespace gitlab: 1` and
 `namespace gitlab-runner: 1`, and `ArgoCD destinations:` with `<your cluster>-<its vSphere
 Namespace>` among the names.
 
@@ -117,7 +121,8 @@ Namespace>` among the names.
 - `FAILED: … is missing`: run this on the machine where you did HARBOR.md, or copy that folder
   here.
 - `Harbor <name>:` other than `200`: see [HARBOR.md](HARBOR.md) step 9.
-- A `0` for your Git server or Tekton: do its guide first (the table above).
+- A `0` for your Git server, or `Tekton Triggers objects:` under 3 with Gitea and Tekton: do its
+  guide first (the table above); for Tekton, [TEKTON.md](TEKTON.md) steps 1 to 3 with either way.
 - `namespace cicd-demo: 1`: an earlier run of this guide is still there; remove it with step 9.
 - `ArgoCD destinations:` empty, or an error before it: log in again ([LOGIN.md](LOGIN.md)), or add
   the cluster with [ARGOCD.md](ARGOCD.md) step 7. If the cluster is there under another name, put
