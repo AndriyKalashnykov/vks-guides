@@ -196,8 +196,10 @@ Install Gitea one of two ways, A or B; steps 5 to 9 are the same for both. Both 
 with the settings this guide sets, the keys from step 3, restricted pods and one 5 GiB volume; its web page
 addresses itself as `http://localhost:3300`, the port step 6 forwards, passwords must be at
 least 16 characters, and webhooks may call public addresses and, inside the cluster, only port 8080 of
-its Services ([CICD.md](CICD.md) step 7 uses it). `10.96.0.0/12` is a VKS cluster's default Service
-range; if you changed it in CLUSTER.md, put yours in `ALLOWED_HOST_LIST`. To change from one to the other later, run step 9, then steps 2 and 3, first:
+its Services ([CICD.md](CICD.md) step 7 uses it). The blocks read the cluster's Service range for
+that; on a cluster older than Kubernetes v1.33, which cannot show it, set `SERVICE_RANGE` to the
+range the cluster was created with (CLUSTER.md: `10.96.0.0/12`). To change from one to the other
+later, run step 9, then steps 2 and 3, first:
 they keep their data differently, and nothing carries over.
 
 ### A. With this guide's YAML (recommended)
@@ -217,8 +219,16 @@ waits for Gitea to answer.
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+SERVICE_RANGE=""                      # empty: read it from the cluster
 
-kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - <<'EOF'
+if [ -z "$SERVICE_RANGE" ]; then
+  SERVICE_RANGE="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get servicecidr -o jsonpath='{.items[*].spec.cidrs[*]}')"
+fi
+ALLOWED="$(printf '%s\n' "$SERVICE_RANGE" | tr ' ,' '\n\n' | grep . | sed -e '/:/s/.*/[&]/' -e 's/$/:8080/' | paste -sd, -)"
+if [ -z "$ALLOWED" ]; then
+  echo "FAILED: no Service range; set SERVICE_RANGE to your cluster's (see above)"
+else
+sed "s|@ALLOWED_HOST_LIST@|$ALLOWED|" <<'EOF' | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -269,7 +279,7 @@ spec:
             - { name: GITEA__server__DISABLE_SSH, value: "true" }
             - { name: GITEA__security__INSTALL_LOCK, value: "true" }
             - { name: GITEA__security__MIN_PASSWORD_LENGTH, value: "16" }
-            - { name: GITEA__security__ALLOWED_HOST_LIST, value: "10.96.0.0/12:8080" }
+            - { name: GITEA__security__ALLOWED_HOST_LIST, value: "@ALLOWED_HOST_LIST@" }
             - { name: GITEA__security__EGRESS_MODE, value: "lax" }
             - { name: GITEA__service__DISABLE_REGISTRATION, value: "true" }
             - { name: GITEA__repository__ENABLE_PUSH_CREATE_USER, value: "true" }
@@ -323,8 +333,9 @@ spec:
   ports:
     - { name: http, port: 3000, targetPort: http }
 EOF
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea rollout status deployment/gitea --timeout=10m
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get pvc,pods
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea rollout status deployment/gitea --timeout=10m
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get pvc,pods
+fi
 ```
 
 </details>
@@ -335,7 +346,15 @@ kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get pvc,pods
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$SERVICE_RANGE = ""                   # empty: read it from the cluster
 
+if (-not $SERVICE_RANGE) {
+  $SERVICE_RANGE = kubectl --kubeconfig $VKS_KUBECONFIG get servicecidr -o jsonpath='{.items[*].spec.cidrs[*]}'
+}
+$ALLOWED = (@("$SERVICE_RANGE" -split '[ ,]' | Where-Object { $_ }) | ForEach-Object { if ($_ -like '*:*') { "[${_}]:8080" } else { "${_}:8080" } }) -join ','
+if (-not $ALLOWED) {
+  "FAILED: no Service range; set SERVICE_RANGE to your cluster's (see above)"
+} else {
 @'
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -387,7 +406,7 @@ spec:
             - { name: GITEA__server__DISABLE_SSH, value: "true" }
             - { name: GITEA__security__INSTALL_LOCK, value: "true" }
             - { name: GITEA__security__MIN_PASSWORD_LENGTH, value: "16" }
-            - { name: GITEA__security__ALLOWED_HOST_LIST, value: "10.96.0.0/12:8080" }
+            - { name: GITEA__security__ALLOWED_HOST_LIST, value: "@ALLOWED_HOST_LIST@" }
             - { name: GITEA__security__EGRESS_MODE, value: "lax" }
             - { name: GITEA__service__DISABLE_REGISTRATION, value: "true" }
             - { name: GITEA__repository__ENABLE_PUSH_CREATE_USER, value: "true" }
@@ -440,9 +459,10 @@ spec:
     app.kubernetes.io/name: gitea
   ports:
     - { name: http, port: 3000, targetPort: http }
-'@ | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
-kubectl --kubeconfig $VKS_KUBECONFIG -n gitea rollout status deployment/gitea --timeout=10m
-kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get pvc,pods
+'@.Replace('@ALLOWED_HOST_LIST@', $ALLOWED) | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
+  kubectl --kubeconfig $VKS_KUBECONFIG -n gitea rollout status deployment/gitea --timeout=10m
+  kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get pvc,pods
+}
 ```
 
 </details>
@@ -452,6 +472,8 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get pvc,pods
 `Bound` and one pod `1/1 Running` (`unchanged` lines on a second run).
 
 **If not:**
+- `FAILED: no Service range`: the line above it says why; on Kubernetes older than v1.33
+  (`the server doesn't have a resource type "servicecidr"`), set `SERVICE_RANGE`.
 - `secret "gitea-keys" not found` in `kubectl --kubeconfig <the VKS kubeconfig> -n gitea describe
   pod` (the pod stays `CreateContainerConfigError`): run step 3.
 - The claim stays `Pending`: the storage class cannot make the volume. `kubectl --kubeconfig <the
@@ -492,11 +514,16 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 GITEA_DIR="$HOME/.config/vks-guides/gitea"
 CHART_SHA256="5881ef9c59400bee2d5547e77c4cd0efb925143c2f5d93fb4f38446db76b0167"
+SERVICE_RANGE=""                      # empty: read it from the cluster
 
+if [ -z "$SERVICE_RANGE" ]; then
+  SERVICE_RANGE="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get servicecidr -o jsonpath='{.items[*].spec.cidrs[*]}')"
+fi
+ALLOWED="$(printf '%s\n' "$SERVICE_RANGE" | tr ' ,' '\n\n' | grep . | sed -e '/:/s/.*/[&]/' -e 's/$/:8080/' | paste -sd, -)"
 CHART="$GITEA_DIR/gitea-12.7.0.tgz"
 URL="https://dl.gitea.com/charts/gitea-12.7.0.tgz"
 mkdir -p "$GITEA_DIR"
-cat > "$GITEA_DIR/values.yaml" <<'EOF'
+[ -n "$ALLOWED" ] && sed "s|@ALLOWED_HOST_LIST@|$ALLOWED|" > "$GITEA_DIR/values.yaml" <<'EOF'
 image:
   registry: docker.io
   repository: gitea/gitea
@@ -553,7 +580,7 @@ gitea:
     security:
       INSTALL_LOCK: true
       MIN_PASSWORD_LENGTH: 16
-      ALLOWED_HOST_LIST: 10.96.0.0/12:8080
+      ALLOWED_HOST_LIST: @ALLOWED_HOST_LIST@
       EGRESS_MODE: lax
     service:
       DISABLE_REGISTRATION: true
@@ -609,7 +636,9 @@ postgresql:
 test:
   enabled: false
 EOF
-if ! curl -fsSL --connect-timeout 20 --speed-time 60 -o "$CHART.new" "$URL"; then
+if [ -z "$ALLOWED" ]; then
+  echo "FAILED: no Service range; set SERVICE_RANGE to your cluster's (see above)"
+elif ! curl -fsSL --connect-timeout 20 --speed-time 60 -o "$CHART.new" "$URL"; then
   echo "FAILED: download of $URL"
 elif [ "$( (sha256sum "$CHART.new" 2>/dev/null || shasum -a 256 "$CHART.new") | cut -d' ' -f1)" != "$CHART_SHA256" ]; then
   echo "FAILED: checksum mismatch for $URL"
@@ -632,7 +661,12 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $GITEA_DIR = "$HOME\.config\vks-guides\gitea"
 $CHART_SHA256 = "5881ef9c59400bee2d5547e77c4cd0efb925143c2f5d93fb4f38446db76b0167"
+$SERVICE_RANGE = ""                   # empty: read it from the cluster
 
+if (-not $SERVICE_RANGE) {
+  $SERVICE_RANGE = kubectl --kubeconfig $VKS_KUBECONFIG get servicecidr -o jsonpath='{.items[*].spec.cidrs[*]}'
+}
+$ALLOWED = (@("$SERVICE_RANGE" -split '[ ,]' | Where-Object { $_ }) | ForEach-Object { if ($_ -like '*:*') { "[${_}]:8080" } else { "${_}:8080" } }) -join ','
 $CHART = "$GITEA_DIR\gitea-12.7.0.tgz"
 $URL = "https://dl.gitea.com/charts/gitea-12.7.0.tgz"
 New-Item -ItemType Directory -Force -Path $GITEA_DIR | Out-Null
@@ -693,7 +727,7 @@ gitea:
     security:
       INSTALL_LOCK: true
       MIN_PASSWORD_LENGTH: 16
-      ALLOWED_HOST_LIST: 10.96.0.0/12:8080
+      ALLOWED_HOST_LIST: @ALLOWED_HOST_LIST@
       EGRESS_MODE: lax
     service:
       DISABLE_REGISTRATION: true
@@ -749,10 +783,12 @@ postgresql:
 test:
   enabled: false
 '@
-[IO.File]::WriteAllText("$GITEA_DIR\values.yaml", ($V -replace "`r`n", "`n") + "`n")
+if ($ALLOWED) { [IO.File]::WriteAllText("$GITEA_DIR\values.yaml", ($V.Replace('@ALLOWED_HOST_LIST@', $ALLOWED) -replace "`r`n", "`n") + "`n") }
 $global:LASTEXITCODE = $null
-curl.exe -fsSL --connect-timeout 20 --speed-time 60 -o "$CHART.new" $URL
-if ($LASTEXITCODE -ne 0) {
+if ($ALLOWED) { curl.exe -fsSL --connect-timeout 20 --speed-time 60 -o "$CHART.new" $URL }
+if (-not $ALLOWED) {
+  "FAILED: no Service range; set SERVICE_RANGE to your cluster's (see above)"
+} elseif ($LASTEXITCODE -ne 0) {
   "FAILED: download of $URL"
 } elseif ((Get-FileHash -Algorithm SHA256 "$CHART.new").Hash -ne $CHART_SHA256) {
   "FAILED: checksum mismatch for $URL"
@@ -771,6 +807,8 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 and one pod `1/1 Running`.
 
 **If not:**
+- `FAILED: no Service range`: the line above it says why; on Kubernetes older than v1.33
+  (`the server doesn't have a resource type "servicecidr"`), set `SERVICE_RANGE`.
 - `helm: command not found`: install Helm ([HELM.md](HELM.md)).
 - `FAILED: download …`: this machine cannot reach `dl.gitea.com`.
 - `FAILED: checksum mismatch …`: the download arrived damaged, or the chart was rebuilt. Do not

@@ -2286,9 +2286,8 @@ run), `webhook: 201` (after `replaced webhook <n>` on a second run) and
 **If not:**
 - After step 8's push, no new PipelineRun, and Gitea's log
   (`kubectl --kubeconfig <the VKS kubeconfig> -n gitea logs deployment/gitea`) says `denied by
-  egress policy`: your Gitea predates GITEA.md's webhook setting; run GITEA.md step 4 again. If your
-  cluster's Service range is not `10.96.0.0/12` (CLUSTER.md, item 8), put yours with `:8080` in
-  `ALLOWED_HOST_LIST` there.
+  egress policy`: your Gitea predates GITEA.md's webhook setting; run GITEA.md step 4 again (it
+  reads the cluster's Service range).
 - `FAILED: no Gitea password …`: type it with step 4's first block, then run this again.
 - `Failed to connect to localhost port 3300`: the port-forward stopped (its terminal says `lost
   connection to pod`; it can drop while idle). Start GITEA.md step 6 again, then run this again.
