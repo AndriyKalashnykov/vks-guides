@@ -664,7 +664,7 @@ Now look at it, then sync:
    sync; delete the Application in the ArgoCD page with **Non-cascading** and choose another
    name.
 
-   ![The DIFF tab: the left half empty, the right half in green with the Cluster: builtin-generic-v3.8.0, best-effort-small, wcp-vmfs and v1.37.1+vmware.4](img/argocd/07-diff.png)
+   ![The DIFF tab: the left half empty, the right half in green with the Cluster: serviceDomain cluster.local, builtin-generic-v3.8.0, best-effort-small, wcp-vmfs and v1.37.1+vmware.4](img/argocd/07-diff.png)
 
 2. Close it, click **SYNC**, then **SYNCHRONIZE**.
 
