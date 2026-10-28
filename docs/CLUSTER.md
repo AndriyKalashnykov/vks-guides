@@ -122,7 +122,7 @@ the Supervisor. Ask a vCenter administrator.
    ![Step 1 Configuration Type: Default Configuration selected, Custom Configuration, NEXT, and the Kubernetes Resource YAML pane](img/cluster/05-create-type.png)
 
 2. **2. General Settings:** replace the generated **Cluster Name** with your name. Choose the
-   newest **Cluster Class** the list offers (`builtin-generic-v3.8.0` with VKS 3.8.0) and your
+   newest **Cluster Class** the list offers and your
    **Kubernetes Release**. In the **VM Class** table, select your class with the round button:
    the page preselects one, which may not be the one you want. Choose your **Storage Class**.
 

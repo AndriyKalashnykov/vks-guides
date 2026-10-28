@@ -1222,8 +1222,8 @@ outside `tekton-demo` exists, and stops otherwise. Run step 6 first.
 ### With the VKS add-on (A)
 
 This turns Pipelines and Triggers off and waits for them to go, removes the operator's webhook
-set while the operator still runs (it is left behind otherwise), then removes the add-on and its
-empty namespace.
+set while the operator still runs (it is left behind otherwise), waits up to 5 minutes for the
+operator's other sets to go, then removes the add-on and its empty namespace.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

@@ -108,7 +108,7 @@ Remove-Item -Recurse -Force $TMP
 - `FAILED: unsupported …, or dl.k8s.io unreachable`: there is no build for this OS/CPU, or this
   machine cannot reach dl.k8s.io. Use [From the Supervisor](#from-the-supervisor-dlk8sio-blocked).
 - `FAILED: download …` with a version you set: check that it starts with `v` and that the patch
-  exists. [stable-1.36.txt](https://dl.k8s.io/release/stable-1.36.txt) names the newest 1.36 patch;
+  exists. [stable-1.37.txt](https://dl.k8s.io/release/stable-1.37.txt) names the newest 1.37 patch;
   for another minor, change the number in the link.
 - `FAILED: checksum mismatch …`: the download arrived damaged. Run the block again.
 - `note: … added to PATH for this terminal only`: make it permanent with
