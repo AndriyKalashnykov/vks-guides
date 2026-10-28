@@ -1489,6 +1489,11 @@ warning` and `done.`).
 store; add `harbor-ca.crt` to Windows' or macOS's trust store (step 9, *Log in with a browser*)
 and restart Docker Desktop.
 
+Keep the robot's name in single quotes, here and in a `docker login -u 'robot$…'` you type
+yourself (PowerShell too): the `$` is part of the name, and in double quotes or unquoted the shell
+replaces `$my` with nothing, so the login fails with `unauthorized`. At docker's own `Username:`
+prompt, type the name as it is.
+
 Then, after typing the secret again if this is a new terminal:
 
 **Linux, WSL (bash or zsh):**
