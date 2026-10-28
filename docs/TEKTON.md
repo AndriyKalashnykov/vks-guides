@@ -1268,9 +1268,13 @@ else
       printf '%s\n' "$W" | grep '/validating-mutating-webhook-' | while read -r R; do
         kubectl --kubeconfig "$VKS_KUBECONFIG" delete "$R" --timeout=2m </dev/null
       done
-      if ! W="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get tektoninstallersets -o name)" \
-         || printf '%s\n' "$W" | grep -q '/validating-mutating-webhook-'; then
-        echo "FAILED: the operator's webhook set is still there (see the error above)"
+      for i in $(seq 60); do
+        W="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get tektoninstallersets -o name)" || W="unknown"
+        if [ -z "$W" ]; then break; fi
+        sleep 5
+      done
+      if [ -n "$W" ]; then
+        echo "FAILED: the operator's sets are still there after 5 minutes:" $W
       elif ! vcf addon install delete tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
         echo "FAILED: the add-on (see the error above)"
       else
@@ -1338,9 +1342,14 @@ if ($LASTEXITCODE -ne 0) {
         foreach ($R in @($W | Where-Object { $_ -match '/validating-mutating-webhook-' })) {
           kubectl --kubeconfig $VKS_KUBECONFIG delete $R --timeout=2m
         }
-        $W = @(kubectl --kubeconfig $VKS_KUBECONFIG get tektoninstallersets -o name)
-        if ($LASTEXITCODE -ne 0 -or @($W | Where-Object { $_ -match '/validating-mutating-webhook-' }).Count -gt 0) {
-          "FAILED: the operator's webhook set is still there (see the error above)"
+        foreach ($i in 1..60) {
+          $W = @(kubectl --kubeconfig $VKS_KUBECONFIG get tektoninstallersets -o name)
+          if ($LASTEXITCODE -ne 0) { $W = @('unknown') }
+          if ($W.Count -eq 0) { break }
+          Start-Sleep -Seconds 5
+        }
+        if ($W.Count -gt 0) {
+          "FAILED: the operator's sets are still there after 5 minutes: $W"
         } else {
           vcf addon install delete tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
           if ($LASTEXITCODE -ne 0) {
