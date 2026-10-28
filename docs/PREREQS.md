@@ -27,6 +27,10 @@ with your package manager.
 
 ## AlmaLinux 10
 
+AlmaLinux is a free rebuild of Red Hat Enterprise Linux (RHEL). Its blocks here and in the other
+guides use RHEL's own tools (`dnf`, Docker's RHEL repository), so they also fit RHEL 10, Rocky
+Linux 10 and CentOS Stream 10; they were run on AlmaLinux only.
+
 ```sh
 sudo dnf install -y curl tar unzip jq openssl
 ```
