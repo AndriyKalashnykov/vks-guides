@@ -222,9 +222,9 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 SERVICE_RANGE=""                      # empty: read it from the cluster
 
 if [ -z "$SERVICE_RANGE" ]; then
-  SERVICE_RANGE="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get servicecidr kubernetes -o jsonpath='{.spec.cidrs[*]}')"
+  SERVICE_RANGE="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get servicecidr -o jsonpath='{.items[*].spec.cidrs[*]}')"
 fi
-ALLOWED="$(printf '%s\n' "$SERVICE_RANGE" | tr ' ,' '\n\n' | grep . | sed 's/$/:8080/' | paste -sd, -)"
+ALLOWED="$(printf '%s\n' "$SERVICE_RANGE" | tr ' ,' '\n\n' | grep . | sed -e '/:/s/.*/[&]/' -e 's/$/:8080/' | paste -sd, -)"
 if [ -z "$ALLOWED" ]; then
   echo "FAILED: no Service range; set SERVICE_RANGE to your cluster's (see above)"
 else
@@ -349,9 +349,9 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $SERVICE_RANGE = ""                   # empty: read it from the cluster
 
 if (-not $SERVICE_RANGE) {
-  $SERVICE_RANGE = kubectl --kubeconfig $VKS_KUBECONFIG get servicecidr kubernetes -o jsonpath='{.spec.cidrs[*]}'
+  $SERVICE_RANGE = kubectl --kubeconfig $VKS_KUBECONFIG get servicecidr -o jsonpath='{.items[*].spec.cidrs[*]}'
 }
-$ALLOWED = (@("$SERVICE_RANGE" -split '[ ,]' | Where-Object { $_ }) | ForEach-Object { "${_}:8080" }) -join ','
+$ALLOWED = (@("$SERVICE_RANGE" -split '[ ,]' | Where-Object { $_ }) | ForEach-Object { if ($_ -like '*:*') { "[${_}]:8080" } else { "${_}:8080" } }) -join ','
 if (-not $ALLOWED) {
   "FAILED: no Service range; set SERVICE_RANGE to your cluster's (see above)"
 } else {
@@ -517,13 +517,13 @@ CHART_SHA256="5881ef9c59400bee2d5547e77c4cd0efb925143c2f5d93fb4f38446db76b0167"
 SERVICE_RANGE=""                      # empty: read it from the cluster
 
 if [ -z "$SERVICE_RANGE" ]; then
-  SERVICE_RANGE="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get servicecidr kubernetes -o jsonpath='{.spec.cidrs[*]}')"
+  SERVICE_RANGE="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get servicecidr -o jsonpath='{.items[*].spec.cidrs[*]}')"
 fi
-ALLOWED="$(printf '%s\n' "$SERVICE_RANGE" | tr ' ,' '\n\n' | grep . | sed 's/$/:8080/' | paste -sd, -)"
+ALLOWED="$(printf '%s\n' "$SERVICE_RANGE" | tr ' ,' '\n\n' | grep . | sed -e '/:/s/.*/[&]/' -e 's/$/:8080/' | paste -sd, -)"
 CHART="$GITEA_DIR/gitea-12.7.0.tgz"
 URL="https://dl.gitea.com/charts/gitea-12.7.0.tgz"
 mkdir -p "$GITEA_DIR"
-sed "s|@ALLOWED_HOST_LIST@|$ALLOWED|" > "$GITEA_DIR/values.yaml" <<'EOF'
+[ -n "$ALLOWED" ] && sed "s|@ALLOWED_HOST_LIST@|$ALLOWED|" > "$GITEA_DIR/values.yaml" <<'EOF'
 image:
   registry: docker.io
   repository: gitea/gitea
@@ -664,9 +664,9 @@ $CHART_SHA256 = "5881ef9c59400bee2d5547e77c4cd0efb925143c2f5d93fb4f38446db76b016
 $SERVICE_RANGE = ""                   # empty: read it from the cluster
 
 if (-not $SERVICE_RANGE) {
-  $SERVICE_RANGE = kubectl --kubeconfig $VKS_KUBECONFIG get servicecidr kubernetes -o jsonpath='{.spec.cidrs[*]}'
+  $SERVICE_RANGE = kubectl --kubeconfig $VKS_KUBECONFIG get servicecidr -o jsonpath='{.items[*].spec.cidrs[*]}'
 }
-$ALLOWED = (@("$SERVICE_RANGE" -split '[ ,]' | Where-Object { $_ }) | ForEach-Object { "${_}:8080" }) -join ','
+$ALLOWED = (@("$SERVICE_RANGE" -split '[ ,]' | Where-Object { $_ }) | ForEach-Object { if ($_ -like '*:*') { "[${_}]:8080" } else { "${_}:8080" } }) -join ','
 $CHART = "$GITEA_DIR\gitea-12.7.0.tgz"
 $URL = "https://dl.gitea.com/charts/gitea-12.7.0.tgz"
 New-Item -ItemType Directory -Force -Path $GITEA_DIR | Out-Null
@@ -783,7 +783,7 @@ postgresql:
 test:
   enabled: false
 '@
-[IO.File]::WriteAllText("$GITEA_DIR\values.yaml", ($V.Replace('@ALLOWED_HOST_LIST@', $ALLOWED) -replace "`r`n", "`n") + "`n")
+if ($ALLOWED) { [IO.File]::WriteAllText("$GITEA_DIR\values.yaml", ($V.Replace('@ALLOWED_HOST_LIST@', $ALLOWED) -replace "`r`n", "`n") + "`n") }
 $global:LASTEXITCODE = $null
 if ($ALLOWED) { curl.exe -fsSL --connect-timeout 20 --speed-time 60 -o "$CHART.new" $URL }
 if (-not $ALLOWED) {
