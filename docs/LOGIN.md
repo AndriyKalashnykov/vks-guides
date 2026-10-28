@@ -614,7 +614,9 @@ $V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o jso
 ## Renew the Supervisor login
 
 Run this only when a `kubectl` command to the Supervisor answers
-`error: You must be logged in to the server (Unauthorized)`. The VKS cluster's kubeconfig does
+`error: You must be logged in to the server (Unauthorized)`, or a `vcf` command answers
+`Unable to read password from terminal` or `the server has asked for the client to provide
+credentials`. The VKS cluster's kubeconfig does
 not need it. Set `SUPERVISOR_CA` to the file you created the context with (the vCenter CA, or
 `supervisor.crt`), or to `""` if you created it without CA. It logs in with your password again,
 so in a new terminal first run the password step of the Create section you used, and mind the

@@ -37,7 +37,7 @@ This lists the Fluent Bit releases the Supervisor offers and the add-ons the clu
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 
-vcf context use supervisor
+vcf context use supervisor </dev/null
 vcf addon available-releases list --addon-name fluent-bit
 vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"
 ```
@@ -48,7 +48,7 @@ vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
-vcf context use supervisor
+$null | vcf context use supervisor
 vcf addon available-releases list --addon-name fluent-bit
 vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE
 ```
@@ -59,8 +59,8 @@ cluster's list has no `fluent-bit`. A line `failed to discover plugin sources fr
 Harbor registry` may follow the context line; it does no harm here.
 
 **If not:**
-- `Unauthorized`: your Supervisor login ended; run
-  [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+- `Unauthorized`, `Unable to read password from terminal` or `provide credentials`: your
+  Supervisor login ended; run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 - `context supervisor not found`: create the Supervisor context ([LOGIN.md](LOGIN.md)).
 - The cluster's list already has `fluent-bit`: it is installed; to change where it sends logs,
   see step 7.
@@ -222,7 +222,7 @@ VKS_CLUSTER="my-vks-cluster"
 FLUENT_BIT_RELEASE="fluent-bit.kubernetes.vmware.com.5.0.9-vmware.1-vks.1"
 LOGGING_DIR="$HOME/.config/vks-guides/logging"
 
-vcf context use supervisor
+vcf context use supervisor </dev/null
 vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
   --addon-release-name "$FLUENT_BIT_RELEASE" -f "$LOGGING_DIR/values.yaml" -y
 ```
@@ -235,7 +235,7 @@ $VKS_CLUSTER = "my-vks-cluster"
 $FLUENT_BIT_RELEASE = "fluent-bit.kubernetes.vmware.com.5.0.9-vmware.1-vks.1"
 $LOGGING_DIR = "$HOME\.config\vks-guides\logging"
 
-vcf context use supervisor
+$null | vcf context use supervisor
 vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f "$LOGGING_DIR\values.yaml" -y
 ```
 
@@ -243,7 +243,8 @@ vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPAC
 
 **If not:**
 - `not found` for the release: copy its name again from step 1.
-- `Unauthorized` or `context supervisor not found`: as in step 1.
+- A login error (`Unauthorized`, `Unable to read password from terminal`,
+  `provide credentials`) or `context supervisor not found`: as in step 1.
 
 ## 5. Give Fluent Bit the CA
 
@@ -438,12 +439,15 @@ else
   kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging create secret generic tls-ca-cert \
     --from-file=tls_http.crt="$CA" --dry-run=client -o yaml \
     | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -
-  vcf context use supervisor
-  vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
-    -f "$LOGGING_DIR/values.yaml" -y
-  sleep 30
-  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
-  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+  vcf context use supervisor </dev/null
+  if vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+       -f "$LOGGING_DIR/values.yaml" -y; then
+    sleep 30
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+  else
+    echo "FAILED: add-on update (see the error above)"
+  fi
 fi
 ```
 
@@ -464,11 +468,15 @@ if (-not (Test-Path $CA)) {
 } else {
   kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging create secret generic tls-ca-cert --from-file=tls_http.crt="$CA" --dry-run=client -o yaml |
     kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
-  vcf context use supervisor
+  $null | vcf context use supervisor
   vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$LOGGING_DIR\values.yaml" -y
-  Start-Sleep 30
-  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
-  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+  if ($LASTEXITCODE -eq 0) {
+    Start-Sleep 30
+    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
+    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+  } else {
+    "FAILED: add-on update (see the error above)"
+  }
 }
 ```
 
@@ -481,7 +489,9 @@ then run step 6 again.
 
 **If not:**
 - `FAILED: not found`: save the CA as step 2 says.
-- `Unauthorized` or `context supervisor not found`: as in step 1.
+- `FAILED: add-on update`: the error above it says why.
+- A login error (`Unauthorized`, `Unable to read password from terminal`,
+  `provide credentials`) or `context supervisor not found`: as in step 1.
 
 ## 8. Uninstall (optional)
 
@@ -491,7 +501,7 @@ then run step 6 again.
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 
-vcf context use supervisor
+vcf context use supervisor </dev/null
 vcf addon install delete fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y
 ```
 
@@ -501,7 +511,7 @@ vcf addon install delete fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMES
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
-vcf context use supervisor
+$null | vcf context use supervisor
 vcf addon install delete fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
 ```
 
@@ -509,6 +519,7 @@ vcf addon install delete fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPAC
 `Addon 'fluent-bit' installed in the cluster … has been deleted`; the Fluent Bit pods go away
 within a minute.
 
-**If not:** `Unauthorized` or `context supervisor not found`: as in step 1.
+**If not:** a login error (`Unauthorized`, `Unable to read password from terminal`,
+`provide credentials`) or `context supervisor not found`: as in step 1.
 
 Back to [README](../README.md).

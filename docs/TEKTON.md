@@ -135,14 +135,14 @@ Skip to step 3 for B. List the Tekton add-on releases your Supervisor offers:
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-vcf context use supervisor
+vcf context use supervisor </dev/null
 vcf addon available-releases list --addon-name tekton-operator
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-vcf context use supervisor
+$null | vcf context use supervisor
 vcf addon available-releases list --addon-name tekton-operator
 ```
 
@@ -151,7 +151,8 @@ vcf addon available-releases list --addon-name tekton-operator
 
 **If not:**
 - No row: the Supervisor runs a VKS older than 3.8. Use B (step 3).
-- `no current context set` or a login error: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+- `Unable to read password from terminal`, `provide credentials` or `no current context set`:
+  [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
 This installs the add-on on your cluster from the Supervisor, with its web exposure turned off
 (it needs cert-manager and a Gateway), then waits for the operator's two pods. A second run
@@ -167,7 +168,7 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 TEKTON_RELEASE="tekton-operator.0.80.0-vmware.1-vks.1"
 TEKTON_DIR="$HOME/.config/vks-guides/tekton"
 
-vcf context use supervisor
+vcf context use supervisor </dev/null
 mkdir -p "$TEKTON_DIR"
 printf 'helmValues:\n  exposure:\n    enabled: false\n' > "$TEKTON_DIR/addon-values.yaml"
 if ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
@@ -219,7 +220,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $TEKTON_RELEASE = "tekton-operator.0.80.0-vmware.1-vks.1"
 $TEKTON_DIR = "$HOME\.config\vks-guides\tekton"
 
-vcf context use supervisor
+$null | vcf context use supervisor
 New-Item -ItemType Directory -Force -Path $TEKTON_DIR | Out-Null
 [IO.File]::WriteAllText("$TEKTON_DIR\addon-values.yaml", "helmValues:`n  exposure:`n    enabled: false`n")
 $global:LASTEXITCODE = $null
@@ -1232,7 +1233,7 @@ VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-vcf context use supervisor
+vcf context use supervisor </dev/null
 if ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)" \
    || ! A="$(kubectl --kubeconfig "$VKS_KUBECONFIG" api-resources -o name)"; then
   echo "STOPPED: cannot read the cluster (see the error above)"
@@ -1240,6 +1241,8 @@ elif ! printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s
   echo "The Tekton add-on is not installed"
 elif [ "$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}')" != vmware-system-helm ]; then
   echo "STOPPED: this Tekton Operator is not the VKS add-on"
+elif ! vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" >/dev/null; then
+  echo "STOPPED: the VCF CLI (see the error above)"
 else
   L=""
   K="$(printf '%s\n' "$A" | grep '\.tekton\.dev$' | grep -v -e '^clusterinterceptors\.' -e '\.operator\.tekton\.dev$' | paste -sd, -)"
@@ -1293,7 +1296,7 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
-vcf context use supervisor
+$null | vcf context use supervisor
 $global:LASTEXITCODE = $null
 $C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
 if ($LASTEXITCODE -eq 0) { $A = @(kubectl --kubeconfig $VKS_KUBECONFIG api-resources -o name) }
@@ -1303,6 +1306,8 @@ if ($LASTEXITCODE -ne 0) {
   "The Tekton add-on is not installed"
 } elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}') -ne 'vmware-system-helm') {
   "STOPPED: this Tekton Operator is not the VKS add-on"
+} elseif ((vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE | Out-Null) -or $LASTEXITCODE -ne 0) {
+  "STOPPED: the VCF CLI (see the error above)"
 } else {
   $L = @()
   $KINDS = @($A | Where-Object { $_ -match '\.tekton\.dev$' -and $_ -notmatch '^clusterinterceptors\.' -and $_ -notmatch '\.operator\.tekton\.dev$' }) -join ','
@@ -1369,6 +1374,8 @@ if ($LASTEXITCODE -ne 0) {
 - `STOPPED: this Tekton Operator is not the VKS add-on`: someone else installed it; leave it.
 - `STOPPED: … objects outside tekton-demo`: list them with `kubectl --kubeconfig <the VKS
   kubeconfig> get <kind> -A`; delete them first if they are yours.
+- `STOPPED: the VCF CLI` under `Unable to read password from terminal` or `provide credentials`:
+  [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then run the block again.
 - `Tekton CRDs left:` more than 0, or `FAILED: …`: see the error above it, and run the block
   again.
 - `STOPPED: cannot read the cluster` with no other error: `kubectl --kubeconfig <the VKS

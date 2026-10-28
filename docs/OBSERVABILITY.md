@@ -566,7 +566,7 @@ EOF
 EOF
   fi
 } > "$V"
-vcf context use supervisor
+vcf context use supervisor </dev/null
 if [ -n "$BAD_NAME" ]; then
   echo "FAILED: set LOGS_FQDN to Log Management's DNS name (LOGGING.md step 3), or leave it empty"
 elif ! kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw /version >/dev/null; then
@@ -647,7 +647,7 @@ if ($LOGS_FQDN) {
 "@
 }
 [IO.File]::WriteAllText($V, ($T -replace "`r`n", "`n") + "`n")
-vcf context use supervisor
+$null | vcf context use supervisor
 $OK = $true
 if ($LOGS_FQDN -and ($LOGS_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $LOGS_FQDN -eq 'logs.example.test')) {
   "FAILED: set LOGS_FQDN to Log Management's DNS name (LOGGING.md step 3), or leave it empty"
@@ -700,7 +700,8 @@ and `daemonset.apps/fluent-bit restarted`), then `daemon set "fluent-bit" succes
 
 **If not:**
 - `not found` for the release: copy its name again from LOGGING.md step 1.
-- `Unauthorized` or `context supervisor not found`: as in LOGGING.md step 1.
+- A login error (`Unauthorized`, `Unable to read password from terminal`,
+  `provide credentials`) or `context supervisor not found`: as in LOGGING.md step 1.
 - `FAILED: the add-on also sends to Log Management`: you did LOGGING.md; set `LOGS_FQDN` to Log
   Management's name, so this step keeps that output.
 - `FAILED: add-on update` or `FAILED: add-on install`: the line above it says why.

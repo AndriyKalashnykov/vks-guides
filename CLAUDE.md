@@ -43,11 +43,20 @@ blocks; there is nothing to build.
 - Where the terminal does not bracket the paste, a pasted block's later lines wait in the terminal,
   and sudo 1.9.14 or later (`use_pty` by default: Ubuntu, Debian) reads them: nothing may follow a
   line that runs `sudo`, so clean-up goes on that line (`fi; rm -rf "$TMP"`).
+  `vcf context use` reads the password from stdin when the login token has expired, so the
+  next pasted line becomes a failed login: write it `vcf context use supervisor </dev/null`
+  (PowerShell: `$null | vcf context use supervisor`), which stops with `Unable to read password
+  from terminal` instead, on every shell, also where the paste is bracketed and the password could
+  have been typed (the reader renews the login and runs the block again).
 - A behaviour change is run for real before README's "Tested on" table claims it. On the owner's
   nested-vsphere-lab the agent logs in itself and never asks the owner to: `make login
   VCF_CONTEXT=supervisor` (or `make kubectl-login VCF_CONTEXT=supervisor`) in that checkout logs
   in to the Supervisor with the lab's own secrets, so the agent never handles the password, and
   names the VCF CLI context `supervisor`, as the guides' `vcf context use supervisor` expects.
+  `make walkbox-login WALKBOX_OS=ubuntu|photon|almalinux|windows` logs a walkbox in the same way
+  (LOGIN.md's files: `~/.kube/supervisor.kubeconfig`, context `supervisor`); use it whenever a
+  walkbox run needs the SSO password, and never ask the owner (one attempt per run: mind the
+  lock-out).
 - Coordinate every lab use with the nested-vsphere-lab session (find it with ListAgents, message
   it with SendMessage): announce before installing anything cluster-wide on a VKS cluster (CRDs,
   DaemonSets, host ports) or starting the walkbox, say when the lab is clean, and send it any lab
