@@ -1223,7 +1223,9 @@ This creates a project for your images. Set `HARBOR_PROJECT` to lower-case lette
 `-`. `HARBOR_PROJECT_PUBLIC="false"` makes it **private**: a VKS cluster then needs a pull secret to
 pull from it. `"true"` makes it **public**: anyone who reaches Harbor can pull its images without
 logging in; pushing still needs a login. In Harbor's web page the same is **Projects** → **NEW
-PROJECT**, with **Public** ticked or not under **Access Level**.
+PROJECT**, with **Public** ticked or not under **Access Level**, then **OK**.
+
+![Harbor's New Project window with the name my-project and Public ticked](img/harbor/12-new-project-public.png)
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1370,6 +1372,29 @@ once: keep both where you keep passwords. The `$` is part of the name.
 - `ERROR CONFLICT`: a robot named `push` exists in this project. Use its secret, or delete it in
   Harbor's web page (**Projects** → your project → **Robot Accounts**) and run the block again.
 - `ERROR UNAUTHORIZED`: see *Log in as admin*.
+
+**In Harbor's web page** the same is a robot account that you then give permissions on your
+project: **Administration** → **Robot Accounts** → **NEW ROBOT ACCOUNT**.
+
+1. **Basic Information**: a name and how many days it lasts, then **NEXT**.
+
+   ![The first page of Create System Robot Account, with the name my-project-push and 30 days](img/harbor/13-robot-name.png)
+
+2. **Select System Permissions**: tick nothing, then **NEXT**.
+3. **Select Project Permissions**: tick your project, open its **PERMISSION(S)** list and tick
+   **Repository** → **Pull** and **Push**, and **Artifact** → **List** and **Read** (for a robot
+   that only pulls, IMAGE.md step 5: only **Repository** → **Pull**). Click outside the list,
+   then **FINISH**.
+
+   ![Select Project Permissions with my-project ticked and its list showing Pull, Push, List and Read ticked](img/harbor/14-robot-project-permissions.png)
+
+4. Harbor shows the robot's secret once: copy it, or **EXPORT TO FILE**, and keep it where you
+   keep passwords.
+
+   ![The window that shows the new robot's name and secret](img/harbor/15-robot-secret.png)
+
+Its name is `robot$` and the name you typed (here `robot$my-project-push`), not
+`robot$<your project>+push`.
 
 ### Log in with podman or docker (optional)
 

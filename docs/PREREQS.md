@@ -228,10 +228,12 @@ running. Restart the machine; docker then starts by itself.
 
 ### podman and docker on Photon OS 5
 
-Keep `openssh openssh-socket` in the line: without them the machine stops accepting SSH logins.
+docker only: Photon OS turns off the user namespaces that podman needs without `root`
+(`kernel.unprivileged_userns_clone`). Keep `openssh openssh-socket` in the line: without them the
+machine stops accepting SSH logins.
 
 ```sh
-sudo tdnf install -y docker podman crun openssh openssh-socket && sudo usermod -aG docker "$USER" && sudo systemctl enable --now docker && echo "docker installed: log out and back in"
+sudo tdnf install -y docker openssh openssh-socket && sudo usermod -aG docker "$USER" && sudo systemctl enable --now docker && echo "docker installed: log out and back in"
 ```
 
 **Expect:** `docker installed: log out and back in`.

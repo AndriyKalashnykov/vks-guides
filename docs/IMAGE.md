@@ -252,7 +252,7 @@ else {
   Hub, or Docker Hub limits your pulls (log in with `podman login docker.io` / `docker login`).
 - `Cannot connect to the Docker daemon` or `permission denied … docker.sock`: see
   [Check podman and docker](PREREQS.md#check-podman-and-docker).
-- podman on Photon OS: `default OCI runtime "crun" not found`: install `crun`
+- podman on Photon OS: `user namespaces are not enabled`: use docker there
   ([Prerequisites](PREREQS.md#podman-and-docker-on-photon-os-5)).
 
 ## 4. Push it to Harbor
