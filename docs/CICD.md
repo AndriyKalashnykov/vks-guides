@@ -1711,8 +1711,9 @@ This puts the pipeline in place and runs it once.
   artifact; `writeback` checks it is a digest, clones `deploy`, sets the image and pushes.
 
 GitLab makes the runner and the token in its pod; they go straight into the Secrets and are never
-shown or saved on this machine. The block needs the runner chart that GITLAB.md step 8 downloaded.
-If another push reached `cicd/app` while a build ran, its write-back leaves `deploy` to that push.
+shown or saved on this machine. The block needs the runner chart and `runner-values.yaml` from
+GITLAB.md step 8. If another push reached `cicd/app` while a build ran, its write-back leaves
+`deploy` to that push.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1727,37 +1728,7 @@ CHART_SHA256="2403187ea4f50199814f22019b6a3a88b271dcfe67d26bd44c6d93b47065ffad"
 CHART="$GITLAB_DIR/gitlab-runner-0.94.1.tgz"
 mkdir -p "$GITLAB_DIR"
 cat > "$GITLAB_DIR/cicd-build-values.yaml" <<'EOF'
-image:
-  registry: registry.gitlab.com
-  repository: gitlab-org/gitlab-runner
-  tag: alpine-v19.5.1@sha256:86a371df46b076bb4c510bca1751d428177d2567bd88e4047613bc7fa92d1a0e
-rbac:
-  create: true
-  rules:
-    - resources: ["events"]
-      verbs: ["get", "list", "watch"]
-    - resources: ["pods"]
-      verbs: ["create", "delete", "get", "list", "watch"]
-    - apiGroups: [""]
-      resources: ["pods/attach", "pods/exec"]
-      verbs: ["get", "create", "patch", "delete"]
-    - apiGroups: [""]
-      resources: ["pods/log"]
-      verbs: ["get", "list"]
-    - resources: ["secrets"]
-      verbs: ["create", "delete", "get", "update"]
-    - resources: ["serviceaccounts"]
-      verbs: ["get"]
-serviceAccount:
-  create: true
-concurrent: 2
-podSecurityContext:
-  runAsUser: 100
-  fsGroup: 65533
-  seccompProfile:
-    type: RuntimeDefault
 runners:
-  secret: gitlab-runner-token
   config: |
     [[runners]]
       [runners.feature_flags]
@@ -1780,29 +1751,6 @@ runners:
           read_only = true
 EOF
 cat > "$GITLAB_DIR/cicd-writeback-values.yaml" <<'EOF'
-image:
-  registry: registry.gitlab.com
-  repository: gitlab-org/gitlab-runner
-  tag: alpine-v19.5.1@sha256:86a371df46b076bb4c510bca1751d428177d2567bd88e4047613bc7fa92d1a0e
-rbac:
-  create: true
-  rules:
-    - resources: ["events"]
-      verbs: ["get", "list", "watch"]
-    - resources: ["pods"]
-      verbs: ["create", "delete", "get", "list", "watch"]
-    - apiGroups: [""]
-      resources: ["pods/attach", "pods/exec"]
-      verbs: ["get", "create", "patch", "delete"]
-    - apiGroups: [""]
-      resources: ["pods/log"]
-      verbs: ["get", "list"]
-    - resources: ["secrets"]
-      verbs: ["create", "delete", "get", "update"]
-    - resources: ["serviceaccounts"]
-      verbs: ["get"]
-serviceAccount:
-  create: true
 concurrent: 1
 podSecurityContext:
   runAsUser: 100
@@ -1838,8 +1786,8 @@ runners:
           read_only = true
 EOF
 gitlab_rails() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>/dev/null | tail -1 | tr -d '\r\n'; }
-if [ "$( (sha256sum "$CHART" 2>/dev/null || shasum -a 256 "$CHART" 2>/dev/null) | cut -d' ' -f1)" != "$CHART_SHA256" ]; then
-  echo "FAILED: no runner chart in $GITLAB_DIR; do GITLAB.md step 8 first"
+if [ "$( (sha256sum "$CHART" 2>/dev/null || shasum -a 256 "$CHART" 2>/dev/null) | cut -d' ' -f1)" != "$CHART_SHA256" ] || [ ! -s "$GITLAB_DIR/runner-values.yaml" ]; then
+  echo "FAILED: no runner chart or runner-values.yaml in $GITLAB_DIR; do GITLAB.md step 8 first"
 else
   kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - <<'EOF'
 apiVersion: v1
@@ -1880,8 +1828,8 @@ EOF
       | kubectl --kubeconfig "$VKS_KUBECONFIG" create -f -
   done
   kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback get secret gitlab-writeback-token deploy-token -o name >/dev/null \
-    && helm upgrade --install gitlab-runner "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner -f "$GITLAB_DIR/cicd-build-values.yaml" --set gitlabUrl="$GITLAB_URL" >/dev/null \
-    && helm upgrade --install gitlab-writeback "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback -f "$GITLAB_DIR/cicd-writeback-values.yaml" --set gitlabUrl="$GITLAB_URL" >/dev/null \
+    && helm upgrade --install gitlab-runner "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner -f "$GITLAB_DIR/runner-values.yaml" -f "$GITLAB_DIR/cicd-build-values.yaml" --set gitlabUrl="$GITLAB_URL" >/dev/null \
+    && helm upgrade --install gitlab-writeback "$CHART" --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback -f "$GITLAB_DIR/runner-values.yaml" -f "$GITLAB_DIR/cicd-writeback-values.yaml" --set gitlabUrl="$GITLAB_URL" >/dev/null \
     && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner rollout restart deployment/gitlab-runner \
     && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback rollout restart deployment/gitlab-writeback-gitlab-runner \
     && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-runner rollout status deployment/gitlab-runner --timeout=5m \
@@ -1917,37 +1865,7 @@ $CHART_SHA256 = "2403187ea4f50199814f22019b6a3a88b271dcfe67d26bd44c6d93b47065ffa
 $CHART = "$GITLAB_DIR\gitlab-runner-0.94.1.tgz"
 New-Item -ItemType Directory -Force -Path $GITLAB_DIR | Out-Null
 $BV = @'
-image:
-  registry: registry.gitlab.com
-  repository: gitlab-org/gitlab-runner
-  tag: alpine-v19.5.1@sha256:86a371df46b076bb4c510bca1751d428177d2567bd88e4047613bc7fa92d1a0e
-rbac:
-  create: true
-  rules:
-    - resources: ["events"]
-      verbs: ["get", "list", "watch"]
-    - resources: ["pods"]
-      verbs: ["create", "delete", "get", "list", "watch"]
-    - apiGroups: [""]
-      resources: ["pods/attach", "pods/exec"]
-      verbs: ["get", "create", "patch", "delete"]
-    - apiGroups: [""]
-      resources: ["pods/log"]
-      verbs: ["get", "list"]
-    - resources: ["secrets"]
-      verbs: ["create", "delete", "get", "update"]
-    - resources: ["serviceaccounts"]
-      verbs: ["get"]
-serviceAccount:
-  create: true
-concurrent: 2
-podSecurityContext:
-  runAsUser: 100
-  fsGroup: 65533
-  seccompProfile:
-    type: RuntimeDefault
 runners:
-  secret: gitlab-runner-token
   config: |
     [[runners]]
       [runners.feature_flags]
@@ -1970,29 +1888,6 @@ runners:
           read_only = true
 '@
 $WV = @'
-image:
-  registry: registry.gitlab.com
-  repository: gitlab-org/gitlab-runner
-  tag: alpine-v19.5.1@sha256:86a371df46b076bb4c510bca1751d428177d2567bd88e4047613bc7fa92d1a0e
-rbac:
-  create: true
-  rules:
-    - resources: ["events"]
-      verbs: ["get", "list", "watch"]
-    - resources: ["pods"]
-      verbs: ["create", "delete", "get", "list", "watch"]
-    - apiGroups: [""]
-      resources: ["pods/attach", "pods/exec"]
-      verbs: ["get", "create", "patch", "delete"]
-    - apiGroups: [""]
-      resources: ["pods/log"]
-      verbs: ["get", "list"]
-    - resources: ["secrets"]
-      verbs: ["create", "delete", "get", "update"]
-    - resources: ["serviceaccounts"]
-      verbs: ["get"]
-serviceAccount:
-  create: true
 concurrent: 1
 podSecurityContext:
   runAsUser: 100
@@ -2030,8 +1925,8 @@ runners:
 [IO.File]::WriteAllText("$GITLAB_DIR\cicd-build-values.yaml", ($BV -replace "`r`n", "`n") + "`n")
 [IO.File]::WriteAllText("$GITLAB_DIR\cicd-writeback-values.yaml", ($WV -replace "`r`n", "`n") + "`n")
 function Invoke-GitLabRails($Ruby) { ($Ruby | kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>$null | Select-Object -Last 1 | Out-String).Trim() }
-if (-not (Test-Path $CHART) -or (Get-FileHash -Algorithm SHA256 $CHART).Hash -ne $CHART_SHA256) {
-  "FAILED: no runner chart in $GITLAB_DIR; do GITLAB.md step 8 first"
+if (-not (Test-Path $CHART) -or (Get-FileHash -Algorithm SHA256 $CHART).Hash -ne $CHART_SHA256 -or -not (Test-Path "$GITLAB_DIR\runner-values.yaml") -or (Get-Item "$GITLAB_DIR\runner-values.yaml").Length -eq 0) {
+  "FAILED: no runner chart or runner-values.yaml in $GITLAB_DIR; do GITLAB.md step 8 first"
 } else {
   "apiVersion: v1`nkind: Namespace`nmetadata:`n  name: gitlab-writeback`n  labels:`n    pod-security.kubernetes.io/enforce: restricted`n    pod-security.kubernetes.io/audit: restricted`n    pod-security.kubernetes.io/warn: restricted`n" |
     kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
@@ -2055,8 +1950,8 @@ if (-not (Test-Path $CHART) -or (Get-FileHash -Algorithm SHA256 $CHART).Hash -ne
     Remove-Variable V, D
   }
   kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback get secret gitlab-writeback-token deploy-token -o name | Out-Null
-  if ($LASTEXITCODE -eq 0) { helm upgrade --install gitlab-runner $CHART --kubeconfig $VKS_KUBECONFIG -n gitlab-runner -f "$GITLAB_DIR\cicd-build-values.yaml" --set gitlabUrl=$GITLAB_URL | Out-Null }
-  if ($LASTEXITCODE -eq 0) { helm upgrade --install gitlab-writeback $CHART --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback -f "$GITLAB_DIR\cicd-writeback-values.yaml" --set gitlabUrl=$GITLAB_URL | Out-Null }
+  if ($LASTEXITCODE -eq 0) { helm upgrade --install gitlab-runner $CHART --kubeconfig $VKS_KUBECONFIG -n gitlab-runner -f "$GITLAB_DIR\runner-values.yaml" -f "$GITLAB_DIR\cicd-build-values.yaml" --set gitlabUrl=$GITLAB_URL | Out-Null }
+  if ($LASTEXITCODE -eq 0) { helm upgrade --install gitlab-writeback $CHART --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback -f "$GITLAB_DIR\runner-values.yaml" -f "$GITLAB_DIR\cicd-writeback-values.yaml" --set gitlabUrl=$GITLAB_URL | Out-Null }
   if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner rollout restart deployment/gitlab-runner }
   if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-writeback rollout restart deployment/gitlab-writeback-gitlab-runner }
   if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab-runner rollout status deployment/gitlab-runner --timeout=5m }
@@ -2091,8 +1986,8 @@ run: `kept: secret …` and `writeback: success unchanged: …` or a new digest.
 Then run step 5's check with `WANT="test-web-apps v1"`.
 
 **If not:**
-- `FAILED: no runner chart …`: run this on the machine where you did GITLAB.md step 8, or do that
-  step here.
+- `FAILED: no runner chart or runner-values.yaml …`: run this on the machine where you did
+  GITLAB.md step 8, or do that step here.
 - `build runners for cicd/app: 0`: no runner has the tag `vks`; do GITLAB.md step 8.
 - `build: failed`: `http://localhost:3400/cicd/app/-/jobs` shows the log. `waiting for pod running:
   timed out` means `harbor-push` or `harbor-ca` is missing in `gitlab-runner` (step 3 with
