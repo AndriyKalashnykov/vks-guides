@@ -81,7 +81,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Install kubectl](docs/KUBECTL.md) | — | part | part | — |
 | [Install the VCF CLI](docs/VCF.md) | part | part | part | part |
 | [Log in](docs/LOGIN.md) | part | part | part | part |
-| [Create a vSphere Namespace](docs/NAMESPACE.md) | — | — | — | — |
+| [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | ✅ | — | ✅ |
 | [Create a VKS cluster](docs/CLUSTER.md) | — | part | part | — |
 | [Install Harbor](docs/HARBOR.md) | part | part | — | — |
 | [ArgoCD](docs/ARGOCD.md) | part | — | part | part |
