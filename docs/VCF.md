@@ -270,7 +270,8 @@ What this means for you:
 - `vcf context use` can print `failed to discover plugin sources …` and exit with an error even
   though it switched (on a Supervisor with no system Harbor registry). Check the switch with
   `kubectl --kubeconfig <the file> config current-context`, not with the exit code. A login whose
-  token has expired makes `vcf context use` ask for the password.
+  token has expired makes `vcf context use` ask for the password; the guides run it with
+  `</dev/null`, so it stops with `Unable to read password from terminal` instead.
 - To stop `vcf context use` from changing the kubeconfig, set
   `VCF_CLI_SKIP_UPDATE_KUBECONFIG_ON_CONTEXT_USE=true`. Broadcom does not document this variable.
 - `no current context set for type "kubernetes"` from a command such as `vcf cluster list`: no

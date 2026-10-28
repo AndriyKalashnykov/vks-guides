@@ -43,6 +43,9 @@ blocks; there is nothing to build.
 - Where the terminal does not bracket the paste, a pasted block's later lines wait in the terminal,
   and sudo 1.9.14 or later (`use_pty` by default: Ubuntu, Debian) reads them: nothing may follow a
   line that runs `sudo`, so clean-up goes on that line (`fi; rm -rf "$TMP"`).
+  `vcf context use` reads the password from stdin when the login token has expired, so the
+  next pasted line becomes a failed login: write it `vcf context use supervisor </dev/null`, which
+  stops with `Unable to read password from terminal` instead.
 - A behaviour change is run for real before README's "Tested on" table claims it. On the owner's
   nested-vsphere-lab the agent logs in itself and never asks the owner to: `make login
   VCF_CONTEXT=supervisor` (or `make kubectl-login VCF_CONTEXT=supervisor`) in that checkout logs
