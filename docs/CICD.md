@@ -1684,9 +1684,10 @@ then within a few minutes `Succeeded: Tasks Completed: 2 (Failed: 0, Cancelled 0
 **If not:**
 - `Failed: …`: `kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci logs -l
   tekton.dev/pipelineTask=build --all-containers` shows the build's log. `x509: certificate signed
-  by unknown authority` means `harbor-ca` is missing in `cicd-ci`, `UNAUTHORIZED` that `harbor-push`
-  is missing or expired (step 3); `toomanyrequests` is Docker Hub's pull limit (wait and run this
-  again).
+  by unknown authority` on your Harbor means `harbor-ca` is missing in `cicd-ci`; on
+  `index.docker.io`, the `kaniko` step lacks its `SSL_CERT_DIR` line (run this block again).
+  `UNAUTHORIZED` means `harbor-push` is missing or expired (step 3); `toomanyrequests` is Docker
+  Hub's pull limit (wait and run this again).
 - `Failed` in `write-back` with `Authentication failed`: `git-writeback` is wrong; delete it
   (`kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci delete secret git-writeback`) and run step 4
   again.
