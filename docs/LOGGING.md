@@ -48,7 +48,7 @@ vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
-vcf context use supervisor
+$null | vcf context use supervisor
 vcf addon available-releases list --addon-name fluent-bit
 vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE
 ```
@@ -235,7 +235,7 @@ $VKS_CLUSTER = "my-vks-cluster"
 $FLUENT_BIT_RELEASE = "fluent-bit.kubernetes.vmware.com.5.0.9-vmware.1-vks.1"
 $LOGGING_DIR = "$HOME\.config\vks-guides\logging"
 
-vcf context use supervisor
+$null | vcf context use supervisor
 vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f "$LOGGING_DIR\values.yaml" -y
 ```
 
@@ -468,7 +468,7 @@ if (-not (Test-Path $CA)) {
 } else {
   kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging create secret generic tls-ca-cert --from-file=tls_http.crt="$CA" --dry-run=client -o yaml |
     kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
-  vcf context use supervisor
+  $null | vcf context use supervisor
   vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$LOGGING_DIR\values.yaml" -y
   if ($LASTEXITCODE -eq 0) {
     Start-Sleep 30
@@ -511,7 +511,7 @@ vcf addon install delete fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMES
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
-vcf context use supervisor
+$null | vcf context use supervisor
 vcf addon install delete fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
 ```
 

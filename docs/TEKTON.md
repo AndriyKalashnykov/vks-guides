@@ -142,7 +142,7 @@ vcf addon available-releases list --addon-name tekton-operator
 **Windows (PowerShell):**
 
 ```powershell
-vcf context use supervisor
+$null | vcf context use supervisor
 vcf addon available-releases list --addon-name tekton-operator
 ```
 
@@ -220,7 +220,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $TEKTON_RELEASE = "tekton-operator.0.80.0-vmware.1-vks.1"
 $TEKTON_DIR = "$HOME\.config\vks-guides\tekton"
 
-vcf context use supervisor
+$null | vcf context use supervisor
 New-Item -ItemType Directory -Force -Path $TEKTON_DIR | Out-Null
 [IO.File]::WriteAllText("$TEKTON_DIR\addon-values.yaml", "helmValues:`n  exposure:`n    enabled: false`n")
 $global:LASTEXITCODE = $null
@@ -1296,7 +1296,7 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
-vcf context use supervisor
+$null | vcf context use supervisor
 $global:LASTEXITCODE = $null
 $C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
 if ($LASTEXITCODE -eq 0) { $A = @(kubectl --kubeconfig $VKS_KUBECONFIG api-resources -o name) }

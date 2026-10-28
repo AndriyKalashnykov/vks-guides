@@ -647,7 +647,7 @@ if ($LOGS_FQDN) {
 "@
 }
 [IO.File]::WriteAllText($V, ($T -replace "`r`n", "`n") + "`n")
-vcf context use supervisor
+$null | vcf context use supervisor
 $OK = $true
 if ($LOGS_FQDN -and ($LOGS_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $LOGS_FQDN -eq 'logs.example.test')) {
   "FAILED: set LOGS_FQDN to Log Management's DNS name (LOGGING.md step 3), or leave it empty"
