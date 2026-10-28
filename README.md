@@ -75,47 +75,48 @@ for `kubectl`, [Install kubectl](docs/KUBECTL.md); for `vcf`, [Install the VCF C
 
 On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 
-| guide | Ubuntu (bash, zsh) | Windows PowerShell 5.1 | Photon OS 5 (bash) |
-|---|---|---|---|
-| [Install kubectl](docs/KUBECTL.md) | — | — | part |
-| [Install the VCF CLI](docs/VCF.md) | part | part | part |
-| [Log in](docs/LOGIN.md) | part | part | part |
-| [Create a vSphere Namespace](docs/NAMESPACE.md) | — | — | — |
-| [Create a VKS cluster](docs/CLUSTER.md) | — | — | part |
-| [Install Harbor](docs/HARBOR.md) | part | — | — |
-| [ArgoCD](docs/ARGOCD.md) | part | part | part |
-| [Run Gitea](docs/GITEA.md) | part | part | part |
-| [Run Tekton](docs/TEKTON.md) | part | part | ✅ |
-| [Run GitLab](docs/GITLAB.md) | part | — | — |
-| [CI/CD with Gitea and Tekton](docs/CICD.md) | part | — | — |
-| [CI/CD with GitLab](docs/CICD.md) | part | — | — |
-| [Install Helm](docs/HELM.md) | — | — | ✅ |
-| [Monitor a VKS cluster](docs/MONITORING.md) | — | — | part |
-| [Send logs to VCF Operations](docs/LOGGING.md) | — | part | part |
-| [Logs and traces in Grafana](docs/OBSERVABILITY.md) | — | — | part |
+| guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Windows PowerShell 5.1 |
+|---|---|---|---|---|
+| [Prerequisites](docs/PREREQS.md) | — | part | — | — |
+| [Install kubectl](docs/KUBECTL.md) | — | part | part | — |
+| [Install the VCF CLI](docs/VCF.md) | part | part | part | part |
+| [Log in](docs/LOGIN.md) | part | part | part | part |
+| [Create a vSphere Namespace](docs/NAMESPACE.md) | — | — | — | — |
+| [Create a VKS cluster](docs/CLUSTER.md) | — | part | part | — |
+| [Install Harbor](docs/HARBOR.md) | part | part | — | — |
+| [ArgoCD](docs/ARGOCD.md) | part | — | part | part |
+| [Run Gitea](docs/GITEA.md) | part | part | part | part |
+| [Run Tekton](docs/TEKTON.md) | part | part | ✅ | part |
+| [Run GitLab](docs/GITLAB.md) | part | — | — | — |
+| [CI/CD with Gitea and Tekton](docs/CICD.md) | part | — | — | — |
+| [CI/CD with GitLab](docs/CICD.md) | part | — | — | — |
+| [Install Helm](docs/HELM.md) | — | ✅ | ✅ | — |
+| [Monitor a VKS cluster](docs/MONITORING.md) | — | part | part | — |
+| [Send logs to VCF Operations](docs/LOGGING.md) | — | part | part | part |
+| [Logs and traces in Grafana](docs/OBSERVABILITY.md) | — | part | part | — |
 
 Earlier versions of these guides, on VCF 9.1.1 with VKS 3.7.2, from Linux and Windows on amd64 and
 macOS on Apple silicon:
 
-| guide | Ubuntu (bash, zsh) | macOS 26 (bash, zsh) | Windows PowerShell 5.1 | WSL 2 Ubuntu (bash, as root) | Photon OS 5 (bash) |
+| guide | Ubuntu (bash, zsh) | Photon OS 5 (bash) | macOS 26 (bash, zsh) | Windows PowerShell 5.1 | WSL 2 Ubuntu (bash, as root) |
 |---|---|---|---|---|---|
 | [Prerequisites](docs/PREREQS.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install kubectl](docs/KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install the VCF CLI](docs/VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in](docs/LOGIN.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | part | ✅ | — | ✅ |
-| [Create a VKS cluster](docs/CLUSTER.md) | ✅ | part | ✅ | — | ✅ |
-| [Install Harbor](docs/HARBOR.md) | ✅ | part | ✅ | — | part |
-| [ArgoCD](docs/ARGOCD.md) | ✅ | ✅ | ✅ | — | part |
-| [Run Gitea](docs/GITEA.md) | ✅ | — | ✅ | ✅ | ✅ |
-| [Run Tekton](docs/TEKTON.md) | ✅ | — | ✅ | — | ✅ |
-| [Run GitLab](docs/GITLAB.md) | ✅ | — | ✅ | — | ✅ |
-| [CI/CD with Gitea and Tekton](docs/CICD.md) | part | — | part | — | — |
-| [CI/CD with GitLab](docs/CICD.md) | — | — | part | — | part |
-| [Install Helm](docs/HELM.md) | ✅ | — | ✅ | — | ✅ |
-| [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | — | part | — | part |
-| [Send logs to VCF Operations](docs/LOGGING.md) | part | — | part | ✅ | part |
-| [Logs and traces in Grafana](docs/OBSERVABILITY.md) | ✅ | — | part | — | part |
+| [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | ✅ | part | ✅ | — |
+| [Create a VKS cluster](docs/CLUSTER.md) | ✅ | ✅ | part | ✅ | — |
+| [Install Harbor](docs/HARBOR.md) | ✅ | part | part | ✅ | — |
+| [ArgoCD](docs/ARGOCD.md) | ✅ | part | ✅ | ✅ | — |
+| [Run Gitea](docs/GITEA.md) | ✅ | ✅ | — | ✅ | ✅ |
+| [Run Tekton](docs/TEKTON.md) | ✅ | ✅ | — | ✅ | — |
+| [Run GitLab](docs/GITLAB.md) | ✅ | ✅ | — | ✅ | — |
+| [CI/CD with Gitea and Tekton](docs/CICD.md) | part | — | — | part | — |
+| [CI/CD with GitLab](docs/CICD.md) | — | part | — | part | — |
+| [Install Helm](docs/HELM.md) | ✅ | ✅ | — | ✅ | — |
+| [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | part | — | part | — |
+| [Send logs to VCF Operations](docs/LOGGING.md) | part | part | — | part | ✅ |
+| [Logs and traces in Grafana](docs/OBSERVABILITY.md) | ✅ | part | — | part | — |
 
 Windows was Windows Server 2025. Linux on arm64, Intel Macs and Windows on arm64 were not tested.
 

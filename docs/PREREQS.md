@@ -4,6 +4,7 @@
 > **Official documentation for this guide**
 >
 > - Ubuntu: [Install and manage packages](https://ubuntu.com/server/docs/how-to/software/package-management/)
+> - AlmaLinux 10: Red Hat's [Installing packages](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/managing_software_with_the_dnf_tool/installing-rhel-content#installing-packages)
 > - Photon OS 5: [tdnf Commands](https://vmware.github.io/photon/docs-v5/administration-guide/managing-packages-with-tdnf/standard-syntax-for-tndf/commands/)
 > - Homebrew: [Installation](https://docs.brew.sh/Installation); jq: [Download jq](https://jqlang.org/download/)
 > - Microsoft: [Starting Windows PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/starting-windows-powershell?view=powershell-5.1), [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Working across Windows and Linux file systems](https://learn.microsoft.com/en-us/windows/wsl/filesystems)
@@ -19,8 +20,19 @@ section for your OS, then [Check](#check) (Linux, macOS and WSL; PowerShell need
 sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
 ```
 
-On other distributions (except Photon OS, below), install the same five packages with your
-package manager.
+On other distributions (except AlmaLinux and Photon OS, below), install the same five packages
+with your package manager.
+
+## AlmaLinux 10
+
+```sh
+sudo dnf install -y curl tar unzip jq openssl
+```
+
+**Expect:** `Complete!`. Then run [Check](#check).
+
+**If not:** `sudo: command not found` or `… is not in the sudoers file`: run it as `root`, without
+`sudo`.
 
 ## Photon OS 5
 
