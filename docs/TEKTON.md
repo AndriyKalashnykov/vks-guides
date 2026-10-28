@@ -18,9 +18,9 @@ Install Tekton one of two ways; a cluster has one or the other:
 
 | | A: the VKS add-on (step 2) | B: Tekton's release files (step 3) |
 |---|---|---|
-| needs | VKS 3.8 or later, and a cluster created on it (Kubernetes v1.33 to v1.37) | any VKS |
+| needs | VKS 3.8 or later, and a cluster on Kubernetes v1.33 to v1.37 | any VKS |
 | installs | Tekton Operator 0.80.0, Pipelines 1.12.0, Triggers 0.36.0 | Pipelines 1.17.1, Triggers 0.37.2 |
-| support | Broadcom supports installing and upgrading it; Tekton bugs go to the Tekton project | none from Broadcom |
+| support | Broadcom supports installing and upgrading it; Tekton bugs and security fixes come from the Tekton project | none from Broadcom |
 | nodes pull from | `projects.packages.broadcom.com` and `cgr.dev` | `ghcr.io` (and `pkg-containers.githubusercontent.com`) and `cgr.dev` |
 | free CPU on the workers | about 400m | about 200m |
 
@@ -53,8 +53,11 @@ if kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes \
     $1 == "P" { n = split($3, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") r[$2] += m(a[i]) }
     $1 == "N" { printf "worker %s: %dm CPU free\n", $2, m($3) - r[$2] }'
   if printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev'; then
-    if [ "$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}')" = vmware-system-helm ]; then
+    O="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace} {.metadata.deletionTimestamp}')"
+    if [ "$O" = "vmware-system-helm " ]; then
       echo "Tekton: the VKS add-on"
+    elif [ "${O%% *}" = vmware-system-helm ]; then
+      echo "Tekton: parts of one"
     else
       echo "Tekton: a Tekton Operator that is not the VKS add-on"
     fi
@@ -93,8 +96,10 @@ if ($LASTEXITCODE -eq 0) {
   }
   foreach ($l in $N) { $f = -split $l; "worker $($f[0]): $((M $f[1]) - $R[$f[0]])m CPU free" }
   if ($C -contains 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev') {
-    $H = kubectl --kubeconfig $VKS_KUBECONFIG get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}'
-    if ($H -eq 'vmware-system-helm') { "Tekton: the VKS add-on" } else { "Tekton: a Tekton Operator that is not the VKS add-on" }
+    $O = kubectl --kubeconfig $VKS_KUBECONFIG get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace} {.metadata.deletionTimestamp}'
+    if ($O -eq 'vmware-system-helm ') { "Tekton: the VKS add-on" }
+    elseif ($O -like 'vmware-system-helm *') { "Tekton: parts of one" }
+    else { "Tekton: a Tekton Operator that is not the VKS add-on" }
   } elseif ($C -contains 'customresourcedefinition.apiextensions.k8s.io/tasks.tekton.dev') {
     "Tekton: release files $(kubectl --kubeconfig $VKS_KUBECONFIG get crd tasks.tekton.dev -o jsonpath='{.metadata.labels.pipeline\.tekton\.dev/release}')"
   } elseif (@($C | Where-Object { $_ -match '\.tekton\.dev$' }).Count -gt 0) {
@@ -118,8 +123,8 @@ A's pods ask for about 400m in all, B's for 200m, each at most 100m on one worke
 - `Tekton: the VKS add-on`: A is installed; go on with step 2's second block. `Tekton: release
   files v1.17.1`: B is installed; go to step 4.
 - `Tekton: a Tekton Operator that is not the VKS add-on`, another `release files` version, or
-  `parts of one`: the cluster already has another Tekton, or what is left of one. Use another
-  cluster; this guide does not cover it.
+  `parts of one`: the cluster already has another Tekton, or what is left of one (step 7 removes
+  what is left of A or B). Use another cluster; this guide does not cover it.
 - `FAILED: cannot read the cluster`: run
   [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
@@ -150,7 +155,7 @@ vcf addon available-releases list --addon-name tekton-operator
 
 This installs the add-on on your cluster from the Supervisor, with its web exposure turned off
 (it needs cert-manager and a Gateway), then waits for the operator's two pods. A second run
-updates it. Set `TEKTON_RELEASE` to the release name above.
+applies the settings again. Set `TEKTON_RELEASE` to the release name above.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -170,6 +175,9 @@ if ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
 elif printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tasks.tekton.dev' \
      && ! printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev'; then
   echo "STOPPED: this cluster has Tekton from its release files (B)"
+elif printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev' \
+     && [ "$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}')" != vmware-system-helm ]; then
+  echo "STOPPED: this cluster has a Tekton Operator that is not the VKS add-on"
 elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
   echo "FAILED: the VCF CLI (see the error above)"
 else
@@ -221,6 +229,9 @@ if ($LASTEXITCODE -ne 0) {
 } elseif ($C -contains 'customresourcedefinition.apiextensions.k8s.io/tasks.tekton.dev' -and
           $C -notcontains 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev') {
   "STOPPED: this cluster has Tekton from its release files (B)"
+} elseif ($C -contains 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev' -and
+          (kubectl --kubeconfig $VKS_KUBECONFIG get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}') -ne 'vmware-system-helm') {
+  "STOPPED: this cluster has a Tekton Operator that is not the VKS add-on"
 } else {
   $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
   if ($LASTEXITCODE -ne 0) {
@@ -259,6 +270,9 @@ then two `deployment.apps/… condition met` lines and the pods `tekton-operator
 
 **If not:**
 - `STOPPED: … release files (B)`: B is installed; use it (step 4), or remove it first (step 7).
+- `STOPPED: … not the VKS add-on`: someone else installed a Tekton Operator; use another cluster.
+- `READY False` and the add-on's HelmRelease names the Kubernetes version: the cluster is older
+  than v1.33; use B (step 3), after removing the add-on (step 7).
 - `FAILED: the add-on did not reach the cluster`: run `vcf addon install list --cluster-name
   <cluster> -n <namespace>`; with `READY False`, `kubectl --kubeconfig <the VKS kubeconfig> -n
   vmware-system-helm get helmrelease` says why. The add-on retries every five minutes; run the
@@ -1251,7 +1265,10 @@ else
       printf '%s\n' "$W" | grep '/validating-mutating-webhook-' | while read -r R; do
         kubectl --kubeconfig "$VKS_KUBECONFIG" delete "$R" --timeout=2m </dev/null
       done
-      if ! vcf addon install delete tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
+      if ! W="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get tektoninstallersets -o name)" \
+         || printf '%s\n' "$W" | grep -q '/validating-mutating-webhook-'; then
+        echo "FAILED: the operator's webhook set is still there (see the error above)"
+      elif ! vcf addon install delete tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
         echo "FAILED: the add-on (see the error above)"
       else
         kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace tekton-operator --ignore-not-found --timeout=5m
@@ -1316,16 +1333,21 @@ if ($LASTEXITCODE -ne 0) {
         foreach ($R in @($W | Where-Object { $_ -match '/validating-mutating-webhook-' })) {
           kubectl --kubeconfig $VKS_KUBECONFIG delete $R --timeout=2m
         }
-        vcf addon install delete tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
-        if ($LASTEXITCODE -ne 0) {
-          "FAILED: the add-on (see the error above)"
+        $W = @(kubectl --kubeconfig $VKS_KUBECONFIG get tektoninstallersets -o name)
+        if ($LASTEXITCODE -ne 0 -or @($W | Where-Object { $_ -match '/validating-mutating-webhook-' }).Count -gt 0) {
+          "FAILED: the operator's webhook set is still there (see the error above)"
         } else {
-          kubectl --kubeconfig $VKS_KUBECONFIG delete namespace tekton-operator --ignore-not-found --timeout=5m
-          $C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
-          if ($LASTEXITCODE -eq 0) {
-            "Tekton CRDs left: $(@($C | Where-Object { $_ -match '\.tekton\.dev$' }).Count)"
+          vcf addon install delete tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+          if ($LASTEXITCODE -ne 0) {
+            "FAILED: the add-on (see the error above)"
           } else {
-            "FAILED: cannot read the cluster (see the error above)"
+            kubectl --kubeconfig $VKS_KUBECONFIG delete namespace tekton-operator --ignore-not-found --timeout=5m
+            $C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
+            if ($LASTEXITCODE -eq 0) {
+              "Tekton CRDs left: $(@($C | Where-Object { $_ -match '\.tekton\.dev$' }).Count)"
+            } else {
+              "FAILED: cannot read the cluster (see the error above)"
+            }
           }
         }
       }
@@ -1336,7 +1358,7 @@ if ($LASTEXITCODE -ne 0) {
 
 </details>
 
-**Expect:** `No resources found` (no Tekton objects left), then
+**Expect:** `No resources found` (when Tekton was on: no Tekton objects left), then
 `tektonconfig.operator.tekton.dev "config" deleted`, `tektoninstallerset.operator.tekton.dev
 "validating-mutating-webhook-…" deleted`, the add-on's `Waiting for deleting …` lines ending in
 `Addon 'tekton-operator' installed in the cluster … has been deleted`, `namespace
@@ -1349,6 +1371,11 @@ if ($LASTEXITCODE -ne 0) {
   kubeconfig> get <kind> -A`; delete them first if they are yours.
 - `Tekton CRDs left:` more than 0, or `FAILED: …`: see the error above it, and run the block
   again.
+- `STOPPED: cannot read the cluster` with no other error: `kubectl --kubeconfig <the VKS
+  kubeconfig> get apiservice` shows one that is not `True`; fix or remove it.
+- `The Tekton add-on is not installed` but the namespace `tekton-operator` is still there (an
+  earlier run stopped before its end): `kubectl --kubeconfig <the VKS kubeconfig> delete namespace
+  tekton-operator`.
 
 ### From the release files (B)
 
@@ -1365,6 +1392,8 @@ if ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)" \
   echo "STOPPED: cannot read the cluster (see the error above)"
 elif [ "$(printf '%s\n' "$C" | grep -c '\.tekton\.dev$')" = 0 ]; then
   echo "Tekton is not installed"
+elif printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev'; then
+  echo "STOPPED: this cluster has a Tekton Operator; for the VKS add-on, use the block above"
 elif ! V="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tasks.tekton.dev -o jsonpath='{.metadata.labels.pipeline\.tekton\.dev/release}')" \
      || [ "$V" != v1.17.1 ]; then
   echo "STOPPED: the Tekton here is '${V:-unknown}', not this guide's v1.17.1"
@@ -1406,6 +1435,8 @@ if ($LASTEXITCODE -ne 0) {
   "STOPPED: cannot read the cluster (see the error above)"
 } elseif (@($C | Where-Object { $_ -match '\.tekton\.dev$' }).Count -eq 0) {
   "Tekton is not installed"
+} elseif ($C -contains 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev') {
+  "STOPPED: this cluster has a Tekton Operator; for the VKS add-on, use the block above"
 } else {
   $V = kubectl --kubeconfig $VKS_KUBECONFIG get crd tasks.tekton.dev -o jsonpath='{.metadata.labels.pipeline\.tekton\.dev/release}'
   $VOK = ($LASTEXITCODE -eq 0 -and $V -eq 'v1.17.1')
@@ -1449,6 +1480,7 @@ if ($LASTEXITCODE -ne 0) {
 **If not:**
 - `Tekton CRDs left:` more than 0: run step 3's first block on this machine (the delete needs its
   files), then this block again.
+- `STOPPED: … Tekton Operator`: A is installed; use the block above.
 - `STOPPED: the Tekton here is …` or `STOPPED: the Tekton Triggers here is …`: someone else
   installed this Tekton; leave it.
 - `STOPPED: … objects outside tekton-demo`: list them with `kubectl --kubeconfig <the VKS

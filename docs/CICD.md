@@ -22,7 +22,7 @@ other steps are the same, and where their blocks set `GIT_SERVER="gitea"`, chang
 
 | | With Gitea and Tekton | With GitLab |
 |---|---|---|
-| done first | [HARBOR.md](HARBOR.md) 1-9, [ARGOCD.md](ARGOCD.md) 3, 4 and 7, [GITEA.md](GITEA.md) 1-8, [TEKTON.md](TEKTON.md) 1-3 | [HARBOR.md](HARBOR.md) 1-9, [ARGOCD.md](ARGOCD.md) 3, 4 and 7, [GITLAB.md](GITLAB.md) 1-8 |
+| done first | [HARBOR.md](HARBOR.md) 1-9, [ARGOCD.md](ARGOCD.md) 3, 4 and 7, [GITEA.md](GITEA.md) 1-8, [TEKTON.md](TEKTON.md) 1 and 2 (A) or 1 and 3 (B) | [HARBOR.md](HARBOR.md) 1-9, [ARGOCD.md](ARGOCD.md) 3, 4 and 7, [GITLAB.md](GITLAB.md) 1-8 |
 | builds in | namespace `cicd-ci` | namespace `gitlab-runner` (GITLAB.md's runner) |
 | writes back from | a Tekton Task with a Gitea bot user's token | a second, locked runner with a deploy token |
 | starts on a push | a signed Gitea webhook (step 7) | by itself |
@@ -122,7 +122,8 @@ Namespace>` among the names.
   here.
 - `Harbor <name>:` other than `200`: see [HARBOR.md](HARBOR.md) step 9.
 - A `0` for your Git server, or `Tekton Triggers objects:` under 3 with Gitea and Tekton: do its
-  guide first (the table above); for Tekton, [TEKTON.md](TEKTON.md) steps 1 to 3 with either way.
+  guide first (the table above); for Tekton, [TEKTON.md](TEKTON.md) step 1, then step 2 (A) or
+  step 3 (B).
 - `namespace cicd-demo: 1`: an earlier run of this guide is still there; remove it with step 9.
 - `ArgoCD destinations:` empty, or an error before it: log in again ([LOGIN.md](LOGIN.md)), or add
   the cluster with [ARGOCD.md](ARGOCD.md) step 7. If the cluster is there under another name, put
