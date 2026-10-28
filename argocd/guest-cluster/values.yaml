@@ -1,4 +1,4 @@
-# docs/ARGOCD.md sets name, kubernetesVersion, vmClass and storageClass in the Application.
+# docs/ARGOCD.md sets name, kubernetesVersion, clusterClass, vmClass and storageClass in the Application.
 # The cluster's namespace is the Application's destination namespace: your vSphere Namespace.
 name: ""                 # the VKS cluster's name
 kubernetesVersion: ""    # as the Supervisor stores it, e.g. v1.37.1+vmware.4 (no "-vkr.N" ending)
@@ -10,4 +10,4 @@ controlPlaneReplicas: 1
 workerReplicas: 2
 podsCidr: 172.20.0.0/16
 servicesCidr: 172.21.0.0/16
-serviceDomain: cluster.local   # VKS 3.8 add-ons need it set
+serviceDomain: cluster.local   # the v1.37 add-ons (kapp-controller, helm-controller 1.5.5) need it set
