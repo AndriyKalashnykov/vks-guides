@@ -584,7 +584,7 @@ spec:
   project: vks-clusters
   source:
     repoURL: https://github.com/AndriyKalashnykov/vks-guides.git
-    targetRevision: "173fba41691ffd7c0379443a6ca2fb014a3205d8"
+    targetRevision: "b0802ca479f40c5d11e13c7534fae8b92d1891a7"
     path: argocd/guest-cluster
     helm:
       valuesObject:
@@ -625,7 +625,7 @@ spec:
   project: vks-clusters
   source:
     repoURL: https://github.com/AndriyKalashnykov/vks-guides.git
-    targetRevision: "173fba41691ffd7c0379443a6ca2fb014a3205d8"
+    targetRevision: "b0802ca479f40c5d11e13c7534fae8b92d1891a7"
     path: argocd/guest-cluster
     helm:
       valuesObject:
