@@ -157,14 +157,14 @@ echo "PATH set in $RC"
 ## podman and docker (optional)
 
 Only for [IMAGE.md](IMAGE.md), where you build an image and push it to Harbor. Install one or both
-for your OS, then run [Check podman and docker](#check-podman-and-docker). docker must be 29.5 or
-newer: older docker 29 does not trust Harbor's CA when it pushes. Ubuntu's own `docker.io` is
-older, so these blocks install Docker's own packages.
+for your OS, then run [Check podman and docker](#check-podman-and-docker). Use docker 29.5 or
+newer: docker 29.0 to 29.4 does not trust Harbor's CA when it pushes. Ubuntu's own `docker.io` is
+29.1, so these blocks install Docker's own packages.
 
 The `docker` group gives its members the same rights as `root` on that machine. Adding your user to
 it lets you run `docker` without `sudo`, after you log out and back in.
 
-### Linux (Debian / Ubuntu)
+### podman and docker on Debian / Ubuntu
 
 podman:
 
@@ -179,7 +179,9 @@ D="$(. /etc/os-release && echo "$ID")"
 C="$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")"
 case "$D" in
   ubuntu|debian)
-    sudo apt-get remove -y docker.io docker-doc docker-compose docker-compose-v2 docker-buildx podman-docker 2>/dev/null
+    for p in docker.io docker-doc docker-compose docker-compose-v2 docker-buildx podman-docker; do
+      dpkg -s "$p" >/dev/null 2>&1 && sudo apt-get remove -y "$p"
+    done
     sudo apt-get update && sudo apt-get install -y ca-certificates curl \
       && sudo install -m 0755 -d /etc/apt/keyrings \
       && sudo curl -fsSL --connect-timeout 20 --speed-time 60 "https://download.docker.com/linux/${D}/gpg" -o /etc/apt/keyrings/docker.asc \
@@ -202,7 +204,7 @@ esac
 **If not:** `Not Debian or Ubuntu (…)`: follow
 [Docker's install pages](https://docs.docker.com/engine/install/) for your distribution.
 
-### AlmaLinux 10
+### podman and docker on AlmaLinux 10
 
 podman:
 
@@ -224,7 +226,7 @@ sudo dnf install -y dnf-plugins-core && sudo dnf config-manager --add-repo https
 `sudo journalctl -u docker`: the install brought kernel modules for a newer kernel than the one
 running. Restart the machine; docker then starts by itself.
 
-### Photon OS 5
+### podman and docker on Photon OS 5
 
 Keep `openssh openssh-socket` in the line: without them the machine stops accepting SSH logins.
 
@@ -234,7 +236,7 @@ sudo tdnf install -y docker podman crun openssh openssh-socket && sudo usermod -
 
 **Expect:** `docker installed: log out and back in`.
 
-### macOS
+### podman and docker on macOS
 
 podman:
 
@@ -260,10 +262,10 @@ docker context use colima
 
 **Expect:** `Current context is now "colima"`.
 
-### Windows
+### podman and docker on Windows
 
-Both run Linux in WSL 2; install WSL first ([Windows](#windows), step 1 of *WSL 2 with Ubuntu*,
-without the Ubuntu part).
+Both run Linux in WSL 2. If you have no WSL yet, install it once in **PowerShell as
+Administrator** with `wsl --install --no-distribution`, and restart Windows if it asks.
 
 - podman: download `podman-installer-windows-amd64.msi` from
   [Podman's releases](https://github.com/containers/podman/releases), install it, open a new
@@ -313,8 +315,10 @@ foreach ($e in 'podman', 'docker') {
 **If not:**
 - `NOT RUNNING: docker` on Linux: log out and back in (or restart the machine). Still there:
   `sudo systemctl start docker` and read its error.
-- `ok docker 29.1` (or anything below 29.5): this is not Docker's own package; on Ubuntu run the
-  docker block above.
+- `ok docker 29.0` to `29.4`: its push does not trust Harbor's CA; on Ubuntu run the docker block
+  above (Docker's own package).
+- `ok podman` below 4.9 (Ubuntu 22.04, Debian 12): too old to build and push reliably; use docker,
+  or a newer release of your distribution.
 - `NOT RUNNING: podman` on macOS or Windows: `podman machine start`.
 
 Back to [README](../README.md).

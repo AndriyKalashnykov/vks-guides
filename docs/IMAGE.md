@@ -88,7 +88,9 @@ Move-Item -Force "$HOME\.config\vks-guides\harbor\harbor-ca.crt.new" "$HOME\.con
 ```
 
 **If not:** the fingerprints differ: delete `harbor-ca.crt.new` and stop; this is not your
-Harbor's CA. `FAILED: …`: check the name (HARBOR.md step 7, *Check the DNS record*).
+Harbor's CA. `FAILED: …`: check the name (HARBOR.md step 7, *Check the DNS record*); if the name
+is right, this Harbor publishes no CA (your organization's certificate, HARBOR.md step 13): get
+`harbor-ca.crt` from your Harbor administrator.
 
 ## 2. Trust Harbor's CA
 
@@ -251,7 +253,7 @@ else {
 - `Cannot connect to the Docker daemon` or `permission denied … docker.sock`: see
   [Check podman and docker](PREREQS.md#check-podman-and-docker).
 - podman on Photon OS: `default OCI runtime "crun" not found`: install `crun`
-  ([Prerequisites](PREREQS.md#photon-os-5)).
+  ([Prerequisites](PREREQS.md#podman-and-docker-on-photon-os-5)).
 
 ## 4. Push it to Harbor
 
@@ -324,29 +326,32 @@ $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 $IMG = "$HARBOR_FQDN/$HARBOR_PROJECT/test-web-apps:v1-$CONTAINER_ENGINE"
 $DIGEST_FILE = "$IMAGE_DIR\digest-$CONTAINER_ENGINE"
 Remove-Item -Force -ErrorAction SilentlyContinue $DIGEST_FILE
-if (-not $HARBOR_ROBOT_SECRET) { "FAILED: no robot secret in this terminal; run the line above" }
+if (-not $HARBOR_ROBOT_SECRET -or $HARBOR_ROBOT_SECRET.Length -eq 0) { "FAILED: no robot secret in this terminal; run the line above" }
 else {
   $B = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($HARBOR_ROBOT_SECRET)
   try { [Runtime.InteropServices.Marshal]::PtrToStringBSTR($B) | & $CONTAINER_ENGINE login -u $HARBOR_ROBOT --password-stdin $HARBOR_FQDN }
   finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($B) }
   if ($LASTEXITCODE -eq 0) {
-    & $CONTAINER_ENGINE push $IMG
-    if ($LASTEXITCODE -eq 0) {
-      $D = @(& $CONTAINER_ENGINE image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' $IMG) |
-        Where-Object { $_ -clike "$HARBOR_FQDN/$HARBOR_PROJECT/test-web-apps@*" } | Select-Object -First 1
-      if ($D) { [IO.File]::WriteAllText($DIGEST_FILE, ($D -replace '^[^@]*@', '')) }
+    if ($CONTAINER_ENGINE -eq 'podman') { podman push --digestfile $DIGEST_FILE $IMG }
+    else {
+      docker push $IMG
+      if ($LASTEXITCODE -eq 0) {
+        $D = @(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' $IMG) |
+          Where-Object { $_ -clike "$HARBOR_FQDN/$HARBOR_PROJECT/test-web-apps@*" } | Select-Object -First 1
+        if ($D) { [IO.File]::WriteAllText($DIGEST_FILE, ($D -replace '^[^@]*@', '')) }
+      }
     }
     & $CONTAINER_ENGINE logout $HARBOR_FQDN
   }
   if (Test-Path $DIGEST_FILE) { "pushed: $($IMG -replace ':[^:/]*$', '')@$(Get-Content -Raw $DIGEST_FILE)" }
   else { "FAILED: the push (see the error above)" }
 }
-Remove-Variable HARBOR_ROBOT_SECRET
+Remove-Variable -ErrorAction SilentlyContinue HARBOR_ROBOT_SECRET
 ```
 
 </details>
 
-**Expect:** `Login Succeeded`, the push, `Removed login credentials for …`, then
+**Expect:** `Login Succeeded`, the push, `Removed login credentials for …` (docker: `Removing`), then
 `pushed: <your Harbor name>/<your project>/test-web-apps@sha256:…`. In Harbor's web page the
 project now lists the repository `test-web-apps`.
 
@@ -363,7 +368,8 @@ project now lists the repository `test-web-apps`.
 Skip this for a public project. For a private one, the cluster needs a robot's login: this stores
 it in the cluster as the Secret `harbor-pull`, and step 6 makes the app use it. Use a robot that
 may only pull: in Harbor's web page, a robot with only **Pull Repository** on this project
-(HARBOR.md step 10). Anyone who may read Secrets in the namespace can read it.
+([HARBOR.md step 10](HARBOR.md#create-a-robot-account), *In Harbor's web page*); the push robot
+also works, but it can also push. Anyone who may read Secrets in the namespace can read it.
 
 Type the pull robot's secret in this terminal (it is not shown):
 
@@ -422,7 +428,7 @@ $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 
 $VKS_KUBECONFIG = "$HOME\.kube\$VKS_CLUSTER.kubeconfig"
 $global:LASTEXITCODE = $null
-if (-not $HARBOR_PULL_SECRET) { "FAILED: no pull robot secret in this terminal; run the line above" }
+if (-not $HARBOR_PULL_SECRET -or $HARBOR_PULL_SECRET.Length -eq 0) { "FAILED: no pull robot secret in this terminal; run the line above" }
 elseif (-not (Test-Path $VKS_KUBECONFIG) -or -not (Test-Path "$IMAGE_DIR\k8s\namespace.yaml")) { "FAILED: $VKS_KUBECONFIG or $IMAGE_DIR\k8s\namespace.yaml is missing (step 3)" }
 else {
   (Get-Content "$IMAGE_DIR\k8s\namespace.yaml") -creplace '^  name: test-web-apps$', "  name: $APP_NAMESPACE" | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
@@ -439,7 +445,7 @@ else {
     } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($B); $P = $null; $AUTH = $null; $CFG = $null }
   }
 }
-Remove-Variable HARBOR_PULL_SECRET
+Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 ```
 
 </details>
@@ -486,7 +492,7 @@ else
   } | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - \
     && kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" rollout status deployment/test-web-apps --timeout=180s \
     && kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" get pods -l app.kubernetes.io/name=test-web-apps \
-         --no-headers -o custom-columns=DELETING:.metadata.deletionTimestamp,IMAGE:.status.containerStatuses[0].imageID \
+         --no-headers -o 'custom-columns=DELETING:.metadata.deletionTimestamp,IMAGE:.status.containerStatuses[0].imageID' \
        | awk -v d="@$DIGEST" '$1 == "<none>" { n++; if (substr($2, length($2) - length(d) + 1) == d) ok++ } END { printf "pods running your image: %d of %d\n", ok, n }'
 fi
 ```
@@ -637,7 +643,14 @@ The image stays in Harbor: delete it in Harbor's web page (**Projects** → your
 - podman on Linux: `rm -rf ~/.config/containers/certs.d/<your Harbor name>`;
 - docker on Linux, as a block of its own:
   `sudo rm -rf /etc/docker/certs.d/<your Harbor name>`;
+- docker in Colima: `colima ssh -- sudo rm -rf /etc/docker/certs.d/<your Harbor name> </dev/null`;
 - macOS: remove `Harbor CA` in **Keychain Access**; Windows: `certmgr.msc` → **Trusted Root
-  Certification Authorities** → **Certificates** → `Harbor CA` → **Delete**.
+  Certification Authorities** → **Certificates** → `Harbor CA` → **Delete**. Then, for podman,
+  `podman machine stop` and `podman machine start` (it imports the CAs again at start).
+- If you followed an earlier version of HARBOR.md, Harbor's CA is in the system's trust store.
+  As a block of its own, on Ubuntu or Debian:
+  `sudo rm -f /usr/local/share/ca-certificates/harbor-ca.crt && sudo update-ca-certificates --fresh`;
+  on AlmaLinux:
+  `sudo rm -f /etc/pki/ca-trust/source/anchors/harbor-ca.crt && sudo update-ca-trust`.
 
 Back to [README](../README.md).
