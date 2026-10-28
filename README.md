@@ -78,13 +78,14 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 
 | guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Windows PowerShell 5.1 |
 |---|---|---|---|---|
-| [Prerequisites](docs/PREREQS.md) | — | part | — | — |
+| [Prerequisites](docs/PREREQS.md) | part | part | — | — |
 | [Install kubectl](docs/KUBECTL.md) | — | part | part | — |
 | [Install the VCF CLI](docs/VCF.md) | part | part | part | part |
 | [Log in](docs/LOGIN.md) | part | part | part | part |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | ✅ | — | ✅ |
 | [Create a VKS cluster](docs/CLUSTER.md) | — | part | part | — |
 | [Install Harbor](docs/HARBOR.md) | ✅ | part | — | — |
+| [Build an image, push it to Harbor and run it](docs/IMAGE.md) | ✅ | ✅ | — | part |
 | [ArgoCD](docs/ARGOCD.md) | part | — | part | part |
 | [Run Gitea](docs/GITEA.md) | part | part | part | part |
 | [Run Tekton](docs/TEKTON.md) | part | part | ✅ | part |
