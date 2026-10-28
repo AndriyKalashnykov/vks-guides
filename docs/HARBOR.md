@@ -1891,8 +1891,8 @@ Nothing renews this certificate: before it expires, get a new one and do this st
 
 - **Before the install:** run the block below after step 4, then go on with step 5.
 - **On an installed Harbor:** this replaces Harbor's CA. VKS gives the new CA to every node of
-  every VKS cluster on the Supervisor by replacing the nodes, and pulls from Harbor fail on some
-  nodes until that ends. Do it in a
+  every VKS cluster on the Supervisor, replacing some nodes and updating others in place, and
+  pulls from Harbor fail on some nodes until that ends. Do it in a
   maintenance window:
   1. Step 6 *Record the VKS cluster machines*.
   2. The block below.
@@ -1904,7 +1904,8 @@ Nothing renews this certificate: before it expires, get a new one and do this st
   4. *Restart Harbor's web server* below.
   5. Steps 8, 9 and 11, then give the new `harbor-ca.crt` to whatever uses Harbor.
 
-To go back to Harbor's own certificate, set the three variables to `""` and do the same.
+To go back to Harbor's own certificate, set the three variables to `""` and do the same. Harbor
+then serves its earlier CA again.
 
 ### Write the certificate into the file
 
@@ -2343,7 +2344,8 @@ sudo rm -f /usr/local/share/ca-certificates/harbor-ca.crt && sudo update-ca-cert
 sudo rm -f /etc/pki/ca-trust/source/anchors/harbor-ca.crt && sudo update-ca-trust && sudo systemctl restart docker
 ```
 
-**Expect:** a new prompt.
+**Expect:** a new prompt (Ubuntu also prints `… added, 0 removed; done.` and a harmless `rehash:
+warning`).
 
 ## Fix common problems
 
