@@ -112,8 +112,8 @@ one CI job need a worker with at least 6 GiB memory and 8 GiB image disk free; a
 
 **If not:**
 - `git: command not found` (PowerShell: `The term 'git' is not recognized`): install git
-  ([git-scm.com](https://git-scm.com/install/); on Photon OS 5, `sudo tdnf install -y git`),
-  open a new terminal, and run this again.
+  ([git-scm.com](https://git-scm.com/install/); on AlmaLinux 10, `sudo dnf install -y git`; on
+  Photon OS 5, `sudo tdnf install -y git`), open a new terminal, and run this again.
 - No worker with that much free: add a node pool with VM class `best-effort-large`
   ([CLUSTER.md](CLUSTER.md)); its new nodes start with an empty disk. New nodes count against the
   vSphere Namespace's limits.

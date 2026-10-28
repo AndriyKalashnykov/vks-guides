@@ -563,8 +563,9 @@ if (-not (Test-Path $VALUES)) {
 **Expect:** `copied to the clipboard`.
 
 **If not:**
-- `No clipboard program here: …`: on a Linux desktop install one (`sudo apt-get install -y
-  wl-clipboard`, or `xclip` on X11) and run the block again.
+- `No clipboard program here: …`: on an Ubuntu desktop install one (`sudo apt-get install -y
+  wl-clipboard`, or `xclip` on X11) and run the block again; on AlmaLinux, which ships neither,
+  open the file in an editor as below.
 - `FAILED: nothing copied …`, or a terminal on another machine than the browser (over `ssh`):
   open the file in an editor on the browser's machine instead; do not send it through chat or
   mail. Keep the editor open until you have pasted (on Linux the copy is lost when it closes).
