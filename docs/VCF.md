@@ -25,7 +25,8 @@ Arm PC). On a machine without a browser, download them on another one and copy b
 | `VCF-Consumption-CLI-PluginBundle-<platform>-9.1.1.0200.25839222.tar.gz` | [My Downloads](https://support.broadcom.com/group/ecx/downloads) → VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0200 → **VCF Consumption CLI Plugins** | [VCF CLI plugins](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0200&os=&servicePk=548172&language=EN&groupId=545621&viewGroup=true) |
 
 - With a VMware Cloud Foundation account, click VMware Cloud Foundation → VMware Cloud Foundation
-  9 → 9.1.1.0 instead. Until you pick the release, the page reads "No data found".
+  9 instead, then for each file the release whose file names match the table. Until you pick the
+  release, the page reads "No data found".
 - Tick **"I agree to the Terms and Conditions"**. The checkbox stays greyed out until you open
   both Terms links, and until it is ticked the download icon does nothing.
 - Take the row for your platform, not the files without one (`…-Binaries-…`, plain
@@ -158,8 +159,8 @@ Remove-Item -Recurse -Force $TMP
 </details>
 
 **Expect:** `checksums OK`, `Initialization done!` (first run only), `Installing plugin …` lines,
-`version: v9.1.1.0100.25746586`, then the plugins, each `installed`, and no `FAILED` or
-`WARNING` line.
+`version: v9.1.1.0100.25746586`, then the plugins, each `installed` (`addon`, `cluster`,
+`kubernetes-release`, `package` and `registry-secret` at `v3.8.0`), and no `FAILED` or `WARNING` line.
 
 **If not:**
 - `FAILED: not found: …`: the file is not in `DOWNLOAD_DIR`, or it is from another release

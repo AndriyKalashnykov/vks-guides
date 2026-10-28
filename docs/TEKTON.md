@@ -1273,7 +1273,9 @@ else
         if [ -z "$W" ]; then break; fi
         sleep 5
       done
-      if [ -n "$W" ]; then
+      if [ "$W" = unknown ]; then
+        echo "FAILED: cannot list the operator's sets (see the error above)"
+      elif [ -n "$W" ]; then
         echo "FAILED: the operator's sets are still there after 5 minutes:" $W
       elif ! vcf addon install delete tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
         echo "FAILED: the add-on (see the error above)"
@@ -1348,7 +1350,9 @@ if ($LASTEXITCODE -ne 0) {
           if ($W.Count -eq 0) { break }
           Start-Sleep -Seconds 5
         }
-        if ($W.Count -gt 0) {
+        if ("$W" -eq 'unknown') {
+          "FAILED: cannot list the operator's sets (see the error above)"
+        } elseif ($W.Count -gt 0) {
           "FAILED: the operator's sets are still there after 5 minutes: $W"
         } else {
           vcf addon install delete tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
@@ -1385,6 +1389,8 @@ if ($LASTEXITCODE -ne 0) {
   kubeconfig> get <kind> -A`; delete them first if they are yours.
 - `STOPPED: the VCF CLI` under `Unable to read password from terminal` or `provide credentials`:
   [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then run the block again.
+- `FAILED: the operator's sets are still there`: `kubectl --kubeconfig <the VKS kubeconfig> get
+  tektoninstallersets -o yaml` shows what holds them (`finalizers`); run the block again.
 - `Tekton CRDs left:` more than 0, or `FAILED: …`: see the error above it, and run the block
   again.
 - `STOPPED: cannot read the cluster` with no other error: `kubectl --kubeconfig <the VKS
