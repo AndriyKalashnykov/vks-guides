@@ -11,6 +11,7 @@ spec:
     services:
       cidrBlocks:
         - {{ .Values.servicesCidr | quote }}
+    serviceDomain: {{ .Values.serviceDomain | default "cluster.local" | quote }}
   topology:
     classRef:
       name: {{ .Values.clusterClass | quote }}
