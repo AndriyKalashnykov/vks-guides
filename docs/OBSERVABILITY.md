@@ -522,7 +522,7 @@ otherwise leave it empty. Set `FLUENT_BIT_RELEASE` as in LOGGING.md step 1.
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-FLUENT_BIT_RELEASE="fluent-bit.kubernetes.vmware.com.5.0.9-vmware.1-vks.1"
+FLUENT_BIT_RELEASE="fluent-bit.kubernetes.vmware.com.5.1.2-vmware.1-vks.1"
 LOGS_FQDN=""
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 OBSERVABILITY_DIR="$HOME/.config/vks-guides/observability"
@@ -606,7 +606,7 @@ fi
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$FLUENT_BIT_RELEASE = "fluent-bit.kubernetes.vmware.com.5.0.9-vmware.1-vks.1"
+$FLUENT_BIT_RELEASE = "fluent-bit.kubernetes.vmware.com.5.1.2-vmware.1-vks.1"
 $LOGS_FQDN = ""
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $OBSERVABILITY_DIR = "$HOME\.config\vks-guides\observability"

@@ -7,10 +7,10 @@
 > - [Provision a Kubernetes Cluster Using Self-Service](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provision-and-manage-kubernetes-clusters/provision-a-kubernetes-cluster-using-the-iaas-services-console-in-vcf-automation.html)
 > - [Using Kubernetes Releases with VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/administering-kubernetes-releases-for-tkg-service-clusters/using-kubernetes-releases-with-tkg-service-clusters.html)
 > - [Using VM Classes with VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/using-vm-classes-with-tkg-service-clusters.html)
-> - [Using the Versioned ClusterClass](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass.html) (`builtin-generic-v3.7.0`, the newest in VKS 3.7.2)
-> - [ClusterClass Variable Reference, VKS 3.7.0](https://developer.broadcom.com/xapis/vmware-vsphere-kubernetes-service/3.7.0/variable-docs.html) (`defaultStorageClass`; for `builtin-generic-v3.7.0`. [Other versions](https://developer.broadcom.com/xapis/vmware-vsphere-kubernetes-service/latest/) match other Cluster Classes)
+> - [Using the Versioned ClusterClass](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass.html) (`builtin-generic-v3.8.0`, the newest in VKS 3.8.0)
+> - [ClusterClass Variable Reference, VKS 3.8.0](https://developer.broadcom.com/xapis/vmware-vsphere-kubernetes-service/3.8.0/variable-docs.html) (`defaultStorageClass`; for `builtin-generic-v3.8.0`. [Other versions](https://developer.broadcom.com/xapis/vmware-vsphere-kubernetes-service/latest/) match other Cluster Classes)
 > - [Workflow for Provisioning VKS Clusters Using kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/workflow-for-provisioning-tkg-clusters-using-kubectl.html) (step 9)
-> - [Using builtin-generic-v3.6.0 Cluster Class with VKS 3.6.0 and Later](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/using-builtin-generic-v3-6-0-with-vks.html) (step 9: Broadcom's `v1beta2` Cluster YAML; `builtin-generic-v3.7.0` takes the same fields)
+> - [Using builtin-generic-v3.6.0 Cluster Class with VKS 3.6.0 and Later](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/using-builtin-generic-v3-6-0-with-vks.html) (step 9: Broadcom's `v1beta2` Cluster YAML; `builtin-generic-v3.8.0` takes the same fields)
 > - [Check VKS Cluster Readiness Using Kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/operating-tkg-service-clusters/check-tkg-cluster-readiness-using-kubectl.html)
 > - [Connect to the VKS Cluster Control Plane as a Kubernetes Administrator](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connect-to-the-tkg-service-cluster-control-plane-as-a-kubernetes-administrator.html) (the kubeconfig)
 > - [Delete a VKS Cluster Using Kubectl or Using VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/delete-a-tkg-cluster-using-kubectl-or-using-the-tanzu-cli.html)
@@ -122,7 +122,7 @@ the Supervisor. Ask a vCenter administrator.
    ![Step 1 Configuration Type: Default Configuration selected, Custom Configuration, NEXT, and the Kubernetes Resource YAML pane](img/cluster/05-create-type.png)
 
 2. **2. General Settings:** replace the generated **Cluster Name** with your name. Choose the
-   newest **Cluster Class** the list offers (`builtin-generic-v3.7.0` with VKS 3.7.2) and your
+   newest **Cluster Class** the list offers and your
    **Kubernetes Release**. In the **VM Class** table, select your class with the round button:
    the page preselects one, which may not be the one you want. Choose your **Storage Class**.
 
@@ -520,8 +520,8 @@ if ($LASTEXITCODE -eq 0) {
 
 </details>
 
-**Expect:** one or more release names such as `v1.36.4---vmware.2-vkr.3`, a cluster class such as
-`builtin-generic-v3.7.0`, at least one VM class and at least one storage class.
+**Expect:** one or more release names such as `v1.37.1---vmware.4-vkr.1`, a cluster class such as
+`builtin-generic-v3.8.0`, at least one VM class and at least one storage class.
 
 **If not:** as in [Check the namespace](NAMESPACE.md#8-check-the-namespace).
 
@@ -545,9 +545,9 @@ spec:
     serviceDomain: cluster.local
   topology:
     classRef:
-      name: builtin-generic-v3.7.0      # <-- 3. the newest cluster class
+      name: builtin-generic-v3.8.0      # <-- 3. the newest cluster class
       namespace: vmware-system-vks-public
-    version: v1.36.4---vmware.2-vkr.3   # <-- 4. a Kubernetes release, usually the newest
+    version: v1.37.1---vmware.4-vkr.1   # <-- 4. a Kubernetes release, usually the newest
     controlPlane:
       replicas: 1                       # <-- 5. control-plane nodes: 1 or 3
     workers:
@@ -571,7 +571,7 @@ spec:
 | 1 | `metadata.name` | the cluster's name from step 2, never used before in this namespace |
 | 2 | `metadata.namespace` | your vSphere Namespace; the same as `VKS_NAMESPACE` in the block below |
 | 3 | `classRef.name` | the newest cluster class the block lists |
-| 4 | `version` | one name from the block's release list. The cluster stores it shortened: `v1.36.4---vmware.2-vkr.3` becomes `v1.36.4+vmware.2` |
+| 4 | `version` | one name from the block's release list. The cluster stores it shortened: `v1.37.1---vmware.4-vkr.1` becomes `v1.37.1+vmware.4` |
 | 5 | `controlPlane.replicas` | `1`, or `3` for a cluster that must stay up when a node fails |
 | 6 | `machineDeployments` `replicas` | the number of worker nodes |
 | 7 | `vmClass`, `storageClass`, `defaultStorageClass` | a VM class and a storage class from the block (see the table in step 2). `defaultStorageClass` is the class apps get when they do not name one |

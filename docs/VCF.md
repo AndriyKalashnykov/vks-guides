@@ -8,7 +8,7 @@
 > - [Installing the VCF CLI in Internet Restricted Environments](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/installing-the-vcf-cli-in-internet-restricted-environments%282%29.html) (the download and the plugin bundle)
 
 `vcf` is VMware's command-line tool; you use it to [log in to the Supervisor](LOGIN.md). The
-plugin bundle adds its other commands (`vcf cluster`, `vcf package`, …). Download two files from
+plugin bundle adds its other commands (`vcf cluster`, `vcf addon`, …). Download two files from
 Broadcom, then run the install block; it needs no internet access.
 
 ## Download
@@ -22,20 +22,19 @@ Arm PC). On a machine without a browser, download them on another one and copy b
 | file | where to click | direct link |
 |---|---|---|
 | `VCF-Consumption-CLI-<platform>-9.1.1.0100.25746586.tar.gz` | [My Downloads](https://support.broadcom.com/group/ecx/downloads) → VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0100 → **VCF Consumption CLI** | [VCF CLI](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0100&os=&servicePk=547810&language=EN&groupId=545612&viewGroup=true) |
-| `VCF-Consumption-CLI-PluginBundle-<platform>-9.1.1.0100.25793136.tar.gz` | [My Downloads](https://support.broadcom.com/group/ecx/downloads) → VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0100 → **VCF Consumption CLI Plugins** | [VCF CLI plugins](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0100&os=&servicePk=548172&language=EN&groupId=545621&viewGroup=true) |
+| `VCF-Consumption-CLI-PluginBundle-<platform>-9.1.1.0200.25839222.tar.gz` | [My Downloads](https://support.broadcom.com/group/ecx/downloads) → VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0200 → **VCF Consumption CLI Plugins** | [VCF CLI plugins](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0200&os=&servicePk=548172&language=EN&groupId=545621&viewGroup=true) |
 
 - With a VMware Cloud Foundation account, click VMware Cloud Foundation → VMware Cloud Foundation
-  9 → 9.1.1.0 instead. Until you pick the release, the page reads "No data found".
+  9 instead, then for each file the release whose file names match the table. Until you pick the
+  release, the page reads "No data found".
 - Tick **"I agree to the Terms and Conditions"**. The checkbox stays greyed out until you open
   both Terms links, and until it is ticked the download icon does nothing.
 - Take the row for your platform, not the files without one (`…-Binaries-…`, plain
   `…-PluginBundle-…`, `…-OCI-…`).
 - Copy the **SHA2** value of each file; the install block checks them.
-- Take the files whose names contain `9.1.1.0100.25746586` and `9.1.1.0100.25793136`, the names
-  the install block expects. The plugins page can open on a newer release: pick the release
-  whose file names match. Its VKS plugins (`cluster`, `package`, …) are v3.7.2, for VKS 3.7;
-  release 9.1.1.0200 has v3.8.0 ones, for VKS 3.8; `vcf context create`, `list` and `delete`
-  also work with them on VKS 3.7.
+- Take the files whose names contain `9.1.1.0100.25746586` (the CLI) and `9.1.1.0200.25839222`
+  (the plugins), the names the install block expects; the two come from different releases. The
+  plugins' VKS plugins (`addon`, `cluster`, …) are v3.8.0, for VKS 3.8.
 
 ## Install
 
@@ -52,9 +51,8 @@ VCF_CLI_SHA256=""
 VCF_PLUGINS_SHA256=""
 DOWNLOAD_DIR="$HOME/Downloads"
 INSTALL_DIR="/usr/local/bin"
-VCF_RELEASE="9.1.1.0100"
-VCF_CLI_BUILD="25746586"
-VCF_PLUGINS_BUILD="25793136"
+VCF_CLI_VERSION="9.1.1.0100.25746586"
+VCF_PLUGINS_VERSION="9.1.1.0200.25839222"
 
 case "$(uname -s)/$(uname -m)" in
   Linux/x86_64)  P=Linux_AMD64 ;;
@@ -63,8 +61,8 @@ case "$(uname -s)/$(uname -m)" in
   Darwin/x86_64) P=Darwin_AMD64 ;;
   *)             P=unsupported ;;
 esac
-CLI_TGZ="$DOWNLOAD_DIR/VCF-Consumption-CLI-${P}-${VCF_RELEASE}.${VCF_CLI_BUILD}.tar.gz"
-PLUGINS_TGZ="$DOWNLOAD_DIR/VCF-Consumption-CLI-PluginBundle-${P}-${VCF_RELEASE}.${VCF_PLUGINS_BUILD}.tar.gz"
+CLI_TGZ="$DOWNLOAD_DIR/VCF-Consumption-CLI-${P}-${VCF_CLI_VERSION}.tar.gz"
+PLUGINS_TGZ="$DOWNLOAD_DIR/VCF-Consumption-CLI-PluginBundle-${P}-${VCF_PLUGINS_VERSION}.tar.gz"
 CLI_SUM="$( (sha256sum "$CLI_TGZ" 2>/dev/null || shasum -a 256 "$CLI_TGZ" 2>/dev/null) | cut -d' ' -f1)"
 PLUGINS_SUM="$( (sha256sum "$PLUGINS_TGZ" 2>/dev/null || shasum -a 256 "$PLUGINS_TGZ" 2>/dev/null) | cut -d' ' -f1)"
 TMP="$(mktemp -d)"
@@ -110,14 +108,13 @@ $VCF_CLI_SHA256 = ""                     # SHA2 of the CLI file from the downloa
 $VCF_PLUGINS_SHA256 = ""                 # SHA2 of the plugin bundle from the download page
 $DOWNLOAD_DIR = "$HOME\Downloads"
 $INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
-$VCF_RELEASE = "9.1.1.0100"
-$VCF_CLI_BUILD = "25746586"
-$VCF_PLUGINS_BUILD = "25793136"
+$VCF_CLI_VERSION = "9.1.1.0100.25746586"
+$VCF_PLUGINS_VERSION = "9.1.1.0200.25839222"
 
 $global:LASTEXITCODE = $null
 $P = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'Windows_ARM64' } else { 'Windows_AMD64' }
-$CLI_ZIP = "$DOWNLOAD_DIR\VCF-Consumption-CLI-$P-$VCF_RELEASE.$VCF_CLI_BUILD.zip"
-$PLUGINS_ZIP = "$DOWNLOAD_DIR\VCF-Consumption-CLI-PluginBundle-$P-$VCF_RELEASE.$VCF_PLUGINS_BUILD.zip"
+$CLI_ZIP = "$DOWNLOAD_DIR\VCF-Consumption-CLI-$P-$VCF_CLI_VERSION.zip"
+$PLUGINS_ZIP = "$DOWNLOAD_DIR\VCF-Consumption-CLI-PluginBundle-$P-$VCF_PLUGINS_VERSION.zip"
 $CLI_SUM = if (Test-Path $CLI_ZIP) { (Get-FileHash -Algorithm SHA256 $CLI_ZIP).Hash.ToLower() }
 $PLUGINS_SUM = if (Test-Path $PLUGINS_ZIP) { (Get-FileHash -Algorithm SHA256 $PLUGINS_ZIP).Hash.ToLower() }
 $TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
@@ -162,8 +159,8 @@ Remove-Item -Recurse -Force $TMP
 </details>
 
 **Expect:** `checksums OK`, `Initialization done!` (first run only), `Installing plugin …` lines,
-`version: v9.1.1.0100.25746586`, then the plugins, each `installed`, and no `FAILED` or
-`WARNING` line.
+`version: v9.1.1.0100.25746586`, then the plugins, each `installed` (`addon`, `cluster`,
+`kubernetes-release`, `package` and `registry-secret` at `v3.8.0`), and no `FAILED` or `WARNING` line.
 
 **If not:**
 - `FAILED: not found: …`: the file is not in `DOWNLOAD_DIR`, or it is from another release

@@ -1222,8 +1222,8 @@ outside `tekton-demo` exists, and stops otherwise. Run step 6 first.
 ### With the VKS add-on (A)
 
 This turns Pipelines and Triggers off and waits for them to go, removes the operator's webhook
-set while the operator still runs (it is left behind otherwise), then removes the add-on and its
-empty namespace.
+set while the operator still runs (it is left behind otherwise), waits up to 5 minutes for the
+operator's other sets to go, then removes the add-on and its empty namespace.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1268,9 +1268,15 @@ else
       printf '%s\n' "$W" | grep '/validating-mutating-webhook-' | while read -r R; do
         kubectl --kubeconfig "$VKS_KUBECONFIG" delete "$R" --timeout=2m </dev/null
       done
-      if ! W="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get tektoninstallersets -o name)" \
-         || printf '%s\n' "$W" | grep -q '/validating-mutating-webhook-'; then
-        echo "FAILED: the operator's webhook set is still there (see the error above)"
+      for i in $(seq 60); do
+        W="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get tektoninstallersets -o name)" || W="unknown"
+        if [ -z "$W" ]; then break; fi
+        sleep 5
+      done
+      if [ "$W" = unknown ]; then
+        echo "FAILED: cannot list the operator's sets (see the error above)"
+      elif [ -n "$W" ]; then
+        echo "FAILED: the operator's sets are still there after 5 minutes:" $W
       elif ! vcf addon install delete tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
         echo "FAILED: the add-on (see the error above)"
       else
@@ -1338,9 +1344,16 @@ if ($LASTEXITCODE -ne 0) {
         foreach ($R in @($W | Where-Object { $_ -match '/validating-mutating-webhook-' })) {
           kubectl --kubeconfig $VKS_KUBECONFIG delete $R --timeout=2m
         }
-        $W = @(kubectl --kubeconfig $VKS_KUBECONFIG get tektoninstallersets -o name)
-        if ($LASTEXITCODE -ne 0 -or @($W | Where-Object { $_ -match '/validating-mutating-webhook-' }).Count -gt 0) {
-          "FAILED: the operator's webhook set is still there (see the error above)"
+        foreach ($i in 1..60) {
+          $W = @(kubectl --kubeconfig $VKS_KUBECONFIG get tektoninstallersets -o name)
+          if ($LASTEXITCODE -ne 0) { $W = @('unknown') }
+          if ($W.Count -eq 0) { break }
+          Start-Sleep -Seconds 5
+        }
+        if ("$W" -eq 'unknown') {
+          "FAILED: cannot list the operator's sets (see the error above)"
+        } elseif ($W.Count -gt 0) {
+          "FAILED: the operator's sets are still there after 5 minutes: $W"
         } else {
           vcf addon install delete tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
           if ($LASTEXITCODE -ne 0) {
@@ -1376,6 +1389,8 @@ if ($LASTEXITCODE -ne 0) {
   kubeconfig> get <kind> -A`; delete them first if they are yours.
 - `STOPPED: the VCF CLI` under `Unable to read password from terminal` or `provide credentials`:
   [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then run the block again.
+- `FAILED: the operator's sets are still there`: `kubectl --kubeconfig <the VKS kubeconfig> get
+  tektoninstallersets -o yaml` shows what holds them (`finalizers`); run the block again.
 - `Tekton CRDs left:` more than 0, or `FAILED: …`: see the error above it, and run the block
   again.
 - `STOPPED: cannot read the cluster` with no other error: `kubectl --kubeconfig <the VKS

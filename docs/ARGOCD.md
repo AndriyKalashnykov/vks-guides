@@ -24,7 +24,7 @@ ArgoCD (an *instance*). In this guide ArgoCD creates a VKS cluster from the char
 Needs [kubectl](KUBECTL.md), `jq` and `openssl` ([Prerequisites](PREREQS.md)), a
 [Supervisor login](LOGIN.md) and a [vSphere Namespace](NAMESPACE.md) with the **Namespaces Edit**
 role for your SSO user. Steps 2 and 10 need a vCenter administrator. Written for ArgoCD Service
-1.2.0 on VCF 9.1.1 with VKS 3.7. The Supervisor must reach `github.com`, and the VKS cluster
+1.2.0 on VCF 9.1.1 with VKS 3.8. The Supervisor must reach `github.com`, and the VKS cluster
 `docker.io` (step 8).
 
 `ARGOCD_NAMESPACE` is the vSphere Namespace that runs ArgoCD, `VKS_NAMESPACE` the one that holds
@@ -520,8 +520,8 @@ if ($LASTEXITCODE -eq 0) {
 
 </details>
 
-**Expect:** under each heading at least one line, for example `v1.36.2+vmware.2`,
-`builtin-generic-v3.7.0`, `best-effort-small  2  4Gi …`, `wcp-vmfs`.
+**Expect:** under each heading at least one line, for example `v1.37.1+vmware.4`,
+`builtin-generic-v3.8.0`, `best-effort-small  2  4Gi …`, `wcp-vmfs`.
 
 **If not:** an empty list or `Forbidden`: run [Check the namespace](NAMESPACE.md#8-check-the-namespace).
 
@@ -568,8 +568,8 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-K8S_VERSION="v1.36.2+vmware.2"
-CLUSTER_CLASS="builtin-generic-v3.7.0"
+K8S_VERSION="v1.37.1+vmware.4"
+CLUSTER_CLASS="builtin-generic-v3.8.0"
 VM_CLASS="best-effort-small"
 STORAGE_CLASS="wcp-vmfs"
 
@@ -584,7 +584,7 @@ spec:
   project: vks-clusters
   source:
     repoURL: https://github.com/AndriyKalashnykov/vks-guides.git
-    targetRevision: "173fba41691ffd7c0379443a6ca2fb014a3205d8"
+    targetRevision: "b0802ca479f40c5d11e13c7534fae8b92d1891a7"
     path: argocd/guest-cluster
     helm:
       valuesObject:
@@ -609,8 +609,8 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$K8S_VERSION = "v1.36.2+vmware.2"
-$CLUSTER_CLASS = "builtin-generic-v3.7.0"
+$K8S_VERSION = "v1.37.1+vmware.4"
+$CLUSTER_CLASS = "builtin-generic-v3.8.0"
 $VM_CLASS = "best-effort-small"
 $STORAGE_CLASS = "wcp-vmfs"
 
@@ -625,7 +625,7 @@ spec:
   project: vks-clusters
   source:
     repoURL: https://github.com/AndriyKalashnykov/vks-guides.git
-    targetRevision: "173fba41691ffd7c0379443a6ca2fb014a3205d8"
+    targetRevision: "b0802ca479f40c5d11e13c7534fae8b92d1891a7"
     path: argocd/guest-cluster
     helm:
       valuesObject:
@@ -664,7 +664,7 @@ Now look at it, then sync:
    sync; delete the Application in the ArgoCD page with **Non-cascading** and choose another
    name.
 
-   ![The DIFF tab: the left half empty, the right half in green with the Cluster: builtin-generic-v3.7.0, best-effort-small, wcp-vmfs and v1.36.2+vmware.2](img/argocd/07-diff.png)
+   ![The DIFF tab: the left half empty, the right half in green with the Cluster: serviceDomain cluster.local, builtin-generic-v3.8.0, best-effort-small, wcp-vmfs and v1.37.1+vmware.4](img/argocd/07-diff.png)
 
 2. Close it, click **SYNC**, then **SYNCHRONIZE**.
 

@@ -71,8 +71,31 @@ for `kubectl`, [Install kubectl](docs/KUBECTL.md); for `vcf`, [Install the VCF C
 
 ## Tested on
 
-Run against VCF 9.1.1 (vSphere 9.1.1 Supervisor, VKS 3.7.2) from Linux and Windows on amd64 and
-macOS on Apple silicon. ✅ every block run, "part" some blocks run, — not run.
+✅ every block run, "part" some blocks run, — not run.
+
+On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
+
+| guide | Ubuntu (bash, zsh) | Windows PowerShell 5.1 | Photon OS 5 (bash) |
+|---|---|---|---|
+| [Install kubectl](docs/KUBECTL.md) | — | — | part |
+| [Install the VCF CLI](docs/VCF.md) | part | part | part |
+| [Log in](docs/LOGIN.md) | part | part | part |
+| [Create a vSphere Namespace](docs/NAMESPACE.md) | — | — | — |
+| [Create a VKS cluster](docs/CLUSTER.md) | — | — | part |
+| [Install Harbor](docs/HARBOR.md) | part | — | — |
+| [ArgoCD](docs/ARGOCD.md) | part | part | part |
+| [Run Gitea](docs/GITEA.md) | part | part | part |
+| [Run Tekton](docs/TEKTON.md) | part | part | ✅ |
+| [Run GitLab](docs/GITLAB.md) | part | — | — |
+| [CI/CD with Gitea and Tekton](docs/CICD.md) | part | — | — |
+| [CI/CD with GitLab](docs/CICD.md) | part | — | — |
+| [Install Helm](docs/HELM.md) | — | — | ✅ |
+| [Monitor a VKS cluster](docs/MONITORING.md) | — | — | part |
+| [Send logs to VCF Operations](docs/LOGGING.md) | — | part | part |
+| [Logs and traces in Grafana](docs/OBSERVABILITY.md) | — | — | part |
+
+Earlier versions of these guides, on VCF 9.1.1 with VKS 3.7.2, from Linux and Windows on amd64 and
+macOS on Apple silicon:
 
 | guide | Ubuntu (bash, zsh) | macOS 26 (bash, zsh) | Windows PowerShell 5.1 | WSL 2 Ubuntu (bash, as root) | Photon OS 5 (bash) |
 |---|---|---|---|---|---|
