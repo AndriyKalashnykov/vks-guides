@@ -22,7 +22,7 @@ other steps are the same, and where their blocks set `GIT_SERVER="gitea"`, chang
 
 | | With Gitea and Tekton | With GitLab |
 |---|---|---|
-| done first | [HARBOR.md](HARBOR.md) 1-9, [ARGOCD.md](ARGOCD.md) 3, 4 and 7, [GITEA.md](GITEA.md) 1-8, [TEKTON.md](TEKTON.md) 1-3 | [HARBOR.md](HARBOR.md) 1-9, [ARGOCD.md](ARGOCD.md) 3, 4 and 7, [GITLAB.md](GITLAB.md) 1-8 |
+| done first | [HARBOR.md](HARBOR.md) 1-9, [ARGOCD.md](ARGOCD.md) 3, 4 and 7, [GITEA.md](GITEA.md) 1-8, [TEKTON.md](TEKTON.md) 1 and 2 (A) or 1 and 3 (B) | [HARBOR.md](HARBOR.md) 1-9, [ARGOCD.md](ARGOCD.md) 3, 4 and 7, [GITLAB.md](GITLAB.md) 1-8 |
 | builds in | namespace `cicd-ci` | namespace `gitlab-runner` (GITLAB.md's runner) |
 | writes back from | a Tekton Task with a Gitea bot user's token | a second, locked runner with a deploy token |
 | starts on a push | a signed Gitea webhook (step 7) | by itself |
@@ -67,9 +67,11 @@ elif ! NS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace -o name)"; the
   echo "FAILED: cannot read the cluster (see the error above)"
 else
   echo "Harbor ${HARBOR_FQDN}: $(curl -sS --cacert "$HARBOR_DIR/harbor-ca.crt" --connect-timeout 20 --max-time 30 -o /dev/null -w '%{http_code}' "https://${HARBOR_FQDN}/api/v2.0/ping")"
-  for N in gitea tekton-pipelines gitlab gitlab-runner cicd-demo; do
+  for N in gitea gitlab gitlab-runner cicd-demo; do
     echo "namespace ${N}: $(printf '%s\n' "$NS" | grep -cx "namespace/$N")"
   done
+  T="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterinterceptor/github clusterinterceptor/cel clusterrole/tekton-triggers-eventlistener-roles -o name 2>/dev/null)"
+  echo "Tekton Triggers objects: $(printf '%s\n' "$T" | grep -c .)"
   echo "ArgoCD destinations: $(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get secret -l argocd.argoproj.io/secret-type=cluster -o json \
     | jq -r '[.items[].data.name // empty | @base64d] | join(" ")')"
 fi
@@ -97,9 +99,11 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
     "FAILED: cannot read the cluster (see the error above)"
   } else {
     "Harbor ${HARBOR_FQDN}: $(curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -o NUL -w '%{http_code}' "https://$HARBOR_FQDN/api/v2.0/ping")"
-    foreach ($N in 'gitea', 'tekton-pipelines', 'gitlab', 'gitlab-runner', 'cicd-demo') {
+    foreach ($N in 'gitea', 'gitlab', 'gitlab-runner', 'cicd-demo') {
       "namespace ${N}: $(@($NS | Where-Object { $_ -ceq "namespace/$N" }).Count)"
     }
+    $T = @(kubectl --kubeconfig $VKS_KUBECONFIG get clusterinterceptor/github clusterinterceptor/cel clusterrole/tekton-triggers-eventlistener-roles -o name 2>$null)
+    "Tekton Triggers objects: $(@($T | Where-Object { $_ }).Count)"
     $C = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get secret -l argocd.argoproj.io/secret-type=cluster -o json | Out-String | ConvertFrom-Json
     "ArgoCD destinations: $(@($C.items | Where-Object { $_.data.name } | ForEach-Object { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_.data.name)) }) -join ' ')"
   }
@@ -109,7 +113,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 </details>
 
 **Expect:** `Harbor <name>: 200`, then `namespace cicd-demo: 0`, and with Gitea and Tekton
-`namespace gitea: 1` and `namespace tekton-pipelines: 1`, or with GitLab `namespace gitlab: 1` and
+`namespace gitea: 1` and `Tekton Triggers objects: 3`, or with GitLab `namespace gitlab: 1` and
 `namespace gitlab-runner: 1`, and `ArgoCD destinations:` with `<your cluster>-<its vSphere
 Namespace>` among the names.
 
@@ -117,7 +121,9 @@ Namespace>` among the names.
 - `FAILED: … is missing`: run this on the machine where you did HARBOR.md, or copy that folder
   here.
 - `Harbor <name>:` other than `200`: see [HARBOR.md](HARBOR.md) step 9.
-- A `0` for your Git server or Tekton: do its guide first (the table above).
+- A `0` for your Git server, or `Tekton Triggers objects:` under 3 with Gitea and Tekton: do its
+  guide first (the table above); for Tekton, [TEKTON.md](TEKTON.md) step 1, then step 2 (A) or
+  step 3 (B).
 - `namespace cicd-demo: 1`: an earlier run of this guide is still there; remove it with step 9.
 - `ArgoCD destinations:` empty, or an error before it: log in again ([LOGIN.md](LOGIN.md)), or add
   the cluster with [ARGOCD.md](ARGOCD.md) step 7. If the cluster is there under another name, put
@@ -1354,6 +1360,7 @@ spec:
       script: |
         #!/busybox/sh
         set -eu
+        export SSL_CERT_DIR=/kaniko/ssl/certs
         /kaniko/executor --context=/src/app --dockerfile=/src/app/Dockerfile \
           --destination="${REGISTRY}/${IMAGE}:$(cat "$(results.commit.path)")" \
           --registry-certificate="${REGISTRY}=/run/ca/ca.crt" \
@@ -1543,6 +1550,7 @@ spec:
       script: |
         #!/busybox/sh
         set -eu
+        export SSL_CERT_DIR=/kaniko/ssl/certs
         /kaniko/executor --context=/src/app --dockerfile=/src/app/Dockerfile \
           --destination="${REGISTRY}/${IMAGE}:$(cat "$(results.commit.path)")" \
           --registry-certificate="${REGISTRY}=/run/ca/ca.crt" \
@@ -1676,9 +1684,10 @@ then within a few minutes `Succeeded: Tasks Completed: 2 (Failed: 0, Cancelled 0
 **If not:**
 - `Failed: …`: `kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci logs -l
   tekton.dev/pipelineTask=build --all-containers` shows the build's log. `x509: certificate signed
-  by unknown authority` means `harbor-ca` is missing in `cicd-ci`, `UNAUTHORIZED` that `harbor-push`
-  is missing or expired (step 3); `toomanyrequests` is Docker Hub's pull limit (wait and run this
-  again).
+  by unknown authority` on your Harbor means `harbor-ca` is missing in `cicd-ci`; on
+  `index.docker.io`, the `kaniko` step lacks its `SSL_CERT_DIR` line (run this block again).
+  `UNAUTHORIZED` means `harbor-push` is missing or expired (step 3); `toomanyrequests` is Docker
+  Hub's pull limit (wait and run this again).
 - `Failed` in `write-back` with `Authentication failed`: `git-writeback` is wrong; delete it
   (`kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci delete secret git-writeback`) and run step 4
   again.
