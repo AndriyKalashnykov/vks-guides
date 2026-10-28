@@ -520,8 +520,8 @@ if ($LASTEXITCODE -eq 0) {
 
 </details>
 
-**Expect:** under each heading at least one line, for example `v1.36.2+vmware.2`,
-`builtin-generic-v3.7.0`, `best-effort-small  2  4Gi …`, `wcp-vmfs`.
+**Expect:** under each heading at least one line, for example `v1.37.1+vmware.4`,
+`builtin-generic-v3.8.0`, `best-effort-small  2  4Gi …`, `wcp-vmfs`.
 
 **If not:** an empty list or `Forbidden`: run [Check the namespace](NAMESPACE.md#8-check-the-namespace).
 
@@ -568,8 +568,8 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-K8S_VERSION="v1.36.2+vmware.2"
-CLUSTER_CLASS="builtin-generic-v3.7.0"
+K8S_VERSION="v1.37.1+vmware.4"
+CLUSTER_CLASS="builtin-generic-v3.8.0"
 VM_CLASS="best-effort-small"
 STORAGE_CLASS="wcp-vmfs"
 
@@ -609,8 +609,8 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$K8S_VERSION = "v1.36.2+vmware.2"
-$CLUSTER_CLASS = "builtin-generic-v3.7.0"
+$K8S_VERSION = "v1.37.1+vmware.4"
+$CLUSTER_CLASS = "builtin-generic-v3.8.0"
 $VM_CLASS = "best-effort-small"
 $STORAGE_CLASS = "wcp-vmfs"
 

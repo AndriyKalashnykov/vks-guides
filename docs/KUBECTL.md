@@ -19,7 +19,7 @@ when this machine cannot reach dl.k8s.io. After you log in,
 Downloads the official binary, checks its SHA-256 and installs it into `INSTALL_DIR`. When that
 directory needs `sudo` and `sudo` would ask for a password, it installs into `~/.local/bin`
 instead (see [Prerequisites](PREREQS.md#sudo-optional)). Leave `KUBECTL_VERSION` empty for the
-latest stable release, or set one such as `v1.36.2`.
+latest stable release, or set one such as `v1.37.1`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -63,7 +63,7 @@ fi; rm -rf "$TMP"
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$KUBECTL_VERSION = ""                    # empty = latest stable; or e.g. v1.36.2
+$KUBECTL_VERSION = ""                    # empty = latest stable; or e.g. v1.37.1
 $INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
 
 $global:LASTEXITCODE = $null
