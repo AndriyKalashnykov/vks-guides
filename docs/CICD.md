@@ -1360,6 +1360,7 @@ spec:
       script: |
         #!/busybox/sh
         set -eu
+        export SSL_CERT_DIR=/kaniko/ssl/certs
         /kaniko/executor --context=/src/app --dockerfile=/src/app/Dockerfile \
           --destination="${REGISTRY}/${IMAGE}:$(cat "$(results.commit.path)")" \
           --registry-certificate="${REGISTRY}=/run/ca/ca.crt" \
@@ -1549,6 +1550,7 @@ spec:
       script: |
         #!/busybox/sh
         set -eu
+        export SSL_CERT_DIR=/kaniko/ssl/certs
         /kaniko/executor --context=/src/app --dockerfile=/src/app/Dockerfile \
           --destination="${REGISTRY}/${IMAGE}:$(cat "$(results.commit.path)")" \
           --registry-certificate="${REGISTRY}=/run/ca/ca.crt" \
