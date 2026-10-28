@@ -1241,6 +1241,8 @@ elif ! printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s
   echo "The Tekton add-on is not installed"
 elif [ "$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}')" != vmware-system-helm ]; then
   echo "STOPPED: this Tekton Operator is not the VKS add-on"
+elif ! vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" >/dev/null; then
+  echo "STOPPED: the VCF CLI (see the error above)"
 else
   L=""
   K="$(printf '%s\n' "$A" | grep '\.tekton\.dev$' | grep -v -e '^clusterinterceptors\.' -e '\.operator\.tekton\.dev$' | paste -sd, -)"
@@ -1304,6 +1306,8 @@ if ($LASTEXITCODE -ne 0) {
   "The Tekton add-on is not installed"
 } elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}') -ne 'vmware-system-helm') {
   "STOPPED: this Tekton Operator is not the VKS add-on"
+} elseif ((vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE | Out-Null) -or $LASTEXITCODE -ne 0) {
+  "STOPPED: the VCF CLI (see the error above)"
 } else {
   $L = @()
   $KINDS = @($A | Where-Object { $_ -match '\.tekton\.dev$' -and $_ -notmatch '^clusterinterceptors\.' -and $_ -notmatch '\.operator\.tekton\.dev$' }) -join ','
@@ -1370,7 +1374,7 @@ if ($LASTEXITCODE -ne 0) {
 - `STOPPED: this Tekton Operator is not the VKS add-on`: someone else installed it; leave it.
 - `STOPPED: … objects outside tekton-demo`: list them with `kubectl --kubeconfig <the VKS
   kubeconfig> get <kind> -A`; delete them first if they are yours.
-- `Unable to read password from terminal` or `provide credentials`:
+- `STOPPED: the VCF CLI` under `Unable to read password from terminal` or `provide credentials`:
   [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then run the block again.
 - `Tekton CRDs left:` more than 0, or `FAILED: …`: see the error above it, and run the block
   again.

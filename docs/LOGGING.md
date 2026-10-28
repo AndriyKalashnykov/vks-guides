@@ -243,8 +243,8 @@ vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPAC
 
 **If not:**
 - `not found` for the release: copy its name again from step 1.
-- A login error (`Unauthorized`, `provide credentials`) or `context supervisor not found`: as in
-  step 1.
+- A login error (`Unauthorized`, `Unable to read password from terminal`,
+  `provide credentials`) or `context supervisor not found`: as in step 1.
 
 ## 5. Give Fluent Bit the CA
 
@@ -440,11 +440,14 @@ else
     --from-file=tls_http.crt="$CA" --dry-run=client -o yaml \
     | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -
   vcf context use supervisor </dev/null
-  vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
-    -f "$LOGGING_DIR/values.yaml" -y
-  sleep 30
-  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
-  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+  if vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+       -f "$LOGGING_DIR/values.yaml" -y; then
+    sleep 30
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+  else
+    echo "FAILED: add-on update (see the error above)"
+  fi
 fi
 ```
 
@@ -467,9 +470,13 @@ if (-not (Test-Path $CA)) {
     kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
   vcf context use supervisor
   vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$LOGGING_DIR\values.yaml" -y
-  Start-Sleep 30
-  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
-  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+  if ($LASTEXITCODE -eq 0) {
+    Start-Sleep 30
+    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
+    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+  } else {
+    "FAILED: add-on update (see the error above)"
+  }
 }
 ```
 
@@ -482,8 +489,9 @@ then run step 6 again.
 
 **If not:**
 - `FAILED: not found`: save the CA as step 2 says.
-- A login error (`Unauthorized`, `provide credentials`) or `context supervisor not found`: as in
-  step 1.
+- `FAILED: add-on update`: the error above it says why.
+- A login error (`Unauthorized`, `Unable to read password from terminal`,
+  `provide credentials`) or `context supervisor not found`: as in step 1.
 
 ## 8. Uninstall (optional)
 
@@ -511,7 +519,7 @@ vcf addon install delete fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPAC
 `Addon 'fluent-bit' installed in the cluster … has been deleted`; the Fluent Bit pods go away
 within a minute.
 
-**If not:** a login error (`Unauthorized`, `provide credentials`) or `context supervisor not found`:
-as in step 1.
+**If not:** a login error (`Unauthorized`, `Unable to read password from terminal`,
+`provide credentials`) or `context supervisor not found`: as in step 1.
 
 Back to [README](../README.md).

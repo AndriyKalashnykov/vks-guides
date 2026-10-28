@@ -700,8 +700,8 @@ and `daemonset.apps/fluent-bit restarted`), then `daemon set "fluent-bit" succes
 
 **If not:**
 - `not found` for the release: copy its name again from LOGGING.md step 1.
-- A login error (`Unauthorized`, `provide credentials`) or `context supervisor not found`: as in
-  LOGGING.md step 1.
+- A login error (`Unauthorized`, `Unable to read password from terminal`,
+  `provide credentials`) or `context supervisor not found`: as in LOGGING.md step 1.
 - `FAILED: the add-on also sends to Log Management`: you did LOGGING.md; set `LOGS_FQDN` to Log
   Management's name, so this step keeps that output.
 - `FAILED: add-on update` or `FAILED: add-on install`: the line above it says why.
