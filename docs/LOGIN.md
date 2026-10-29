@@ -158,8 +158,9 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 This logs you in to the Supervisor with the VCF CLI, as your SSO user with the password from step
 2, and checks the Supervisor's certificate against `SUPERVISOR_CA` (step 1's vCenter CA, or
-`supervisor.crt` from the Alternative below). The login is saved in `~/.kube/supervisor.kubeconfig`, a kubeconfig of its own (the file kubectl reads to
-find a cluster and log in to it), as the context `supervisor`. Your other kubeconfigs are not
+`supervisor.crt` from the Alternative below). The login is saved in
+`~/.kube/supervisor.kubeconfig`, a kubeconfig of its own (the file kubectl reads to find a cluster
+and log in to it), as the context `supervisor`. Your other kubeconfigs are not
 changed. **A few failed logins in a row lock the SSO user for some minutes**, so type the password
 carefully. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 

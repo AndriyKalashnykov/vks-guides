@@ -242,7 +242,8 @@ This prints what you need to log in to ArgoCD's web page:
   check it and warns. Comparing the fingerprint shows that you reached your ArgoCD;
 - the first password of the user `admin`.
 
-Set `ARGOCD_INSTANCE` to the instance's name from step 1. Clear the terminal afterwards: the
+Set `ARGOCD_INSTANCE` to the instance's name from step 1, or `argocd-1` if you created it in step
+3. Clear the terminal afterwards: the
 password stays on the screen.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**

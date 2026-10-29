@@ -77,9 +77,9 @@ if ($LASTEXITCODE -eq 0 -and (Test-Path $NEW)) {
 }
 ```
 
-**Expect:** `subject=CN = Harbor CA` (PowerShell: `subject=CN=Harbor CA`; or your organization's
-CA, HARBOR.md step 13) and a `sha256 Fingerprint=` line. When it is the same as your
-administrator's, keep the file:
+**Expect:** `subject=CN = Harbor CA` (newer OpenSSL and PowerShell: `subject=CN=Harbor CA`; or
+your organization's CA, HARBOR.md step 13) and a `sha256 Fingerprint=` line. When it is the same
+as your administrator's, keep the file:
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
