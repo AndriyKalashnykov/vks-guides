@@ -23,7 +23,12 @@ others use. If you open a new terminal, run the first block again.
 
 ## 0. Set your values
 
-Change these to your own. `HARBOR_PULL_ROBOT` is needed only for a private project (step 5).
+Change these to your own. The two robot accounts:
+
+- `HARBOR_ROBOT` (push): used on your machine in step 4 to upload the image. It may push and pull.
+- `HARBOR_PULL_ROBOT` (pull): used only for a private project, in step 5. Its login becomes the
+  Secret `harbor-pull` inside the VKS cluster, so the nodes can download the image. It may only
+  pull, so whoever can read that Secret cannot change your images.
 
 ```sh
 HARBOR_FQDN="harbor.env1.lab.test"
