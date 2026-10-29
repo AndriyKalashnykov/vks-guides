@@ -11,10 +11,10 @@
 > - GitLab 19.5: [CI/CD YAML syntax](https://docs.gitlab.com/ci/yaml/), [Custom CI/CD configuration file](https://docs.gitlab.com/ci/pipelines/settings/), [Kubernetes executor](https://docs.gitlab.com/runner/executors/kubernetes/), [Feature flags](https://docs.gitlab.com/runner/configuration/feature-flags/), [Project access tokens](https://docs.gitlab.com/user/project/settings/project_access_tokens/)
 
 This ties the other guides together. You push a change to an app's Git repository; the cluster
-builds its image with Kaniko and pushes it to Harbor; the build writes the image's digest into a
-second repository, `deploy`; ArgoCD on the Supervisor sees the new commit and rolls it out to the
-VKS cluster. The app is [`argocd/test-web-apps`](../argocd/test-web-apps): a page that says
-`test-web-apps v1`.
+builds its image with Kaniko and pushes it to Harbor; the build writes the image's digest (its
+unique `sha256:` fingerprint) into a second repository, `deploy`; ArgoCD on the Supervisor sees the
+new commit and rolls it out to the VKS cluster. The app is
+[`argocd/test-web-apps`](../argocd/test-web-apps): a page that says `test-web-apps v1`.
 
 You can do it with Gitea and Tekton, or with GitLab. Steps 4, 6 and 7 have a section for each; the
 other steps are the same, and where their blocks set `GIT_SERVER="gitea"`, change it to
@@ -49,6 +49,10 @@ The blocks keep their files in `~/.config/vks-guides/cicd` (PowerShell:
 `$HOME\.config\vks-guides\cicd`).
 
 ## 1. Check what is in place
+
+This checks that the other guides' parts are in place. It shows whether Harbor answers, which of
+the namespaces `gitea`, `gitlab`, `gitlab-runner` and `cicd-demo` exist, whether Tekton Triggers is
+installed, and which clusters ArgoCD on the Supervisor can deploy to.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -131,8 +135,11 @@ Namespace>` among the names.
 
 ## 2. Create the namespaces
 
-`cicd-demo` runs the app, restricted. The build runs the Dockerfile as root, so its namespace
-allows baseline pods: `cicd-ci` with Gitea and Tekton, GITLAB.md's `gitlab-runner` with GitLab.
+This creates two namespaces:
+
+- `cicd-demo`, where the app runs; it accepts only pods without admin rights;
+- the build namespace: `cicd-ci` with Gitea and Tekton, GITLAB.md's `gitlab-runner` with GitLab.
+  It allows root, because the build runs the app's Dockerfile as root.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -203,12 +210,15 @@ metadata:
 
 ## 3. Give the cluster two Harbor robots
 
-This creates the private Harbor project `cicd-demo` and two robot accounts for 90 days: `push`,
-for the build, and `pull`, for the app's nodes. Each robot's secret goes straight from Harbor into
-a Kubernetes Secret and is never shown: `harbor-push` in the build namespace (a `config.json`, the
-file Kaniko reads) and `harbor-pull` in `cicd-demo`. Harbor's CA goes in the ConfigMap `harbor-ca`
-beside `harbor-push`. The block signs in to Harbor as `admin` with the password in HARBOR.md's
-`secrets.env`.
+The build must push images to Harbor, and the app must pull them. This gives each its own Harbor
+login. It signs in to Harbor as `admin` (password from HARBOR.md's `secrets.env`) and creates:
+
+- the private Harbor project `cicd-demo`, for the app's images;
+- two robot accounts, logins for programs, valid for 90 days: `push` for the build, `pull` for the
+  app;
+- in the cluster, the Secrets `harbor-push` (build namespace) and `harbor-pull` (`cicd-demo`) with
+  those logins; they go straight from Harbor into the Secrets and are never shown;
+- the ConfigMap `harbor-ca` with Harbor's certificate, so the build trusts Harbor.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -342,10 +352,8 @@ starts with the stock nginx image; the first build replaces it.
 
 ### With Gitea and Tekton
 
-The block writes the files to `~/.config/vks-guides/cicd/app` and `~/.config/vks-guides/cicd/deploy`,
-then creates the repositories through GITEA.md step 6's port-forward. It also adds the user `cicd-bot`, with no password anyone knows, who may write only to `deploy`,
-and puts a token for it in the Secret `git-writeback` in `cicd-ci`. The admin password is needed
-for Gitea's API; type it first:
+The next block signs in to Gitea as `gitea-admin`. Type that password first; it stays in this
+terminal only, and is not shown or saved:
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -359,7 +367,15 @@ printf 'gitea-admin password: '; IFS= read -rs GITEA_PASSWORD; echo
 $GITEA_PASSWORD = Read-Host 'gitea-admin password' -AsSecureString
 ```
 
-Then, in the same terminal:
+Then, in the same terminal, this creates two repositories in Gitea, through GITEA.md step 6's
+port-forward:
+
+- `app`, with the app's Dockerfile and page;
+- `deploy`, with the files that tell the cluster how to run the app; ArgoCD reads them (step 5).
+
+Copies of the files stay in `~/.config/vks-guides/cicd`. It also creates the user `cicd-bot`, whose
+password no one knows and who may write only to `deploy`, and stores a token for it in the Secret
+`git-writeback` in `cicd-ci`. The build uses that token to write the new image into `deploy`.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -645,13 +661,17 @@ and `422`, and `kept: secret git-writeback in cicd-ci`.
 
 ### With GitLab
 
-This creates, inside GitLab, the public group `cicd` with three projects: `app` and `deploy`
-(public) and `ci` (private), which holds the pipeline, `.gitlab-ci.yml`. `app` builds with
-`ci`'s file, so someone who may push to `app` cannot add jobs or reach the runner that writes to
-`deploy`; give your developers the Developer role on `cicd/app` and the Reporter role on
-`cicd/ci`, which lets them read the pipeline but not change it. Each project's `main` is
-protected: Developers may push, nobody may force-push. The block runs a Ruby script in GitLab's
-pod with `gitlab-rails`, so no GitLab token reaches this machine; it takes about a minute.
+This creates, inside GitLab, the public group `cicd` with three projects:
+
+- `app` (public): the app's Dockerfile and page;
+- `deploy` (public): the files that tell the cluster how to run the app; ArgoCD reads them
+  (step 5);
+- `ci` (private): the pipeline, `.gitlab-ci.yml`, which `app` builds with.
+
+The pipeline sits apart from `app`, so someone who may push to `app` cannot change it. Give your
+developers the Developer role on `cicd/app` and the Reporter role on `cicd/ci`. Nobody may
+force-push to a project's `main`. The block runs inside GitLab's pod, so no GitLab token reaches
+this machine; it takes about a minute.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1063,10 +1083,14 @@ second run the group, the projects and their files say `kept`.
 
 ## 5. Let ArgoCD deploy it
 
-This creates, on the Supervisor, the ArgoCD project `cicd-demo`, which may read only `deploy` and
-create only a Deployment and a Service in the namespace `cicd-demo` of your VKS cluster, and its
-Application, which keeps that namespace in step with `deploy`. ArgoCD reads `deploy` over the Git
-server's load-balancer address. ARGOCD.md's own project and app stay as they are.
+This tells ArgoCD on the Supervisor to deploy the app from `deploy`. It creates:
+
+- the ArgoCD project `cicd-demo`: ArgoCD may only read `deploy`, and create only the app and its
+  address in the namespace `cicd-demo` of your VKS cluster;
+- the Application `cicd-demo`, which applies every new commit in `deploy` to that namespace.
+
+ArgoCD reads `deploy` through the Git server's load-balancer address. ARGOCD.md's own project and
+app stay as they are.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1206,8 +1230,9 @@ created`, a `Warning:` about the finalizer's name (as in ARGOCD.md step 8), and
 `application.argoproj.io/cicd-demo created` (`unchanged` on a second run). Within about 5 minutes,
 the block below prints `Synced Healthy` and the app's page shows nginx's own welcome page.
 
-Check it with this block. It waits until ArgoCD has synced and the page shows `WANT`; steps 6
-and 8 use it again with another `WANT`.
+This block checks the app. It waits up to 10 minutes for the app's page to show `WANT`, then prints
+ArgoCD's status, the page, the image the app should run, and the image each pod runs. Steps 6 and 8
+run it again with another `WANT`.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1278,17 +1303,14 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-demo get pods --no-headers -o 'cust
 
 ### With Gitea and Tekton
 
-This creates the Tasks and the Pipeline in `cicd-ci`, then runs it once.
+This sets up the build in `cicd-ci` and runs it once, to show that the whole chain works. The build
+has two parts, each in its own pod:
 
-- The Task `build` runs in one pod: a step clones `app` from Gitea inside the cluster, drops its
-  `.git` folder, and Kaniko builds the image and pushes it to Harbor as `cicd-demo/test-web-apps`,
-  tagged with the commit. Kaniko trusts Harbor through `harbor-ca` and signs in with `harbor-push`;
-  this pod gets no Git credential.
-- The Task `write-back` runs in a second pod with `git-writeback`: it checks that the digest from
-  `build` is a digest, clones `deploy`, sets the image to that digest, and pushes as `cicd-bot`.
+- `build` gets `app` from Gitea, builds the image with Kaniko (a tool that builds images inside the
+  cluster), and pushes it to Harbor with the `push` robot from step 3;
+- `write-back` writes the new image's digest into `deploy` as `cicd-bot`, so ArgoCD rolls it out.
 
-Each pod runs under its own ServiceAccount, with no Kubernetes token mounted. If another push
-reached `app` while the build ran, the write-back leaves `deploy` to that push's run.
+If someone pushed to `app` while the build ran, `write-back` leaves `deploy` to that newer build.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1698,22 +1720,16 @@ then within a few minutes `Succeeded: Tasks Completed: 2 (Failed: 0, Cancelled 0
 
 ### With GitLab
 
-This puts the pipeline in place and runs it once.
+This prepares GitLab's runners for the build, then runs the pipeline once:
 
-- GITLAB.md step 8's runner (tag `vks`) also takes jobs from `cicd/app`. It is installed again
-  with Harbor's CA (`harbor-ca`) and the push robot (`harbor-push`) mounted into its job pods, and
-  with `FF_GIT_URLS_WITHOUT_TOKENS`, so the job's token is not written into the checkout's git
-  settings (the job can still read it while it runs).
-- A second runner, `gitlab-writeback`, in its own namespace with restricted pods, takes only jobs
-  tagged `writeback` from protected branches of `cicd/app`. It alone mounts `deploy-token`: a token
-  of `cicd/deploy` that may push for 30 days.
-- The pipeline is `cicd/ci`'s `.gitlab-ci.yml`: `build` runs Kaniko and keeps the digest as an
-  artifact; `writeback` checks it is a digest, clones `deploy`, sets the image and pushes.
+- GITLAB.md step 8's runner also takes jobs from `cicd/app`. It is installed again so that its jobs
+  get Harbor's certificate and the `push` robot from step 3.
+- A second runner, `gitlab-writeback`, is the only one that may write to `deploy`. It takes only the
+  write-back job, and gets a token that may push to `cicd/deploy` for 30 days.
 
-GitLab makes the runner and the token in its pod; they go straight into the Secrets and are never
-shown or saved on this machine. The block needs the runner chart and `runner-values.yaml` from
-GITLAB.md step 8. If another push reached `cicd/app` while a build ran, its write-back leaves
-`deploy` to that push.
+GitLab makes the runner and the token itself; they go straight into the cluster and are never shown.
+The block needs the runner chart and `runner-values.yaml` from GITLAB.md step 8. It prints each
+job's result.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -2006,11 +2022,16 @@ Then run step 5's check with `WANT="test-web-apps v1"`.
 
 ### With Gitea and Tekton
 
-This makes Gitea call Tekton on every push to `app`. It creates, in `cicd-ci`, an EventListener
-that starts the pipeline only for a push to `main` signed with the secret in the Secret
-`cicd-webhook`, and a network policy that lets only Gitea's pods reach it; then it adds the webhook
-to `app` in Gitea with the same secret. Run it in the terminal where you typed the Gitea password
-in step 4 (or type it again with the first block there).
+This makes every push to `app` start a build. It creates:
+
+- in `cicd-ci`, a listener that starts the build when Gitea reports a push to `main`;
+- a random shared secret in the Secret `cicd-webhook`; the listener ignores messages not signed
+  with it;
+- a rule that lets only Gitea reach the listener;
+- in Gitea, a webhook on `app` that calls the listener on every push.
+
+Run it in the terminal where you typed the Gitea password in step 4 (or type it again with the
+first block there).
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -2298,8 +2319,10 @@ Nothing to do: GitLab starts the pipeline on every push to `main` of `cicd/app`.
 
 ## 8. Change the page
 
-Edit the page in `app` and push it. With Gitea, Gitea's webhook starts the pipeline; with GitLab,
-GitLab does. The build writes the new digest into `deploy`, and ArgoCD rolls it out. Git asks for `gitea-admin`'s password (with GitLab, `root`'s).
+This changes the app's page from v1 to v2 and pushes it, to show the chain working on its own. It
+keeps a copy of `app` in `~/.config/vks-guides/cicd/app-gitea` (or `app-gitlab`). The push starts a
+build, the build writes the new image into `deploy`, and ArgoCD rolls it out. Git asks for
+`gitea-admin`'s password (with GitLab, `root`'s).
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>

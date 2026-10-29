@@ -39,6 +39,10 @@ The blocks keep their files in `~/.config/vks-guides/gitlab` (PowerShell:
 
 ## 1. Check the cluster
 
+This checks that the cluster can hold GitLab before you install it. It shows git's version, that
+each node is `Ready`, the free memory and image disk on each worker, the default storage class
+(GitLab's volume comes from it), and that no `gitlab` namespace exists yet.
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
@@ -127,8 +131,9 @@ one CI job need a worker with at least 6 GiB memory and 8 GiB image disk free; a
 
 ## 2. Create the namespace
 
-GitLab's image runs its services as root, so the namespace allows baseline pods, and warns about
-anything that would not pass restricted.
+This creates the namespace `gitlab`, a separate area of the cluster for GitLab. GitLab's image runs
+as root, so the namespace allows that (the `baseline` level), and warns about anything that would
+fail the stricter `restricted` level.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -173,15 +178,16 @@ metadata:
 
 ## 3. Install GitLab
 
-This creates the volume, the GitLab StatefulSet and a Service that only the cluster reaches, waits
-for GitLab to answer, then turns off sign-up, so only users you create can log in. The first start
-downloads a 1.7 GB image, which takes about 6 GB of the node's disk, and sets up the database; it
-takes a few minutes.
+This starts GitLab in your VKS cluster. It creates:
 
-GitLab addresses itself as `http://gitlab.gitlab.svc.cluster.local`, its name inside the cluster,
-so the runner (step 8) reaches it directly. Your browser reaches it through step 5's port-forward.
-The settings run GitLab with less memory: one web process, ten background threads, and no
-built-in Prometheus or agent server.
+- a 20 GiB volume for GitLab's database and repositories;
+- GitLab itself: one pod, set to use less memory;
+- a Service: a fixed address for GitLab that only the cluster reaches. Step 5 opens it to your
+  machine; the runner in step 8 uses it directly, as `http://gitlab.gitlab.svc.cluster.local`.
+
+When GitLab answers, the block turns off sign-up, so only users you create can log in. The first
+start downloads a 1.7 GB image, which takes about 6 GB of the node's disk, and sets up the
+database; it takes a few minutes.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -452,8 +458,9 @@ You can run this again at any time to set a new root password.
 
 ## 5. Open GitLab
 
-This forwards GitLab to port 3400 on this machine until you press **Ctrl+C**. Keep it running for
-steps 6 to 9.
+GitLab has no address outside the cluster yet. This connects port 3400 on your machine to GitLab,
+so you can open it at <http://localhost:3400>. It runs until you press **Ctrl+C**; keep it running
+for steps 6 to 9.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -549,7 +556,9 @@ Use it for test projects only. Never sign in, push or send a token through it; u
 1. Make the project public: at <http://localhost:3400/root/hello/edit>, expand **Visibility,
    project features, permissions**, set **Project visibility** to **Public**, and click **Save
    changes**.
-2. Create the Service `gitlab-public` and wait for its address:
+2. This gives GitLab the Service `gitlab-public`, an address outside the cluster on port 80. It
+   waits for the address, prints the clone address, then lists `root/hello` without a login, which
+   shows that other machines can clone it:
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -665,9 +674,11 @@ GitLab runs CI jobs on runners. This installs one, GitLab Runner 19.5.1, in the 
 
    **Expect:** a new prompt. The token stays in this terminal until the next block stores it.
 
-4. In the same terminal, run the block below. It keeps the token only in the Secret
-   `gitlab-runner-token`, downloads the runner's Helm chart 0.94.1 and checks its SHA-256, then
-   installs it. Set `GITLAB_URL` to your GitLab's address if it is not the one from step 3.
+4. In the same terminal, run the block below. It installs the runner: it creates the namespace
+   `gitlab-runner`, where CI jobs run, stores your token there as the Secret
+   `gitlab-runner-token`, downloads the runner's Helm chart and checks it, installs it, and waits
+   until the runner runs. If your GitLab is not the one from this guide's step 3, set `GITLAB_URL`
+   to its address.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -945,6 +956,9 @@ GitLab's address), under **Runners**.
 
 ### The runner
 
+This deletes the namespace `gitlab-runner`, with the runner and any CI job pods in it. GitLab
+itself stays.
+
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
@@ -969,6 +983,9 @@ kubectl --kubeconfig $VKS_KUBECONFIG delete namespace gitlab-runner --ignore-not
 
 **This deletes every project in this GitLab.** Delete first any ArgoCD Application that clones
 from it.
+
+This deletes the namespace `gitlab`, with GitLab and its volume. It then waits until the cluster
+has removed the volume, and prints how many volumes are left.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
