@@ -24,6 +24,7 @@ that produces all three signals:
 | the cluster and its node VMs | the vSphere Supervisor integration | VCF Operations | VCF Operations |
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
 flowchart TB
   subgraph cluster["VKS cluster"]
     app["podinfo"] -- "OTLP traces" --> jaeger["Jaeger"]
