@@ -460,8 +460,10 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 
 This reads the VKS cluster's kubeconfig from the Supervisor and saves it as `VKS_KUBECONFIG`
 (on Linux, macOS and WSL, readable only by you). It is the cluster's shared administrator login:
-anyone with the file controls the cluster, and it keeps working after your Supervisor login ends.
-Keep it private. Set `VKS_CLUSTER` to a name from the `NAME` column above.
+anyone with the file controls the cluster, and it keeps working after your Supervisor login ends,
+for up to a year, and cannot be withdrawn. Keep it private
+([why it is a kubeconfig of its own](VCF.md#why-the-supervisor-and-each-vks-cluster-have-their-own-kubeconfig)).
+Set `VKS_CLUSTER` to a name from the `NAME` column above.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
