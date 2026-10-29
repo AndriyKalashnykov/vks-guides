@@ -9,14 +9,19 @@
 > - Kubernetes: [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
 
 This builds the web app in [`argocd/test-web-apps`](../argocd/test-web-apps) with docker on Linux,
-pushes it to a public Harbor project, and runs it in a VKS cluster. [IMAGE.md](IMAGE.md) is the
-full guide (podman, macOS, Windows, checks); this one has only the commands.
+pushes it to a Harbor project (public, or private with step 5), and runs it in a VKS cluster.
+[IMAGE.md](IMAGE.md) is the full guide (podman, macOS, Windows, checks); this one has only the
+commands.
 
 You need:
 - docker 29.5 or newer ([Prerequisites](PREREQS.md#podman-and-docker-optional)), `curl`,
   `openssl` and [kubectl](KUBECTL.md);
 - a Harbor project and a robot account that may push to it ([HARBOR.md](HARBOR.md) step 10);
-- the VKS cluster's kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+- for a private project, also a robot that may only pull: in Harbor's web page, as in HARBOR.md
+  step 10, *In Harbor's web page*, with only **Repository** → **Pull** ticked. Its name is
+  `robot$` and the name you type;
+- the VKS cluster's kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+- a machine that reaches `raw.githubusercontent.com` and `docker.io` (the app's base image).
 
 Run every block in the same terminal, one after the other: the first block sets the values the
 others use. If you open a new terminal, run the first block again.
@@ -59,11 +64,16 @@ that CA and prints its fingerprint. Compare the fingerprint with the one your Ha
 gives you.
 
 ```sh
-curl -sSk -o harbor-ca.crt "https://$HARBOR_FQDN/api/v2.0/systeminfo/getcert"
+curl -fsSk -o harbor-ca.crt "https://$HARBOR_FQDN/api/v2.0/systeminfo/getcert"
 openssl x509 -in harbor-ca.crt -noout -subject -fingerprint -sha256
 ```
 
-**Expect:** `subject=CN = Harbor CA` and a `sha256 Fingerprint=` line.
+**Expect:** `subject=CN = Harbor CA` (newer OpenSSL: `subject=CN=Harbor CA`) and a
+`sha256 Fingerprint=` line.
+
+**If not:** a `curl:` error: check `HARBOR_FQDN`; if it is right, this Harbor publishes no CA (it
+uses your organization's certificate, HARBOR.md step 13): get `harbor-ca.crt` from your Harbor
+administrator and save it in this folder.
 
 ## 2. Trust Harbor's CA
 
@@ -124,7 +134,12 @@ needs. Run this line on its own.
 docker --config "$HOME/image-simple/pull" login -u "$HARBOR_PULL_ROBOT" "$HARBOR_FQDN"
 ```
 
-**Expect:** `Login Succeeded`.
+**Expect:** `WARNING! Your credentials are stored unencrypted in
+'/home/<you>/image-simple/pull/config.json'`, then `Login Succeeded`.
+
+**If not:** no such warning: a docker credential helper keeps the secret elsewhere, and
+`config.json` holds no login for the cluster. Create the Secret as
+[IMAGE.md step 5](IMAGE.md#5-let-the-cluster-pull-from-a-private-project-optional) does instead.
 
 Then create the app's namespace, copy `config.json` into it as the Secret `harbor-pull`, and
 delete the file, which holds the robot's secret unencrypted:

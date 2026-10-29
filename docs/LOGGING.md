@@ -29,8 +29,8 @@ The blocks keep their files in `~/.config/vks-guides/logging` (PowerShell:
 
 ## 1. Find the Fluent Bit release
 
-This shows the Fluent Bit versions you can install, and checks that Fluent Bit is not already in
-your VKS cluster. You copy a version name from it for step 4.
+This shows the Fluent Bit versions you can install, and lists the add-ons your VKS cluster already
+has (`fluent-bit` should not be among them). You copy a version name from it for step 4.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
