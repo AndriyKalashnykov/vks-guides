@@ -48,7 +48,7 @@ This prints the fingerprint of each CA in that file. These are the fingerprints 
 compare. They are worth trusting only if the browser showed no certificate warning for vCenter;
 otherwise the download is no safer than LOGIN.md's own.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 CA_ZIP="$HOME/Downloads/download.zip"
@@ -224,7 +224,7 @@ again.
 
 This checks that the namespace exists and that your user may create VKS clusters in it.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -258,7 +258,7 @@ This lists what the namespace offers a VKS cluster: VM classes, storage classes,
 releases and cluster classes.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -354,7 +354,7 @@ you to confirm says the same.
 
 This lists the VKS clusters, VMs, volumes and pods left in it:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -427,7 +427,7 @@ namespaces, do not use this step.
 
 2. Log in to the Supervisor ([LOGIN.md](LOGIN.md)). This checks that you may create namespaces.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -464,7 +464,7 @@ with `vmware-system-` or `svc-`. It cannot be changed later.
 4. This checks the file on the Supervisor without creating anything (`--dry-run=server`), then
    creates the namespace.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 NAMESPACE_YAML="$HOME/namespace.yaml"
@@ -503,7 +503,7 @@ In the vSphere Client the namespace is listed under **Supervisor Management** â†
 
 To remove the namespace, run the first block of step 9 to check that it is empty, then:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"

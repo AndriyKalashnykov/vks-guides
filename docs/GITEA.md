@@ -29,7 +29,7 @@ The blocks keep their files in `~/.config/vks-guides/gitea` (PowerShell:
 ## 1. Check the cluster
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -89,7 +89,7 @@ if ($LASTEXITCODE -eq 0) {
 
 Gitea runs as an ordinary user, so the namespace allows only restricted pods.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -137,7 +137,7 @@ internal token. This makes both, random, in the Secret `gitea-keys`. It never re
 key would make what Gitea stored with the old one unreadable.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -214,7 +214,7 @@ This creates the volume, the Gitea Deployment and a Service that only the cluste
 waits for Gitea to answer.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -507,7 +507,7 @@ and waits for Gitea to answer.
 >   administrator with a published password; keep `-f values.yaml` on every run.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -824,7 +824,7 @@ password at the first login (step 6). Set `GITEA_ADMIN_EMAIL` to your email addr
 one but sends no mail. Clear the terminal after step 6.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -874,7 +874,7 @@ created!` (`gitea-admin exists already` on a second run).
 - `gitea-admin exists already` and you lost the password: this sets a new random one and prints
   it (`new password: …`); then do step 6 again.
 
-  **Linux, macOS, WSL (bash or zsh):**
+  **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
   ```sh
   VKS_CLUSTER="my-vks-cluster"
@@ -899,7 +899,7 @@ created!` (`gitea-admin exists already` on a second run).
 This forwards Gitea to port 3300 on this machine until you press **Ctrl+C**. Keep it running for
 steps 7 and 8.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -936,7 +936,7 @@ Run this in a second terminal while step 6 runs. It makes a local repository wit
 `gitea-admin/hello`. Git asks for the password you set in step 6. `credential.helper=` stops git
 from saving it.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 GITEA_ADMIN_EMAIL="you@example.com"
@@ -994,7 +994,7 @@ step 6's `localhost:3300` for that.
 2. Create the Service `gitea-public` and wait for its address:
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1087,7 +1087,7 @@ characters, ending in `HEAD` and `refs/heads/main`.
 **This deletes every repository in this Gitea.** Delete first any ArgoCD Application that clones
 from it.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"

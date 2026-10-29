@@ -13,7 +13,7 @@ checks its SHA-256 and installs it into `INSTALL_DIR`. When that directory needs
 [Prerequisites](PREREQS.md#sudo-optional)).
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HELM_VERSION="v4.3.1"

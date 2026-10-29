@@ -42,7 +42,7 @@ is saved as `CA_FILE.new` until you have compared its fingerprints with the ones
 administrator gives you. Set `VCENTER_FQDN` to vCenter's DNS name.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VCENTER_FQDN="vcsa.example.test"
@@ -113,7 +113,7 @@ ignoring colons and upper/lower case.
 
 When every fingerprint matches, keep the file:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 CA_FILE="$HOME/.kube/vcenter-ca.pem"
@@ -137,7 +137,7 @@ The login reads the password from this terminal, so it is never on a command lin
 shell history. Paste this line on its own, then type the password; nothing is shown as you type
 (PowerShell shows `*`).
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
@@ -159,7 +159,7 @@ The login is saved in `SUPERVISOR_KUBECONFIG`, a kubeconfig of its own; your oth
 are not changed. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
@@ -252,7 +252,7 @@ The login reads the password from this terminal, so it is never on a command lin
 shell history. Paste this line on its own, then type the password; nothing is shown as you type
 (PowerShell shows `*`).
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
@@ -274,7 +274,7 @@ The login is saved in `SUPERVISOR_KUBECONFIG`, a kubeconfig of its own; your oth
 are not changed. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
@@ -355,7 +355,7 @@ Later logins are checked against the Supervisor's certificate, fetched once. Its
 Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
@@ -421,7 +421,7 @@ you fetched it: fetch it again (step 2).
 This checks that your SSO user can see your vSphere Namespace, and lists the VKS clusters in
 it.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -464,7 +464,7 @@ anyone with the file controls the cluster, and it keeps working after your Super
 Keep it private. Set `VKS_CLUSTER` to a name from the `NAME` column above.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -533,7 +533,7 @@ Pick one of the two ways.
 
 Every `kubectl` command in this terminal then goes to the VKS cluster.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -558,7 +558,7 @@ kubectl config current-context
 Add `--kubeconfig` with the VKS cluster's kubeconfig to every `kubectl` command; nothing else
 changes, in any terminal. For example:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -580,7 +580,7 @@ kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" get nodes
 
 kubectl must be within one minor version of the cluster. This prints both versions:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -622,7 +622,7 @@ not need it. Set `SUPERVISOR_CA` to the file you created the context with (the v
 so in a new terminal first run the password step of the Create section you used, and mind the
 lock-out.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
@@ -679,7 +679,7 @@ This deletes the Supervisor login with its namespace contexts, its kubeconfig, `
 (they hold a copy of the login token) and the password in this terminal. The VKS cluster's
 kubeconfig is kept; delete it with `rm` if you no longer need it.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"

@@ -11,8 +11,8 @@ blocks; there is nothing to build.
 - No Makefile, mise, env file or helper script. Each block sets the variables it uses at its top
   and works on its own; never rely on a variable from an earlier block.
 - Every shell block is POSIX sh that runs in bash and zsh, labeled in bold
-  `**Linux, macOS, WSL (bash or zsh):**`. Where Windows applies, a bold
-  `**Windows (PowerShell):**` twin follows, written for Windows PowerShell 5.1: `curl.exe` (not
+  `**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**`. Where Windows applies, a
+  bold `**Windows (PowerShell):**` twin follows, written for Windows PowerShell 5.1: `curl.exe` (not
   the `curl` alias), `Expand-Archive`, `Get-FileHash`, installs to
   `%LOCALAPPDATA%\Programs\vks-tools`. A block pair where either block is 15 lines or more
   sits in two `<details>` cuts whose `<summary><b>…</b></summary>` is the label. PREREQS.md

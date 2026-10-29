@@ -37,7 +37,7 @@ Broadcom's monitoring for VCF Operations installs that add-on without a server; 
 count.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -96,7 +96,7 @@ if ($LASTEXITCODE -eq 0) {
 
 node-exporter reads each node's processes and files, so the namespace allows privileged pods.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -142,7 +142,7 @@ metadata:
 **Type the password.** Paste this line on its own, then type the password; nothing is shown as you
 type (PowerShell shows `*`).
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'Grafana admin password: '; IFS= read -rs GRAFANA_PASSWORD; echo
@@ -158,7 +158,7 @@ $GRAFANA_PASSWORD = Read-Host -AsSecureString 'Grafana admin password'
 never on a command line.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -226,7 +226,7 @@ node-exporter runs on the pod network, because the VKS node firewall blocks its 
 graphs name each node, and their network panels show the pod's interface.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 CHART_VERSION="92.13.1"
@@ -360,7 +360,7 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 kube-state-metrics access rules of an install from before the rename in step 4, this marks them
 so Helm keeps them; otherwise it changes nothing.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -404,7 +404,7 @@ This installs the chart as release `prometheus` and waits until Prometheus and A
 running (a few minutes; the first run downloads the images).
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -483,7 +483,7 @@ follow.
 
 This asks Prometheus, through the cluster's API server, how many of its targets answer.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -514,7 +514,7 @@ and run this again.
 
 This forwards Grafana to port 3000 on this machine until you press **Ctrl+C**.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -551,7 +551,7 @@ For an install with ArgoCD, use step 10. Run the first block of step 5 first. **
 Prometheus's data and the Grafana password.** It removes the release, a Service the Prometheus
 Operator left in `kube-system`, and the namespace. The chart's CRDs stay (see below).
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -581,7 +581,7 @@ deleted` and `namespace "monitoring" deleted`.
 **Delete the CRDs** only if step 1 printed `Prometheus Operator CRDs: 0`: this deletes every
 ServiceMonitor, PrometheusRule and other object of these kinds in the cluster.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -617,7 +617,7 @@ add-on next reconciles, within 10 minutes.
 This checks that nothing has the names this step uses: the ArgoCD project `monitoring`, the
 Application `prometheus`, and a Helm release `prometheus` on the cluster.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -660,7 +660,7 @@ cluster's name in ArgoCD (**Settings** → **Clusters**; `<cluster>-<namespace>`
 [ARGOCD.md](ARGOCD.md) step 7).
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -872,7 +872,7 @@ This shows the Application, then waits until Prometheus and Alertmanager are run
 minute after the block above; the first install takes a few minutes.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -936,7 +936,7 @@ with it what ArgoCD installed) and the project, then a Service the Prometheus Op
 `kube-system`, and the namespace. The chart's CRDs stay (measured with ArgoCD 3.4.4); to delete
 them, see step 8.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"

@@ -288,7 +288,7 @@ podman machine start
 
 ### Check podman and docker
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 for e in podman docker; do
