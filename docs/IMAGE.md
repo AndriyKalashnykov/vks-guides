@@ -410,7 +410,8 @@ project now lists the repository `test-web-apps`.
 - `x509: certificate signed by unknown authority`: do step 2 for your engine. With docker, a login
   that works followed by this error at the push (`failed to fetch oauth token`) means docker is
   older than 29.5 ([Prerequisites](PREREQS.md#podman-and-docker-optional)).
-- `unauthorized`: the robot's name or secret is wrong, or it has expired.
+- `unauthorized` (podman: `invalid username/password`): the robot's name or secret is wrong, or it
+  has expired.
 - `denied: requested access to the resource is denied` (podman) or `insufficient_scope` (docker):
   the robot may not push to this project.
 

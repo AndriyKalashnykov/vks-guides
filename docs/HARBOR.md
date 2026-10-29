@@ -1530,8 +1530,9 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_ROBOT_SECRET
 **If not:**
 - `x509: certificate signed by unknown authority`: do [IMAGE.md step 2](IMAGE.md#2-trust-harbors-ca)
   for your OS and engine.
-- `unauthorized` as `admin`: see *Log in as admin*. As the robot: its name or secret is wrong, or
-  it has expired. A robot made in Harbor's web page is `robot$<the name you typed>`.
+- `unauthorized` (podman: `invalid username/password`) as `admin`: see *Log in as admin*. As the
+  robot: its name or secret is wrong, or it has expired. A robot made in Harbor's web page is
+  `robot$<the name you typed>`.
 
 To build an image, push it to this project and run it in a VKS cluster, see [IMAGE.md](IMAGE.md).
 
