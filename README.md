@@ -91,7 +91,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Install Harbor](docs/HARBOR.md) | ✅ | part | part | part | part |
 | [Build an image, push it to Harbor and run it](docs/IMAGE.md) | ✅ | ✅ | ✅ | part | part |
 | [Build an image with docker (short version)](docs/IMAGE-DOCKER.md) | ✅ | — | — | — | — |
-| [ArgoCD](docs/ARGOCD.md) | part | — | part | part | — |
+| [ArgoCD](docs/ARGOCD.md) | part | — | ✅ | part | — |
 | [Run Gitea](docs/GITEA.md) | part | part | part | part | — |
 | [Run Tekton](docs/TEKTON.md) | part | part | ✅ | part | — |
 | [Run GitLab](docs/GITLAB.md) | part | ✅ | part | part | — |
