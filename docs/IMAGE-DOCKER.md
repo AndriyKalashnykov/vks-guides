@@ -26,7 +26,7 @@ others use. If you open a new terminal, run the first block again.
 Change these to your own. `HARBOR_PULL_ROBOT` is needed only for a private project (step 5).
 
 ```sh
-HARBOR_FQDN="harbor.example.test"
+HARBOR_FQDN="harbor.env1.lab.test"
 HARBOR_PROJECT="my-project"
 HARBOR_ROBOT='robot$my-project+push'
 HARBOR_PULL_ROBOT='robot$my-project+pull'
