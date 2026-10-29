@@ -176,7 +176,8 @@ foreach ($f in $HARBOR_MANIFEST, $HARBOR_VALUES_TEMPLATE) {
 
 Harbor is installed with seven passwords and keys. This block makes seven random ones and saves
 them in `secrets.env` (on Linux, macOS and WSL, readable only by you). A file that exists is
-kept. Nothing secret is printed.
+kept. Nothing secret is printed. To use your own admin password instead, put it in the file
+using only letters and digits: step 4 refuses any other character.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
