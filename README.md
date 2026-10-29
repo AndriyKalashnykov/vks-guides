@@ -95,7 +95,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Run Gitea](docs/GITEA.md) | part | part | part | part | — |
 | [Run Tekton](docs/TEKTON.md) | part | part | ✅ | part | — |
 | [Run GitLab](docs/GITLAB.md) | part | ✅ | part | part | — |
-| [CI/CD with Gitea and Tekton](docs/CICD.md) | part | — | — | — | — |
+| [CI/CD with Gitea and Tekton](docs/CICD.md) | ✅ | ✅ | ✅ | — | — |
 | [CI/CD with GitLab](docs/CICD.md) | part | ✅ | — | — | — |
 | [Install Helm](docs/HELM.md) | ✅ | ✅ | ✅ | — | — |
 | [Monitor a VKS cluster](docs/MONITORING.md) | part | part | part | — | — |
