@@ -139,7 +139,7 @@ rm -r "$HOME/image-simple/pull"
 
 **Expect:** `namespace/harbor-demo created` and `secret/harbor-pull created`.
 
-## 6. Run it
+## 6. Deploy the app
 
 This downloads the app's three Kubernetes files and puts your values into them: the namespace's
 name and your image from Harbor. The last line shows the lines that changed.

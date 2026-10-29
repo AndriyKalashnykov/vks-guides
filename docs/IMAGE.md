@@ -512,7 +512,7 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 **Expect:** `namespace/harbor-demo created` (or `unchanged`), then `secret/harbor-pull created`
 (or `configured`).
 
-## 6. Run it
+## 6. Deploy the app
 
 This starts the app in your VKS cluster from the image you pushed to Harbor in step 4, which
 shows that the cluster can pull your own images from Harbor. It creates:
