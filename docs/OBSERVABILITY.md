@@ -1716,6 +1716,106 @@ Then, in the vSphere Client:
 **If not:** **DELETE** stays grey: click the **CONFIRM** you missed under 1 or 3. If 2 has no ✓,
 stop (see above).
 
+**Remove what the Metrics Aggregator left in the vSphere Namespaces.** Its uninstall leaves a
+Certificate and two Secrets named `telegraf-<cluster>…` for each VKS cluster in each vSphere
+Namespace, and the Certificates keep trying to renew from an issuer that is gone. Run this only
+after the uninstall above: it removes them in every vSphere Namespace, then lists what is left.
+
+<details>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+
+if ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=metrics-aggregator -o name)"; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif [ -n "$M" ]; then
+  echo "STOP: the Metrics Aggregator is still installed ($M)"
+elif ! L="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get certificates.cert-manager.io -A \
+       -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name} {.spec.issuerRef.kind} {.spec.issuerRef.name} {.spec.secretName}{"\n"}{end}')"; then
+  echo "FAILED: cannot list the Certificates (see the error above)"
+elif ! N="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get clusters.cluster.x-k8s.io -A -o jsonpath='{range .items[*]}{.metadata.namespace}{"\n"}{end}')"; then
+  echo "FAILED: cannot list the VKS clusters (see the error above)"
+else
+  L="$(printf '%s\n' "$L" | awk '$3 == "ClusterIssuer" && $4 == "metrics-aggregator-ca-issuer" {print $1, $2, $5}')"
+  if [ -z "$L" ]; then echo "nothing to remove"; fi
+  printf '%s\n' "$L" | while read -r NS NAME SECRET; do
+    [ -n "$NS" ] || continue
+    I="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get secret "$SECRET" -o jsonpath='{.metadata.annotations.cert-manager\.io/issuer-name}' </dev/null)"
+    kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" delete certificates.cert-manager.io "$NAME" </dev/null
+    if [ "$I" = "metrics-aggregator-ca-issuer" ]; then kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" delete secret "$SECRET" </dev/null; fi
+    case "$NAME" in telegraf-*) kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" delete secret "$NAME-http-config" --ignore-not-found </dev/null ;; esac
+  done
+  if [ -n "$L" ]; then sleep 10; fi
+  printf '%s\n%s\n' "$L" "$N" | awk 'NF {print $1}' | sort -u | while read -r NS; do
+    if ! LEFT="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$NS" get certificates.cert-manager.io,certificaterequests.cert-manager.io,secrets -o name </dev/null)"; then
+      echo "FAILED: cannot list $NS (see the error above)"
+    else
+      T="$(printf '%s\n' "$LEFT" | grep telegraf)"
+      if [ -n "$T" ]; then printf '%s\n' "$T" | sed "s|^|left in $NS: |"; else echo "$NS: no telegraf objects left"; fi
+    fi
+  done
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+$global:LASTEXITCODE = $null
+$M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=metrics-aggregator -o name
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: cannot read the Supervisor (see the error above)"
+} elseif ($M) {
+  "STOP: the Metrics Aggregator is still installed ($M)"
+} else {
+  $L = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get certificates.cert-manager.io -A -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name} {.spec.issuerRef.kind} {.spec.issuerRef.name} {.spec.secretName}{''\n''}{end}')
+  $OK = $LASTEXITCODE -eq 0
+  $N = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get clusters.cluster.x-k8s.io -A -o jsonpath='{range .items[*]}{.metadata.namespace}{''\n''}{end}')
+  if (-not $OK) {
+    "FAILED: cannot list the Certificates (see the error above)"
+  } elseif ($LASTEXITCODE -ne 0) {
+    "FAILED: cannot list the VKS clusters (see the error above)"
+  } else {
+    $L = @($L | Where-Object { $_ } | ForEach-Object { , ($_ -split ' ') } | Where-Object { $_[2] -eq 'ClusterIssuer' -and $_[3] -eq 'metrics-aggregator-ca-issuer' })
+    if (-not $L.Count) { "nothing to remove" }
+    foreach ($c in $L) {
+      $I = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $c[0] get secret $c[4] -o jsonpath='{.metadata.annotations.cert-manager\.io/issuer-name}'
+      kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $c[0] delete certificates.cert-manager.io $c[1]
+      if ($I -eq 'metrics-aggregator-ca-issuer') { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $c[0] delete secret $c[4] }
+      if ($c[1] -like 'telegraf-*') { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $c[0] delete secret "$($c[1])-http-config" --ignore-not-found }
+    }
+    if ($L.Count) { Start-Sleep 10 }
+    foreach ($NS in @(@($L | ForEach-Object { $_[0] }) + @($N | Where-Object { $_ }) | Sort-Object -Unique)) {
+      $LEFT = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get certificates.cert-manager.io,certificaterequests.cert-manager.io,secrets -o name)
+      if ($LASTEXITCODE -ne 0) { "FAILED: cannot list $NS (see the error above)" }
+      elseif ($LEFT -match 'telegraf') { $LEFT -match 'telegraf' | ForEach-Object { "left in ${NS}: $_" } }
+      else { "${NS}: no telegraf objects left" }
+    }
+  }
+}
+```
+
+</details>
+
+**Expect:** for each VKS cluster, `certificate.cert-manager.io "telegraf-<cluster>" deleted`,
+`secret "telegraf-<cluster>" deleted` and `secret "telegraf-<cluster>-http-config" deleted` (newer
+kubectl: `… deleted from <namespace> namespace`), or `nothing to remove`; then
+`<namespace>: no telegraf objects left` for each vSphere Namespace with VKS clusters.
+
+**If not:**
+- `STOP: the Metrics Aggregator is still installed`: wait until its row is gone from
+  **INSTALLED** (step 2 above), then run this again.
+- `left in <namespace>: certificaterequest…` or `…secret/telegraf-<cluster>-<5 characters>`: these
+  go with their Certificate; wait a minute and run this again.
+- `left in <namespace>: secret/telegraf-<cluster>` or `…-http-config`: delete it with `kubectl
+  --kubeconfig <your Supervisor kubeconfig> -n <namespace> delete secret <name>`.
+- `left in <namespace>:` with another name: it is not the Metrics Aggregator's; leave it.
+
 **Remove step 11.1's note.** This deletes it. Otherwise a later run of the block above could
 treat someone else's new install as yours and say it is safe to remove.
 
@@ -1750,9 +1850,8 @@ if ($LASTEXITCODE -eq 0 -and $SUP) {
 
 **Expect:** `record removed`.
 
-What stays behind: the AddonInstalls in `vmware-system-vks-public` on the Supervisor, the
-`telegraf-<cluster>` Secrets and Certificate in each vSphere Namespace, and the Service
-`default/metrics-aggregator` in each VKS cluster. Leave every cluster at `disabled` once the
+What stays behind: the AddonInstalls in `vmware-system-vks-public` on the Supervisor, and the
+Service `default/metrics-aggregator` in each VKS cluster. Leave every cluster at `disabled` once the
 service is gone.
 
 Back to [README](../README.md).
