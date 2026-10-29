@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Copy-paste how-to guides for VMware vSphere Kubernetes Service (VKS), VCF 9.x: README.md links
-docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, ARGOCD.md,
+docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md,
 GITEA.md, TEKTON.md, GITLAB.md, CICD.md, HELM.md, MONITORING.md, LOGGING.md, OBSERVABILITY.md (screenshots in
 docs/img/). Readers paste
 blocks; there is nothing to build.
@@ -9,7 +9,9 @@ blocks; there is nothing to build.
 ## Rules
 
 - No Makefile, mise, env file or helper script. Each block sets the variables it uses at its top
-  and works on its own; never rely on a variable from an earlier block.
+  and works on its own; never rely on a variable from an earlier block. The one exception is
+  IMAGE-DOCKER.md (owner's choice): a short docker-on-Linux walkthrough whose blocks share the
+  values of its first block, run in one terminal, with no error handling and no block labels.
 - Every shell block is POSIX sh that runs in bash and zsh, labeled in bold
   `**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**`. Where Windows applies, a
   bold `**Windows (PowerShell):**` twin follows, written for Windows PowerShell 5.1: `curl.exe` (not

@@ -35,6 +35,7 @@ monitoring and Helm.
 | [Create a VKS cluster](docs/CLUSTER.md) | a VKS cluster made in the vSphere Client, checked, and deleted |
 | [Install Harbor](docs/HARBOR.md) | a vCenter administrator's Harbor registry on the Supervisor, trusted by its VKS clusters |
 | [Build an image, push it to Harbor and run it](docs/IMAGE.md) | a test app built with podman or docker, pushed to a Harbor project, and run in a VKS cluster from there |
+| [Build an image with docker, push it to Harbor and run it (short version)](docs/IMAGE-DOCKER.md) | the same with docker on Linux only, in the fewest commands, for a public or a private project |
 | [Create a VKS cluster and deploy an app with ArgoCD](docs/ARGOCD.md) | the ArgoCD Service, a VKS cluster made from Git, and a test app ArgoCD keeps in sync |
 | [Run Gitea in a VKS cluster](docs/GITEA.md) | a self-hosted Git server with a web page, in one pod of a VKS cluster, that other machines such as ArgoCD can clone from |
 | [Run Tekton in a VKS cluster](docs/TEKTON.md) | a CI/CD engine that runs each build step as a pod, with a sample pipeline started by an HTTP request |
@@ -89,6 +90,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Create a VKS cluster](docs/CLUSTER.md) | — | part | part | — |
 | [Install Harbor](docs/HARBOR.md) | ✅ | part | — | — |
 | [Build an image, push it to Harbor and run it](docs/IMAGE.md) | ✅ | ✅ | ✅ | part |
+| [Build an image with docker (short version)](docs/IMAGE-DOCKER.md) | ✅ | — | — | — |
 | [ArgoCD](docs/ARGOCD.md) | part | — | part | part |
 | [Run Gitea](docs/GITEA.md) | part | part | part | part |
 | [Run Tekton](docs/TEKTON.md) | part | part | ✅ | part |
