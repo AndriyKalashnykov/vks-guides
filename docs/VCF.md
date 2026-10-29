@@ -229,6 +229,7 @@ context name in it. `kubectl` reads only the kubeconfig. Logging in to the Super
 `<name>:<namespace>`, all in the same kubeconfig.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
 flowchart LR
   subgraph CFG["~/.config/vcf/config.yaml"]
     C1["context supervisor<br/>kubeconfig: ~/.kube/supervisor.kubeconfig<br/>kube context: supervisor"]
