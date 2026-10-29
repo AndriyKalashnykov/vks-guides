@@ -35,9 +35,10 @@ machine already knows. podman and docker need that CA's file to trust Harbor (st
 they refuse to connect (`x509: certificate signed by unknown authority`).
 
 Skip this if you ran [HARBOR.md step 9](HARBOR.md#save-the-ca) on this machine. Otherwise this
-downloads the CA from Harbor itself. Harbor is not trusted yet, so the download does not prove
-where the file came from: compare its fingerprint with the one step 9 printed for your Harbor
-administrator before you keep it. In Harbor's web page, **Projects** → your project →
+downloads Harbor's CA from Harbor, saves it as `harbor-ca.crt.new` and prints its fingerprint, a
+short code that identifies it. Harbor is not trusted yet, so the file could be a fake: keep it
+(next block) only if the fingerprint is the same as the one step 9 printed for your Harbor
+administrator. In Harbor's web page, **Projects** → your project →
 **REGISTRY CERTIFICATE** downloads the same file as `ca.crt`.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
@@ -110,7 +111,8 @@ prove it for docker).
 
 #### podman
 
-No `sudo`: podman reads the CA from a folder in your home.
+This copies Harbor's CA into the folder in your home where podman looks for it, so podman trusts
+Harbor. No `sudo` needed.
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
@@ -129,8 +131,9 @@ fi
 
 #### docker
 
-As a block of its own (it runs `sudo`). docker reads it at once, without a restart (docker 29.5 or
-newer). podman reads this folder too.
+This copies Harbor's CA into the system folder where docker looks for it, so docker trusts Harbor.
+Run it as a block of its own: it uses `sudo`. docker 29.5 or newer reads it at once, without a
+restart. podman reads this folder too.
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
@@ -298,10 +301,9 @@ else {
 
 ## 4. Push it to Harbor
 
-This logs in to Harbor as the robot account from HARBOR.md step 10, pushes the image, saves its
-digest for step 6, and logs out. Keep `HARBOR_ROBOT` in single quotes: the `$` is part of the
-name. A robot made in Harbor's web page under **Administration** is called `robot$<its name>`; one
-made by step 10's block is `robot$<your project>+push`.
+Use the robot account from HARBOR.md step 10. Keep `HARBOR_ROBOT` in single quotes: the `$` is
+part of the name. A robot made in Harbor's web page under **Administration** is called
+`robot$<its name>`; one made by step 10's block is `robot$<your project>+push`.
 
 The first line picks the engine: `CONTAINER_ENGINE="podman"` pushes the image podman built; change
 it to `CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) to push the image
@@ -321,8 +323,11 @@ printf 'Robot secret: '; IFS= read -rs HARBOR_ROBOT_SECRET; echo
 $HARBOR_ROBOT_SECRET = Read-Host -AsSecureString 'Robot secret'
 ```
 
-Then this logs in to Harbor as the robot, pushes the image, saves its digest (step 6 runs the
-image by it) and logs out:
+Then this uploads (pushes) your image to your Harbor project:
+
+- it logs in to Harbor as the robot account and pushes the image;
+- it saves the image's digest, a unique ID of this exact build, so that step 6 runs this build;
+- it logs out again, so the robot's login is not left on this machine.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -431,9 +436,14 @@ printf 'Pull robot secret: '; IFS= read -rs HARBOR_PULL_SECRET; echo
 $HARBOR_PULL_SECRET = Read-Host -AsSecureString 'Pull robot secret'
 ```
 
-Then this creates the namespace `harbor-demo` (if it is not there yet) and stores the robot's name
-and secret in it as the Secret `harbor-pull`. The cluster's nodes log in to Harbor with it when
-they pull the app's image:
+Then this saves the pull robot's login in your VKS cluster. It creates:
+
+- the namespace `harbor-demo`, a separate area of the cluster for the app (if it is not there
+  yet);
+- the Secret `harbor-pull`, the cluster's way to store a password, with the robot's name and
+  secret.
+
+The cluster's nodes log in to Harbor with it when they download the app's image in step 6.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -611,8 +621,8 @@ lines, `deployment "test-web-apps" successfully rolled out`, then
 
 ## 7. Open the app
 
-This waits for the app's address (the Service's external IP, from the Supervisor's load balancer)
-and asks the app for its page.
+This shows that the app answers from your machine. It waits up to 2 minutes for the app's address,
+which the Supervisor's load balancer gives it, prints the address, and fetches the app's page.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 

@@ -44,12 +44,18 @@ v3.7.2).
 
 ## Install
 
-Copy the block for your OS into a text editor, paste the two SHA2 values between the quotes on
-its first two lines, change `DOWNLOAD_DIR` if the files are not in `~/Downloads` (in WSL, see
-[Prerequisites](PREREQS.md#wsl-2-with-ubuntu)), then paste the whole block into the terminal.
-Values set in the terminal beforehand do not count: the block's first lines set them again. The block installs `vcf` into `INSTALL_DIR`, or
-into `~/.local/bin` when that needs `sudo` and `sudo` would ask for a password (see
-[Prerequisites](PREREQS.md#sudo-optional)).
+This checks the two files you downloaded against their SHA2 values, installs `vcf`, then installs
+its plugins from the bundle. If a file does not match, it installs nothing.
+
+1. Copy the block for your OS into a text editor.
+2. Paste the two SHA2 values between the quotes on its first two lines.
+3. If the files are not in `~/Downloads`, change `DOWNLOAD_DIR` (in WSL, see
+   [Prerequisites](PREREQS.md#wsl-2-with-ubuntu)).
+4. Paste the whole block into the terminal. Values you set in the terminal before do not count:
+   the block's first lines set them again.
+
+`vcf` goes into `INSTALL_DIR`, or into `~/.local/bin` if that folder needs `sudo` and `sudo` would
+ask for a password (see [Prerequisites](PREREQS.md#sudo-optional)).
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -300,12 +306,15 @@ flowchart LR
   end
 ```
 
-If you already logged in with `KUBECONFIG` not set, this backs up `~/.kube/config`, lists your
-contexts, switches back to yours and removes the Supervisor's. Run it in a new terminal (not one
-where you ran *Make it the default in this terminal*), so that it sees the same files as your
-login did. Run it once as it is to see the list (the switch then fails and nothing is removed),
-set `MY_CONTEXT` to your old context and `VCF_CONTEXT` to the name you logged in with, and run it
-again. Then log in again as [LOGIN.md](LOGIN.md) shows.
+If you logged in with `KUBECONFIG` not set, plain `kubectl` may now talk to the Supervisor instead
+of your own clusters. This saves a copy of `~/.kube/config`, makes your own context the current one
+again, and removes the Supervisor's contexts from the file. Run it in a new terminal, not one where
+you ran *Make it the default in this terminal*, so that it sees the same files as your login did.
+
+1. Run it as it is. It lists your contexts; the switch fails and nothing is removed.
+2. Set `MY_CONTEXT` to your old context from that list and `VCF_CONTEXT` to the name you logged in
+   with, and run it again.
+3. Log in again as [LOGIN.md](LOGIN.md) shows.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -411,8 +420,9 @@ What this means for you:
 - `no current context set for type "kubernetes"` from a command such as `vcf cluster list`: no
   context is active (a login does not make one active); `vcf context use <name>` does.
 
-This shows your contexts, the file each one uses, and the current-context of each file. It needs
-`jq` ([Prerequisites](PREREQS.md)) and `kubectl` ([KUBECTL.md](KUBECTL.md)).
+Run this when `vcf` or `kubectl` reaches the wrong server, or says that no context is set. It
+shows your `vcf` contexts, the kubeconfig file each one uses, and the current-context of each file.
+It needs `jq` ([Prerequisites](PREREQS.md)) and `kubectl` ([KUBECTL.md](KUBECTL.md)).
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
