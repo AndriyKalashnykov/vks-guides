@@ -1223,7 +1223,9 @@ This creates a project for your images. Set `HARBOR_PROJECT` to lower-case lette
 `-`. `HARBOR_PROJECT_PUBLIC="false"` makes it **private**: a VKS cluster then needs a pull secret to
 pull from it. `"true"` makes it **public**: anyone who reaches Harbor can pull its images without
 logging in; pushing still needs a login. In Harbor's web page the same is **Projects** → **NEW
-PROJECT**, with **Public** ticked or not under **Access Level**.
+PROJECT**, with **Public** ticked or not under **Access Level**, then **OK**.
+
+![Harbor's New Project window with the name my-project and Public ticked](img/harbor/12-new-project-public.png)
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1371,169 +1373,33 @@ once: keep both where you keep passwords. The `$` is part of the name.
   Harbor's web page (**Projects** → your project → **Robot Accounts**) and run the block again.
 - `ERROR UNAUTHORIZED`: see *Log in as admin*.
 
+**In Harbor's web page** the same is a robot account that you then give permissions on your
+project: **Administration** → **Robot Accounts** → **NEW ROBOT ACCOUNT**.
+
+1. **Basic Information**: a name and how many days it lasts, then **NEXT**.
+
+   ![The first page of Create System Robot Account, with the name my-project-push and 30 days](img/harbor/13-robot-name.png)
+
+2. **Select System Permissions**: tick nothing, then **NEXT**.
+3. **Select Project Permissions**: tick your project, open its **PERMISSION(S)** list and tick
+   **Repository** → **Pull** and **Push**, and **Artifact** → **List** and **Read** (for a robot
+   that only pulls, IMAGE.md step 5: only **Repository** → **Pull**). Click outside the list,
+   then **FINISH**.
+
+   ![Select Project Permissions with my-project ticked and its list showing Pull, Push, List and Read ticked](img/harbor/14-robot-project-permissions.png)
+
+4. Harbor shows the robot's secret once: copy it, or **EXPORT TO FILE**, and keep it where you
+   keep passwords.
+
+   ![The window that shows the new robot's name and secret](img/harbor/15-robot-secret.png)
+
+Its name is `robot$` and the name you typed (here `robot$my-project-push`), not
+`robot$<your project>+push`.
+
 ### Log in with podman or docker (optional)
 
-If you have podman or docker on Linux or WSL, this logs it in to Harbor as the robot above,
-pushes a small image to your project, pulls it back and logs out. On macOS and Windows both run
-in a virtual machine that needs Harbor's CA itself; this guide does not cover that.
-
-Both must trust Harbor's CA, the file `harbor-ca.crt` that step 9 *Save the CA* downloaded into
-`~/.config/vks-guides/harbor` after checking that it signs the certificate Harbor serves:
-
-- podman takes it per command: the block copies it to a folder of its own and passes that folder
-  with `--cert-dir`. Nothing on the system changes and no `sudo` is needed.
-- docker 29 (with its default containerd image store) takes it only from the system's trust
-  store: `/etc/docker/certs.d` lets `docker login` through, but `docker push` then fails with
-  `x509: certificate signed by unknown authority`. Adding it there needs `sudo` and a restart of
-  docker, and then every program on this machine trusts Harbor's CA (*With docker* below).
-
-A new `harbor-ca.crt` (step 13, or a reinstall) must be added again: run *Save the CA*, then
-these blocks.
-
-**Without step 9** (on another machine, or a user who may not read Harbor's Secret), download the
-CA from Harbor itself: in Harbor's web page, **Projects** → your project → **REGISTRY
-CERTIFICATE** downloads it as `ca.crt`; or the block below. Harbor is not trusted yet, so neither
-download proves where the file came from: compare its fingerprint with the one step 9 printed for
-your Harbor administrator before you keep it.
-
-**Linux, macOS, WSL (bash or zsh):**
-
-```sh
-HARBOR_FQDN="harbor.example.test"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
-
-mkdir -p "$HARBOR_DIR" && rm -f "$HARBOR_DIR/harbor-ca.crt.new"
-if curl -fsSk --connect-timeout 20 --speed-time 60 -o "$HARBOR_DIR/harbor-ca.crt.new" "https://${HARBOR_FQDN}/api/v2.0/systeminfo/getcert" \
-   && openssl x509 -in "$HARBOR_DIR/harbor-ca.crt.new" -noout -subject -fingerprint -sha256; then
-  echo "compare the fingerprint above with your Harbor administrator's, then keep the file"
-else
-  rm -f "$HARBOR_DIR/harbor-ca.crt.new"
-  echo "FAILED: no CA certificate from https://${HARBOR_FQDN} (see the error above)"
-fi
-```
-
-**Expect:** `subject=CN = Harbor CA` (or your organization's CA, step 13) and a `sha256
-Fingerprint=` line. When it is the same as your administrator's, keep the file:
-
-**If not:** the fingerprints differ: delete `harbor-ca.crt.new` and stop; this is not your
-Harbor's CA. `FAILED: …`: run step 7's *Check the DNS record*.
-
-**Linux, macOS, WSL (bash or zsh):**
-
-```sh
-mv "$HOME/.config/vks-guides/harbor/harbor-ca.crt.new" "$HOME/.config/vks-guides/harbor/harbor-ca.crt"
-```
-
-Type the robot's secret in this terminal (it is not shown):
-
-**Linux, WSL (bash or zsh):**
-
-```sh
-printf 'Robot secret: '; IFS= read -rs HARBOR_ROBOT_SECRET; echo
-```
-
-**With podman** (no `sudo`: it reads Harbor's CA from a folder of its own):
-
-**Linux, WSL (bash or zsh):**
-
-```sh
-HARBOR_FQDN="harbor.example.test"
-HARBOR_PROJECT="my-project"
-HARBOR_ROBOT='robot$my-project+push'
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
-
-CERTS="$HARBOR_DIR/certs"
-IMG="$HARBOR_FQDN/$HARBOR_PROJECT/busybox:test"
-if [ ! -s "$HARBOR_DIR/harbor-ca.crt" ]; then
-  echo "FAILED: no $HARBOR_DIR/harbor-ca.crt (step 9, or the download above)"
-elif [ -z "$HARBOR_ROBOT_SECRET" ]; then
-  echo "FAILED: no robot secret in this terminal; run the line above"
-elif ! command -v podman >/dev/null 2>&1; then
-  echo "FAILED: podman not found"
-else
-  mkdir -p "$CERTS" && cp "$HARBOR_DIR/harbor-ca.crt" "$CERTS/ca.crt"
-  if printf '%s\n' "$HARBOR_ROBOT_SECRET" | podman login --cert-dir "$CERTS" -u "$HARBOR_ROBOT" --password-stdin "$HARBOR_FQDN" \
-     && podman pull -q docker.io/library/busybox:1.37 >/dev/null \
-     && podman tag docker.io/library/busybox:1.37 "$IMG" \
-     && podman push -q --cert-dir "$CERTS" "$IMG" \
-     && podman rmi "$IMG" >/dev/null \
-     && podman pull -q --cert-dir "$CERTS" "$IMG" >/dev/null; then
-    echo "pushed and pulled: $IMG"
-  else
-    echo "FAILED: see the error above"
-  fi
-  podman logout "$HARBOR_FQDN"
-fi
-unset HARBOR_ROBOT_SECRET
-```
-
-**With docker:** add Harbor's CA to the system's trust store and restart docker, as a line of its
-own (it runs `sudo`).
-
-**Ubuntu, Debian, Docker Engine in WSL (bash or zsh):**
-
-```sh
-sudo install -m 0644 "$HOME/.config/vks-guides/harbor/harbor-ca.crt" /usr/local/share/ca-certificates/harbor-ca.crt && sudo update-ca-certificates && sudo systemctl restart docker
-```
-
-**AlmaLinux, docker from Docker's own repository (bash):**
-
-```sh
-sudo install -m 0644 "$HOME/.config/vks-guides/harbor/harbor-ca.crt" /etc/pki/ca-trust/source/anchors/harbor-ca.crt && sudo update-ca-trust && sudo systemctl restart docker
-```
-
-**Expect:** a new prompt (Ubuntu also prints `Updating certificates …`, a harmless `rehash:
-warning` and `done.`).
-
-**If not:** `Unit docker.service not found`: Docker Desktop (also in WSL) does not use this trust
-store; add `harbor-ca.crt` to Windows' or macOS's trust store (step 9, *Log in with a browser*)
-and restart Docker Desktop.
-
-Keep the robot's name in single quotes, here and in a `docker login -u 'robot$…'` you type
-yourself (PowerShell too): the `$` is part of the name, and in double quotes or unquoted the shell
-replaces `$my` with nothing, so the login fails with `unauthorized`. At docker's own `Username:`
-prompt, type the name as it is.
-
-Then, after typing the secret again if this is a new terminal:
-
-**Linux, WSL (bash or zsh):**
-
-```sh
-HARBOR_FQDN="harbor.example.test"
-HARBOR_PROJECT="my-project"
-HARBOR_ROBOT='robot$my-project+push'
-
-IMG="$HARBOR_FQDN/$HARBOR_PROJECT/busybox:test"
-if [ -z "$HARBOR_ROBOT_SECRET" ]; then
-  echo "FAILED: no robot secret in this terminal; run the line above"
-elif ! docker info >/dev/null 2>&1; then
-  echo "FAILED: docker does not answer (not installed, not running, or your user may not use it)"
-else
-  if printf '%s\n' "$HARBOR_ROBOT_SECRET" | docker login -u "$HARBOR_ROBOT" --password-stdin "$HARBOR_FQDN" \
-     && docker pull -q docker.io/library/busybox:1.37 >/dev/null \
-     && docker tag docker.io/library/busybox:1.37 "$IMG" \
-     && docker push -q "$IMG" >/dev/null \
-     && docker rmi "$IMG" >/dev/null \
-     && docker pull -q "$IMG" >/dev/null; then
-    echo "pushed and pulled: $IMG"
-  else
-    echo "FAILED: see the error above"
-  fi
-  docker logout "$HARBOR_FQDN"
-fi
-unset HARBOR_ROBOT_SECRET
-```
-
-**Expect:** `Login Succeeded!` (docker: `Login Succeeded`), `pushed and pulled:
-<HARBOR_FQDN>/<your project>/busybox:test`, then `Removed login credentials for <HARBOR_FQDN>`.
-Docker keeps the robot's secret in `~/.docker/config.json` until the logout line.
-
-**If not:**
-- `x509: certificate signed by unknown authority`: `harbor-ca.crt` is not this Harbor's; run step 9
-  *Save the CA* again (docker: and the `sudo` line, which also restarts docker).
-- `unauthorized`: the robot's name or secret is wrong; the name includes `robot$`.
-- `denied` on push: the robot belongs to another project.
-- `docker.io` errors on the first pull: this machine cannot reach Docker Hub.
+To log in to Harbor with podman or docker, build an image, push it to this project and run it in
+a VKS cluster, see [IMAGE.md](IMAGE.md).
 
 ## 11. Check that a VKS cluster can pull from Harbor
 
@@ -2329,23 +2195,8 @@ else { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $HARBOR_DIR; "d
 
 **If not:** `Nothing deleted: a Harbor is still …`: these files belong to it; keep them.
 
-If you added Harbor's CA to the system's trust store for docker (step 10), remove it, as a line of
-its own (it runs `sudo`):
-
-**Ubuntu, Debian, Docker Engine in WSL (bash or zsh):**
-
-```sh
-sudo rm -f /usr/local/share/ca-certificates/harbor-ca.crt && sudo update-ca-certificates --fresh && sudo systemctl restart docker
-```
-
-**AlmaLinux, docker from Docker's own repository (bash):**
-
-```sh
-sudo rm -f /etc/pki/ca-trust/source/anchors/harbor-ca.crt && sudo update-ca-trust && sudo systemctl restart docker
-```
-
-**Expect:** a new prompt (Ubuntu also prints `… added, 0 removed; done.` and a harmless `rehash:
-warning`).
+If you trusted Harbor's CA for podman or docker, [IMAGE.md step 8](IMAGE.md#8-remove-it-optional)
+says how to stop.
 
 ## Fix common problems
 

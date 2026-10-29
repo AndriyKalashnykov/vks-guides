@@ -1162,7 +1162,8 @@ integration, and the cluster's Kubernetes counts once step 11 is done. In VCF Op
 
    ![The VKS cluster in VCF Operations](img/observability/07-ops-vks-cluster.jpg)
 
-2. In the tree on the left, expand **Virtual Machine**, click a node, then **Details**.
+2. In the tree on the left, expand **Virtual Machine** and click a node (in older releases, then
+   **Details**).
 
    ![A node VM in VCF Operations](img/observability/08-ops-node-vm.jpg)
 
