@@ -11,7 +11,7 @@
 > - curl: [curl shipped by Microsoft](https://curl.se/windows/microsoft.html) (`curl.exe` in Windows)
 > - sudo: [Sudo Manual](https://www.sudo.ws/docs/man/sudo.man/) (`-v`)
 > - Docker: [Install on Ubuntu](https://docs.docker.com/engine/install/ubuntu/), [Install on RHEL](https://docs.docker.com/engine/install/rhel/), [Linux post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/), [Install Docker Desktop on Windows](https://docs.docker.com/desktop/setup/install/windows-install/); Photon OS 5: [Docker Containers](https://vmware.github.io/photon/docs-v5/administration-guide/containers/docker-containers/); Colima: [README](https://github.com/abiosoft/colima)
-> - Podman: [Podman Installation](https://podman.io/docs/installation), [Podman for Windows](https://github.com/containers/podman/blob/main/docs/tutorials/podman-for-windows.md)
+> - Podman: [Podman Installation](https://podman.io/docs/installation), [Podman for Windows](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-for-windows.md)
 
 The small command-line tools the other guides use: `curl`, `tar`, `unzip`, `jq`, `openssl`. Do the
 section for your OS, then [Check](#check) (Linux, macOS and WSL; PowerShell needs no check).
@@ -284,7 +284,7 @@ Both run Linux in WSL 2. If you have no WSL yet, install it once in **PowerShell
 Administrator** with `wsl --install --no-distribution`, and restart Windows if it asks.
 
 - podman: download `podman-installer-windows-amd64.msi` from
-  [Podman's releases](https://github.com/containers/podman/releases), install it, open a new
+  [Podman's releases](https://github.com/podman-container-tools/podman/releases), install it, open a new
   **Windows PowerShell** and run the block below. It creates and starts podman's Linux virtual
   machine, where your containers run.
 - docker: install [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)
