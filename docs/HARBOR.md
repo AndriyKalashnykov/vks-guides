@@ -1016,6 +1016,9 @@ the record if the cluster autoscaler added or removed a node.
 
 ### Save the CA
 
+Harbor signs its own certificate with its own CA, which no machine trusts yet. `curl`, podman,
+docker and browsers need that CA's file to trust Harbor; the next blocks and IMAGE.md use it.
+
 This reads Harbor's CA certificate from Harbor's TLS Secret (the one labeled
 `managed-by=vmware-vRegistry`, which VKS also reads) and saves it as `harbor-ca.crt`, if Harbor at
 its DNS name answers with a certificate it signed. It prints the fingerprint for everyone who will
@@ -1398,8 +1401,103 @@ Its name is `robot$` and the name you typed (here `robot$my-project-push`), not
 
 ### Log in with podman or docker (optional)
 
-To log in to Harbor with podman or docker, build an image, push it to this project and run it in
-a VKS cluster, see [IMAGE.md](IMAGE.md).
+This checks that podman or docker on this machine can log in to Harbor, as `admin` and as the
+robot account, and logs out again. First make your engine trust Harbor's CA:
+[IMAGE.md step 2](IMAGE.md#2-trust-harbors-ca). Set `CONTAINER_ENGINE` to `podman` or `docker`.
+
+As `admin`, with the password from the secrets file:
+
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+
+```sh
+CONTAINER_ENGINE="podman"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+
+HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
+if [ -z "$HARBOR_FQDN" ] || [ ! -r "$HARBOR_DIR/secrets.env" ]; then
+  echo "FAILED: harbor-data-values.yml or secrets.env is missing in $HARBOR_DIR"
+elif ( . "$HARBOR_DIR/secrets.env"; printf '%s\n' "$HARBOR_ADMIN_PASSWORD" ) | "$CONTAINER_ENGINE" login -u admin --password-stdin "$HARBOR_FQDN"; then
+  "$CONTAINER_ENGINE" logout "$HARBOR_FQDN"
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$CONTAINER_ENGINE = "podman"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$S = @{}
+foreach ($l in Get-Content "$HARBOR_DIR\secrets.env" -ErrorAction SilentlyContinue) { if ($l -cmatch "^(HARBOR_[A-Z_]+)='(.*)'$") { $S[$Matches[1]] = $Matches[2] } }
+if (-not $HARBOR_FQDN -or -not $S['HARBOR_ADMIN_PASSWORD']) { "FAILED: harbor-data-values.yml or secrets.env is missing in $HARBOR_DIR" }
+else {
+  $S['HARBOR_ADMIN_PASSWORD'] | & $CONTAINER_ENGINE login -u admin --password-stdin $HARBOR_FQDN
+  if ($LASTEXITCODE -eq 0) { & $CONTAINER_ENGINE logout $HARBOR_FQDN }
+}
+```
+
+As the robot: type its secret in this terminal (it is not shown), then run the block. Keep
+`HARBOR_ROBOT` in single quotes: the `$` is part of the name.
+
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+
+```sh
+printf 'Robot secret: '; IFS= read -rs HARBOR_ROBOT_SECRET; echo
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$HARBOR_ROBOT_SECRET = Read-Host -AsSecureString 'Robot secret'
+```
+
+Then:
+
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+
+```sh
+CONTAINER_ENGINE="podman"
+HARBOR_ROBOT='robot$my-project+push'
+HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+
+HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
+if [ -z "$HARBOR_FQDN" ] || [ -z "$HARBOR_ROBOT_SECRET" ]; then
+  echo "FAILED: no $HARBOR_DIR/harbor-data-values.yml, or no robot secret in this terminal (run the line above)"
+elif printf '%s\n' "$HARBOR_ROBOT_SECRET" | "$CONTAINER_ENGINE" login -u "$HARBOR_ROBOT" --password-stdin "$HARBOR_FQDN"; then
+  "$CONTAINER_ENGINE" logout "$HARBOR_FQDN"
+fi
+unset HARBOR_ROBOT_SECRET
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$CONTAINER_ENGINE = "podman"
+$HARBOR_ROBOT = 'robot$my-project+push'
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+if (-not $HARBOR_FQDN -or -not $HARBOR_ROBOT_SECRET -or $HARBOR_ROBOT_SECRET.Length -eq 0) { "FAILED: no $HARBOR_DIR\harbor-data-values.yml, or no robot secret in this terminal (run the line above)" }
+else {
+  $B = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($HARBOR_ROBOT_SECRET)
+  try { [Runtime.InteropServices.Marshal]::PtrToStringBSTR($B) | & $CONTAINER_ENGINE login -u $HARBOR_ROBOT --password-stdin $HARBOR_FQDN }
+  finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($B) }
+  if ($LASTEXITCODE -eq 0) { & $CONTAINER_ENGINE logout $HARBOR_FQDN }
+}
+Remove-Variable -ErrorAction SilentlyContinue HARBOR_ROBOT_SECRET
+```
+
+**Expect:** `Login Succeeded`, then `Removed login credentials for <your Harbor name>` (docker:
+`Removing login credentials for …`).
+
+**If not:**
+- `x509: certificate signed by unknown authority`: do [IMAGE.md step 2](IMAGE.md#2-trust-harbors-ca)
+  for your OS and engine.
+- `unauthorized` as `admin`: see *Log in as admin*. As the robot: its name or secret is wrong, or
+  it has expired. A robot made in Harbor's web page is `robot$<the name you typed>`.
+
+To build an image, push it to this project and run it in a VKS cluster, see [IMAGE.md](IMAGE.md).
 
 ## 11. Check that a VKS cluster can pull from Harbor
 

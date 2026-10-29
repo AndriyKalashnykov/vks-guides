@@ -23,11 +23,16 @@ Needs:
 - the VKS cluster's kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
 - a machine that reaches `github.com` and `docker.io` (the app's base image).
 
-Set `CONTAINER_ENGINE` to `podman` or `docker` in every block. The app runs in its own namespace,
+Every step works with podman or docker. Steps 3, 4 and 6 start with `CONTAINER_ENGINE="podman"`:
+keep it for podman, or change it to `CONTAINER_ENGINE="docker"` for docker. The app runs in its own namespace,
 `harbor-demo`: [ARGOCD.md](ARGOCD.md) keeps the same app in `test-web-apps` and would undo changes
 there.
 
 ## 1. Get Harbor's CA
+
+Harbor's certificate is signed by Harbor's own CA (certificate authority), not by one your
+machine already knows. podman and docker need that CA's file to trust Harbor (step 2); without it
+they refuse to connect (`x509: certificate signed by unknown authority`).
 
 Skip this if you ran [HARBOR.md step 9](HARBOR.md#save-the-ca) on this machine. Otherwise this
 downloads the CA from Harbor itself. Harbor is not trusted yet, so the download does not prove
@@ -93,6 +98,10 @@ is right, this Harbor publishes no CA (your organization's certificate, HARBOR.m
 `harbor-ca.crt` from your Harbor administrator.
 
 ## 2. Trust Harbor's CA
+
+podman and docker talk to Harbor over HTTPS and check its certificate first. Until they trust
+Harbor's CA, `login`, `push` and `pull` stop with `x509: certificate signed by unknown authority`.
+This tells your engine to trust it.
 
 Run the part for your OS and engine. Step 4's push proves that it worked (a login alone does not
 prove it for docker).
@@ -190,6 +199,11 @@ the new CA.
 This downloads the app's files from this repository, marks its page with the engine's name, and
 builds the image for the cluster's nodes (`linux/amd64`, also on an Apple silicon Mac).
 
+The first line picks the engine: `CONTAINER_ENGINE="podman"` builds with podman; change it to
+`CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) to build with docker. To
+build with both, run the block twice, once with each; the images get the tags `v1-podman` and
+`v1-docker`.
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
@@ -282,6 +296,10 @@ This logs in to Harbor as the robot account from HARBOR.md step 10, pushes the i
 digest for step 6, and logs out. Keep `HARBOR_ROBOT` in single quotes: the `$` is part of the
 name. A robot made in Harbor's web page under **Administration** is called `robot$<its name>`; one
 made by step 10's block is `robot$<your project>+push`.
+
+The first line picks the engine: `CONTAINER_ENGINE="podman"` pushes the image podman built; change
+it to `CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) to push the image
+docker built. Built with both? Run the block once with each.
 
 Type the robot's secret in this terminal (it is not shown):
 
@@ -479,6 +497,9 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 This runs the app in the namespace `harbor-demo`, with the image you pushed, by its digest. If
 step 5 made the Secret `harbor-pull`, the app uses it. It waits until all five copies run, then
 checks that each runs your image.
+
+The first line picks which push to run: `CONTAINER_ENGINE="podman"` runs the image podman pushed,
+`CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) the one docker pushed.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
