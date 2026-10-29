@@ -223,71 +223,153 @@ opened after it have the setting.
 
 ## How `vcf` contexts use kubeconfig files
 
-`kubectl` and `vcf` each read their own file:
+**In short:** run the blocks as written, and keep a VKS cluster's kubeconfig private. The rest of
+this section explains why, and what to do if something already went wrong.
+
+- The guides keep the Supervisor's login in `~/.kube/supervisor.kubeconfig` and each VKS cluster's
+  in `~/.kube/<cluster>.kubeconfig`. The names are their choice, not a rule; the blocks use them,
+  so another name means changing it in every block.
+- Run `vcf` commands with `KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"` in front, as the blocks
+  do, including in a terminal where you ran *Make it the default in this terminal*.
+- Your own `~/.kube/config`, if you have one, is not changed.
+
+A *context* is a saved choice of "this server, as this user". `kubectl` and `vcf` each keep a list
+of contexts, in their own file, and each marks one as current:
 
 | | kubeconfig | `config.yaml` |
 |---|---|---|
-| what it is | the standard Kubernetes file that tells `kubectl` (and other Kubernetes tools) which server to talk to and how to log in to it | the VCF CLI's own list of your saved logins, called *contexts* (separate from the kubeconfig's contexts), and which one `vcf` commands use |
-| holds | a server's address, how to check that it is the real server (or that the check is skipped), your login (for the Supervisor a *token*: a temporary key), and named *contexts*, each pairing one server with one user; its *current-context* is the one `kubectl` uses | for each `vcf` context, a kubeconfig file and the name of a context inside it; its *currentContext* is the one `vcf` commands such as `vcf cluster list` use |
-| where | any file you choose; `kubectl`'s default is `~/.kube/config` (Windows: `%USERPROFILE%\.kube\config`). These guides use `~/.kube/supervisor.kubeconfig` for the Supervisor and `~/.kube/<cluster>.kubeconfig` for each VKS cluster instead (why: below) | `~/.config/vcf/config.yaml` (Windows: `%USERPROFILE%\.config\vcf\config.yaml`) |
-| written by | `vcf`, when you log in (Supervisor); you, with [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) (VKS cluster) | `vcf` |
+| what it is | the standard Kubernetes file that tells `kubectl` (and other Kubernetes tools) which server to talk to and how to log in to it | the VCF CLI's own list of your saved logins, and which one `vcf` commands such as `vcf cluster list` use |
+| holds | each server's address and certificate (so `kubectl` knows it is the real server), your login (for the Supervisor a *token*: a temporary key), and the contexts; its *current-context* is the one `kubectl` uses | for each `vcf` context, the kubeconfig file it uses and the name of a context in that file; its *currentContext* (same idea, other spelling) is the one `vcf` uses |
+| where | any file; `kubectl`'s default is `~/.kube/config` (Windows: `%USERPROFILE%\.kube\config`). These guides use one file per server instead (why: [below](#if-you-already-use-kubectl-with-other-clusters)) | `~/.config/vcf/config.yaml` (Windows: `%USERPROFILE%\.config\vcf\config.yaml`) |
+| written by | `vcf`, when you log in, renew, switch (`vcf context use`) or log out (Supervisor); you, with [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) (VKS cluster) | `vcf` |
 
-`kubectl` knows only the kubeconfig and never reads `config.yaml`; `vcf` keeps its own list on
-top, and writes the kubeconfig when you log in so that `kubectl` works afterwards. `KUBECONFIG` is
-an environment variable naming the kubeconfig `kubectl` uses when a command has no `--kubeconfig`
-(without either, `kubectl` reads `~/.kube/config`); `vcf` reads it only when you log in, to choose
-the file the login is written to. The guides' commands name their kubeconfig with `--kubeconfig`,
-so run the blocks as written.
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
+flowchart LR
+  vcf["vcf commands"] -- read --> CFG["~/.config/vcf/config.yaml<br/>your saved logins"]
+  CFG -- "each login points at" --> KC["a kubeconfig file"]
+  vcf -- "writes, when you log in" --> KC
+  kubectl["kubectl"] -- read --> KC
+  KC -- "address and login" --> S["the server:<br/>Supervisor or VKS cluster"]
+```
 
-### If you already have `~/.kube/config`
+`kubectl` never reads `config.yaml`; `vcf` keeps its own list on top, and writes the kubeconfig
+when you log in so that `kubectl` works afterwards.
 
-Many machines already have `~/.kube/config`, with other clusters in it. What `vcf` does to it
-depends on `KUBECONFIG` when you log in:
+`KUBECONFIG` is an environment variable naming the kubeconfig to use: one file, or several
+separated by `:` (Windows: `;`), which `kubectl` reads together. `kubectl` uses it when a command
+has no `--kubeconfig`, and `~/.kube/config` when neither is given. A `vcf` login or renewal
+(`vcf context refresh`) writes into the first file it names; `vcf context use` and `delete` write
+the file recorded for the login, whatever `KUBECONFIG` says.
 
-| | `KUBECONFIG` not set: the Supervisor goes into `~/.kube/config` | `KUBECONFIG` names a file of its own, as in these guides |
+### If you already use kubectl with other clusters
+
+Skip this if you have never used `kubectl` on this machine: then you have no `~/.kube/config`.
+If you have one, it holds your other clusters, and what `vcf` does to it depends on `KUBECONFIG`
+when you log in:
+
+| | `KUBECONFIG` not set: the login goes into `~/.kube/config` | `KUBECONFIG` names a file of its own, as in these guides |
 |---|---|---|
-| log in (`vcf context create`) | adds the Supervisor's contexts, cluster and user to `~/.kube/config` | writes them to that file, creating it; `~/.kube/config` is not touched |
-| `vcf context use` | makes the Supervisor the current-context of `~/.kube/config`, so plain `kubectl` and your other tools now talk to the Supervisor; writes the whole file again (its comments are lost) | changes only that file |
-| `vcf context delete` | removes the Supervisor's contexts, cluster and user from `~/.kube/config`, even ones another context still uses, and clears its current-context | changes only that file |
-| your other clusters | still in the file, but no longer the current-context: switch back with `kubectl config use-context <name>` | untouched |
+| log in (`vcf context create`) | adds the Supervisor's contexts (`supervisor`, `supervisor:<namespace>`), one cluster and one user, all named after the login; your current-context stays; the whole file is written again (its comments are lost) | writes that file, creating it; `~/.kube/config` is not touched |
+| `vcf context use` | makes the Supervisor the current-context of `~/.kube/config`: plain `kubectl` and your other tools now talk to the Supervisor | changes only that file |
+| `vcf context delete -y` | removes the Supervisor's contexts, cluster and user; your other clusters stay | changes only that file |
 
-So keep the Supervisor in a file of its own, as LOGIN.md does with
-`KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"`, and each VKS cluster in its own file too.
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
+flowchart LR
+  subgraph shared["KUBECONFIG not set"]
+    v1["vcf"] -- "adds, switches, rewrites" --> d1["~/.kube/config<br/>your clusters + the Supervisor"]
+    k1["kubectl, your tools"] --> d1
+  end
+  subgraph separate["KUBECONFIG names a file of its own"]
+    v2["vcf"] -- "adds, switches, rewrites" --> s2["~/.kube/supervisor.kubeconfig"]
+    k2["kubectl, your tools"] --> d2["~/.kube/config<br/>your clusters, untouched"]
+  end
+```
+
+If you already logged in with `KUBECONFIG` not set, this lists your contexts, switches back to
+yours and removes the Supervisor's from `~/.kube/config`. Set `MY_CONTEXT` to your old context
+(the list shows it) and `VCF_CONTEXT` to the name you logged in with. Then log in again as
+[LOGIN.md](LOGIN.md) shows.
+
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+
+```sh
+VCF_CONTEXT="supervisor"
+MY_CONTEXT="my-old-context"
+
+kubectl --kubeconfig "$HOME/.kube/config" config get-contexts -o name
+kubectl --kubeconfig "$HOME/.kube/config" config use-context "$MY_CONTEXT" \
+  && vcf context delete "$VCF_CONTEXT" -y
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VCF_CONTEXT = "supervisor"
+$MY_CONTEXT = "my-old-context"
+
+kubectl --kubeconfig "$HOME\.kube\config" config get-contexts -o name
+kubectl --kubeconfig "$HOME\.kube\config" config use-context $MY_CONTEXT
+if ($LASTEXITCODE -eq 0) { vcf context delete $VCF_CONTEXT -y }
+```
+
+**Expect:** your contexts and the Supervisor's, then `Switched to context "<yours>".` and
+`[ok] Successfully deleted context "supervisor"`. The comments `~/.kube/config` had are not
+restored.
+
+**If not:** `no context exists with the name`: set `MY_CONTEXT` to a name from the list (the
+Supervisor's are not deleted then). `context "supervisor" not found`: set `VCF_CONTEXT` to the
+name you logged in with (`vcf context list`).
 
 ### Why the Supervisor and each VKS cluster have their own kubeconfig
 
 They are two different servers, with different logins:
 
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
+flowchart LR
+  k["kubectl --kubeconfig"] --> sk["~/.kube/supervisor.kubeconfig<br/>your SSO login, about 10 hours"]
+  k --> ck["~/.kube/&lt;cluster&gt;.kubeconfig<br/>the cluster's administrator, about a year"]
+  sk --> S["Supervisor:<br/>your vSphere Namespace"]
+  ck --> C["VKS cluster:<br/>your apps"]
+```
+
 | | Supervisor | VKS cluster |
 |---|---|---|
 | what you work with there | what is in your vSphere Namespace: VKS clusters, VMs, Supervisor Service instances such as ArgoCD | your apps |
-| login | your SSO user, with your role on each vSphere Namespace | the cluster's administrator login (a certificate), shared by everyone who has the file |
-| lasts | about 10 hours, then [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login) | about a year from when the cluster made it (so 6 to 12 months from when you read it), whatever happens to your SSO login; then `kubectl` answers `Unauthorized`: run [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) again |
-| file changed by | every `vcf context create`, `use` and `delete` | only you, when you run [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) |
+| login | your SSO user, with your role on each vSphere Namespace | an administrator certificate stored in the file: anyone with a copy of the file is the cluster's administrator |
+| lasts | about 10 hours, then [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login) | about a year from when the cluster made the certificate (so 6 to 12 months from when you ran *Get the VKS cluster's kubeconfig*), whatever happens to your SSO login; then `kubectl` answers `Unauthorized`: run [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) again |
+| file changed by | `vcf` when you log in, renew, switch or log out | only you, when you run [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) |
 
 Keeping them apart:
 
 - each command names the server it acts on, so an app meant for the VKS cluster does not end up on
-  the Supervisor by mistake (the Edit role can run apps there too, as vSphere Pods);
+  the Supervisor by mistake (your role on the vSphere Namespace, such as Edit, can run apps there
+  too, as vSphere Pods, where the Supervisor supports them);
 - renewing or ending the Supervisor login leaves the VKS cluster files as they are, and deleting a
   VKS cluster file changes nothing else.
 
 The cost: every `kubectl` command carries `--kubeconfig <file>`, or you set `KUBECONFIG` for one
 terminal ([Make it the default in this terminal](LOGIN.md#make-it-the-default-in-this-terminal)).
+Do not copy the Supervisor's entries into another file: renewing updates only
+`~/.kube/supervisor.kubeconfig`, so a copy answers `Unauthorized` after about 10 hours.
 
-Keep a VKS cluster file private: no one can withdraw a single copy, so whoever has one controls the
-cluster until it expires (or the cluster is deleted), even after losing their role on the vSphere
-Namespace. Broadcom also documents
-logging in to a VKS cluster as your own SSO user
-([Log in to a VKS Cluster Using vCenter SSO Credentials](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connecting-to-vsphere-with-tanzu-clusters/connect-to-a-tkg-service-cluster-as-a-vcenter-single-sign-on-user-with-kubectl/log-in-using-credentials.html)): that login ends when your
-role does, but also after about 10 hours, like the Supervisor login. These guides use the administrator file because it needs no extra login and does not end after
-10 hours in the middle of a block.
+Keep a VKS cluster file private: no one can cancel a copy, so whoever has one controls the cluster
+until it expires or the cluster is deleted, even after losing their role on the vSphere Namespace.
+
+Optional: Broadcom also documents logging in to a VKS cluster as your own SSO user
+([Log in to a VKS Cluster Using vCenter SSO Credentials](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connecting-to-vsphere-with-tanzu-clusters/connect-to-a-tkg-service-cluster-as-a-vcenter-single-sign-on-user-with-kubectl/log-in-using-credentials.html)).
+That login ends when your role does, but also after about 10 hours, like the Supervisor login.
+These guides use the administrator file because it needs no extra login and does not end in the
+middle of a block.
 
 ### What a login creates, and when it matters
 
 Logging in to the Supervisor ([LOGIN.md](LOGIN.md)) creates a `vcf` context for the Supervisor and
-one per vSphere Namespace, named `<name>:<namespace>` (with LOGIN.md: `supervisor` and
-`supervisor:my-namespace`), all pointing at the same kubeconfig.
+one per vSphere Namespace you can see, named `<name>:<namespace>` (with LOGIN.md: `supervisor` and
+`supervisor:my-namespace`; an administrator also gets one for each Supervisor Service's `svc-…`
+namespace), all in the same kubeconfig.
 
 You need `config.yaml` only when a `vcf` command complains about it: `no current context set`
 (below), or `context "supervisor" already exists` at login (then run [Log out](LOGIN.md#log-out)
@@ -295,9 +377,11 @@ and log in again).
 
 What this means for you:
 
+- Renew with `KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"` in front, as LOGIN.md does:
+  `vcf context refresh` writes the new login into the file `KUBECONFIG` names and records that
+  file for the login from then on, so without it the Supervisor's file keeps the old token.
 - In a terminal where you ran *Make it the default in this terminal*, `KUBECONFIG` names the VKS
-  cluster's file, and a login there would be written into it: put
-  `KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"` in front of `vcf` commands, as the guides do.
+  cluster's file: a `vcf` login or renewal there would be written into it.
 - `vcf context use` can print `failed to discover plugin sources …` and exit with an error even
   though it switched (on a Supervisor with no system Harbor registry). Check the switch with
   `kubectl --kubeconfig <the file> config current-context`, not with the exit code.
@@ -360,18 +444,20 @@ flowchart LR
   C1 -- recorded file --> KC
   C2 -- recorded file --> KC
   L["vcf context create --endpoint<br/>(log in)"] -- "writes the file KUBECONFIG names" --> KC
+  R["vcf context refresh (renew)"] -- "writes the file KUBECONFIG names,<br/>and records it from then on" --> KC
   V["vcf context use / delete"] -- "writes the recorded file,<br/>whatever KUBECONFIG is now" --> KC
   KUBECTL["kubectl"] -- "--kubeconfig or KUBECONFIG" --> KC
 ```
 
 | command | what changes for you | `config.yaml` (read by `vcf`) | kubeconfig (read by `kubectl`) |
 |---|---|---|---|
-| `vcf context create <name> --endpoint …` (log in) | you are logged in; no context is active yet | adds `<name>` and its `<name>:<namespace>` contexts; does not make one active | adds their contexts, cluster and user to the file `KUBECONFIG` names (or `~/.kube/config` when `KUBECONFIG` is not set), creating it if missing |
+| `vcf context create <name> --endpoint …` (log in) | you are logged in; no context is active yet | adds `<name>` and its `<name>:<namespace>` contexts, recording the kubeconfig file; does not make one active | adds their contexts, cluster and user to the file `KUBECONFIG` names (the first one if it lists several; `~/.kube/config` when it is not set), creating it if missing, and writes that whole file again (its comments are lost); its current-context stays |
+| `vcf context refresh <name>` (renew) | the login is renewed | records the file `KUBECONFIG` names as the login's file from then on | writes the new login into the file `KUBECONFIG` names, not into the file recorded before |
 | `vcf context create <name> --kubeconfig F --kubecontext C` | `vcf` can use a context that already exists in a kubeconfig; no login | adds `<name>`, recording `F` and `C` (give `F` as a full path) | none |
 | `vcf context use <name>` | `<name>` becomes the active context for `vcf`, and for `kubectl` with the recorded file | sets `currentContext` | sets the recorded file's current-context to the recorded context, and writes that whole file again (its comments are lost); `KUBECONFIG` is ignored |
 | `vcf context list`, `get` | nothing; they only show | none | none |
 | `vcf context unset <name>` | no context is active for `vcf`; `kubectl` is unchanged | clears `currentContext` (the active context only) | none |
-| `vcf context delete <name> -y`, for a login or a `--kubeconfig` context | the login and its namespace contexts are gone, from both files | removes `<name>` and its `<name>:<namespace>` contexts | removes their contexts, cluster and user from the recorded file, even ones another context still uses, and clears its current-context |
+| `vcf context delete <name> -y`, for a login or a `--kubeconfig` context | the login and its namespace contexts are gone, from both files | removes `<name>` and its `<name>:<namespace>` contexts | removes their contexts, cluster and user from the recorded file (other entries stay), and clears its current-context if it was one of them |
 | `vcf context delete <name>:<namespace> -y` | one namespace context is gone | removes that context | removes only that context |
 | `vcf context delete <name> -y --skip-delete-kubeconfig-context` | `vcf` forgets the login; the kubeconfig keeps it (LOGIN.md's Log out then deletes that file) | removes `<name>` and its `<name>:<namespace>` contexts | none |
 
