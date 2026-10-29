@@ -100,7 +100,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Install Helm](docs/HELM.md) | ✅ | ✅ | ✅ | ✅ | — |
 | [Monitor a VKS cluster](docs/MONITORING.md) | part | part | part | ✅ | — |
 | [Send logs to VCF Operations](docs/LOGGING.md) | part | part | part | part | — |
-| [Logs and traces in Grafana](docs/OBSERVABILITY.md) | part | part | part | — | — |
+| [Logs and traces in Grafana](docs/OBSERVABILITY.md) | part | part | part | part | — |
 
 In *Send logs to VCF Operations*, steps 2 to 6 were not run on VKS 3.8: that lab has no Log
 Management.
