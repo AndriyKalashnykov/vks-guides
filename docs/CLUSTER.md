@@ -112,8 +112,11 @@ To create the cluster from a YAML file with kubectl instead of steps 3 to 5, see
 **Expect:** a page **New Kubernetes Cluster**, with the pane **Kubernetes Resource YAML** on the
 right.
 
-**If not:** no **Resources** tab: the **Local Consumption Interface** service is not running on
-the Supervisor. Ask a vCenter administrator.
+**If not:**
+- The tab shows the **vSphere Kubernetes Service** list instead of the cards (it reopens the view
+  you used last): click your namespace's name above the list to get the cards back.
+- No **Resources** tab: the **Local Consumption Interface** service is not running on the
+  Supervisor. Ask a vCenter administrator.
 
 ## 4. Fill in the create page
 
