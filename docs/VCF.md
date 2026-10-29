@@ -245,7 +245,7 @@ of contexts, in their own file, and each marks one as current:
 
 ```mermaid
 %%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
-flowchart LR
+flowchart TB
   vcf["vcf commands"] -- read --> CFG["~/.config/vcf/config.yaml<br/>your saved logins"]
   CFG -- "each login points at" --> KC["a kubeconfig file"]
   vcf -- "writes, when you log in" --> KC
@@ -277,13 +277,13 @@ when you log in:
 ```mermaid
 %%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
 flowchart LR
-  subgraph shared["KUBECONFIG not set"]
-    v1["vcf"] -- "adds, switches, rewrites" --> d1["~/.kube/config<br/>your clusters + the Supervisor"]
-    k1["kubectl, your tools"] --> d1
-  end
   subgraph separate["KUBECONFIG names a file of its own"]
     v2["vcf"] -- "adds, switches, rewrites" --> s2["~/.kube/supervisor.kubeconfig"]
     k2["kubectl, your tools"] --> d2["~/.kube/config<br/>your clusters, untouched"]
+  end
+  subgraph shared["KUBECONFIG not set"]
+    v1["vcf"] -- "adds, switches, rewrites" --> d1["~/.kube/config<br/>your clusters + the Supervisor"]
+    k1["kubectl, your tools"] --> d1
   end
 ```
 
@@ -330,7 +330,7 @@ They are two different servers, with different logins:
 %%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
 flowchart LR
   k["kubectl --kubeconfig"] --> sk["~/.kube/supervisor.kubeconfig<br/>your SSO login, about 10 hours"]
-  k --> ck["~/.kube/&lt;cluster&gt;.kubeconfig<br/>the cluster's administrator, about a year"]
+  k --> ck["~/.kube/my-vks-cluster.kubeconfig<br/>the cluster's administrator, about a year"]
   sk --> S["Supervisor:<br/>your vSphere Namespace"]
   ck --> C["VKS cluster:<br/>your apps"]
 ```
