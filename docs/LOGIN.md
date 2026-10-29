@@ -578,6 +578,10 @@ kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" get nodes
 
 **Expect:** the cluster's nodes, each `Ready`.
 
+**If not:** `error: You must be logged in to the server (Unauthorized)`: the VKS cluster's file has
+expired (about a year after the cluster made it); run
+[Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig) again.
+
 ## Match kubectl to the cluster's version
 
 kubectl must be within one minor version of the cluster. This prints both versions:
