@@ -288,7 +288,9 @@ Administrator** with `wsl --install --no-distribution`, and restart Windows if i
   **Windows PowerShell** and run the block below. It creates and starts podman's Linux virtual
   machine, where your containers run.
 - docker: install [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)
-  and start it. Larger companies need a paid subscription for it.
+  and start it. Larger companies need a paid subscription for it. Free instead: Docker CE inside
+  WSL 2, with the [Debian / Ubuntu](#podman-and-docker-on-debian--ubuntu) docker block run in
+  your WSL Ubuntu; then use docker, and IMAGE.md's Linux blocks, in that Ubuntu.
 
 ```powershell
 podman machine init
