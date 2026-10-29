@@ -229,14 +229,30 @@ opened after it have the setting.
 |---|---|---|
 | what it is | the standard Kubernetes file that tells `kubectl` (and other Kubernetes tools) which server to talk to and how to log in to it | the VCF CLI's own list of your saved logins, called *contexts* (separate from the kubeconfig's contexts), and which one `vcf` commands use |
 | holds | a server's address, how to check that it is the real server (or that the check is skipped), your login (for the Supervisor a *token*: a temporary key), and named *contexts*, each pairing one server with one user; its *current-context* is the one `kubectl` uses | for each `vcf` context, a kubeconfig file and the name of a context inside it; its *currentContext* is the one `vcf` commands such as `vcf cluster list` use |
-| where | `~/.kube/supervisor.kubeconfig` for the Supervisor, `~/.kube/<cluster>.kubeconfig` for each VKS cluster | `~/.config/vcf/config.yaml` (Windows: `%USERPROFILE%\.config\vcf\config.yaml`) |
+| where | any file you choose; `kubectl`'s default is `~/.kube/config` (Windows: `%USERPROFILE%\.kube\config`). These guides use `~/.kube/supervisor.kubeconfig` for the Supervisor and `~/.kube/<cluster>.kubeconfig` for each VKS cluster instead (why: below) | `~/.config/vcf/config.yaml` (Windows: `%USERPROFILE%\.config\vcf\config.yaml`) |
 | written by | `vcf`, when you log in (Supervisor); you, with [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) (VKS cluster) | `vcf` |
 
 `kubectl` knows only the kubeconfig and never reads `config.yaml`; `vcf` keeps its own list on
 top, and writes the kubeconfig when you log in so that `kubectl` works afterwards. `KUBECONFIG` is
-an environment variable naming the kubeconfig `kubectl` uses when a command has no `--kubeconfig`;
-`vcf` reads it only when you log in, to choose the file the login is written to. The guides' commands name their kubeconfig with `--kubeconfig`, so run the blocks
-as written.
+an environment variable naming the kubeconfig `kubectl` uses when a command has no `--kubeconfig`
+(without either, `kubectl` reads `~/.kube/config`); `vcf` reads it only when you log in, to choose
+the file the login is written to. The guides' commands name their kubeconfig with `--kubeconfig`,
+so run the blocks as written.
+
+### If you already have `~/.kube/config`
+
+Many machines already have `~/.kube/config`, with other clusters in it. What `vcf` does to it
+depends on `KUBECONFIG` when you log in:
+
+| | `KUBECONFIG` not set: the Supervisor goes into `~/.kube/config` | `KUBECONFIG` names a file of its own, as in these guides |
+|---|---|---|
+| log in (`vcf context create`) | adds the Supervisor's contexts, cluster and user to `~/.kube/config` | writes them to that file, creating it; `~/.kube/config` is not touched |
+| `vcf context use` | makes the Supervisor the current-context of `~/.kube/config`, so plain `kubectl` and your other tools now talk to the Supervisor; writes the whole file again (its comments are lost) | changes only that file |
+| `vcf context delete` | removes the Supervisor's contexts, cluster and user from `~/.kube/config`, even ones another context still uses, and clears its current-context | changes only that file |
+| your other clusters | still in the file, but no longer the current-context: switch back with `kubectl config use-context <name>` | untouched |
+
+So keep the Supervisor in a file of its own, as LOGIN.md does with
+`KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"`, and each VKS cluster in its own file too.
 
 ### Why the Supervisor and each VKS cluster have their own kubeconfig
 
@@ -279,10 +295,8 @@ and log in again).
 
 What this means for you:
 
-- Give `vcf` a kubeconfig of its own, as LOGIN.md does with `KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"`.
-  A login made while `KUBECONFIG` names another file (a VKS cluster's kubeconfig, or the shared
-  `~/.kube/config`) writes into that file, and every later `vcf context use` or `delete` changes it
-  again. That includes a terminal where you ran *Make it the default in this terminal*: there, put
+- In a terminal where you ran *Make it the default in this terminal*, `KUBECONFIG` names the VKS
+  cluster's file, and a login there would be written into it: put
   `KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"` in front of `vcf` commands, as the guides do.
 - `vcf context use` can print `failed to discover plugin sources …` and exit with an error even
   though it switched (on a Supervisor with no system Harbor registry). Check the switch with
