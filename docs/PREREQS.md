@@ -42,7 +42,9 @@ sudo dnf install -y curl tar unzip jq openssl
 
 ## Photon OS 5
 
-Keep `openssh openssh-socket` in the line: without them the machine stops accepting SSH logins.
+This refreshes the package list and installs the tools the guides use, plus basic tools Photon OS
+lacks by default (`coreutils`, `findutils`, `gawk`, `diffutils`, `sed`, `grep`). Keep
+`openssh openssh-socket` in the line: without them the machine stops accepting SSH logins.
 
 ```sh
 sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar unzip jq openssl coreutils findutils gawk diffutils sed grep openssh openssh-socket
@@ -114,6 +116,8 @@ Pick one:
 
 ## Check
 
+This checks that each tool the guides use is installed and prints `ok` or `MISSING` for each.
+
 ```sh
 for t in curl tar unzip jq openssl tr awk diff find; do
   command -v "$t" >/dev/null 2>&1 && echo "ok       $t" || echo "MISSING  $t"
@@ -139,8 +143,9 @@ terminal soon after.
 
 ## `~/.local/bin` on your PATH
 
-If an install printed `note: …/.local/bin added to PATH for this terminal only`, add it to your
-`PATH` once:
+If an install printed `note: …/.local/bin added to PATH for this terminal only`, new terminals do
+not find the tool yet. This adds `~/.local/bin` to `PATH`, the list of folders your shell searches
+for commands, in your shell's startup file (`~/.zshrc`, `~/.bashrc` or `~/.bash_profile`):
 
 ```sh
 case "$(uname -s)/${BASH_VERSION:+bash}" in
@@ -176,7 +181,9 @@ podman:
 sudo apt-get update && sudo apt-get install -y podman
 ```
 
-docker. This removes Ubuntu's own docker packages first, if you have them:
+docker: this installs Docker's own packages from Docker's repository (Ubuntu's own is too old).
+It first removes Ubuntu's docker packages if you have them, and at the end adds you to the
+`docker` group:
 
 ```sh
 D="$(. /etc/os-release && echo "$ID")"
@@ -216,7 +223,8 @@ podman:
 sudo dnf install -y podman
 ```
 
-docker, from Docker's own repository (AlmaLinux has none):
+docker: this adds Docker's own repository (AlmaLinux has no docker package), installs and starts
+docker, and adds you to the `docker` group:
 
 ```sh
 sudo dnf install -y dnf-plugins-core && sudo dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo && sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin && sudo usermod -aG docker "$USER" && sudo systemctl enable --now docker && echo "docker installed: log out and back in"
@@ -232,8 +240,8 @@ running. Restart the machine; docker then starts by itself.
 
 ### podman and docker on Photon OS 5
 
-docker only: Photon OS turns off the user namespaces that podman needs without `root`
-(`kernel.unprivileged_userns_clone`). Keep `openssh openssh-socket` in the line: without them the
+docker only: podman cannot run without `root` on Photon OS. This installs and starts docker and
+adds you to the `docker` group. Keep `openssh openssh-socket` in the line: without them the
 machine stops accepting SSH logins.
 
 ```sh
@@ -244,7 +252,8 @@ sudo tdnf install -y docker openssh openssh-socket && sudo usermod -aG docker "$
 
 ### podman and docker on macOS
 
-podman:
+podman: on macOS it runs containers in a small Linux virtual machine. This installs podman, then
+creates and starts that machine if it is not there or not running:
 
 ```sh
 brew install podman
@@ -255,8 +264,9 @@ podman info >/dev/null 2>&1 || podman machine start
 **Expect:** the last lines say the machine `started successfully`, or nothing if it was already
 running.
 
-docker, with [Colima](https://github.com/abiosoft/colima) (Docker Desktop also works; larger
-companies need a paid subscription for it):
+docker, with [Colima](https://github.com/abiosoft/colima), which runs docker in a small Linux
+virtual machine (Docker Desktop also works; larger companies need a paid subscription for it).
+This installs Colima, docker and its build plugin, starts Colima, and points docker at it:
 
 ```sh
 brew install colima docker docker-buildx
@@ -275,7 +285,8 @@ Administrator** with `wsl --install --no-distribution`, and restart Windows if i
 
 - podman: download `podman-installer-windows-amd64.msi` from
   [Podman's releases](https://github.com/containers/podman/releases), install it, open a new
-  **Windows PowerShell** and run the block below.
+  **Windows PowerShell** and run the block below. It creates and starts podman's Linux virtual
+  machine, where your containers run.
 - docker: install [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)
   and start it. Larger companies need a paid subscription for it.
 
@@ -287,6 +298,8 @@ podman machine start
 **Expect:** `Machine "podman-machine-default" started successfully`.
 
 ### Check podman and docker
+
+This shows, for podman and docker, whether each is installed and running, and its version.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 

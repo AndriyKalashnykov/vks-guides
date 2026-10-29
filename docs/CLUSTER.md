@@ -161,7 +161,9 @@ Available**, **Age** `< 1 min`.
 
 ## 6. Wait for the cluster
 
-Watch the row; the refresh arrow reloads the list. Or run this block.
+Creating the cluster takes a few minutes. Watch its row in the vSphere Client (the refresh arrow
+reloads the list), or run this block: it shows the cluster and each of its machines (the virtual
+machines that become its nodes), with their state. Run it again until the cluster is available.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -193,7 +195,9 @@ downloads its node image.
 
 ![The list with the cluster Available](img/cluster/12-cluster-available.png)
 
-**If not:** still `False` after 30 minutes. First check that the cluster got its own address.
+**If not:** still `False` after 30 minutes. First check the cluster's address: a cluster can get
+stuck on an address left over from an older cluster of the same name. This prints the address the
+cluster uses and the address its load balancer got; they must be the same.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -410,8 +414,9 @@ cluster left behind.
 **If not:** `Forbidden`: your role on the namespace cannot delete clusters; ask for the **Edit**
 role.
 
-**This deletes those disks and what they hold, for good.** It deletes nothing while a cluster of
-that name exists.
+Optional: the deleted cluster's disks still use the vSphere Namespace's storage. **This deletes
+them (the second list of the disk block above) and what they hold, for good.** It deletes nothing
+while a cluster of that name exists.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 

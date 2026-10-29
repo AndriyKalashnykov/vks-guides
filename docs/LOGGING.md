@@ -29,7 +29,8 @@ The blocks keep their files in `~/.config/vks-guides/logging` (PowerShell:
 
 ## 1. Find the Fluent Bit release
 
-This lists the Fluent Bit releases the Supervisor offers and the add-ons the cluster already has.
+This shows the Fluent Bit versions you can install, and checks that Fluent Bit is not already in
+your VKS cluster. You copy a version name from it for step 4.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -67,10 +68,13 @@ Harbor registry` may follow the context line; it does no harm here.
 
 ## 2. Check Log Management's certificate
 
-Save the CA certificate as `~/.config/vks-guides/logging/logs-ca.crt` (PowerShell:
-`$HOME\.config\vks-guides\logging\logs-ca.crt`). This prints its fingerprint for you to compare
-with your administrator's, and checks that Log Management at its DNS name answers with a
-certificate this CA signed for that name.
+Fluent Bit sends logs only to a server it trusts, so first check that you have the right
+certificate. Save the CA certificate from your administrator (the file that proves Log
+Management's certificate is genuine) as `~/.config/vks-guides/logging/logs-ca.crt` (PowerShell:
+`$HOME\.config\vks-guides\logging\logs-ca.crt`). Then run this. It:
+
+- prints the certificate's fingerprint, a short code to compare with your administrator's;
+- connects to Log Management and checks that it answers with a certificate this CA vouches for.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -128,8 +132,10 @@ your administrator for the right CA, or a certificate issued for the name.
 
 ## 3. Write the values
 
-This writes `values.yaml` with the output from Broadcom's VCF 9.1 Fluent Bit example. The
-add-on keeps its own inputs, filters and parsers.
+This writes the settings file `values.yaml`, which tells Fluent Bit where to send the logs: to
+Log Management at `LOGS_FQDN`, over HTTPS, checking its certificate with the CA from step 2. Set
+`LOGS_FQDN` to Log Management's DNS name; the block writes nothing while it holds the example
+name. Step 4 installs Fluent Bit with this file.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -212,7 +218,9 @@ fluent_bit:
 
 ## 4. Install the add-on
 
-Set `FLUENT_BIT_RELEASE` to the release name from step 1.
+This installs Broadcom's Fluent Bit add-on in your VKS cluster, with the settings from step 3.
+Fluent Bit then runs on every node and collects its logs. Set `FLUENT_BIT_RELEASE` to the version
+name you copied in step 1.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -248,8 +256,12 @@ vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPAC
 
 ## 5. Give Fluent Bit the CA
 
-The add-on creates the namespace `tanzu-system-logging` in the VKS cluster. This waits for it,
-then stores the CA there as the Secret `tls-ca-cert`, which the Fluent Bit pods wait for.
+Fluent Bit does not start until it has the CA certificate from step 2. This block:
+
+- waits until step 4 has created the namespace `tanzu-system-logging` (up to 10 minutes);
+- stores the certificate there as `tls-ca-cert`, a Kubernetes Secret (an object that holds
+  private data in the cluster);
+- waits until Fluent Bit runs on every node.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -418,10 +430,11 @@ minutes.
 
 ## 7. Change the destination (optional)
 
-Run step 2 and step 3 with the new name, then this. It replaces the CA in the cluster, updates the
-add-on and restarts Fluent Bit. If you did [OBSERVABILITY.md](OBSERVABILITY.md) step 5, run its
-step 5 after this block, with `LOGS_FQDN` set to the new name; this block alone stops the logs to
-Loki.
+This sends the logs to a different Log Management. First run steps 2 and 3 with the new name.
+Then this block puts the new CA certificate in the cluster, gives Fluent Bit the new settings and
+restarts it. If you also send logs to Loki ([OBSERVABILITY.md](OBSERVABILITY.md) step 5), this
+block replaces those settings too: run that step 5 again afterwards, with `LOGS_FQDN` set to the
+new name.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -494,6 +507,9 @@ then run step 6 again.
   `provide credentials`) or `context supervisor not found`: as in step 1.
 
 ## 8. Uninstall (optional)
+
+This removes the Fluent Bit add-on from your VKS cluster, so its logs stop going to VCF
+Operations.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 

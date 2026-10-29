@@ -43,12 +43,15 @@ can instead create the namespace from a YAML file with kubectl:
 
    ![vCenter's start page: the grey box on the right, with Download trusted root CA certificates as the last link under For Developers](img/namespace/02-vcenter-ca.jpg)
 
-This prints the fingerprint of each CA in that file. These are the fingerprints LOGIN.md's
-[Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca) asks you to
-compare. They are worth trusting only if the browser showed no certificate warning for vCenter;
-otherwise the download is no safer than LOGIN.md's own.
+The file holds vCenter's CAs (certificate authorities). LOGIN.md uses them to check that a login
+reaches your real Supervisor. This prints each CA's fingerprint, a short code that identifies it.
+Give them to your users: LOGIN.md's
+[Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca) asks them to
+compare their download with them. Trust them only if your browser showed no certificate warning
+for vCenter.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 CA_ZIP="$HOME/Downloads/download.zip"
@@ -61,6 +64,8 @@ else
 fi
 rm -rf "$TMP"
 ```
+
+</details>
 
 <details>
 <summary><b>Windows (PowerShell)</b></summary>
@@ -501,7 +506,8 @@ In the vSphere Client the namespace is listed under **Supervisor Management** â†
 
 ![The Namespaces tab: two namespaces made with kubectl, Running, Storage 0 | 108 GB](img/namespace/16-namespaces-kubectl.png)
 
-To remove the namespace, run the first block of step 9 to check that it is empty, then:
+To remove the namespace, first run the block in step 9 to check that it is empty. Then this
+deletes the namespace from the Supervisor:
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 

@@ -16,10 +16,11 @@ when this machine cannot reach dl.k8s.io. After you log in,
 
 ## From dl.k8s.io
 
-Downloads the official binary, checks its SHA-256 and installs it into `INSTALL_DIR`. When that
-directory needs `sudo` and `sudo` would ask for a password, it installs into `~/.local/bin`
-instead (see [Prerequisites](PREREQS.md#sudo-optional)). Leave `KUBECTL_VERSION` empty for the
-latest stable release, or set one such as `v1.37.1`.
+This installs `kubectl`, so that you can type `kubectl` in any terminal. It downloads the official
+program, checks that it arrived whole (its SHA-256 checksum) and copies it into `INSTALL_DIR`. If
+that folder needs `sudo` and `sudo` would ask for a password, it uses `~/.local/bin` instead (see
+[Prerequisites](PREREQS.md#sudo-optional)). On Windows it also adds the folder to your PATH.
+Leave `KUBECTL_VERSION` empty for the latest stable release, or set one such as `v1.37.1`.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -119,9 +120,11 @@ Remove-Item -Recurse -Force $TMP
 
 ## From the Supervisor (dl.k8s.io blocked)
 
-The Supervisor serves its own kubectl, for amd64 Linux, macOS and Windows only. It is the
-Supervisor's version, which may be too old for your VKS cluster. The download skips the TLS
-check (`curl -k`). Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
+If this machine cannot reach dl.k8s.io, get `kubectl` from the Supervisor instead. This downloads
+the Supervisor's tool package, takes `kubectl` out of it and installs it like the block above. It
+works for amd64 Linux, macOS and Windows only. This `kubectl` has the Supervisor's version, which
+may be too old for your VKS cluster. The download does not check the Supervisor's certificate
+(`curl -k`). Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
 On Apple silicon this kubectl runs through Rosetta. If you have not installed Rosetta, do it
 first: `softwareupdate --install-rosetta --agree-to-license`.

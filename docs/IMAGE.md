@@ -23,16 +23,22 @@ Needs:
 - the VKS cluster's kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
 - a machine that reaches `github.com` and `docker.io` (the app's base image).
 
-Set `CONTAINER_ENGINE` to `podman` or `docker` in every block. The app runs in its own namespace,
+Every step works with podman or docker. Steps 3, 4 and 6 start with `CONTAINER_ENGINE="podman"`:
+keep it for podman, or change it to `CONTAINER_ENGINE="docker"` for docker. The app runs in its own namespace,
 `harbor-demo`: [ARGOCD.md](ARGOCD.md) keeps the same app in `test-web-apps` and would undo changes
 there.
 
 ## 1. Get Harbor's CA
 
+Harbor's certificate is signed by Harbor's own CA (certificate authority), not by one your
+machine already knows. podman and docker need that CA's file to trust Harbor (step 2); without it
+they refuse to connect (`x509: certificate signed by unknown authority`).
+
 Skip this if you ran [HARBOR.md step 9](HARBOR.md#save-the-ca) on this machine. Otherwise this
-downloads the CA from Harbor itself. Harbor is not trusted yet, so the download does not prove
-where the file came from: compare its fingerprint with the one step 9 printed for your Harbor
-administrator before you keep it. In Harbor's web page, **Projects** → your project →
+downloads Harbor's CA from Harbor, saves it as `harbor-ca.crt.new` and prints its fingerprint, a
+short code that identifies it. Harbor is not trusted yet, so the file could be a fake: keep it
+(next block) only if the fingerprint is the same as the one step 9 printed for your Harbor
+administrator. In Harbor's web page, **Projects** → your project →
 **REGISTRY CERTIFICATE** downloads the same file as `ca.crt`.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
@@ -94,12 +100,19 @@ is right, this Harbor publishes no CA (your organization's certificate, HARBOR.m
 
 ## 2. Trust Harbor's CA
 
+podman and docker talk to Harbor over HTTPS and check its certificate first. Until they trust
+Harbor's CA, `login`, `push` and `pull` stop with `x509: certificate signed by unknown authority`.
+This tells your engine to trust it.
+
 Run the part for your OS and engine. Step 4's push proves that it worked (a login alone does not
 prove it for docker).
 
-### podman on Linux
+### Linux
 
-No `sudo`: podman reads the CA from a folder in your home.
+#### podman
+
+This copies Harbor's CA into the folder in your home where podman looks for it, so podman trusts
+Harbor. No `sudo` needed.
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
@@ -116,30 +129,40 @@ fi
 
 **Expect:** `podman trusts <your Harbor name>`.
 
-### docker on Linux
+#### docker
 
-As a block of its own (it runs `sudo`). docker reads it at once, without a restart (docker 29.5 or
-newer).
+This copies Harbor's CA into the system folder where docker looks for it, so docker trusts Harbor.
+Run it as a block of its own: it uses `sudo`. docker 29.5 or newer reads it at once, without a
+restart. podman reads this folder too.
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
 sudo install -D -m 0644 "$HOME/.config/vks-guides/harbor/harbor-ca.crt" "/etc/docker/certs.d/$HARBOR_FQDN/ca.crt" && echo "docker trusts $HARBOR_FQDN"
 ```
 
-**Expect:** `docker trusts <your Harbor name>`. podman reads this folder too.
+**Expect:** `docker trusts <your Harbor name>`.
 
 ### macOS
 
-Add the CA to your login keychain (macOS asks for your password), then let podman and Docker
-Desktop read it:
+podman and Docker Desktop read the CA from your login keychain. Add it there first (macOS asks
+for your password):
 
 ```sh
 security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychain-db" "$HOME/.config/vks-guides/harbor/harbor-ca.crt"
 ```
 
-- podman: `podman machine stop`, `podman machine set --import-native-ca`, `podman machine start`.
-- Docker Desktop: quit it and start it again.
-- docker in Colima, which does not read the keychain:
+#### podman
+
+Let the podman machine import the keychain's CAs: `podman machine stop`, then
+`podman machine set --import-native-ca`, then `podman machine start`.
+
+**If not:** `unknown flag: --import-native-ca`: your podman is older; follow Podman's
+[Install a certificate authority](https://github.com/containers/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md).
+
+#### docker
+
+- With Colima ([Prerequisites](PREREQS.md#podman-and-docker-on-macos)), which does not read the
+  keychain, put the CA into its virtual machine:
 
   ```sh
   HARBOR_FQDN="harbor.example.test"
@@ -147,27 +170,46 @@ security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychai
   colima ssh -- sudo tee "/etc/docker/certs.d/$HARBOR_FQDN/ca.crt" < "$HOME/.config/vks-guides/harbor/harbor-ca.crt" >/dev/null && echo "docker (Colima) trusts $HARBOR_FQDN"
   ```
 
-**If not:** `unknown flag: --import-native-ca`: your podman is older; follow Podman's
-[Install a certificate authority](https://github.com/containers/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md).
+  **Expect:** `docker (Colima) trusts <your Harbor name>`.
+- With Docker Desktop: quit it and start it again, so that it reads the keychain.
 
 ### Windows
 
-Add the CA to your user's trusted root CAs (Windows asks you to confirm with **Yes**), then let
-podman and Docker Desktop read it:
+podman and Docker Desktop read the CA from your user's trusted root CAs. Add it there first
+(Windows asks you to confirm with **Yes**):
 
 ```powershell
 Import-Certificate -FilePath "$HOME\.config\vks-guides\harbor\harbor-ca.crt" -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
-- podman: `podman machine stop`, `podman machine set --import-native-ca`, `podman machine start`.
-- Docker Desktop: quit it (tray icon → **Quit Docker Desktop**) and start it again.
-
 **Expect:** a line with the CA's thumbprint and `CN=Harbor CA`.
+
+#### podman
+
+Let the podman machine import Windows' CAs: `podman machine stop`, then
+`podman machine set --import-native-ca`, then `podman machine start`.
+
+**If not:** `unknown flag: --import-native-ca`: your podman is older; follow Podman's
+[Install a certificate authority](https://github.com/containers/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md).
+
+#### docker
+
+Docker Desktop: quit it (tray icon → **Quit Docker Desktop**) and start it again, so that it reads
+the new CA.
 
 ## 3. Build the image
 
 This downloads the app's files from this repository, marks its page with the engine's name, and
-builds the image for the cluster's nodes (`linux/amd64`, also on an Apple silicon Mac).
+builds the image.
+
+`IMAGE_PLATFORM="linux/amd64"` builds the image for the VKS cluster's nodes, which are x86-64
+machines. Keep it, also on a Mac with Apple silicon: without it, such a Mac builds an `arm64` image,
+and the cluster's pods then fail with `exec format error`.
+
+The first line picks the engine: `CONTAINER_ENGINE="podman"` builds with podman; change it to
+`CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) to build with docker. To
+build with both, run the block twice, once with each; the images get the tags `v1-podman` and
+`v1-docker`.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -176,6 +218,7 @@ builds the image for the cluster's nodes (`linux/amd64`, also on an Apple silico
 CONTAINER_ENGINE="podman"
 HARBOR_FQDN="harbor.example.test"
 HARBOR_PROJECT="my-project"
+IMAGE_PLATFORM="linux/amd64"
 IMAGE_DIR="$HOME/.config/vks-guides/image"
 
 SRC="https://raw.githubusercontent.com/AndriyKalashnykov/vks-guides/666cba94ba517ac79d1c2ec505226192962477a3/argocd/test-web-apps"
@@ -198,7 +241,7 @@ else
     && mv "$IMAGE_DIR/new/app/index.html.tmp" "$IMAGE_DIR/new/app/index.html" \
     && chmod 0644 "$IMAGE_DIR/new/app/"* "$IMAGE_DIR/new/k8s/"* \
     && rm -rf "$IMAGE_DIR/app" "$IMAGE_DIR/k8s" && mv "$IMAGE_DIR/new/app" "$IMAGE_DIR/new/k8s" "$IMAGE_DIR/" && rm -rf "$IMAGE_DIR/new" \
-    && "$CONTAINER_ENGINE" build --platform linux/amd64 -t "$IMG" "$IMAGE_DIR/app" \
+    && "$CONTAINER_ENGINE" build --platform "$IMAGE_PLATFORM" -t "$IMG" "$IMAGE_DIR/app" \
     && echo "built: $IMG"
 fi
 ```
@@ -212,6 +255,7 @@ fi
 $CONTAINER_ENGINE = "podman"
 $HARBOR_FQDN = "harbor.example.test"
 $HARBOR_PROJECT = "my-project"
+$IMAGE_PLATFORM = "linux/amd64"
 $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 
 $SRC = "https://raw.githubusercontent.com/AndriyKalashnykov/vks-guides/666cba94ba517ac79d1c2ec505226192962477a3/argocd/test-web-apps"
@@ -236,7 +280,7 @@ else {
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$IMAGE_DIR\app", "$IMAGE_DIR\k8s"
   Move-Item "$IMAGE_DIR\new\app", "$IMAGE_DIR\new\k8s" $IMAGE_DIR
   Remove-Item -Recurse -Force "$IMAGE_DIR\new"
-  & $CONTAINER_ENGINE build --platform linux/amd64 -t $IMG "$IMAGE_DIR\app"
+  & $CONTAINER_ENGINE build --platform $IMAGE_PLATFORM -t $IMG "$IMAGE_DIR\app"
   if ($LASTEXITCODE -eq 0) { "built: $IMG" } else { "FAILED: the build (see the error above)" }
 }
 ```
@@ -257,10 +301,13 @@ else {
 
 ## 4. Push it to Harbor
 
-This logs in to Harbor as the robot account from HARBOR.md step 10, pushes the image, saves its
-digest for step 6, and logs out. Keep `HARBOR_ROBOT` in single quotes: the `$` is part of the
-name. A robot made in Harbor's web page under **Administration** is called `robot$<its name>`; one
-made by step 10's block is `robot$<your project>+push`.
+Use the robot account from HARBOR.md step 10. Keep `HARBOR_ROBOT` in single quotes: the `$` is
+part of the name. A robot made in Harbor's web page under **Administration** is called
+`robot$<its name>`; one made by step 10's block is `robot$<your project>+push`.
+
+The first line picks the engine: `CONTAINER_ENGINE="podman"` pushes the image podman built; change
+it to `CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) to push the image
+docker built. Built with both? Run the block once with each.
 
 Type the robot's secret in this terminal (it is not shown):
 
@@ -276,7 +323,11 @@ printf 'Robot secret: '; IFS= read -rs HARBOR_ROBOT_SECRET; echo
 $HARBOR_ROBOT_SECRET = Read-Host -AsSecureString 'Robot secret'
 ```
 
-Then:
+Then this uploads (pushes) your image to your Harbor project:
+
+- it logs in to Harbor as the robot account and pushes the image;
+- it saves the image's digest, a unique ID of this exact build, so that step 6 runs this build;
+- it logs out again, so the robot's login is not left on this machine.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -359,7 +410,8 @@ project now lists the repository `test-web-apps`.
 - `x509: certificate signed by unknown authority`: do step 2 for your engine. With docker, a login
   that works followed by this error at the push (`failed to fetch oauth token`) means docker is
   older than 29.5 ([Prerequisites](PREREQS.md#podman-and-docker-optional)).
-- `unauthorized`: the robot's name or secret is wrong, or it has expired.
+- `unauthorized` (podman: `invalid username/password`): the robot's name or secret is wrong, or it
+  has expired.
 - `denied: requested access to the resource is denied` (podman) or `insufficient_scope` (docker):
   the robot may not push to this project.
 
@@ -385,7 +437,14 @@ printf 'Pull robot secret: '; IFS= read -rs HARBOR_PULL_SECRET; echo
 $HARBOR_PULL_SECRET = Read-Host -AsSecureString 'Pull robot secret'
 ```
 
-Then:
+Then this saves the pull robot's login in your VKS cluster. It creates:
+
+- the namespace `harbor-demo`, a separate area of the cluster for the app (if it is not there
+  yet);
+- the Secret `harbor-pull`, the cluster's way to store a password, with the robot's name and
+  secret.
+
+The cluster's nodes log in to Harbor with it when they download the app's image in step 6.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -455,9 +514,18 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 
 ## 6. Run it
 
-This runs the app in the namespace `harbor-demo`, with the image you pushed, by its digest. If
-step 5 made the Secret `harbor-pull`, the app uses it. It waits until all five copies run, then
-checks that each runs your image.
+This starts the app in your VKS cluster from the image you pushed to Harbor in step 4, which
+shows that the cluster can pull your own images from Harbor. It creates:
+
+- the namespace `harbor-demo`, to keep the app apart from everything else;
+- the app itself: five pods, each running your image;
+- a Service, which gives the app an address you can open from your machine (step 7).
+
+If you did step 5, the pods log in to Harbor with the Secret `harbor-pull`. The block waits until
+the five pods run, then checks that they run exactly the image you pushed, not an older one.
+
+The first line picks which push to run: `CONTAINER_ENGINE="podman"` runs the image podman pushed,
+`CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) the one docker pushed.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -554,8 +622,8 @@ lines, `deployment "test-web-apps" successfully rolled out`, then
 
 ## 7. Open the app
 
-This waits for the app's address (the Service's external IP, from the Supervisor's load balancer)
-and asks the app for its page.
+This shows that the app answers from your machine. It waits up to 2 minutes for the app's address,
+which the Supervisor's load balancer gives it, prints the address, and fetches the app's page.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -640,17 +708,20 @@ if ($LASTEXITCODE -eq 0) { Remove-Item -Recurse -Force -ErrorAction SilentlyCont
 
 The image stays in Harbor: delete it in Harbor's web page (**Projects** → your project →
 **Repositories** → `test-web-apps` → **DELETE**). To stop trusting Harbor's CA:
-- podman on Linux: `rm -rf ~/.config/containers/certs.d/<your Harbor name>`;
-- docker on Linux, as a block of its own:
-  `sudo rm -rf /etc/docker/certs.d/<your Harbor name>`;
-- docker in Colima: `colima ssh -- sudo rm -rf /etc/docker/certs.d/<your Harbor name> </dev/null`;
-- macOS: remove `Harbor CA` in **Keychain Access**; Windows: `certmgr.msc` → **Trusted Root
-  Certification Authorities** → **Certificates** → `Harbor CA` → **Delete**. Then, for podman,
-  `podman machine stop` and `podman machine start` (it imports the CAs again at start).
-- If you followed an earlier version of HARBOR.md, Harbor's CA is in the system's trust store.
-  As a block of its own, on Ubuntu or Debian:
-  `sudo rm -f /usr/local/share/ca-certificates/harbor-ca.crt && sudo update-ca-certificates --fresh`;
-  on AlmaLinux:
-  `sudo rm -f /etc/pki/ca-trust/source/anchors/harbor-ca.crt && sudo update-ca-trust`.
+- Linux:
+  - podman: `rm -rf ~/.config/containers/certs.d/<your Harbor name>`;
+  - docker, as a block of its own: `sudo rm -rf /etc/docker/certs.d/<your Harbor name>`;
+  - if you followed an earlier version of HARBOR.md, Harbor's CA is also in the system's trust
+    store; as a block of its own, on Ubuntu or Debian
+    `sudo rm -f /usr/local/share/ca-certificates/harbor-ca.crt && sudo update-ca-certificates --fresh`,
+    on AlmaLinux `sudo rm -f /etc/pki/ca-trust/source/anchors/harbor-ca.crt && sudo update-ca-trust`.
+- macOS: remove `Harbor CA` in **Keychain Access**, then:
+  - podman: `podman machine stop` and `podman machine start` (it imports the CAs again at start);
+  - docker in Colima: `colima ssh -- sudo rm -rf /etc/docker/certs.d/<your Harbor name> </dev/null`;
+    Docker Desktop: quit it and start it again.
+- Windows: `certmgr.msc` → **Trusted Root Certification Authorities** → **Certificates** →
+  `Harbor CA` → **Delete**, then:
+  - podman: `podman machine stop` and `podman machine start`;
+  - docker: quit Docker Desktop and start it again.
 
 Back to [README](../README.md).

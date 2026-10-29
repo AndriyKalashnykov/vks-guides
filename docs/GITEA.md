@@ -28,6 +28,10 @@ The blocks keep their files in `~/.config/vks-guides/gitea` (PowerShell:
 
 ## 1. Check the cluster
 
+This checks that you can use the cluster before you install anything. It shows that git is
+installed, that kubectl reaches your VKS cluster and its nodes are `Ready`, which storage class the
+cluster uses by default (Gitea's volume comes from it), and that no `gitea` namespace exists yet.
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
@@ -87,7 +91,9 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 2. Create the namespace
 
-Gitea runs as an ordinary user, so the namespace allows only restricted pods.
+This creates the namespace `gitea`, a separate area of the cluster for everything Gitea needs.
+Gitea does not need root, so the namespace accepts only pods that run without admin rights (the
+`restricted` level).
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -132,9 +138,10 @@ metadata:
 
 ## 3. Create Gitea's keys
 
-Gitea encrypts what it stores with a secret key, and signs calls between its own processes with an
-internal token. This makes both, random, in the Secret `gitea-keys`. It never replaces them: a new
-key would make what Gitea stored with the old one unreadable.
+Gitea needs two random keys: one to encrypt what it stores, one for its own internal calls. This
+makes both and stores them in the cluster as the Secret `gitea-keys` (a Kubernetes object that
+holds sensitive values). It never replaces them: with new keys, Gitea could not read what it
+stored.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -193,14 +200,13 @@ Remove-Variable S
 ## 4. Install Gitea
 
 Install Gitea one of two ways, A or B; steps 5 to 9 are the same for both. Both run Gitea 28.2.0
-with the settings this guide sets, the keys from step 3, restricted pods and one 5 GiB volume; its web page
-addresses itself as `http://localhost:3300`, the port step 6 forwards, passwords must be at
-least 16 characters, and webhooks may call public addresses and, inside the cluster, only port 8080 of
-its Services ([CICD.md](CICD.md) step 7 uses it). The blocks read the cluster's Service range for
-that; on a cluster older than Kubernetes v1.33, which cannot show it, set `SERVICE_RANGE` to the
-range the cluster was created with (CLUSTER.md: `10.96.0.0/12`). To change from one to the other
-later, run step 9, then steps 2 and 3, first:
-they keep their data differently, and nothing carries over.
+with the same settings and the keys from step 3. To switch from one to the other later, run step 9,
+then steps 2 and 3, first: they keep their data differently, and nothing carries over.
+
+Both blocks read the cluster's Service address range, so that Gitea may call build tools inside the
+cluster later ([CICD.md](CICD.md) step 7). On a cluster older than Kubernetes v1.33, which cannot
+show it, set `SERVICE_RANGE` to the range the cluster was created with (CLUSTER.md:
+`10.96.0.0/12`).
 
 ### A. With this guide's YAML (recommended)
 
@@ -210,8 +216,14 @@ they keep their data differently, and nothing carries over.
 > switch off, and Gitea reads its settings from the manifest at every start, so a changed setting
 > takes effect when you run this block again.
 
-This creates the volume, the Gitea Deployment and a Service that only the cluster reaches, then
-waits for Gitea to answer.
+This starts Gitea in your VKS cluster. It creates:
+
+- a 5 GiB volume, so your repositories survive a restart;
+- Gitea itself: one pod that uses the keys from step 3;
+- a Service: a fixed address for Gitea that only the cluster reaches (step 6 opens it to your
+  machine).
+
+It then waits until Gitea answers.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -896,8 +908,9 @@ created!` (`gitea-admin exists already` on a second run).
 
 ## 6. Open Gitea
 
-This forwards Gitea to port 3300 on this machine until you press **Ctrl+C**. Keep it running for
-steps 7 and 8.
+Gitea has no address outside the cluster yet. This connects port 3300 on your machine to Gitea, so
+you can open its web page at <http://localhost:3300>. It runs until you press **Ctrl+C**; keep it
+running for steps 7 and 8.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -991,7 +1004,9 @@ step 6's `localhost:3300` for that.
 
 1. Make the repository public: at <http://localhost:3300/gitea-admin/hello/settings>, under
    **Danger Zone**, click **Make Public**, then **Make Public** in the dialog.
-2. Create the Service `gitea-public` and wait for its address:
+2. This gives Gitea the Service `gitea-public`, an address outside the cluster on port 3000. It
+   waits for the address, prints the clone address, then lists `hello` without a login, which
+   shows that other machines can clone it:
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1086,6 +1101,9 @@ characters, ending in `HEAD` and `refs/heads/main`.
 
 **This deletes every repository in this Gitea.** Delete first any ArgoCD Application that clones
 from it.
+
+This deletes the namespace `gitea`, with Gitea, its keys and its volume. It then waits until the
+cluster has removed the volume, and prints how many volumes are left.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 

@@ -38,8 +38,9 @@ The blocks keep their files in `~/.config/vks-guides/harbor` (PowerShell:
 
 ## 1. Check the Supervisor
 
-This tells you whether the Supervisor already runs a Harbor, and records that it did not, for
-step 14.
+This checks whether the Supervisor already runs a Harbor. If it does not, the block leaves a small
+note on this machine. Step 14 reads that note before you uninstall, so you never remove a Harbor
+that someone else installed.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -123,6 +124,9 @@ Conditions"** if the page shows it, or the download icon does nothing.
 Take the manifest with **legacy** in its name: it downloads Harbor from
 `projects.packages.broadcom.com`. The other one needs a VCF Software Depot and is not covered.
 Do not put these files into a Git repository; they are licensed to your Broadcom account.
+
+This checks that you downloaded the right two files and that they are not damaged. It prints a
+checksum (a fingerprint of the file's content) for each one; compare them with the lines below.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -253,7 +257,9 @@ to everyone who may manage Supervisor Services.
 
 ### Choose the storage class
 
-Harbor keeps its data on five volumes. This lists the storage classes the Supervisor offers:
+Harbor keeps its data on five disks (volumes). A storage class is a kind of vSphere storage that
+the Supervisor offers for such disks. This lists them, so you can pick one for
+`HARBOR_STORAGE_CLASS` in the next block.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -275,7 +281,9 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get storageclass -o custom-columns=N
 
 ### Write the file
 
-This writes `harbor-data-values.yml` from Broadcom's file and changes only these fields:
+This writes Harbor's configuration file, `harbor-data-values.yml`. You paste this file into the
+vSphere Client when you install Harbor in step 6. It starts from Broadcom's file and changes only
+these fields:
 
 | field in Broadcom's file | Broadcom's value | set to |
 |---|---|---|
@@ -291,6 +299,8 @@ Set at the top:
 - `HARBOR_STORAGE_CLASS`: a name from the list above.
 - `HARBOR_REGISTRY_SIZE`: the volume for your images. `10Gi` fills up in regular use, and this
   guide does not cover growing it.
+
+The block then checks the file, and deletes it if anything came out wrong.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -448,10 +458,12 @@ The file holds the secrets in clear text: do not share or commit it.
 
 ### Choose each volume's storage class and size (optional)
 
-Harbor has five volumes. *Write the file* gives all five `HARBOR_STORAGE_CLASS` and Broadcom's
-sizes (job log, database and Redis `1Gi`, Trivy `5Gi`), except the registry's size. To change one,
-set its variable below; leave the rest `""`. Do it before step 6: after the install Harbor cannot
-change a volume's class, nor the size of the database, Redis or Trivy volume.
+Skip this unless you want one of Harbor's five disks on another storage class or at another size.
+The block in *Write the file* put all five on `HARBOR_STORAGE_CLASS`, with Broadcom's sizes (job
+log, database and Redis `1Gi`, Trivy `5Gi`) and the registry at `HARBOR_REGISTRY_SIZE`. This block
+changes the disks you set in `harbor-data-values.yml`; leave the others `""`. Do it before step 6:
+after the install Harbor cannot change a disk's class, nor the size of the database, Redis or Trivy
+disk.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -612,8 +624,10 @@ Services. An error naming the YAML: you chose the wrong file.
 
 ### Record the VKS cluster machines
 
-This records the VKS cluster machines of one vSphere Namespace for step 8. Run it for each
-vSphere Namespace with VKS clusters, right before you install.
+Installing Harbor makes VKS update every node (machine) of your VKS clusters, so that they trust
+Harbor. This saves the current list of machines in one vSphere Namespace. Step 8 compares against
+it to show when every node has been updated. Run it for each vSphere Namespace with VKS clusters,
+right before you install.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -662,7 +676,8 @@ if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (se
 
 ### Copy the configuration
 
-This puts `harbor-data-values.yml` on the clipboard without showing it. If your desktop keeps a
+This copies `harbor-data-values.yml` to the clipboard, without showing it, so you can paste it
+into the vSphere Client in *Install it*. The file holds Harbor's passwords: if your desktop keeps a
 clipboard history, switch it off for this step.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
@@ -745,7 +760,8 @@ Harbor answers.
 
 ### Empty the clipboard
 
-Whether the install worked or not:
+The clipboard still holds Harbor's passwords. This empties it. Run it whether the install worked
+or not.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -776,8 +792,9 @@ browser.
 
 ### Find the address and wait for Harbor
 
-This finds Harbor's load-balancer address and waits until Harbor answers there (no DNS record
-needed yet).
+Harbor gets its own IP address on your network. This finds that address and waits until Harbor
+answers on it (it tries every 15 seconds, for up to 20 minutes). It then prints the DNS record to
+ask for in the next step. No DNS record is needed yet.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -895,6 +912,8 @@ VKS cluster nodes both use (a `hosts` file line does not reach the nodes).
 
 ### Check the DNS record
 
+Once the record exists, this checks that Harbor's name leads to Harbor's address from this machine.
+
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
@@ -949,8 +968,9 @@ namespaces …: ''`: Harbor is not installed; two names: see *Fix common problem
 
 ## 8. Check that the VKS cluster nodes were updated
 
-This counts the machines updated since step 6's record. Run it for each vSphere Namespace you
-recorded.
+Your VKS cluster nodes can pull images from Harbor only after VKS has updated them to trust Harbor.
+This lists the machines (nodes) in one vSphere Namespace and counts how many were updated since
+step 6's record. Run it for each vSphere Namespace you recorded, until all are updated.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1016,11 +1036,19 @@ the record if the cluster autoscaler added or removed a node.
 
 ### Save the CA
 
-This reads Harbor's CA certificate from Harbor's TLS Secret (the one labeled
-`managed-by=vmware-vRegistry`, which VKS also reads) and saves it as `harbor-ca.crt`, if Harbor at
-its DNS name answers with a certificate it signed. It prints the fingerprint for everyone who will
-use this Harbor. Reading it needs permission to read Secrets in Harbor's namespace; that Secret
-also holds Harbor's private server key, which the block does not print or keep.
+Harbor proves who it is with a certificate. Harbor signs that certificate itself, with its own
+certificate authority (CA), which no machine trusts yet. `curl`, podman, docker and browsers need
+the CA's file to trust Harbor; the next blocks and IMAGE.md use it.
+
+This block:
+
+- reads the CA from the Supervisor, where Harbor keeps it in a Secret (a stored object that also
+  holds Harbor's private key, which the block does not print or keep);
+- checks that Harbor, at its DNS name, answers with a certificate this CA signed;
+- only then saves the CA as `harbor-ca.crt`. It prints the CA's fingerprint, which everyone who
+  uses this Harbor can compare.
+
+It needs a user who may read Secrets in Harbor's namespace on the Supervisor.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1112,7 +1140,9 @@ on macOS), `Harbor at https://<your Harbor name> with this CA: http=200`, then `
 
 ### Log in as admin
 
-This logs in to Harbor's API as `admin` with the password from the secrets file.
+This checks that you can log in to Harbor as `admin` with the password from `secrets.env`, using
+`harbor-ca.crt` to trust Harbor. The next blocks log in the same way to create a project and a
+robot account.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1219,11 +1249,16 @@ password`: see *Log in as admin* above.
 
 ### Create the project
 
-This creates a project for your images. Set `HARBOR_PROJECT` to lower-case letters, digits and
-`-`. `HARBOR_PROJECT_PUBLIC="false"` makes it **private**: a VKS cluster then needs a pull secret to
-pull from it. `"true"` makes it **public**: anyone who reaches Harbor can pull its images without
-logging in; pushing still needs a login. In Harbor's web page the same is **Projects** → **NEW
-PROJECT**, with **Public** ticked or not under **Access Level**, then **OK**.
+In Harbor, images live in projects: folders, each with its own access rules. This creates one for
+your images. Set:
+
+- `HARBOR_PROJECT`: its name, in lower-case letters, digits and `-`;
+- `HARBOR_PROJECT_PUBLIC`: `"false"` for a **private** project, where only logged-in users can
+  pull, so a VKS cluster needs a stored login (a pull secret); `"true"` for a **public** one, where
+  anyone who reaches Harbor can pull. Pushing always needs a login.
+
+In Harbor's web page the same is **Projects** → **NEW PROJECT**, with **Public** ticked or not
+under **Access Level**, then **OK**.
 
 ![Harbor's New Project window with the name my-project and Public ticked](img/harbor/12-new-project-public.png)
 
@@ -1303,8 +1338,10 @@ letters and digits.
 
 ### Create a robot account
 
-This creates a robot account that may push to and pull from this project only, for 90 days. Use
-it, not `admin`, to push images and in a VKS cluster's pull secret.
+A robot account is a login for tools rather than people. This creates one that may push to and
+pull from this project only, for 90 days. Use it instead of `admin` to push images, and for a VKS
+cluster's pull secret. The block prints the robot's name and secret; Harbor shows the secret only
+once.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1398,13 +1435,118 @@ Its name is `robot$` and the name you typed (here `robot$my-project-push`), not
 
 ### Log in with podman or docker (optional)
 
-To log in to Harbor with podman or docker, build an image, push it to this project and run it in
-a VKS cluster, see [IMAGE.md](IMAGE.md).
+This checks that podman or docker on this machine can log in to Harbor, as `admin` and as the
+robot account, and logs out again. First make your engine trust Harbor's CA:
+[IMAGE.md step 2](IMAGE.md#2-trust-harbors-ca). Set `CONTAINER_ENGINE` to `podman` or `docker`.
+
+As `admin`, with the password from the secrets file:
+
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+
+```sh
+CONTAINER_ENGINE="podman"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+
+HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
+if [ -z "$HARBOR_FQDN" ] || [ ! -r "$HARBOR_DIR/secrets.env" ]; then
+  echo "FAILED: harbor-data-values.yml or secrets.env is missing in $HARBOR_DIR"
+elif ( . "$HARBOR_DIR/secrets.env"; printf '%s\n' "$HARBOR_ADMIN_PASSWORD" ) | "$CONTAINER_ENGINE" login -u admin --password-stdin "$HARBOR_FQDN"; then
+  "$CONTAINER_ENGINE" logout "$HARBOR_FQDN"
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$CONTAINER_ENGINE = "podman"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$S = @{}
+foreach ($l in Get-Content "$HARBOR_DIR\secrets.env" -ErrorAction SilentlyContinue) { if ($l -cmatch "^(HARBOR_[A-Z_]+)='(.*)'$") { $S[$Matches[1]] = $Matches[2] } }
+if (-not $HARBOR_FQDN -or -not $S['HARBOR_ADMIN_PASSWORD']) { "FAILED: harbor-data-values.yml or secrets.env is missing in $HARBOR_DIR" }
+else {
+  $S['HARBOR_ADMIN_PASSWORD'] | & $CONTAINER_ENGINE login -u admin --password-stdin $HARBOR_FQDN
+  if ($LASTEXITCODE -eq 0) { & $CONTAINER_ENGINE logout $HARBOR_FQDN }
+}
+```
+
+To check the robot account, run this line and type the robot's secret at its prompt. The secret is
+not shown, and it stays only in this terminal, for the next block.
+
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+
+```sh
+printf 'Robot secret: '; IFS= read -rs HARBOR_ROBOT_SECRET; echo
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$HARBOR_ROBOT_SECRET = Read-Host -AsSecureString 'Robot secret'
+```
+
+This logs in to Harbor as the robot, which proves its name and secret work. It then logs out, so
+no login stays saved on this machine, and forgets the secret you typed. Keep `HARBOR_ROBOT` in
+single quotes: the `$` is part of the name.
+
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+
+```sh
+CONTAINER_ENGINE="podman"
+HARBOR_ROBOT='robot$my-project+push'
+HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+
+HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
+if [ -z "$HARBOR_FQDN" ] || [ -z "$HARBOR_ROBOT_SECRET" ]; then
+  echo "FAILED: no $HARBOR_DIR/harbor-data-values.yml, or no robot secret in this terminal (run the line above)"
+elif printf '%s\n' "$HARBOR_ROBOT_SECRET" | "$CONTAINER_ENGINE" login -u "$HARBOR_ROBOT" --password-stdin "$HARBOR_FQDN"; then
+  "$CONTAINER_ENGINE" logout "$HARBOR_FQDN"
+fi
+unset HARBOR_ROBOT_SECRET
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$CONTAINER_ENGINE = "podman"
+$HARBOR_ROBOT = 'robot$my-project+push'
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+if (-not $HARBOR_FQDN -or -not $HARBOR_ROBOT_SECRET -or $HARBOR_ROBOT_SECRET.Length -eq 0) { "FAILED: no $HARBOR_DIR\harbor-data-values.yml, or no robot secret in this terminal (run the line above)" }
+else {
+  $B = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($HARBOR_ROBOT_SECRET)
+  try { [Runtime.InteropServices.Marshal]::PtrToStringBSTR($B) | & $CONTAINER_ENGINE login -u $HARBOR_ROBOT --password-stdin $HARBOR_FQDN }
+  finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($B) }
+  if ($LASTEXITCODE -eq 0) { & $CONTAINER_ENGINE logout $HARBOR_FQDN }
+}
+Remove-Variable -ErrorAction SilentlyContinue HARBOR_ROBOT_SECRET
+```
+
+**Expect:** `Login Succeeded`, then `Removed login credentials for <your Harbor name>` (docker:
+`Removing login credentials for …`).
+
+**If not:**
+- `x509: certificate signed by unknown authority`: do [IMAGE.md step 2](IMAGE.md#2-trust-harbors-ca)
+  for your OS and engine.
+- `unauthorized` (podman: `invalid username/password`) as `admin`: see *Log in as admin*. As the
+  robot: its name or secret is wrong, or it has expired. A robot made in Harbor's web page is
+  `robot$<the name you typed>`.
+
+To build an image, push it to this project and run it in a VKS cluster, see [IMAGE.md](IMAGE.md).
 
 ## 11. Check that a VKS cluster can pull from Harbor
 
-This starts a pod from an image that does not exist and reads why the pull failed: *not found*
-means the nodes reached Harbor and trust it. It needs the VKS cluster's kubeconfig from
+This checks that your VKS cluster's nodes can reach Harbor and trust its certificate, before you
+run your own images from it. The block:
+
+- starts a small test pod (a running container) from an image that does not exist in your project;
+- reads why the cluster could not get the image, then deletes the pod.
+
+An answer such as *not found*, *unauthorized* or *access denied* is the good result: the nodes
+reached Harbor and trusted it. Any other answer names the problem. You need the VKS cluster's
+kubeconfig (the file that lets kubectl reach it) from
 [LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 <details>
@@ -1561,6 +1703,9 @@ them to the new name.
    again.
 
 ### Write the new name into the file
+
+This changes the `hostname:` line in `harbor-data-values.yml` to the new name; no other line
+changes. The later blocks read Harbor's name from this file.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1935,9 +2080,10 @@ creation and updates on the whole Supervisor.
 
 ### Restart Harbor's web server
 
-Run this after **FINISH** on an installed Harbor. It waits until Harbor's Secret holds the
-certificate from the file (a minute or less), then restarts Harbor's web server, which serves the
-old certificate until then.
+Run this after **FINISH** on an installed Harbor. Harbor's web server keeps serving the old
+certificate until it restarts. This waits until Harbor has stored the new certificate (a minute or
+less): yours, or Harbor's own if you went back. It then restarts the web server, so it serves the
+new one.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -2054,7 +2200,8 @@ every VKS cluster on this Supervisor** again.
 
 ### Check that it is yours
 
-**Only uninstall a Harbor you installed.** This reads step 1's record.
+**Only uninstall a Harbor you installed.** This looks for the note that step 1 left on this
+machine. It says `MAY UNINSTALL` only if this Supervisor had no Harbor when you began.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -2102,7 +2249,9 @@ sure it is yours, ask before you click.
 
    ![The Supervisor's installed services with Harbor selected and the UNINSTALL confirmation window](img/harbor/09-uninstall.png)
 
-Then check that Harbor's namespace is gone. Run it again until it prints `none`: a few minutes.
+On the Supervisor, Harbor runs in its own namespace (`svc-harbor-…`). This checks that the
+namespace is gone; until then Harbor is still being removed, and a new install fails. Run it again
+until it prints `none`: a few minutes.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 

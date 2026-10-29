@@ -47,6 +47,9 @@ monitoring and Helm.
 
 ## Check what is installed
 
+This shows which of the tools the guides use are already on this machine, so you know which
+install guides to do. The PowerShell block checks only `kubectl`, `vcf` and `helm`.
+
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh

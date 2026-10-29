@@ -32,6 +32,10 @@ the VKS cluster. They can be the same namespace.
 
 ## 1. Check for an ArgoCD you have
 
+This checks what is already there, so you can skip the steps that are done: whether the ArgoCD
+Service is installed on the Supervisor, whether your vSphere Namespace already runs its own ArgoCD,
+and whether ArgoCD's first `admin` password can still be read.
+
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
@@ -85,7 +89,8 @@ Supervisors**.
      disconnected/airgapped VCF 9.1*): from `projects.packages.broadcom.com`. For a Supervisor
      without a depot.
 
-This prints the file's checksum. Set `MANIFEST` to the file you downloaded.
+Before you upload the file, check that it arrived whole. This prints its checksum (SHA-256) to
+compare with the **SHA2** value on the download page. Set `MANIFEST` to the file you downloaded.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -158,7 +163,7 @@ checksum: delete the file and download it again; do not use it.
 
 ## 3. Create the ArgoCD instance
 
-This lists the ArgoCD versions the service offers:
+This lists the ArgoCD versions the service offers. You pick one of them in the next block.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -180,7 +185,8 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get argocdversion argocd-supported-v
 
 **If not:** `the server doesn't have a resource type "argocdversion"`: step 2 is not finished.
 
-This creates the instance `argocd-1`. Set `ARGOCD_VERSION` to the first *Recommended* version.
+This starts your own ArgoCD, the instance `argocd-1`, in the vSphere Namespace `ARGOCD_NAMESPACE`.
+Set `ARGOCD_VERSION` to the first *Recommended* version from the list above.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -229,9 +235,15 @@ every half minute until it shows `Ready` and an address: one to two minutes.
 
 ## 4. Log in to the ArgoCD web page
 
-ArgoCD made its own certificate, so the browser cannot check it. This prints the certificate's
-fingerprint and the first `admin` password. Clear the terminal afterwards. Set `ARGOCD_INSTANCE` to
-the instance's name from step 1.
+This prints what you need to log in to ArgoCD's web page:
+
+- its address;
+- the fingerprint of its certificate. ArgoCD made the certificate itself, so your browser cannot
+  check it and warns. Comparing the fingerprint shows that you reached your ArgoCD;
+- the first password of the user `admin`.
+
+Set `ARGOCD_INSTANCE` to the instance's name from step 1. Clear the terminal afterwards: the
+password stays on the screen.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -292,8 +304,12 @@ page.
 `VKS_NAMESPACE`**: create and delete VKS clusters and VMs, and read every VKS cluster's
 kubeconfig. Give both only to people who may do that.
 
-This gives ArgoCD's account `argocd-k8s-sa` the `edit` role in `VKS_NAMESPACE` and makes that
-namespace an ArgoCD destination named after it, for the project `vks-clusters` of step 6.
+ArgoCD can create a VKS cluster only in a vSphere Namespace it may change. This allows it in
+`VKS_NAMESPACE`:
+
+- ArgoCD's account `argocd-k8s-sa` gets the `edit` role there;
+- the namespace becomes a *destination*, a place ArgoCD may deploy to, named after the namespace.
+  Step 6 uses it.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -375,7 +391,9 @@ spec:
 
 **Expect:** `rolebinding…/argocd-k8s-sa-edit created` and `managedentity…/ns-<namespace>
 created` (`unchanged` on a second run). `configured` or `unchanged` on your first run: someone
-else made them; stop and ask them. This lists the destinations:
+else made them; stop and ask them.
+
+This checks that ArgoCD accepted the namespace as a destination:
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -406,8 +424,10 @@ created.
 
 ## 6. Create a VKS cluster with ArgoCD
 
-This creates the project `vks-clusters`: Applications in it may read only this repository, write
-only to `VKS_NAMESPACE`, and create only VKS clusters.
+In ArgoCD, an *Application* is a folder in Git that ArgoCD applies to a destination, and a project
+sets limits for a group of Applications. This creates the project `vks-clusters`, so that the
+cluster's Application below can only read this repository, deploy only to `VKS_NAMESPACE`, and
+create only VKS clusters.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -467,8 +487,13 @@ spec:
 
 **Expect:** `appproject.argoproj.io/vks-clusters created`.
 
-This lists what the cluster can use: Kubernetes versions (as the cluster needs them, without
-the `-vkr.N` ending), cluster classes, VM classes and storage classes.
+This lists the choices your vSphere Namespace offers for a new VKS cluster. You copy one from each
+list into the Application block below:
+
+- Kubernetes versions, written as the cluster needs them (without the `-vkr.N` ending);
+- cluster classes: VMware's templates for a cluster;
+- VM classes: the size of each node, in CPUs and memory;
+- storage classes: where the cluster's disks go.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -557,8 +582,10 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get application
 
 **If not:** a cluster or Application is listed: choose another `VKS_CLUSTER`.
 
-This creates the Application. ArgoCD renders the chart with your values; it applies nothing until
-you sync. Set the four values from the lists above.
+This creates the Application for your VKS cluster: it points ArgoCD at the folder
+`argocd/guest-cluster` of this repository, with your cluster's name and the four values from the
+lists above. Nothing is created yet: ArgoCD shows what it would create, and creates the cluster
+only when you click **SYNC** below.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -670,8 +697,8 @@ Now look at it, then sync:
 
    ![The SYNC panel: SYNCHRONIZE at the top, the pinned revision, and the Cluster ticked under SYNCHRONIZE RESOURCES](img/argocd/08-sync.png)
 
-This shows the Application and the cluster. Run it again every few minutes; VKS builds the cluster
-in 5 to 10 minutes.
+This shows whether ArgoCD has finished (`Synced  Healthy`) and whether the VKS cluster is ready
+(`AVAILABLE` `True`). VKS builds the cluster in 5 to 10 minutes: run it again every few minutes.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -711,9 +738,14 @@ elsewhere. To use the cluster, run [Get the VKS cluster's kubeconfig](LOGIN.md#g
 
 ## 7. Add the VKS cluster to ArgoCD
 
-This lets ArgoCD deploy into the VKS cluster, for the project `test-web-apps` of step 8. It binds
-`argocd-k8s-sa` to `argocd-manage-vks`, which may only read VKS clusters and their logins, and
-asks the ArgoCD Service to register the cluster. Nothing is installed on the cluster.
+So far ArgoCD can only create VKS clusters. To deploy apps into the VKS cluster, it needs the
+cluster's login. This:
+
+- lets ArgoCD's account `argocd-k8s-sa` read VKS clusters and their logins, and nothing else (the
+  role `argocd-manage-vks`);
+- asks the ArgoCD Service to add the cluster as a destination, for step 8.
+
+Nothing is installed on the cluster.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -808,10 +840,11 @@ created`.
 - `Forbidden` on the RoleBinding: your role may not grant `ROLE`. Ask a vCenter administrator to
   run the block.
 
-ArgoCD stores the VKS cluster's administrator certificate for this destination in a Secret of
+This checks that the cluster was added, and shows when ArgoCD's login to it ends; after that date
+ArgoCD cannot deploy to it. That login is the VKS cluster's administrator certificate, which
+ArgoCD keeps in a Secret (a Kubernetes object that holds a login or password) in
 `ARGOCD_NAMESPACE`. Anyone who may read Secrets there, or log in to this ArgoCD as `admin`, can use
 the cluster as its administrator until that certificate ends.
-This shows the destinations and the date that certificate ends:
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -872,9 +905,10 @@ if (-not $D) {
 - `secrets "cls-vks-…" not found`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD
   namespace> get secret -l argocd.argoproj.io/secret-type=cluster` lists the stored destinations.
 
-It is a copy of the administrator certificate in the VKS cluster's kubeconfig, made when the cluster
-was registered. When `notAfter` is near, this prints the date of the kubeconfig's certificate as
-the Supervisor holds it now:
+ArgoCD's certificate is a copy of the one in the VKS cluster's kubeconfig, made when the cluster
+was added. When its end date (`notAfter`) is near, run this. It prints the end date of the
+kubeconfig's certificate as the Supervisor holds it now; a later date means that adding the
+cluster again gives ArgoCD a newer certificate:
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -913,11 +947,16 @@ administrator.
 
 ## 8. Deploy the test app
 
-The app in [`argocd/test-web-apps`](../argocd/test-web-apps) is an unprivileged nginx: 5 replicas
-on port 8080, behind a `LoadBalancer` Service on port 80, in the namespace `test-web-apps`. This
-creates its project, which may create only that namespace, a Deployment and a Service on this VKS
-cluster, and its Application. ArgoCD syncs it at once and puts back anything changed or deleted on
-the cluster.
+This has ArgoCD deploy a small test web server (nginx) into your VKS cluster from the folder
+[`argocd/test-web-apps`](../argocd/test-web-apps), which shows that ArgoCD can run apps there. It
+creates:
+
+- the project `test-web-apps`, which limits ArgoCD to this one app on this cluster;
+- the Application `test-web-apps`, which ArgoCD deploys at once.
+
+On the cluster you get the namespace `test-web-apps`, five copies (pods) of the web server, and a
+Service: an address you can open from your machine. If someone changes or deletes them on the
+cluster, ArgoCD puts them back.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1037,9 +1076,10 @@ ArgoCD is older than 3.3. Delete the line `name: test-web-apps` under `kind: Nam
 again (the Application then shows `unchanged`); the project may then create a namespace with any
 name.
 
-This checks the app. It needs the VKS cluster's kubeconfig from
+This shows that the app runs: ArgoCD's status for it, how many of the five pods are ready, and
+whether its address answers. It needs the VKS cluster's kubeconfig from
 [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig). Run it again until
-the Deployment shows `5/5`: a minute or two.
+it shows `5/5`: a minute or two.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -1100,7 +1140,7 @@ If you installed monitoring with ArgoCD, run [MONITORING.md](MONITORING.md) step
 these in order: an Application can be deleted only while ArgoCD still reaches its
 destination, and deleting an Application deletes what it created.
 
-This deletes the test app and its namespace on the VKS cluster:
+This deletes the test app and its namespace on the VKS cluster, then its project in ArgoCD:
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -1130,7 +1170,9 @@ namespace` to each `deleted` line.
 **If not:** `timed out waiting`: ArgoCD cannot reach the VKS cluster (step 7's certificate ended,
 or the cluster is gone). In the ArgoCD page, delete the Application with **Non-cascading**.
 
-This removes the VKS cluster from ArgoCD's destinations, then deletes the cluster:
+This removes the VKS cluster from ArgoCD's destinations and takes back ArgoCD's access to it.
+Then it deletes the cluster's Application, which makes ArgoCD delete the VKS cluster itself; that
+takes a few minutes:
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -1206,7 +1248,8 @@ else {
 **If not:** `Nothing deleted: these Applications …`: a cluster Application is still being
 deleted; run step 6's name check until it prints two `NotFound` lines, then this block again.
 
-This deletes the instance. Run it only if step 3 printed `created`.
+This deletes the instance `argocd-1` and two Secrets it leaves behind, one of them the first
+`admin` password. Run it only if step 3 printed `created`.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 

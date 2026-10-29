@@ -37,6 +37,10 @@ The blocks keep their files in `~/.config/vks-guides/tekton` (PowerShell:
 
 ## 1. Check the cluster
 
+This checks that the cluster is ready for Tekton. It shows that each node is `Ready`, how much CPU
+each worker has free (A needs about 400m, B about 200m), and whether some Tekton is already
+installed.
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
@@ -130,7 +134,8 @@ A's pods ask for about 400m in all, B's for 200m, each at most 100m on one worke
 
 ## 2. Install Tekton with the VKS add-on (A)
 
-Skip to step 3 for B. List the Tekton add-on releases your Supervisor offers:
+Skip to step 3 for B. This lists the Tekton add-on releases your Supervisor offers. The next block
+needs the release name; no release means your VKS is older than 3.8.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -154,9 +159,11 @@ vcf addon available-releases list --addon-name tekton-operator
 - `Unable to read password from terminal`, `provide credentials` or `no current context set`:
   [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
-This installs the add-on on your cluster from the Supervisor, with its web exposure turned off
-(it needs cert-manager and a Gateway), then waits for the operator's two pods. A second run
-applies the settings again. Set `TEKTON_RELEASE` to the release name above.
+Set `TEKTON_RELEASE` to the release name above. This asks the Supervisor to install the Tekton
+Operator on your cluster: a program that installs and manages Tekton for you. Tekton itself comes
+in the next block. The add-on's web exposure is turned off: it needs cert-manager and a Gateway,
+which this guide does not set up. The block stops if the cluster already has another Tekton, and
+waits until the operator's two pods run.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -281,10 +288,10 @@ then two `deployment.apps/… condition met` lines and the pods `tekton-operator
 - `FAILED: the add-on` with `Forbidden`: you need the edit or owner role on the vSphere Namespace.
 - `FAILED: the VCF CLI`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
-This turns on Tekton Pipelines and Triggers: it tells the operator, through a TektonConfig, to
-install them into `tekton-pipelines` without Tekton's other parts, and to secure the containers
-Tekton adds to each run (step 4 needs that). It retries until the operator's webhook answers,
-then waits for them.
+This tells the operator which Tekton parts to install: Pipelines, which runs builds, and Triggers,
+which starts them from a web request. They go in the namespace `tekton-pipelines`. It also makes
+the containers Tekton adds to each run safe enough for step 4's namespace. The operator may take a
+few minutes to accept this, so the block retries, then waits until Tekton runs.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -386,7 +393,9 @@ Triggers controller, webhook and core interceptors. Go to step 4.
 
 ## 3. Install Tekton from its release files (B)
 
-This downloads the three release files and checks their SHA-256.
+This downloads Tekton's three install files (Pipelines, Triggers and Triggers' interceptors) to
+`~/.config/vks-guides/tekton` and checks each one. The next block installs from them, and step 7
+needs them to uninstall.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -452,10 +461,10 @@ foreach ($F in $FILES) {
 - `FAILED: checksum mismatch …`: the download arrived damaged, or the release was rebuilt. Do not
   install it; run the block again.
 
-This installs Pipelines, waits for it, then installs Triggers and its interceptors and waits
-again. Triggers is retried until the Pipelines webhook answers, which checks one of its settings,
-and the interceptors until the Triggers webhook answers. It can take several minutes while the nodes pull the
-images.
+This installs Tekton from those files: first Pipelines, which runs builds, then Triggers, which
+starts them from a web request. Each part must finish starting before the next is accepted, so the
+block retries and waits. It stops if the cluster already has the add-on (A). It can take several
+minutes while the nodes pull the images.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -558,10 +567,13 @@ controller, webhook and core interceptors.
 
 ## 4. Run a pipeline
 
-This creates the namespace `tekton-demo` (restricted pods only), two Tasks and a Pipeline that
-passes the first Task's result to the second, then runs it once and shows the second Task's
-output. Tekton secures the containers it adds itself; each Task's `stepTemplate` secures its own
-steps.
+This runs a small pipeline to show that Tekton works. It creates:
+
+- the namespace `tekton-demo`, to keep the demo apart;
+- two Tasks (build steps): `say-hello` makes a greeting, `show-it` prints what it gets;
+- the Pipeline `hello`, which runs the two in order and hands the greeting to the second.
+
+It then runs the pipeline once, waits for it to finish, and prints the second Task's output.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -837,10 +849,10 @@ Every run stays, with its pods, until you delete it:
 
 ## 5. Start the pipeline from an HTTP request
 
-An EventListener receives a JSON request and starts the pipeline with a value from it. This
-creates it with the permissions Triggers needs: a namespace role from the Triggers install, and a
-cluster role of its own that only reads Tekton's cluster-wide trigger settings. A network policy
-drops requests from other pods, so only your port-forward reaches it.
+This lets a web request start the pipeline, as a Git server does on a push. It creates an
+EventListener: a small web service in `tekton-demo` that reads a name from the request and starts
+`hello` with it. It gives the listener only the permissions it needs, and blocks requests from
+other pods, so only your machine (next block) reaches it. The block waits until the listener runs.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1078,7 +1090,8 @@ run), then
 - `clusterroles.rbac.authorization.k8s.io "tekton-triggers-eventlistener-roles" not found`: Tekton's
   install (step 2 or 3) did not finish.
 
-**Forward the EventListener.** Keep this running, in a terminal of its own, until step 6.
+**Open the listener to your machine.** This connects port 8180 on your machine to the listener, so
+the next block can send it a request. Keep it running, in a terminal of its own, until step 6.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -1221,9 +1234,9 @@ outside `tekton-demo` exists, and stops otherwise. Run step 6 first.
 
 ### With the VKS add-on (A)
 
-This turns Pipelines and Triggers off and waits for them to go, removes the operator's webhook
-set while the operator still runs (it is left behind otherwise), waits up to 5 minutes for the
-operator's other sets to go, then removes the add-on and its empty namespace.
+This turns Pipelines and Triggers off and waits until they are gone, then removes the add-on from
+the Supervisor and deletes the namespace `tekton-operator`. Last, it prints how many Tekton object
+types (CRDs) are left.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1400,6 +1413,9 @@ if ($LASTEXITCODE -ne 0) {
   tekton-operator`.
 
 ### From the release files (B)
+
+This deletes what step 3's files installed, so it needs those files on this machine. It waits
+until Tekton's namespaces are gone, then prints how many Tekton object types (CRDs) are left.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
