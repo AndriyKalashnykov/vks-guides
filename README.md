@@ -88,7 +88,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Log in](docs/LOGIN.md) | part | part | part | part |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | ✅ | — | ✅ |
 | [Create a VKS cluster](docs/CLUSTER.md) | — | part | part | — |
-| [Install Harbor](docs/HARBOR.md) | ✅ | part | — | — |
+| [Install Harbor](docs/HARBOR.md) | ✅ | part | — | part |
 | [Build an image, push it to Harbor and run it](docs/IMAGE.md) | ✅ | ✅ | ✅ | part |
 | [Build an image with docker (short version)](docs/IMAGE-DOCKER.md) | ✅ | — | — | — |
 | [ArgoCD](docs/ARGOCD.md) | part | — | part | part |
@@ -101,6 +101,9 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Monitor a VKS cluster](docs/MONITORING.md) | — | part | part | — |
 | [Send logs to VCF Operations](docs/LOGGING.md) | — | part | part | part |
 | [Logs and traces in Grafana](docs/OBSERVABILITY.md) | — | part | part | — |
+
+In *Send logs to VCF Operations*, steps 2 to 6 were not run on VKS 3.8: that lab has no Log
+Management.
 
 Earlier versions of these guides, on VCF 9.1.1 with VKS 3.7.2, from Linux and Windows on amd64 and
 macOS on Apple silicon:
@@ -126,6 +129,7 @@ macOS on Apple silicon:
 | [Logs and traces in Grafana](docs/OBSERVABILITY.md) | ✅ | part | — | part | — |
 
 Windows was Windows Server 2025. Linux on arm64, Intel Macs and Windows on arm64 were not tested.
+In *Send logs to VCF Operations*, the logs went to a test HTTPS receiver, not to Log Management.
 
 ## License
 

@@ -6,7 +6,7 @@
 >
 > - Harbor: [Pulling and Pushing Images](https://goharbor.io/docs/main/working-with-projects/working-with-images/pulling-pushing-images/), [Robot Accounts](https://goharbor.io/docs/main/administration/robot-accounts/)
 > - Docker: [Verify repository client with certificates](https://docs.docker.com/engine/security/certificates/), Docker Desktop FAQs for [Mac](https://docs.docker.com/desktop/troubleshoot-and-support/faqs/macfaqs/) and [Windows](https://docs.docker.com/desktop/troubleshoot-and-support/faqs/windowsfaqs/) (certificates)
-> - Podman: [containers-certs.d](https://github.com/containers/container-libs/blob/main/image/docs/containers-certs.d.5.md), [Install a certificate authority](https://github.com/containers/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md), [podman machine set](https://docs.podman.io/en/latest/markdown/podman-machine-set.1.html)
+> - Podman: [containers-certs.d](https://github.com/podman-container-tools/container-libs/blob/main/image/docs/containers-certs.d.5.md), [Install a certificate authority](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md), [podman machine set](https://docs.podman.io/en/latest/markdown/podman-machine-set.1.html)
 > - Kubernetes: [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
 
 This builds the web app in [`argocd/test-web-apps`](../argocd/test-web-apps) into an image with
@@ -24,9 +24,9 @@ Needs:
 - a machine that reaches `github.com` and `docker.io` (the app's base image).
 
 Every step works with podman or docker. Steps 3, 4 and 6 start with `CONTAINER_ENGINE="podman"`:
-keep it for podman, or change it to `CONTAINER_ENGINE="docker"` for docker. The app runs in its own namespace,
-`harbor-demo`: [ARGOCD.md](ARGOCD.md) keeps the same app in `test-web-apps` and would undo changes
-there.
+keep it for podman, or change it to `CONTAINER_ENGINE="docker"` for docker. The app runs in its
+own namespace, `harbor-demo`: [ARGOCD.md](ARGOCD.md) keeps the same app in `test-web-apps` and would
+undo changes there.
 
 ## 1. Get Harbor's CA
 
@@ -157,7 +157,7 @@ Let the podman machine import the keychain's CAs: `podman machine stop`, then
 `podman machine set --import-native-ca`, then `podman machine start`.
 
 **If not:** `unknown flag: --import-native-ca`: your podman is older; follow Podman's
-[Install a certificate authority](https://github.com/containers/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md).
+[Install a certificate authority](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md).
 
 #### docker
 
@@ -184,13 +184,18 @@ Import-Certificate -FilePath "$HOME\.config\vks-guides\harbor\harbor-ca.crt" -Ce
 
 **Expect:** a line with the CA's thumbprint and `CN=Harbor CA`.
 
+**If not:** `UI is not allowed in this operation`: this PowerShell has no desktop to ask on (for
+example over SSH). Run the line in Windows PowerShell on the desktop, or in Windows PowerShell as
+Administrator with `Cert:\LocalMachine\Root` in place of `Cert:\CurrentUser\Root`, which trusts
+the CA for every user of this machine.
+
 #### podman
 
 Let the podman machine import Windows' CAs: `podman machine stop`, then
 `podman machine set --import-native-ca`, then `podman machine start`.
 
 **If not:** `unknown flag: --import-native-ca`: your podman is older; follow Podman's
-[Install a certificate authority](https://github.com/containers/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md).
+[Install a certificate authority](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md).
 
 #### docker
 
