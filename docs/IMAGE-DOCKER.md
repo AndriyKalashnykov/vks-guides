@@ -20,7 +20,8 @@ You need:
 - for a private project, also a robot that may only pull: in Harbor's web page, as in HARBOR.md
   step 10, *In Harbor's web page*, with only **Repository** → **Pull** ticked. Its name is
   `robot$` and the name you type;
-- the VKS cluster's kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+- `kubectl` pointed at your VKS cluster in this terminal: [LOGIN.md](LOGIN.md),
+  *Get the VKS cluster's kubeconfig*, then *Make it the default in this terminal*;
 - a machine that reaches `raw.githubusercontent.com` and `docker.io` (the app's base image).
 
 Run every block in the same terminal, one after the other: the first block sets the values the
@@ -44,18 +45,16 @@ APP_NAMESPACE="harbor-demo"
 IMAGE="$HARBOR_FQDN/$HARBOR_PROJECT/test-web-apps:v1"
 IMAGE_PLATFORM="linux/amd64"
 SRC="https://raw.githubusercontent.com/AndriyKalashnykov/vks-guides/666cba94ba517ac79d1c2ec505226192962477a3/argocd/test-web-apps"
-export KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
 mkdir -p "$HOME/image-simple"
 cd "$HOME/image-simple"
 ```
 
 Keep `HARBOR_ROBOT` in single quotes: the `$` is part of the name. `IMAGE_PLATFORM` is
-`linux/amd64` because the VKS cluster's nodes are x86-64 machines. `KUBECONFIG` makes every
-`kubectl` command in this terminal use your VKS cluster. `APP_NAMESPACE` is a Kubernetes namespace
-that the guide creates inside your VKS cluster for this app, not a vSphere Namespace. `SRC` is the
-address of the app's folder in this repository: the steps add a file name to it (`$SRC/Dockerfile`
-and so on). Opened alone in a browser it shows `404: Not Found`, because GitHub serves single files
-there, not folders.
+`linux/amd64` because the VKS cluster's nodes are x86-64 machines. `APP_NAMESPACE` is a
+Kubernetes namespace that the guide creates inside your VKS cluster for this app, not a vSphere
+Namespace. `SRC` is the address of the app's folder in this repository: the steps add a file name
+to it (`$SRC/Dockerfile` and so on). Opened alone in a browser it shows `404: Not Found`, because
+GitHub serves single files there, not folders.
 
 ## 1. Get Harbor's CA
 
