@@ -553,7 +553,9 @@ $env:KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 kubectl config current-context
 ```
 
-**Expect:** a context named after your cluster. In a new terminal, run this block again.
+**Expect:** a context named after your cluster. In a new terminal, run this block again. In this
+terminal your other kubeconfigs (`~/.kube/config`, or the files your `KUBECONFIG` listed) are not
+read; a new terminal has them back.
 
 ### Name the kubeconfig in each command
 
