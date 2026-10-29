@@ -82,10 +82,10 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 
 | guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Windows PowerShell 5.1 | WSL 2 Ubuntu (bash, as root) |
 |---|---|---|---|---|---|
-| [Prerequisites](docs/PREREQS.md) | part | part | part | ✅ | part |
-| [Install kubectl](docs/KUBECTL.md) | ✅ | part | part | ✅ | part |
-| [Install the VCF CLI](docs/VCF.md) | part | part | part | ✅ | part |
-| [Log in](docs/LOGIN.md) | part | part | part | ✅ | part |
+| [Prerequisites](docs/PREREQS.md) | part | part | part | ✅ | ✅ |
+| [Install kubectl](docs/KUBECTL.md) | ✅ | part | part | ✅ | ✅ |
+| [Install the VCF CLI](docs/VCF.md) | part | part | part | ✅ | ✅ |
+| [Log in](docs/LOGIN.md) | part | part | part | ✅ | ✅ |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | ✅ | — | ✅ | — |
 | [Create a VKS cluster](docs/CLUSTER.md) | part | part | part | ✅ | — |
 | [Install Harbor](docs/HARBOR.md) | ✅ | part | part | part | part |
@@ -97,7 +97,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Run GitLab](docs/GITLAB.md) | part | ✅ | part | part | — |
 | [CI/CD with Gitea and Tekton](docs/CICD.md) | ✅ | ✅ | ✅ | ✅ | — |
 | [CI/CD with GitLab](docs/CICD.md) | part | ✅ | — | — | — |
-| [Install Helm](docs/HELM.md) | ✅ | ✅ | ✅ | ✅ | — |
+| [Install Helm](docs/HELM.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Monitor a VKS cluster](docs/MONITORING.md) | part | part | part | ✅ | — |
 | [Send logs to VCF Operations](docs/LOGGING.md) | part | part | part | part | — |
 | [Logs and traces in Grafana](docs/OBSERVABILITY.md) | part | part | part | part | — |
