@@ -1023,6 +1023,7 @@ $R = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "$P/observability/services/j
 `podinfo` in the list.
 
 **If not:**
+- Right after step 6, all three can be empty: wait two or three minutes and run it again.
 - `Prometheus targets up: 0`: wait a minute and run it again.
 - `Loki log streams: 0`: step 5 did not finish; run its `rollout status` line again.
 - `Jaeger services:` without `podinfo`: check podinfo's log for `failed to export`
