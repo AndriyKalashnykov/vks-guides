@@ -44,7 +44,7 @@ into `~/.local/bin` when that needs `sudo` and `sudo` would ask for a password (
 [Prerequisites](PREREQS.md#sudo-optional)).
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VCF_CLI_SHA256=""
@@ -186,7 +186,7 @@ online for a plugin version Broadcom has not published. The command still runs. 
 `VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION` to `v9.1.1` stops the lookup; Broadcom does not document
 this variable. This sets it for this terminal and for new ones.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 case "$(uname -s)/${BASH_VERSION:+bash}" in
@@ -277,7 +277,7 @@ What this means for you:
 
 This shows your contexts, the file each one uses, and the current-context of each file:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 vcf context list --wide

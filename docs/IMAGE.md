@@ -35,7 +35,7 @@ where the file came from: compare its fingerprint with the one step 9 printed fo
 administrator before you keep it. In Harbor's web page, **Projects** → your project →
 **REGISTRY CERTIFICATE** downloads the same file as `ca.crt`.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
@@ -75,7 +75,7 @@ if ($LASTEXITCODE -eq 0 -and (Test-Path $NEW)) {
 CA, HARBOR.md step 13) and a `sha256 Fingerprint=` line. When it is the same as your
 administrator's, keep the file:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 mv "$HOME/.config/vks-guides/harbor/harbor-ca.crt.new" "$HOME/.config/vks-guides/harbor/harbor-ca.crt"
@@ -170,7 +170,7 @@ This downloads the app's files from this repository, marks its page with the eng
 builds the image for the cluster's nodes (`linux/amd64`, also on an Apple silicon Mac).
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 CONTAINER_ENGINE="podman"
@@ -264,7 +264,7 @@ made by step 10's block is `robot$<your project>+push`.
 
 Type the robot's secret in this terminal (it is not shown):
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'Robot secret: '; IFS= read -rs HARBOR_ROBOT_SECRET; echo
@@ -279,7 +279,7 @@ $HARBOR_ROBOT_SECRET = Read-Host -AsSecureString 'Robot secret'
 Then:
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 CONTAINER_ENGINE="podman"
@@ -373,7 +373,7 @@ also works, but it can also push. Anyone who may read Secrets in the namespace c
 
 Type the pull robot's secret in this terminal (it is not shown):
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'Pull robot secret: '; IFS= read -rs HARBOR_PULL_SECRET; echo
@@ -388,7 +388,7 @@ $HARBOR_PULL_SECRET = Read-Host -AsSecureString 'Pull robot secret'
 Then:
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -460,7 +460,7 @@ step 5 made the Secret `harbor-pull`, the app uses it. It waits until all five c
 checks that each runs your image.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -557,7 +557,7 @@ lines, `deployment "test-web-apps" successfully rolled out`, then
 This waits for the app's address (the Service's external IP, from the Supervisor's load balancer)
 and asks the app for its page.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -614,7 +614,7 @@ else {
 
 This deletes the app and its namespace from the cluster and the files this guide wrote.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"

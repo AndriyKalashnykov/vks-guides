@@ -65,7 +65,7 @@ The blocks keep their files in `~/.config/vks-guides/observability` (PowerShell:
 This checks that Grafana from MONITORING.md runs with its data source loader, and whether the
 Fluent Bit add-on is already installed.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -96,7 +96,7 @@ nothing after it, or `daemonset.apps/fluent-bit` if you did [LOGGING.md](LOGGING
 `observability` holds Loki and Jaeger, `podinfo` the sample app. Both keep the cluster's default
 pod security, `restricted`.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -127,7 +127,7 @@ pod with a volume of `LOKI_STORAGE` from the default storage class. Loki deletes
 `LOKI_RETENTION`.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -324,7 +324,7 @@ This downloads the chart, checks its SHA-256, writes `jaeger-values.yaml` and in
 Jaeger data source needs Jaeger 2.20 or earlier.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -517,7 +517,7 @@ Log Management's DNS name from its step 3, and Fluent Bit keeps sending everythi
 otherwise leave it empty. Set `FLUENT_BIT_RELEASE` as in LOGGING.md step 1.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -722,7 +722,7 @@ calls podinfo every two seconds, half the calls ending in an error. podinfo writ
 line with a trace ID for each call and sends the trace to Jaeger.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -975,7 +975,7 @@ both deployments `successfully rolled out`.
 Wait two minutes after step 6. This asks Prometheus, Loki and Jaeger, through the cluster's API
 server, what they have from podinfo.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1018,7 +1018,7 @@ loads it within a minute, without a restart. Each log line with a trace ID links
 and each trace links to its log lines.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1213,7 +1213,7 @@ This tells you whether the Supervisor already runs the Metrics Aggregator, recor
 not, for step 12, and lists the VKS clusters with their monitoring label.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1298,7 +1298,7 @@ Take the manifest with **legacy** in its name: it downloads the service from
 `projects.packages.broadcom.com`. The other one needs a VCF Software Depot. Do not put the file
 into a Git repository; it is licensed to your Broadcom account.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 METRICS_AGGREGATOR_MANIFEST="$HOME/Downloads/metrics-aggregator-9.1.1-25665407-legacy.yml"
@@ -1401,7 +1401,7 @@ This sets your cluster's label to `enabled` on the Supervisor, then waits until 
 in the VKS cluster.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -1518,7 +1518,7 @@ that it works.
 **This deletes the logs in Loki and the traces in Jaeger.** It removes the sample app, the data
 sources (Grafana restarts to drop them), Jaeger, Loki and its volume, and the namespaces.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1559,7 +1559,7 @@ add-on with LOGGING.md step 8.
 This sets your cluster's label to `disabled`, waits a minute, and checks that the add-ons left
 the cluster.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -1600,7 +1600,7 @@ was `disabled`), then `namespaces "tanzu-system-telegraf" not found` and the sam
 step 11.1's record, on the machine that ran it, and lists the clusters still `enabled`.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1693,7 +1693,7 @@ stop (see above).
 
 **Remove step 11.1's record**, so a later run does not take a new install for yours:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"

@@ -22,7 +22,7 @@ instead (see [Prerequisites](PREREQS.md#sudo-optional)). Leave `KUBECTL_VERSION`
 latest stable release, or set one such as `v1.37.1`.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 KUBECTL_VERSION=""
@@ -127,7 +127,7 @@ On Apple silicon this kubectl runs through Rosetta. If you have not installed Ro
 first: `softwareupdate --install-rosetta --agree-to-license`.
 
 <details>
-<summary><b>Linux amd64, macOS, WSL amd64 (bash or zsh)</b></summary>
+<summary><b>Linux amd64 (Ubuntu, AlmaLinux, Photon OS), macOS, WSL amd64 (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"

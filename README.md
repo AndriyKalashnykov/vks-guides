@@ -47,7 +47,7 @@ monitoring and Helm.
 
 ## Check what is installed
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 for t in curl tar unzip jq openssl kubectl vcf helm; do

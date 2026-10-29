@@ -32,7 +32,7 @@ the VKS cluster. They can be the same namespace.
 
 ## 1. Check for an ArgoCD you have
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -87,7 +87,7 @@ Supervisors**.
 
 This prints the file's checksum. Set `MANIFEST` to the file you downloaded.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 MANIFEST="$HOME/Downloads/supervisor-service-argocd-legacy-1.2.0-25642124.yml"
@@ -160,7 +160,7 @@ checksum: delete the file and download it again; do not use it.
 
 This lists the ArgoCD versions the service offers:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -182,7 +182,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get argocdversion argocd-supported-v
 
 This creates the instance `argocd-1`. Set `ARGOCD_VERSION` to the first *Recommended* version.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -233,7 +233,7 @@ ArgoCD made its own certificate, so the browser cannot check it. This prints the
 fingerprint and the first `admin` password. Clear the terminal afterwards. Set `ARGOCD_INSTANCE` to
 the instance's name from step 1.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -296,7 +296,7 @@ This gives ArgoCD's account `argocd-k8s-sa` the `edit` role in `VKS_NAMESPACE` a
 namespace an ArgoCD destination named after it, for the project `vks-clusters` of step 6.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -377,7 +377,7 @@ spec:
 created` (`unchanged` on a second run). `configured` or `unchanged` on your first run: someone
 else made them; stop and ask them. This lists the destinations:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -410,7 +410,7 @@ This creates the project `vks-clusters`: Applications in it may read only this r
 only to `VKS_NAMESPACE`, and create only VKS clusters.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -471,7 +471,7 @@ This lists what the cluster can use: Kubernetes versions (as the cluster needs t
 the `-vkr.N` ending), cluster classes, VM classes and storage classes.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -529,7 +529,7 @@ Choose a name no cluster in `VKS_NAMESPACE` has: lower-case letters, digits and 
 a letter. ArgoCD would take over an existing cluster of that name, and deleting the Application
 would delete it. This checks that nothing has the name now:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -561,7 +561,7 @@ This creates the Application. ArgoCD renders the chart with your values; it appl
 you sync. Set the four values from the lists above.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -673,7 +673,7 @@ Now look at it, then sync:
 This shows the Application and the cluster. Run it again every few minutes; VKS builds the cluster
 in 5 to 10 minutes.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -716,7 +716,7 @@ This lets ArgoCD deploy into the VKS cluster, for the project `test-web-apps` of
 asks the ArgoCD Service to register the cluster. Nothing is installed on the cluster.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -814,7 +814,7 @@ the cluster as its administrator until that certificate ends.
 This shows the destinations and the date that certificate ends:
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -876,7 +876,7 @@ It is a copy of the administrator certificate in the VKS cluster's kubeconfig, m
 was registered. When `notAfter` is near, this prints the date of the kubeconfig's certificate as
 the Supervisor holds it now:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -920,7 +920,7 @@ cluster, and its Application. ArgoCD syncs it at once and puts back anything cha
 the cluster.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1041,7 +1041,7 @@ This checks the app. It needs the VKS cluster's kubeconfig from
 [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig). Run it again until
 the Deployment shows `5/5`: a minute or two.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1102,7 +1102,7 @@ destination, and deleting an Application deletes what it created.
 
 This deletes the test app and its namespace on the VKS cluster:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1132,7 +1132,7 @@ or the cluster is gone). In the ArgoCD page, delete the Application with **Non-c
 
 This removes the VKS cluster from ArgoCD's destinations, then deletes the cluster:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1165,7 +1165,7 @@ This deletes the project, the namespace destination and ArgoCD's role in `VKS_NA
 only if steps 5 and 6 printed `created` for them. It deletes nothing while an Application of the
 project is left.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1208,7 +1208,7 @@ deleted; run step 6's name check until it prints two `NotFound` lines, then this
 
 This deletes the instance. Run it only if step 3 printed `created`.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1235,7 +1235,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete secret a
 Only if step 2 installed it, and only when no ArgoCD instance is left on the Supervisor. This
 lists them:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"

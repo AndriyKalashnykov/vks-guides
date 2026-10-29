@@ -31,7 +31,7 @@ The blocks keep their files in `~/.config/vks-guides/logging` (PowerShell:
 
 This lists the Fluent Bit releases the Supervisor offers and the add-ons the cluster already has.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -73,7 +73,7 @@ with your administrator's, and checks that Log Management at its DNS name answer
 certificate this CA signed for that name.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 LOGS_FQDN="logs.example.test"
@@ -132,7 +132,7 @@ This writes `values.yaml` with the output from Broadcom's VCF 9.1 Fluent Bit exa
 add-on keeps its own inputs, filters and parsers.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 LOGS_FQDN="logs.example.test"
@@ -214,7 +214,7 @@ fluent_bit:
 
 Set `FLUENT_BIT_RELEASE` to the release name from step 1.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -252,7 +252,7 @@ The add-on creates the namespace `tanzu-system-logging` in the VKS cluster. This
 then stores the CA there as the Secret `tls-ca-cert`, which the Fluent Bit pods wait for.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -321,7 +321,7 @@ This runs a pod that writes a line with a unique word into the cluster's logs, a
 Fluent Bit reports about sending.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -424,7 +424,7 @@ step 5 after this block, with `LOGS_FQDN` set to the new name; this block alone 
 Loki.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -495,7 +495,7 @@ then run step 6 again.
 
 ## 8. Uninstall (optional)
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"

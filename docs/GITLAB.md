@@ -40,7 +40,7 @@ The blocks keep their files in `~/.config/vks-guides/gitlab` (PowerShell:
 ## 1. Check the cluster
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -130,7 +130,7 @@ one CI job need a worker with at least 6 GiB memory and 8 GiB image disk free; a
 GitLab's image runs its services as root, so the namespace allows baseline pods, and warns about
 anything that would not pass restricted.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -184,7 +184,7 @@ The settings run GitLab with less memory: one web process, ten background thread
 built-in Prometheus or agent server.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -418,7 +418,7 @@ GitLab's administrator is `root`, and no one knows its password yet. This asks y
 inside the GitLab pod; it is not shown, saved, or put on a command line. Use at least 8 characters
 that are not a common word.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -455,7 +455,7 @@ You can run this again at any time to set a new root password.
 This forwards GitLab to port 3400 on this machine until you press **Ctrl+C**. Keep it running for
 steps 6 to 9.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -494,7 +494,7 @@ Run this in a second terminal while step 5 runs. It makes a local repository wit
 `root/hello`. Git asks for the root password. `credential.helper=` stops git from saving it. Set
 `GITLAB_EMAIL` to your email address; it only labels the commit.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 GITLAB_EMAIL="you@example.com"
@@ -552,7 +552,7 @@ Use it for test projects only. Never sign in, push or send a token through it; u
 2. Create the Service `gitlab-public` and wait for its address:
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -651,7 +651,7 @@ GitLab runs CI jobs on runners. This installs one, GitLab Runner 19.5.1, in the 
 3. In the terminal you will install from, run this and paste the token at the prompt (it is not
    shown):
 
-   **Linux, macOS, WSL (bash or zsh):**
+   **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
    ```sh
    printf 'Runner token: '; IFS= read -rs RUNNER_TOKEN; echo
@@ -670,7 +670,7 @@ GitLab runs CI jobs on runners. This installs one, GitLab Runner 19.5.1, in the 
    installs it. Set `GITLAB_URL` to your GitLab's address if it is not the one from step 3.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -890,7 +890,7 @@ This adds a `.gitlab-ci.yml` with one job to `root/hello` and pushes it; GitLab 
 and the runner runs the job as a pod. Run it in the second terminal, with step 5 running. Git asks
 for the root password.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 GITLAB_EMAIL="you@example.com"
@@ -945,7 +945,7 @@ GitLab's address), under **Runners**.
 
 ### The runner
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -970,7 +970,7 @@ kubectl --kubeconfig $VKS_KUBECONFIG delete namespace gitlab-runner --ignore-not
 **This deletes every project in this GitLab.** Delete first any ArgoCD Application that clones
 from it.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"

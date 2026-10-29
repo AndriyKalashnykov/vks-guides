@@ -51,7 +51,7 @@ The blocks keep their files in `~/.config/vks-guides/cicd` (PowerShell:
 ## 1. Check what is in place
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -135,7 +135,7 @@ Namespace>` among the names.
 allows baseline pods: `cicd-ci` with Gitea and Tekton, GITLAB.md's `gitlab-runner` with GitLab.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -211,7 +211,7 @@ beside `harbor-push`. The block signs in to Harbor as `admin` with the password 
 `secrets.env`.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -347,7 +347,7 @@ then creates the repositories through GITEA.md step 6's port-forward. It also ad
 and puts a token for it in the Secret `git-writeback` in `cicd-ci`. The admin password is needed
 for Gitea's API; type it first:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'gitea-admin password: '; IFS= read -rs GITEA_PASSWORD; echo
@@ -362,7 +362,7 @@ $GITEA_PASSWORD = Read-Host 'gitea-admin password' -AsSecureString
 Then, in the same terminal:
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -654,7 +654,7 @@ protected: Developers may push, nobody may force-push. The block runs a Ruby scr
 pod with `gitlab-rails`, so no GitLab token reaches this machine; it takes about a minute.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1069,7 +1069,7 @@ Application, which keeps that namespace in step with `deploy`. ArgoCD reads `dep
 server's load-balancer address. ARGOCD.md's own project and app stay as they are.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1210,7 +1210,7 @@ Check it with this block. It waits until ArgoCD has synced and the page shows `W
 and 8 use it again with another `WANT`.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1291,7 +1291,7 @@ Each pod runs under its own ServiceAccount, with no Kubernetes token mounted. If
 reached `app` while the build ran, the write-back leaves `deploy` to that push's run.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1716,7 +1716,7 @@ GITLAB.md step 8. If another push reached `cicd/app` while a build ran, its writ
 `deploy` to that push.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -2013,7 +2013,7 @@ to `app` in Gitea with the same secret. Run it in the terminal where you typed t
 in step 4 (or type it again with the first block there).
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -2302,7 +2302,7 @@ Edit the page in `app` and push it. With Gitea, Gitea's webhook starts the pipel
 GitLab does. The build writes the new digest into `deploy`, and ArgoCD rolls it out. Git asks for `gitea-admin`'s password (with GitLab, `root`'s).
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 GIT_SERVER="gitea"
@@ -2375,7 +2375,7 @@ Git server, Tekton or the runner from the other guides stay. With Gitea, run it 
 where you typed the Gitea password in step 4.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"

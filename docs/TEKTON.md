@@ -38,7 +38,7 @@ The blocks keep their files in `~/.config/vks-guides/tekton` (PowerShell:
 ## 1. Check the cluster
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -132,7 +132,7 @@ A's pods ask for about 400m in all, B's for 200m, each at most 100m on one worke
 
 Skip to step 3 for B. List the Tekton add-on releases your Supervisor offers:
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 vcf context use supervisor </dev/null
@@ -159,7 +159,7 @@ This installs the add-on on your cluster from the Supervisor, with its web expos
 applies the settings again. Set `TEKTON_RELEASE` to the release name above.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -287,7 +287,7 @@ Tekton adds to each run (step 4 needs that). It retries until the operator's web
 then waits for them.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -389,7 +389,7 @@ Triggers controller, webhook and core interceptors. Go to step 4.
 This downloads the three release files and checks their SHA-256.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 TEKTON_DIR="$HOME/.config/vks-guides/tekton"
@@ -458,7 +458,7 @@ and the interceptors until the Triggers webhook answers. It can take several min
 images.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -564,7 +564,7 @@ output. Tekton secures the containers it adds itself; each Task's `stepTemplate`
 steps.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -843,7 +843,7 @@ cluster role of its own that only reads Tekton's cluster-wide trigger settings. 
 drops requests from other pods, so only your port-forward reaches it.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1080,7 +1080,7 @@ run), then
 
 **Forward the EventListener.** Keep this running, in a terminal of its own, until step 6.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1106,7 +1106,7 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo port-forward service/el-hell
 run it starts and shows its output.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1188,7 +1188,7 @@ if ($LASTEXITCODE -ne 0) {
 Stop the port-forward with **Ctrl+C** first. This deletes the namespace `tekton-demo`, with every
 run and pod in it, and the demo's cluster role and binding.
 
-**Linux, macOS, WSL (bash or zsh):**
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1226,7 +1226,7 @@ set while the operator still runs (it is left behind otherwise), waits up to 5 m
 operator's other sets to go, then removes the add-on and its empty namespace.
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -1402,7 +1402,7 @@ if ($LASTEXITCODE -ne 0) {
 ### From the release files (B)
 
 <details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
