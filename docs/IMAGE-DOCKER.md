@@ -105,7 +105,7 @@ docker logout "$HARBOR_FQDN"
 **Expect:** the image's layers, `v1: digest: sha256:…`, then `Removing login credentials for …`.
 In Harbor's web page, your project now lists `test-web-apps`.
 
-## 5. Only for a private project: let the cluster log in
+## 5. Only for a private Harbor project: let the cluster log in - create pull secret
 
 Skip this for a public project: anyone may pull from it, so the cluster needs no login. A private
 project needs a robot that may pull, and the cluster must keep its login as a Secret.
