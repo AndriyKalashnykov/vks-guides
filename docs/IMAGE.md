@@ -497,9 +497,15 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 
 ## 6. Run it
 
-This runs the app in the namespace `harbor-demo`, with the image you pushed, by its digest. If
-step 5 made the Secret `harbor-pull`, the app uses it. It waits until all five copies run, then
-checks that each runs your image.
+This starts the app in your VKS cluster from the image you pushed to Harbor in step 4, which
+shows that the cluster can pull your own images from Harbor. It creates:
+
+- the namespace `harbor-demo`, to keep the app apart from everything else;
+- the app itself: five pods, each running your image;
+- a Service, which gives the app an address you can open from your machine (step 7).
+
+If you did step 5, the pods log in to Harbor with the Secret `harbor-pull`. The block waits until
+the five pods run, then checks that they run exactly the image you pushed, not an older one.
 
 The first line picks which push to run: `CONTAINER_ENGINE="podman"` runs the image podman pushed,
 `CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) the one docker pushed.
