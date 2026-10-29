@@ -87,18 +87,18 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Install the VCF CLI](docs/VCF.md) | part | part | part | ✅ | part |
 | [Log in](docs/LOGIN.md) | part | part | part | ✅ | part |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | ✅ | — | ✅ | — |
-| [Create a VKS cluster](docs/CLUSTER.md) | part | part | part | — | — |
+| [Create a VKS cluster](docs/CLUSTER.md) | part | part | part | ✅ | — |
 | [Install Harbor](docs/HARBOR.md) | ✅ | part | part | part | part |
-| [Build an image, push it to Harbor and run it](docs/IMAGE.md) | ✅ | ✅ | ✅ | part | part |
+| [Build an image, push it to Harbor and run it](docs/IMAGE.md) | ✅ | ✅ | ✅ | ✅ | part |
 | [Build an image with docker (short version)](docs/IMAGE-DOCKER.md) | ✅ | — | — | — | — |
-| [ArgoCD](docs/ARGOCD.md) | part | — | ✅ | part | — |
-| [Run Gitea](docs/GITEA.md) | part | part | part | part | — |
-| [Run Tekton](docs/TEKTON.md) | part | part | ✅ | part | — |
+| [ArgoCD](docs/ARGOCD.md) | part | — | ✅ | ✅ | — |
+| [Run Gitea](docs/GITEA.md) | part | part | part | ✅ | — |
+| [Run Tekton](docs/TEKTON.md) | part | part | ✅ | ✅ | — |
 | [Run GitLab](docs/GITLAB.md) | part | ✅ | part | part | — |
-| [CI/CD with Gitea and Tekton](docs/CICD.md) | ✅ | ✅ | ✅ | — | — |
+| [CI/CD with Gitea and Tekton](docs/CICD.md) | ✅ | ✅ | ✅ | ✅ | — |
 | [CI/CD with GitLab](docs/CICD.md) | part | ✅ | — | — | — |
 | [Install Helm](docs/HELM.md) | ✅ | ✅ | ✅ | ✅ | — |
-| [Monitor a VKS cluster](docs/MONITORING.md) | part | part | part | — | — |
+| [Monitor a VKS cluster](docs/MONITORING.md) | part | part | part | ✅ | — |
 | [Send logs to VCF Operations](docs/LOGGING.md) | part | part | part | part | — |
 | [Logs and traces in Grafana](docs/OBSERVABILITY.md) | part | part | part | — | — |
 
