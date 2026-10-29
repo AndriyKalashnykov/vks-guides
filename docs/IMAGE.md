@@ -315,7 +315,8 @@ printf 'Robot secret: '; IFS= read -rs HARBOR_ROBOT_SECRET; echo
 $HARBOR_ROBOT_SECRET = Read-Host -AsSecureString 'Robot secret'
 ```
 
-Then:
+Then this logs in to Harbor as the robot, pushes the image, saves its digest (step 6 runs the
+image by it) and logs out:
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -424,7 +425,9 @@ printf 'Pull robot secret: '; IFS= read -rs HARBOR_PULL_SECRET; echo
 $HARBOR_PULL_SECRET = Read-Host -AsSecureString 'Pull robot secret'
 ```
 
-Then:
+Then this creates the namespace `harbor-demo` (if it is not there yet) and stores the robot's name
+and secret in it as the Secret `harbor-pull`. The cluster's nodes log in to Harbor with it when
+they pull the app's image:
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
