@@ -3,6 +3,7 @@
 > [!NOTE]
 > **Official documentation for this guide**
 >
+> - VKS 3.8: [Using builtin-generic-v3.8.0 Cluster Class with 3.8.0 and Later](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/usingbuiltingenericv380clusterclasswith380andlater.html) (`volumes`), [ClusterClass Variable Overrides](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/clusterclass-variable-overrides.html)
 > - Harbor 2.15: [Create Project Robot Accounts](https://goharbor.io/docs/2.15.0/working-with-projects/project-configuration/create-robot-accounts/)
 > - Argo CD 3.4: [Projects](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/projects/), [Automated Sync Policy](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/auto_sync/)
 > - Kaniko: [osscontainertools/kaniko](https://github.com/osscontainertools/kaniko) (`--registry-certificate`, `--digest-file`)
@@ -33,10 +34,34 @@ You need:
   `$HOME\.config\vks-guides\harbor`): `harbor-data-values.yml`, `harbor-ca.crt` and `secrets.env`;
 - the VKS cluster from ARGOCD.md step 7, its kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig))
   and your Supervisor kubeconfig;
+- with GitLab, a worker with its own disk for container images: on a worker's default disk (about
+  15 GiB, whatever its VM class), GitLab and the build filled it and GitLab was evicted. Make the
+  cluster with [CLUSTER.md](CLUSTER.md) step 9 and the `workers:` part below, then do the table's
+  steps that use the cluster on it. Adding the disk to an existing cluster was not tested.
 - the Git server's port-forward running in its own terminal ([GITEA.md](GITEA.md) step 6, or
   [GITLAB.md](GITLAB.md) step 5) and its load-balancer address ([GITEA.md](GITEA.md) step 8, or
   [GITLAB.md](GITLAB.md) step 7). Run this guide's blocks in one other terminal.
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md) and git.
+
+The `workers:` part of the cluster's file for GitLab:
+
+```yaml
+    workers:
+      machineDeployments:
+        - class: node-pool
+          name: node-pool-1
+          replicas: 1
+          variables:
+            overrides:
+              - name: vmClass
+                value: best-effort-large
+              - name: volumes
+                value:
+                  - name: containerd
+                    mountPath: /var/lib/containerd
+                    capacity: 40Gi
+                    storageClass: wcp-vmfs      # your storage class
+```
 
 > [!WARNING]
 > **For tests only.** ArgoCD reads `deploy` over plain HTTP, so anyone between the Git server and
@@ -2374,7 +2399,7 @@ if ($LASTEXITCODE -eq 0) {
 **Expect:** after the password, `<old>..<new>  HEAD -> main`. With Gitea, within a minute
 `kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci get pipelineruns` lists a new run that turns
 `Succeeded`; with GitLab, `http://localhost:3400/cicd/app/-/pipelines` shows a new pipeline that
-turns **Passed**. Then run step 5's check with `WANT="test-web-apps v2"`: within about 5 minutes
+turns **Passed**. Then run step 5's check with `WANT="test-web-apps v2"`: within 10 to 15 minutes
 the page says `test-web-apps v2`, `image:` ends in a new `@sha256:…`, and every pod's image ID ends
 in that digest.
 
@@ -2384,7 +2409,9 @@ in that digest.
 - `Everything up-to-date`: the page already said v2; change `v2` to `v3` in the block and run it
   again.
 - With Gitea, no new PipelineRun: see step 7's **If not**.
-- The page still shows v1 after 5 minutes but the run succeeded: in ArgoCD's web page, open
+- The page still shows v1 but `image:` ends in the new digest: the new pods are still starting;
+  run step 5's check again. Pods in `ErrImagePull`: see step 5's **If not**.
+- The page still shows v1 after 15 minutes but the run succeeded: in ArgoCD's web page, open
   **cicd-demo** and click **Refresh** → **Hard Refresh**; ArgoCD checks `deploy` only every few
   minutes.
 - `Not possible to fast-forward`: the repository was made again; delete

@@ -25,7 +25,8 @@ You need:
 - a VKS cluster with a default storage class ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), with a worker that has 6 GiB memory and
   8 GiB disk free, such as a new `best-effort-large` worker (4 CPU, 16 GiB): GitLab alone uses
-  about 4 GiB;
+  about 4 GiB. To build images with it as in [CICD.md](CICD.md), make the cluster with the worker
+  from CICD.md's *You need* first: the default disk is too small for that;
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md), [git](https://git-scm.com/install/), and for
   step 8 [Helm](HELM.md);
 - nodes that reach `docker.io` and `registry.gitlab.com`;
