@@ -42,7 +42,10 @@ cd "$HOME/image-simple"
 Keep `HARBOR_ROBOT` in single quotes: the `$` is part of the name. `IMAGE_PLATFORM` is
 `linux/amd64` because the VKS cluster's nodes are x86-64 machines. `KUBECONFIG` makes every
 `kubectl` command in this terminal use your VKS cluster. `APP_NAMESPACE` is a Kubernetes namespace
-that the guide creates inside your VKS cluster for this app, not a vSphere Namespace.
+that the guide creates inside your VKS cluster for this app, not a vSphere Namespace. `SRC` is the
+address of the app's folder in this repository: the steps add a file name to it (`$SRC/Dockerfile`
+and so on). Opened alone in a browser it shows `404: Not Found`, because GitHub serves single files
+there, not folders.
 
 ## 1. Get Harbor's CA
 
