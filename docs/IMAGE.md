@@ -97,7 +97,9 @@ is right, this Harbor publishes no CA (your organization's certificate, HARBOR.m
 Run the part for your OS and engine. Step 4's push proves that it worked (a login alone does not
 prove it for docker).
 
-### podman on Linux
+### Linux
+
+#### podman
 
 No `sudo`: podman reads the CA from a folder in your home.
 
@@ -116,30 +118,39 @@ fi
 
 **Expect:** `podman trusts <your Harbor name>`.
 
-### docker on Linux
+#### docker
 
 As a block of its own (it runs `sudo`). docker reads it at once, without a restart (docker 29.5 or
-newer).
+newer). podman reads this folder too.
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
 sudo install -D -m 0644 "$HOME/.config/vks-guides/harbor/harbor-ca.crt" "/etc/docker/certs.d/$HARBOR_FQDN/ca.crt" && echo "docker trusts $HARBOR_FQDN"
 ```
 
-**Expect:** `docker trusts <your Harbor name>`. podman reads this folder too.
+**Expect:** `docker trusts <your Harbor name>`.
 
 ### macOS
 
-Add the CA to your login keychain (macOS asks for your password), then let podman and Docker
-Desktop read it:
+podman and Docker Desktop read the CA from your login keychain. Add it there first (macOS asks
+for your password):
 
 ```sh
 security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychain-db" "$HOME/.config/vks-guides/harbor/harbor-ca.crt"
 ```
 
-- podman: `podman machine stop`, `podman machine set --import-native-ca`, `podman machine start`.
-- Docker Desktop: quit it and start it again.
-- docker in Colima, which does not read the keychain:
+#### podman
+
+Let the podman machine import the keychain's CAs: `podman machine stop`, then
+`podman machine set --import-native-ca`, then `podman machine start`.
+
+**If not:** `unknown flag: --import-native-ca`: your podman is older; follow Podman's
+[Install a certificate authority](https://github.com/containers/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md).
+
+#### docker
+
+- With Colima ([Prerequisites](PREREQS.md#podman-and-docker-on-macos)), which does not read the
+  keychain, put the CA into its virtual machine:
 
   ```sh
   HARBOR_FQDN="harbor.example.test"
@@ -147,22 +158,32 @@ security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychai
   colima ssh -- sudo tee "/etc/docker/certs.d/$HARBOR_FQDN/ca.crt" < "$HOME/.config/vks-guides/harbor/harbor-ca.crt" >/dev/null && echo "docker (Colima) trusts $HARBOR_FQDN"
   ```
 
-**If not:** `unknown flag: --import-native-ca`: your podman is older; follow Podman's
-[Install a certificate authority](https://github.com/containers/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md).
+  **Expect:** `docker (Colima) trusts <your Harbor name>`.
+- With Docker Desktop: quit it and start it again, so that it reads the keychain.
 
 ### Windows
 
-Add the CA to your user's trusted root CAs (Windows asks you to confirm with **Yes**), then let
-podman and Docker Desktop read it:
+podman and Docker Desktop read the CA from your user's trusted root CAs. Add it there first
+(Windows asks you to confirm with **Yes**):
 
 ```powershell
 Import-Certificate -FilePath "$HOME\.config\vks-guides\harbor\harbor-ca.crt" -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
-- podman: `podman machine stop`, `podman machine set --import-native-ca`, `podman machine start`.
-- Docker Desktop: quit it (tray icon → **Quit Docker Desktop**) and start it again.
-
 **Expect:** a line with the CA's thumbprint and `CN=Harbor CA`.
+
+#### podman
+
+Let the podman machine import Windows' CAs: `podman machine stop`, then
+`podman machine set --import-native-ca`, then `podman machine start`.
+
+**If not:** `unknown flag: --import-native-ca`: your podman is older; follow Podman's
+[Install a certificate authority](https://github.com/containers/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md).
+
+#### docker
+
+Docker Desktop: quit it (tray icon → **Quit Docker Desktop**) and start it again, so that it reads
+the new CA.
 
 ## 3. Build the image
 
@@ -640,17 +661,20 @@ if ($LASTEXITCODE -eq 0) { Remove-Item -Recurse -Force -ErrorAction SilentlyCont
 
 The image stays in Harbor: delete it in Harbor's web page (**Projects** → your project →
 **Repositories** → `test-web-apps` → **DELETE**). To stop trusting Harbor's CA:
-- podman on Linux: `rm -rf ~/.config/containers/certs.d/<your Harbor name>`;
-- docker on Linux, as a block of its own:
-  `sudo rm -rf /etc/docker/certs.d/<your Harbor name>`;
-- docker in Colima: `colima ssh -- sudo rm -rf /etc/docker/certs.d/<your Harbor name> </dev/null`;
-- macOS: remove `Harbor CA` in **Keychain Access**; Windows: `certmgr.msc` → **Trusted Root
-  Certification Authorities** → **Certificates** → `Harbor CA` → **Delete**. Then, for podman,
-  `podman machine stop` and `podman machine start` (it imports the CAs again at start).
-- If you followed an earlier version of HARBOR.md, Harbor's CA is in the system's trust store.
-  As a block of its own, on Ubuntu or Debian:
-  `sudo rm -f /usr/local/share/ca-certificates/harbor-ca.crt && sudo update-ca-certificates --fresh`;
-  on AlmaLinux:
-  `sudo rm -f /etc/pki/ca-trust/source/anchors/harbor-ca.crt && sudo update-ca-trust`.
+- Linux:
+  - podman: `rm -rf ~/.config/containers/certs.d/<your Harbor name>`;
+  - docker, as a block of its own: `sudo rm -rf /etc/docker/certs.d/<your Harbor name>`;
+  - if you followed an earlier version of HARBOR.md, Harbor's CA is also in the system's trust
+    store; as a block of its own, on Ubuntu or Debian
+    `sudo rm -f /usr/local/share/ca-certificates/harbor-ca.crt && sudo update-ca-certificates --fresh`,
+    on AlmaLinux `sudo rm -f /etc/pki/ca-trust/source/anchors/harbor-ca.crt && sudo update-ca-trust`.
+- macOS: remove `Harbor CA` in **Keychain Access**, then:
+  - podman: `podman machine stop` and `podman machine start` (it imports the CAs again at start);
+  - docker in Colima: `colima ssh -- sudo rm -rf /etc/docker/certs.d/<your Harbor name> </dev/null`;
+    Docker Desktop: quit it and start it again.
+- Windows: `certmgr.msc` → **Trusted Root Certification Authorities** → **Certificates** →
+  `Harbor CA` → **Delete**, then:
+  - podman: `podman machine stop` and `podman machine start`;
+  - docker: quit Docker Desktop and start it again.
 
 Back to [README](../README.md).
