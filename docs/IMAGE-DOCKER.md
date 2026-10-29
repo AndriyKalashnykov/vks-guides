@@ -153,8 +153,8 @@ grep -H "^  name:\|namespace:\|image:" namespace.yaml deployment.yaml service.ya
 and `image: <your Harbor name>/<your project>/test-web-apps:v1`. The `name: test-web-apps` lines
 are the app's own name and stay as they are.
 
-**Only for a private project:** this adds the Secret from step 5 to the app, so its pods log in to
-Harbor when they pull the image.
+**Only for a private Harbor project:** this adds the Secret from step 5 to the app, so its pods log
+in to Harbor when they pull the image.
 
 ```sh
 sed -i 's|^      automountServiceAccountToken: false$|&\n      imagePullSecrets:\n        - name: harbor-pull|' deployment.yaml
