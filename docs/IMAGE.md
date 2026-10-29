@@ -197,7 +197,11 @@ the new CA.
 ## 3. Build the image
 
 This downloads the app's files from this repository, marks its page with the engine's name, and
-builds the image for the cluster's nodes (`linux/amd64`, also on an Apple silicon Mac).
+builds the image.
+
+`IMAGE_PLATFORM="linux/amd64"` builds the image for the VKS cluster's nodes, which are x86-64
+machines. Keep it, also on a Mac with Apple silicon: without it, such a Mac builds an `arm64` image,
+and the cluster's pods then fail with `exec format error`.
 
 The first line picks the engine: `CONTAINER_ENGINE="podman"` builds with podman; change it to
 `CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) to build with docker. To
@@ -211,6 +215,7 @@ build with both, run the block twice, once with each; the images get the tags `v
 CONTAINER_ENGINE="podman"
 HARBOR_FQDN="harbor.example.test"
 HARBOR_PROJECT="my-project"
+IMAGE_PLATFORM="linux/amd64"
 IMAGE_DIR="$HOME/.config/vks-guides/image"
 
 SRC="https://raw.githubusercontent.com/AndriyKalashnykov/vks-guides/666cba94ba517ac79d1c2ec505226192962477a3/argocd/test-web-apps"
@@ -233,7 +238,7 @@ else
     && mv "$IMAGE_DIR/new/app/index.html.tmp" "$IMAGE_DIR/new/app/index.html" \
     && chmod 0644 "$IMAGE_DIR/new/app/"* "$IMAGE_DIR/new/k8s/"* \
     && rm -rf "$IMAGE_DIR/app" "$IMAGE_DIR/k8s" && mv "$IMAGE_DIR/new/app" "$IMAGE_DIR/new/k8s" "$IMAGE_DIR/" && rm -rf "$IMAGE_DIR/new" \
-    && "$CONTAINER_ENGINE" build --platform linux/amd64 -t "$IMG" "$IMAGE_DIR/app" \
+    && "$CONTAINER_ENGINE" build --platform "$IMAGE_PLATFORM" -t "$IMG" "$IMAGE_DIR/app" \
     && echo "built: $IMG"
 fi
 ```
@@ -247,6 +252,7 @@ fi
 $CONTAINER_ENGINE = "podman"
 $HARBOR_FQDN = "harbor.example.test"
 $HARBOR_PROJECT = "my-project"
+$IMAGE_PLATFORM = "linux/amd64"
 $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 
 $SRC = "https://raw.githubusercontent.com/AndriyKalashnykov/vks-guides/666cba94ba517ac79d1c2ec505226192962477a3/argocd/test-web-apps"
@@ -271,7 +277,7 @@ else {
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$IMAGE_DIR\app", "$IMAGE_DIR\k8s"
   Move-Item "$IMAGE_DIR\new\app", "$IMAGE_DIR\new\k8s" $IMAGE_DIR
   Remove-Item -Recurse -Force "$IMAGE_DIR\new"
-  & $CONTAINER_ENGINE build --platform linux/amd64 -t $IMG "$IMAGE_DIR\app"
+  & $CONTAINER_ENGINE build --platform $IMAGE_PLATFORM -t $IMG "$IMAGE_DIR\app"
   if ($LASTEXITCODE -eq 0) { "built: $IMG" } else { "FAILED: the build (see the error above)" }
 }
 ```
