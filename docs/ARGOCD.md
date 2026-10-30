@@ -439,10 +439,10 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedenti
 **Clusters** lists the namespace at `https://kubernetes.default.svc/?context=<namespace>`, status
 **Unknown** until an Application uses it (picture in step 7).
 
-**If not:** not `Ready` after a minute:
-`kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> describe managedentity
-ns-<namespace>` names the failed condition. `MissingRoleBinding`: the RoleBinding was not
-created.
+**If not:** not `Ready` after a minute: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD
+namespace> get managedentity ns-<namespace> -o yaml` shows, under `conditions`, the ones with
+`status: "False"` and why.
+`MissingRoleBinding`: the RoleBinding was not created.
 
 ## 6. Create a VKS cluster with ArgoCD
 
@@ -765,7 +765,9 @@ cluster's login. This:
 
 - lets ArgoCD's account `argocd-k8s-sa` read VKS clusters and their logins, and nothing else (the
   role `argocd-manage-vks`);
-- asks the ArgoCD Service to add the cluster as a destination, for step 8.
+- asks the ArgoCD Service to add the cluster as a destination: one for every app, step 8's,
+  [MONITORING.md](MONITORING.md)'s and [CICD.md](CICD.md)'s alike. Each app's project says what it
+  may deploy there.
 
 Nothing is installed on the cluster.
 
@@ -800,7 +802,6 @@ metadata:
   name: vks-${VKS_NAMESPACE}-${VKS_CLUSTER}
   namespace: ${ARGOCD_NAMESPACE}
 spec:
-  argoCDProject: test-web-apps
   targetRef:
     apiGroup: cluster.x-k8s.io
     kind: Cluster
@@ -842,7 +843,6 @@ metadata:
   name: vks-${VKS_NAMESPACE}-${VKS_CLUSTER}
   namespace: ${ARGOCD_NAMESPACE}
 spec:
-  argoCDProject: test-web-apps
   targetRef:
     apiGroup: cluster.x-k8s.io
     kind: Cluster
@@ -861,6 +861,12 @@ created`.
   run the block again.
 - `Forbidden` on the RoleBinding: your role may not grant `ROLE`. Ask a vCenter administrator to
   run the block.
+- `spec.targetRef is already in use by another ManagedEntity`: the cluster is already added, by
+  the policy below; nothing to do.
+- You ran this block before, with an `argoCDProject:` line in it: that line let every app of that
+  project deploy anywhere on the cluster, and running the block again leaves it in place. Delete
+  the destination (`kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> delete
+  managedentity vks-<namespace>-<cluster>`) and run the block again.
 
 This checks that the cluster was added, and shows when ArgoCD's login to it ends; after that date
 ArgoCD cannot deploy to it. That login is the VKS cluster's administrator certificate, which
@@ -921,9 +927,10 @@ if (-not $D) {
 ![Settings, Clusters: the VKS cluster at https://192.168.101.134:6443 with status Unknown, and the namespace with status Successful](img/argocd/09-clusters.png)
 
 **If not:**
-- Not `Ready`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> describe
-  managedentity vks-<namespace>-<cluster>` names the failed condition. `MissingRoleBinding`: the
-  RoleBinding above is missing.
+- Not `Ready`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> get
+  managedentity vks-<namespace>-<cluster> -o yaml` shows, under `conditions`, the ones with
+  `status: "False"` and why.
+  `MissingRoleBinding`: the RoleBinding above is missing.
 - `secrets "cls-vks-…" not found`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD
   namespace> get secret -l argocd.argoproj.io/secret-type=cluster` lists the stored destinations.
 
@@ -966,6 +973,136 @@ destination is back):
 `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> delete managedentity
 vks-<namespace>-<cluster>`, then the registration block above. The same date: ask a vCenter
 administrator.
+
+### Add every VKS cluster of a namespace (optional)
+
+Instead of one ManagedEntity per cluster, this asks the ArgoCD Service to add every VKS cluster in
+`VKS_NAMESPACE`, also the ones created later once they are ready, the same way as the block above:
+the same destination `<cluster>-<namespace>` and the same Secret, so step 8 and the check above work
+unchanged. A cluster already added with the block above stays as it is.
+
+<details>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+VKS_NAMESPACE="my-namespace"
+ROLE="argocd-manage-vks"
+
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-k8s-sa-vks
+  namespace: ${VKS_NAMESPACE}
+subjects:
+  - kind: ServiceAccount
+    name: argocd-k8s-sa
+    namespace: ${ARGOCD_NAMESPACE}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ${ROLE}
+---
+apiVersion: argocd-service.vsphere.vmware.com/v1alpha1
+kind: EntityManagementPolicy
+metadata:
+  name: vks-clusters-${VKS_NAMESPACE}
+  namespace: ${ARGOCD_NAMESPACE}
+spec:
+  rules:
+    - apiGroup: cluster.x-k8s.io
+      kind: Cluster
+      namespaces:
+        nameSelector:
+          - ${VKS_NAMESPACE}
+EOF
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$VKS_NAMESPACE = "my-namespace"
+$ROLE = "argocd-manage-vks"
+
+@"
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-k8s-sa-vks
+  namespace: ${VKS_NAMESPACE}
+subjects:
+  - kind: ServiceAccount
+    name: argocd-k8s-sa
+    namespace: ${ARGOCD_NAMESPACE}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ${ROLE}
+---
+apiVersion: argocd-service.vsphere.vmware.com/v1alpha1
+kind: EntityManagementPolicy
+metadata:
+  name: vks-clusters-${VKS_NAMESPACE}
+  namespace: ${ARGOCD_NAMESPACE}
+spec:
+  rules:
+    - apiGroup: cluster.x-k8s.io
+      kind: Cluster
+      namespaces:
+        nameSelector:
+          - ${VKS_NAMESPACE}
+"@ | kubectl --kubeconfig $SUPERVISOR_KUBECONFIG apply -f -
+```
+
+</details>
+
+**Expect:** `rolebinding…/argocd-k8s-sa-vks created` (or `unchanged`) and
+`entitymanagementpolicy…/vks-clusters-<namespace> created`.
+
+**If not:** `clusterroles…"argocd-manage-vks" not found` or `Forbidden`: as for the block above.
+
+This shows what the policy decided for each cluster:
+
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+
+```sh
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+VKS_NAMESPACE="my-namespace"
+
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get entitymanagementpolicy "vks-clusters-${VKS_NAMESPACE}" \
+  -o jsonpath='{range .status.decisions[*]}{.name}{"  "}{.outcome}{"  "}{.reason}{"\n"}{end}'
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get managedentity
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$VKS_NAMESPACE = "my-namespace"
+
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get entitymanagementpolicy "vks-clusters-${VKS_NAMESPACE}" `
+  -o jsonpath='{range .status.decisions[*]}{.name}{''  ''}{.outcome}{''  ''}{.reason}{''\n''}{end}'
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedentity
+```
+
+**Expect:** a line per cluster within a minute: `<cluster>  EligibleAndManaged  The entity is
+managed by the policy`, and the ManagedEntity `vkscluster---<namespace>---<cluster>`, `Ready`. A
+cluster added with the block above shows `EligibleButNotManaged`.
+
+**If not:** no line: the policy has not run yet; run the block again in a minute.
+
+Deleting the policy keeps the clusters it added; step 9 removes them one by one. A cluster whose
+ManagedEntity you delete, the policy's or the block above's, is added again only when the cluster
+or the policy changes; to add it at once, delete the policy and run the policy block again.
 
 ## 8. Deploy the test app
 
@@ -1204,7 +1341,7 @@ ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete managedentity "vks-${VKS_NAMESPACE}-${VKS_CLUSTER}" --ignore-not-found
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete managedentity "vks-${VKS_NAMESPACE}-${VKS_CLUSTER}" "vkscluster---${VKS_NAMESPACE}---${VKS_CLUSTER}" --ignore-not-found
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" delete rolebinding argocd-k8s-sa-vks --ignore-not-found
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete applications.argoproj.io "$VKS_CLUSTER" --wait=false
 ```
@@ -1217,7 +1354,7 @@ $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete managedentity "vks-${VKS_NAMESPACE}-${VKS_CLUSTER}" --ignore-not-found
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete managedentity "vks-${VKS_NAMESPACE}-${VKS_CLUSTER}" "vkscluster---${VKS_NAMESPACE}---${VKS_CLUSTER}" --ignore-not-found
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete rolebinding argocd-k8s-sa-vks --ignore-not-found
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applications.argoproj.io $VKS_CLUSTER --wait=false
 ```
@@ -1225,8 +1362,8 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applicat
 **Expect:** three `… deleted` lines. Then run the name check of step 6 every few minutes until it
 prints two `NotFound` lines.
 
-This deletes the project, the namespace destination and ArgoCD's role in `VKS_NAMESPACE`. Run it
-only if steps 5 and 6 printed `created` for them. It deletes nothing while an Application of the
+This deletes the project, the namespace destination, ArgoCD's role in `VKS_NAMESPACE` and step 7's
+policy. Run it only if steps 5 and 6 printed `created` for them (and step 7 for the policy). It deletes nothing while an Application of the
 project is left.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
@@ -1243,6 +1380,7 @@ elif [ -n "$A" ]; then
 else
   kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appproject vks-clusters --ignore-not-found
   kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete managedentity "ns-${VKS_NAMESPACE}" --ignore-not-found
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete entitymanagementpolicy "vks-clusters-${VKS_NAMESPACE}" --ignore-not-found
   kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" delete rolebinding argocd-k8s-sa-edit --ignore-not-found
 fi
 ```
@@ -1261,11 +1399,12 @@ elseif ("$A".Trim()) { "Nothing deleted: these Applications still use vks-cluste
 else {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject vks-clusters --ignore-not-found
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete managedentity "ns-${VKS_NAMESPACE}" --ignore-not-found
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete entitymanagementpolicy "vks-clusters-${VKS_NAMESPACE}" --ignore-not-found
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete rolebinding argocd-k8s-sa-edit --ignore-not-found
 }
 ```
 
-**Expect:** three `… deleted` lines.
+**Expect:** three `… deleted` lines, four with the policy.
 
 **If not:** `Nothing deleted: these Applications …`: a cluster Application is still being
 deleted; run step 6's name check until it prints two `NotFound` lines, then this block again.
