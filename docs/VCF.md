@@ -20,7 +20,7 @@ Broadcom, then run the install block; it needs no internet access.
 - for [the check of your contexts](#what-a-login-creates-and-when-it-matters) only:
   [kubectl](KUBECTL.md) and [jq](PREREQS.md).
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|
@@ -63,12 +63,12 @@ its plugins from the bundle. If a file does not match, it installs nothing.
 1. Copy the block for your OS into a text editor.
 2. Paste the two SHA2 values between the quotes on its first two lines.
 3. If the files are not in `~/Downloads`, change `DOWNLOAD_DIR` (in WSL, see
-   [Prerequisites](PREREQS.md#wsl-2-with-ubuntu)).
+   [PREREQS.md](PREREQS.md#wsl-2-with-ubuntu)).
 4. Paste the whole block into the terminal. Values you set in the terminal before do not count:
    the block's first lines set them again.
 
 `vcf` goes into `INSTALL_DIR`, or into `~/.local/bin` if that folder needs `sudo` and `sudo` would
-ask for a password (see [Prerequisites](PREREQS.md#sudo-optional)).
+ask for a password (see [PREREQS.md](PREREQS.md#sudo-optional)).
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -435,7 +435,7 @@ What this means for you:
 
 Run this when `vcf` or `kubectl` reaches the wrong server, or says that no context is set. It
 shows your `vcf` contexts, the kubeconfig file each one uses, and the current-context of each file.
-It needs `jq` ([Prerequisites](PREREQS.md)) and `kubectl` ([KUBECTL.md](KUBECTL.md)).
+It needs `jq` ([PREREQS.md](PREREQS.md)) and `kubectl` ([KUBECTL.md](KUBECTL.md)).
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 

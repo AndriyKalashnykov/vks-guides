@@ -31,7 +31,7 @@ can instead create the namespace from a YAML file with kubectl:
 - for step 1: [unzip and openssl](PREREQS.md);
 - for steps 8 to 10: [kubectl](KUBECTL.md), [jq](PREREQS.md) and a [Supervisor login](LOGIN.md).
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|

@@ -25,7 +25,7 @@ Supervisor Service.
 - for the two blocks at the end: the [VCF CLI](VCF.md) with the context `supervisor`
   ([LOGIN.md](LOGIN.md)).
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|

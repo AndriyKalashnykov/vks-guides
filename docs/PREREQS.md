@@ -343,3 +343,18 @@ foreach ($e in 'podman', 'docker') {
 - `NOT RUNNING: podman` on macOS or Windows: `podman machine start`.
 
 Back to [README](../README.md).
+
+## Registry hosts, for a firewall
+
+The guides' connection tables name an image registry the way images name it. A registry answers
+from more hosts than its name; allow these too (measured, all TCP 443):
+
+| registry in a table | also allow |
+|---|---|
+| `docker.io` | `registry-1.docker.io`, `auth.docker.io`, `production.cloudfront.docker.com` |
+| `ghcr.io` | `pkg-containers.githubusercontent.com` |
+| `quay.io` | `cdn01.quay.io` |
+| `registry.k8s.io` | `cdn.registry.k8s.io`, and a `*-docker.pkg.dev` host near you (for example `us-east1-docker.pkg.dev`) |
+| `cgr.dev` | `*.r2.cloudflarestorage.com` |
+| `registry.gitlab.com` | `gitlab.com`, `cdn.registry.gitlab-static.net` |
+| `projects.packages.broadcom.com` | nothing else |

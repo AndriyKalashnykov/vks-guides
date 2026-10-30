@@ -61,12 +61,13 @@ The blocks keep their files in `~/.config/vks-guides/observability` (PowerShell:
 - 10 GiB more storage for Loki, inside the vSphere Namespace's storage limit, if one is set;
 - for step 11, what [its list](#11-let-vcf-operations-collect-the-clusters-kubernetes-metrics-optional) names.
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
 | your machine | `github.com`, `release-assets.githubusercontent.com` | 443 | the Loki and Jaeger charts (steps 3, 4) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (steps 1 to 8, 11.5, 12) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (steps 1 to 9, 11.5, 12) |
 | your machine | the Supervisor's address | 443 | the VCF CLI (step 5), kubectl (steps 11, 12) |
 | the cluster's nodes | `docker.io`, `ghcr.io` | 443 | the Loki, Jaeger and sample app images |
 | the cluster's nodes | `projects.packages.broadcom.com`, or your own copy of it ([ADDONS.md](ADDONS.md)) | 443 | the Fluent Bit add-on; the Telegraf and Prometheus add-ons (step 11) |

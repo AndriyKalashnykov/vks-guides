@@ -52,7 +52,8 @@ The blocks keep their files in `~/.config/vks-guides/cicd` (PowerShell:
 - the Git server's port-forward running in its own terminal ([GITEA.md](GITEA.md) step 6, or
   [GITLAB.md](GITLAB.md) step 5) and its load-balancer address ([GITEA.md](GITEA.md) step 8, or
   [GITLAB.md](GITLAB.md) step 7). Run this guide's blocks in one other terminal.
-- [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md) and git.
+- [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md) and git;
+- one free load-balancer address, for the app (step 5).
 
 The `workers:` part of the cluster's file for GitLab:
 
@@ -74,7 +75,8 @@ The `workers:` part of the cluster's file for GitLab:
                     storageClass: wcp-vmfs      # your storage class
 ```
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
@@ -86,6 +88,7 @@ The connections this guide needs, for a firewall (all TCP):
 | ArgoCD, on the Supervisor | the VKS cluster's API address | 6443 | deploying the app |
 | ArgoCD, on the Supervisor | Gitea's load-balancer address, port 3000; or GitLab's, port 80 | 3000 or 80 | reading `deploy` |
 | the cluster's nodes | `registry.gitlab.com` | 443 | with GitLab: the runners and their helper image |
+| the cluster's nodes | `cgr.dev`, and Tekton's registry ([TEKTON.md](TEKTON.md#prerequisites), A or B) | 443 | with Tekton: Tekton's images for each build |
 | your browser, and your machine | the app's address (step 5) | 80 | the page (steps 5, 8) |
 
 ## 1. Check what is in place

@@ -30,12 +30,13 @@ the VKS cluster. They can be the same namespace.
   [Supervisor login](LOGIN.md);
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md);
 - for steps 2 and 10: a vCenter administrator;
-- two free load-balancer addresses on the Supervisor: one for ArgoCD (step 3), one for the test app
-  (step 8).
+- three free load-balancer addresses: one for ArgoCD (step 3), one for the VKS cluster's API
+  (step 6), one for the test app (step 8).
 
 Written for ArgoCD Service 1.2.0 on VCF 9.1.1 with VKS 3.8.
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
@@ -43,7 +44,7 @@ The connections this guide needs, for a firewall (all TCP):
 | your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (step 8) |
 | your browser | `support.broadcom.com` | 443 | downloading the service manifest (step 2) |
 | your browser | vCenter (the vSphere Client) | 443 | steps 2 and 10 |
-| the Supervisor | `projects.packages.broadcom.com` | 443 | ArgoCD's images, with the `legacy` manifest (step 2) |
+| the Supervisor | `projects.packages.broadcom.com` | 443 | ArgoCD's images, with the `legacy` manifest (steps 2, 3) |
 | your browser | ArgoCD's address (step 4) | 443 | ArgoCD's web page |
 | ArgoCD, on the Supervisor | `github.com` | 443 | reading this repository (steps 6, 8) |
 | ArgoCD, on the Supervisor | the VKS cluster's API address | 6443 | deploying the test app (steps 7, 8) |

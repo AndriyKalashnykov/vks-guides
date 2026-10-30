@@ -25,11 +25,12 @@ The blocks keep their files in `~/.config/vks-guides/gitea` (PowerShell:
   step 4 option B [Helm](HELM.md);
 - for step 8, one free load-balancer address.
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps), and the port-forward to Gitea (steps 6, 7) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps), and the port-forward to Gitea (steps 6 to 8) |
 | the cluster's nodes | `docker.io` | 443 | Gitea's image (step 4) |
 | your machine | `dl.gitea.com` | 443 | Gitea's Helm chart (step 4, option B) |
 | ArgoCD, your machine, other machines that clone | Gitea's load-balancer address (step 8) | 3000 | cloning over plain HTTP |

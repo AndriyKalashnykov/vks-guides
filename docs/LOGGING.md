@@ -26,7 +26,8 @@ The blocks keep their files in `~/.config/vks-guides/logging` (PowerShell:
   VCF Operations administrator;
 - ingestion authentication not enforced in Log Management (the default).
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|

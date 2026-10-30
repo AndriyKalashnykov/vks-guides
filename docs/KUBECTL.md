@@ -20,7 +20,7 @@ when this machine cannot reach dl.k8s.io. After you log in,
   [unzip and openssl](PREREQS.md), the Supervisor's IP address or DNS name, and the vCenter CA
   from step 1 of [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca).
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|
@@ -33,7 +33,7 @@ The connections this guide needs, for a firewall (all TCP):
 This installs `kubectl`, so that you can type `kubectl` in any terminal. It downloads the official
 program, checks that it arrived whole (its SHA-256 checksum) and copies it into `INSTALL_DIR`. If
 that folder needs `sudo` and `sudo` would ask for a password, it uses `~/.local/bin` instead (see
-[Prerequisites](PREREQS.md#sudo-optional)). On Windows it also adds the folder to your PATH.
+[PREREQS.md](PREREQS.md#sudo-optional)). On Windows it also adds the folder to your PATH.
 Leave `KUBECTL_VERSION` empty for the latest stable release, or set one such as `v1.37.1`.
 
 <details>

@@ -37,11 +37,12 @@ The blocks keep their files in `~/.config/vks-guides/gitlab` (PowerShell:
   step 8 [Helm](HELM.md);
 - for step 7, one free load-balancer address.
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps), and the port-forward to GitLab (steps 5, 6, 8, 9) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps), and the port-forward to GitLab (steps 5 to 9) |
 | the cluster's nodes | `docker.io` | 443 | GitLab's image (step 3), the CI job image (step 9) |
 | the cluster's nodes | `registry.gitlab.com` | 443 | the runner and its helper image (steps 8, 9) |
 | your machine | `gitlab-charts.s3.amazonaws.com` | 443 | the runner's Helm chart (step 8) |

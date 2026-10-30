@@ -31,7 +31,7 @@ need only [Renew the Supervisor login](#renew-the-supervisor-login) when the log
 - the vSphere Namespace's name and, once you see it in
   [Check your vSphere Namespace](#check-your-vsphere-namespace), the VKS cluster's name.
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|

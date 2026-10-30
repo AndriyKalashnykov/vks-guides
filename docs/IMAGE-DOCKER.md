@@ -18,16 +18,18 @@ others use. If you open a new terminal, run the first block again.
 
 ## Prerequisites
 
-- docker 29.5 or newer ([Prerequisites](PREREQS.md#podman-and-docker-optional)), `curl`,
+- docker 29.5 or newer ([PREREQS.md](PREREQS.md#podman-and-docker-optional)), `curl`,
   `openssl` and [kubectl](KUBECTL.md);
 - a Harbor project and a robot account that may push to it ([HARBOR.md](HARBOR.md) step 10);
 - for a private project, also a robot that may only pull: in Harbor's web page, as in HARBOR.md
   step 10, *In Harbor's web page*, with only **Repository** → **Pull** ticked. Its name is
   `robot$` and the name you type;
 - `kubectl` pointed at your VKS cluster in this terminal: [LOGIN.md](LOGIN.md),
-  *Get the VKS cluster's kubeconfig*, then *Make it the default in this terminal*.
+  *Get the VKS cluster's kubeconfig*, then *Make it the default in this terminal*;
+- one free load-balancer address, for the app (step 6).
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|

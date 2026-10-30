@@ -33,14 +33,15 @@ To create the cluster from a YAML file with kubectl instead of clicks, see
 - a vSphere Namespace that passes [Check the namespace](NAMESPACE.md#8-check-the-namespace), and
   the **Edit** role on it;
 - a [Supervisor login](LOGIN.md) with the [VCF CLI](VCF.md), [kubectl](KUBECTL.md) and
-  [jq](PREREQS.md).
+  [jq](PREREQS.md);
+- one free load-balancer address, for the cluster's API.
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|
 | your browser | vCenter (the vSphere Client) | 443 | creating and watching the cluster (steps 3 to 6) |
-| your machine | the Supervisor's address | 443 | kubectl with the Supervisor kubeconfig (steps 1, 2, 6, 8, 9) |
+| your machine | the Supervisor's address | 443 | kubectl with the Supervisor kubeconfig (steps 1, 2, 6 to 9) |
 | your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 7, 8) |
 
 ## 1. Check the namespace

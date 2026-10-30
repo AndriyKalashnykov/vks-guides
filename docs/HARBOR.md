@@ -39,7 +39,8 @@ The blocks keep their files in `~/.config/vks-guides/harbor` (PowerShell:
 - a storage class with room for about 18 GiB, and one free load-balancer address;
 - someone who can create a DNS record.
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|

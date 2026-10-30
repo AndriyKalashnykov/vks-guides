@@ -28,7 +28,8 @@ The blocks keep their files in `~/.config/vks-guides/monitoring` (PowerShell:
 - [kubectl](KUBECTL.md), [curl and jq](PREREQS.md);
 - 20 GiB of storage for Prometheus, inside the vSphere Namespace's storage limit, if one is set.
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
