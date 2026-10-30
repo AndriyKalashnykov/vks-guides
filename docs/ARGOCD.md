@@ -1409,8 +1409,8 @@ else {
 **If not:** `Nothing deleted: these Applications …`: a cluster Application is still being
 deleted; run step 6's name check until it prints two `NotFound` lines, then this block again.
 
-This deletes the instance `argocd-1` and two Secrets it leaves behind, one of them the first
-`admin` password. Run it only if step 3 printed `created`.
+This deletes the instance `argocd-1`, then what it leaves behind: two Secrets, one of them the
+first `admin` password, and its project `default`. Run it only if step 3 printed `created`.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -1418,8 +1418,9 @@ This deletes the instance `argocd-1` and two Secrets it leaves behind, one of th
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete argocd argocd-1 --ignore-not-found
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete secret argocd-initial-admin-secret argocd-redis --ignore-not-found
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete argocd argocd-1 --ignore-not-found --timeout=5m \
+  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete secret argocd-initial-admin-secret argocd-redis --ignore-not-found \
+  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appproject default --ignore-not-found
 ```
 
 **Windows (PowerShell):**
@@ -1428,11 +1429,22 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete secr
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete argocd argocd-1 --ignore-not-found
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete secret argocd-initial-admin-secret argocd-redis --ignore-not-found
+$global:LASTEXITCODE = $null
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete argocd argocd-1 --ignore-not-found --timeout=5m
+if ($LASTEXITCODE -eq 0) {
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete secret argocd-initial-admin-secret argocd-redis --ignore-not-found
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject default --ignore-not-found
+}
 ```
 
-**Expect:** up to three `… deleted` lines.
+**Expect:** up to four `… deleted` lines.
+
+**If not:** an error on the instance deletes nothing else.
+- `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
+  block again. `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
+- `timed out waiting`: the instance is still being removed; run the block again in a few minutes.
+- `the server doesn't have a resource type "argocd"`: the ArgoCD Service is removed, and the
+  instance with it; run the last two `kubectl` commands alone (in sh without the `&&`).
 
 ## 10. Remove the ArgoCD Service (vCenter administrator)
 
