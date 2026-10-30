@@ -1418,7 +1418,7 @@ first `admin` password, and its project `default`. Run it only if step 3 printed
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete argocd argocd-1 --ignore-not-found \
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete argocd argocd-1 --ignore-not-found --timeout=5m \
   && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete secret argocd-initial-admin-secret argocd-redis --ignore-not-found \
   && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appproject default --ignore-not-found
 ```
@@ -1430,7 +1430,7 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete argocd argocd-1 --ignore-not-found
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete argocd argocd-1 --ignore-not-found --timeout=5m
 if ($LASTEXITCODE -eq 0) {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete secret argocd-initial-admin-secret argocd-redis --ignore-not-found
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject default --ignore-not-found
@@ -1439,7 +1439,12 @@ if ($LASTEXITCODE -eq 0) {
 
 **Expect:** up to four `… deleted` lines.
 
-**If not:** an error on the instance: nothing else is deleted; run the block again.
+**If not:** an error on the instance deletes nothing else.
+- `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
+  block again. `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
+- `timed out waiting`: the instance is still being removed; run the block again in a few minutes.
+- `the server doesn't have a resource type "argocd"`: the ArgoCD Service is removed, and the
+  instance with it; run the last two `kubectl` commands alone (in sh without the `&&`).
 
 ## 10. Remove the ArgoCD Service (vCenter administrator)
 
