@@ -28,9 +28,20 @@ other steps are the same, and where their blocks set `GIT_SERVER="gitea"`, chang
 | writes back from | a Tekton Task with a Gitea bot user's token | a second, locked runner with a deploy token |
 | starts on a push | a signed Gitea webhook (step 7) | by itself |
 
-You need:
+> [!WARNING]
+> **For tests only.** ArgoCD reads `deploy` over plain HTTP, so anyone between the Git server and
+> ArgoCD can change what is deployed into `cicd-demo`, and run pods there that read the Harbor
+> robot that pulls. The build runs the app's Dockerfile as root and can read the Harbor robot that
+> pushes, which may push only to the project `cicd-demo`. With GitLab, every job on GITLAB.md's
+> runner can read that robot, and the build can read its job's token while the job runs.
 
-- the Harbor files from HARBOR.md in `~/.config/vks-guides/harbor` (PowerShell:
+The blocks keep their files in `~/.config/vks-guides/cicd` (PowerShell:
+`$HOME\.config\vks-guides\cicd`).
+
+## Prerequisites
+
+- the guides in the table's "done first" row, for your choice;
+- the Harbor files from [HARBOR.md](HARBOR.md) in `~/.config/vks-guides/harbor` (PowerShell:
   `$HOME\.config\vks-guides\harbor`): `harbor-data-values.yml`, `harbor-ca.crt` and `secrets.env`;
 - the VKS cluster from ARGOCD.md step 7, its kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig))
   and your Supervisor kubeconfig;
@@ -41,7 +52,8 @@ You need:
 - the Git server's port-forward running in its own terminal ([GITEA.md](GITEA.md) step 6, or
   [GITLAB.md](GITLAB.md) step 5) and its load-balancer address ([GITEA.md](GITEA.md) step 8, or
   [GITLAB.md](GITLAB.md) step 7). Run this guide's blocks in one other terminal.
-- [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md) and git.
+- [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md) and git;
+- one free load-balancer address, for the app (step 5).
 
 The `workers:` part of the cluster's file for GitLab:
 
@@ -63,15 +75,21 @@ The `workers:` part of the cluster's file for GitLab:
                     storageClass: wcp-vmfs      # your storage class
 ```
 
-> [!WARNING]
-> **For tests only.** ArgoCD reads `deploy` over plain HTTP, so anyone between the Git server and
-> ArgoCD can change what is deployed into `cicd-demo`, and run pods there that read the Harbor
-> robot that pulls. The build runs the app's Dockerfile as root and can read the Harbor robot that
-> pushes, which may push only to the project `cicd-demo`. With GitLab, every job on GITLAB.md's
-> runner can read that robot, and the build can read its job's token while the job runs.
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
-The blocks keep their files in `~/.config/vks-guides/cicd` (PowerShell:
-`$HOME\.config\vks-guides\cicd`).
+| from | to | port | for |
+|---|---|---|---|
+| your machine | the Supervisor's address | 443 | kubectl to ArgoCD (steps 1, 5, 9) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (all steps), and the Git server's port-forward (steps 4, 7, 8) |
+| your machine | Harbor's address | 443 | Harbor's API (steps 1, 3, 9) |
+| the build, in the cluster | `docker.io`; Harbor's address | 443 | the app's base image; pushing the image |
+| the cluster's nodes | `docker.io`, `ghcr.io`; Harbor's address | 443 | the first app image, `alpine/git` and Kaniko; the built image |
+| ArgoCD, on the Supervisor | the VKS cluster's API address | 6443 | deploying the app |
+| ArgoCD, on the Supervisor | Gitea's load-balancer address, port 3000; or GitLab's, port 80 | 3000 or 80 | reading `deploy` |
+| the cluster's nodes | `registry.gitlab.com` | 443 | with GitLab: the runners and their helper image |
+| the cluster's nodes | `cgr.dev`, and Tekton's registry ([TEKTON.md](TEKTON.md#prerequisites), A or B) | 443 | with Tekton: Tekton's images for each build |
+| your browser, and your machine | the app's address (step 5) | 80 | the page (steps 5, 8) |
 
 ## 1. Check what is in place
 

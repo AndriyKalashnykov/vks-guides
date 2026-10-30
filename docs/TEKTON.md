@@ -24,16 +24,28 @@ Install Tekton one of two ways; a cluster has one or the other:
 | nodes pull from | `projects.packages.broadcom.com` and `cgr.dev` | `ghcr.io` (and `pkg-containers.githubusercontent.com`) and `cgr.dev` |
 | free CPU on the workers | about 400m | about 200m |
 
-You need:
+The blocks keep their files in `~/.config/vks-guides/tekton` (PowerShell:
+`$HOME\.config\vks-guides\tekton`).
+
+## Prerequisites
 
 - a VKS cluster ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
 - [kubectl](KUBECTL.md), and [curl and jq](PREREQS.md);
-- for A, the [VCF CLI](VCF.md) with the context `supervisor` ([LOGIN.md](LOGIN.md));
-- for B, a machine that reaches `github.com` and `release-assets.githubusercontent.com`.
+- for A, the [VCF CLI](VCF.md) with the context `supervisor` ([LOGIN.md](LOGIN.md)), and the edit
+  or owner role on the cluster's vSphere Namespace.
 
-The blocks keep their files in `~/.config/vks-guides/tekton` (PowerShell:
-`$HOME\.config\vks-guides\tekton`).
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (all steps), and the port-forward to the EventListener (step 5) |
+| the cluster's nodes | `cgr.dev` | 443 | the pipeline's step image (step 4), Tekton's shell image |
+| your machine | the Supervisor's address | 443 | A: the VCF CLI (steps 2, 7) |
+| the cluster's nodes | `projects.packages.broadcom.com`, or your own copy of it ([ADDONS.md](ADDONS.md)) | 443 | A: the Tekton Operator and Tekton's images |
+| your machine | `github.com`, `release-assets.githubusercontent.com` | 443 | B: Tekton's release files (step 3) |
+| the cluster's nodes | `ghcr.io`, `pkg-containers.githubusercontent.com` | 443 | B: Tekton's images |
 
 ## 1. Check the cluster
 

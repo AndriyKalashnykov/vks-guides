@@ -21,14 +21,35 @@ ArgoCD (an *instance*). In this guide ArgoCD creates a VKS cluster from the char
 [`argocd/guest-cluster`](../argocd/guest-cluster), then deploys the app in
 [`argocd/test-web-apps`](../argocd/test-web-apps) into that cluster and keeps it in sync.
 
-Needs [kubectl](KUBECTL.md), `jq` and `openssl` ([Prerequisites](PREREQS.md)), a
-[Supervisor login](LOGIN.md) and a [vSphere Namespace](NAMESPACE.md) with the **Namespaces Edit**
-role for your SSO user. Steps 2 and 10 need a vCenter administrator. Written for ArgoCD Service
-1.2.0 on VCF 9.1.1 with VKS 3.8. The Supervisor must reach `github.com`, and the VKS cluster
-`docker.io` (step 8).
-
 `ARGOCD_NAMESPACE` is the vSphere Namespace that runs ArgoCD, `VKS_NAMESPACE` the one that holds
 the VKS cluster. They can be the same namespace.
+
+## Prerequisites
+
+- a [vSphere Namespace](NAMESPACE.md) where your SSO user has the **Namespaces Edit** role, and a
+  [Supervisor login](LOGIN.md);
+- [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md);
+- for steps 2 and 10: a vCenter administrator;
+- three free load-balancer addresses: one for ArgoCD (step 3), one for the VKS cluster's API
+  (step 6), one for the test app (step 8).
+
+Written for ArgoCD Service 1.2.0 on VCF 9.1.1 with VKS 3.8.
+
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | the Supervisor's address | 443 | kubectl with the Supervisor login (steps 1, 3 to 10) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (step 8) |
+| your browser | `support.broadcom.com` | 443 | downloading the service manifest (step 2) |
+| your browser | vCenter (the vSphere Client) | 443 | steps 2 and 10 |
+| the Supervisor | `projects.packages.broadcom.com` | 443 | ArgoCD's images, with the `legacy` manifest (steps 2, 3) |
+| your browser | ArgoCD's address (step 4) | 443 | ArgoCD's web page |
+| ArgoCD, on the Supervisor | `github.com` | 443 | reading this repository (steps 6, 8) |
+| ArgoCD, on the Supervisor | the VKS cluster's API address | 6443 | deploying the test app (steps 7, 8) |
+| the VKS cluster's nodes | `docker.io` | 443 | the test app's image (step 8) |
+| your machine | the test app's address (step 8) | 80 | checking that the app answers |
 
 ## 1. Check for an ArgoCD you have
 

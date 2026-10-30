@@ -15,19 +15,30 @@ This installs kube-prometheus-stack 92.13.1 into a VKS cluster: Prometheus 3.15.
 kube-state-metrics 2.20.0. The chart is upstream (prometheus-community); Broadcom does not
 support it. Broadcom's supported metrics option is the Prometheus add-on, which has no Grafana.
 
-You need:
-
-- a VKS cluster with a default storage class ([CLUSTER.md](CLUSTER.md)), its kubeconfig
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) and [Helm](HELM.md), or for step 9 the
-  ArgoCD of [ARGOCD.md](ARGOCD.md);
-- 20 GiB of storage for Prometheus, inside the vSphere Namespace's storage limit, if one is set;
-- nodes that reach `quay.io`, `ghcr.io`, `registry.k8s.io` and `docker.io`, and a machine that
-  reaches `github.com` and `release-assets.githubusercontent.com`.
-
 Steps 4 and 5 install with Helm; step 9 installs with ArgoCD instead.
 
 The blocks keep their files in `~/.config/vks-guides/monitoring` (PowerShell:
 `$HOME\.config\vks-guides\monitoring`).
+
+## Prerequisites
+
+- a VKS cluster with a default storage class ([CLUSTER.md](CLUSTER.md)), its kubeconfig
+  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) and [Helm](HELM.md), or for step 9 the
+  ArgoCD of [ARGOCD.md](ARGOCD.md) and your [Supervisor login](LOGIN.md);
+- [kubectl](KUBECTL.md), [curl and jq](PREREQS.md);
+- 20 GiB of storage for Prometheus, inside the vSphere Namespace's storage limit, if one is set.
+
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps), Grafana through `localhost:3000` (step 7) |
+| the cluster's nodes | `quay.io`, `ghcr.io`, `registry.k8s.io`, `docker.io` | 443 | the images |
+| your machine | `github.com`, `release-assets.githubusercontent.com` | 443 | the chart, with Helm (step 4) |
+| your machine | the Supervisor's address | 443 | kubectl, with ArgoCD (steps 9, 10) |
+| ArgoCD, on the Supervisor | `prometheus-community.github.io`, `github.com`, `release-assets.githubusercontent.com` | 443 | the chart, with ArgoCD (step 9) |
+| ArgoCD, on the Supervisor | the VKS cluster's API address | 6443 | installing into the cluster, with ArgoCD (step 9) |
 
 ## 1. Check the cluster
 

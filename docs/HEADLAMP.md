@@ -27,7 +27,8 @@ exactly that token's rights: someone with a read-only token can look, not change
 - for the Kubescape plugin only (step 11): [Helm](HELM.md);
 - about 250m CPU and 400 MiB of memory free on the workers, for Headlamp and cert-manager.
 
-The connections this guide needs, for a firewall (all TCP):
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|

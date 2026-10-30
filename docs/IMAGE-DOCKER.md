@@ -13,8 +13,12 @@ pushes it to a Harbor project (public, or private with step 5), and runs it in a
 [IMAGE.md](IMAGE.md) is the full guide (podman, macOS, Windows, checks); this one has only the
 commands.
 
-You need:
-- docker 29.5 or newer ([Prerequisites](PREREQS.md#podman-and-docker-optional)), `curl`,
+Run every block in the same terminal, one after the other: the first block sets the values the
+others use. If you open a new terminal, run the first block again.
+
+## Prerequisites
+
+- docker 29.5 or newer ([PREREQS.md](PREREQS.md#podman-and-docker-optional)), `curl`,
   `openssl` and [kubectl](KUBECTL.md);
 - a Harbor project and a robot account that may push to it ([HARBOR.md](HARBOR.md) step 10);
 - for a private project, also a robot that may only pull: in Harbor's web page, as in HARBOR.md
@@ -22,10 +26,19 @@ You need:
   `robot$` and the name you type;
 - `kubectl` pointed at your VKS cluster in this terminal: [LOGIN.md](LOGIN.md),
   *Get the VKS cluster's kubeconfig*, then *Make it the default in this terminal*;
-- a machine that reaches `raw.githubusercontent.com` and `docker.io` (the app's base image).
+- one free load-balancer address, for the app (step 6).
 
-Run every block in the same terminal, one after the other: the first block sets the values the
-others use. If you open a new terminal, run the first block again.
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | Harbor's address | 443 | Harbor's CA (step 1), login and push (steps 4, 5) |
+| your machine | `raw.githubusercontent.com` | 443 | the app's files (steps 3, 5, 6) |
+| your machine | `docker.io` | 443 | the app's base image (step 3) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 5 to 8) |
+| the VKS cluster's nodes | Harbor's address | 443 | pulling the app's image (step 6) |
+| your machine and your browser | the app's address (step 7) | 80 | opening the app (step 7) |
 
 ## 0. Set your values
 

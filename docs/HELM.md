@@ -11,7 +11,19 @@ Helm installs ready-made app packages (*charts*) into a Kubernetes cluster;
 [MONITORING.md](MONITORING.md) and other guides use it. This downloads the official `helm`
 program, checks that it arrived whole (its SHA-256 checksum) and copies it into `INSTALL_DIR`. If
 that folder needs `sudo` and `sudo` would ask for a password, it uses `~/.local/bin` instead (see
-[Prerequisites](PREREQS.md#sudo-optional)). On Windows it also adds the folder to your PATH.
+[PREREQS.md](PREREQS.md#sudo-optional)). On Windows it also adds the folder to your PATH.
+
+## Prerequisites
+
+- [curl and tar](PREREQS.md) (Linux, macOS, WSL); Windows PowerShell needs nothing else.
+
+The connections this guide needs, for a firewall (all TCP, besides DNS):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | `get.helm.sh` | 443 | downloading Helm and its checksum |
+
+## Install Helm
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>

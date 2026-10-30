@@ -14,18 +14,30 @@ This installs Broadcom's Fluent Bit add-on (Product tier) on a VKS cluster. It r
 node and sends the cluster's logs over HTTPS, with certificate verification, to Log Management
 in VCF Operations, where they appear under **Operate** → **Logs**.
 
-You need:
-
-- the [VCF CLI](VCF.md) with its plugins, a [Supervisor login](LOGIN.md) and the VKS cluster's
-  kubeconfig
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
-- Log Management's DNS name and the CA certificate (PEM) that signed its certificate, from your
-  VCF Operations administrator;
-- ingestion authentication not enforced in Log Management (the default);
-- nodes that reach Log Management on port 9543.
-
 The blocks keep their files in `~/.config/vks-guides/logging` (PowerShell:
 `$HOME\.config\vks-guides\logging`).
+
+## Prerequisites
+
+- the [VCF CLI](VCF.md) with its plugins, a [Supervisor login](LOGIN.md) and the VKS cluster's
+  kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+- [kubectl](KUBECTL.md), [curl and openssl](PREREQS.md);
+- Log Management's DNS name and the CA certificate (PEM) that signed its certificate, from your
+  VCF Operations administrator;
+- ingestion authentication not enforced in Log Management (the default).
+
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | the Supervisor's address | 443 | the VCF CLI (steps 1, 4, 7, 8) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 5 to 7) |
+| your machine | Log Management's DNS name | 9543 | checking its certificate (step 2) |
+| the cluster's nodes | `projects.packages.broadcom.com`, or your own copy of it ([ADDONS.md](ADDONS.md)) | 443 | the Fluent Bit add-on |
+| Fluent Bit, on every node | Log Management's DNS name | 9543 | sending the logs |
+| the cluster's nodes | `docker.io` | 443 | the test pod's image (step 6) |
+| your browser | VCF Operations | 443 | **Operate** → **Logs** (step 6) |
 
 ## 1. Find the Fluent Bit release
 

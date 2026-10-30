@@ -14,19 +14,32 @@ podman or docker, pushes it to a Harbor project, runs it in a VKS cluster from H
 it in a browser and with `curl`. The page it shows names the engine that built it, so you can tell
 it from the same app pulled from Docker Hub.
 
-Needs:
-- Harbor with a project and a robot account that may push to it
-  ([HARBOR.md](HARBOR.md), steps 1 to 10), and Harbor's CA in
-  `~/.config/vks-guides/harbor/harbor-ca.crt` ([step 9](HARBOR.md#save-the-ca), or step 1 below);
-- podman or docker ([Prerequisites](PREREQS.md#podman-and-docker-optional)), `curl`, `jq` and
-  `openssl`, and [kubectl](KUBECTL.md);
-- the VKS cluster's kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
-- a machine that reaches `github.com` and `docker.io` (the app's base image).
-
 Every step works with podman or docker. Steps 3, 4 and 6 start with `CONTAINER_ENGINE="podman"`:
 keep it for podman, or change it to `CONTAINER_ENGINE="docker"` for docker. The app runs in its
 own namespace, `harbor-demo`: [ARGOCD.md](ARGOCD.md) keeps the same app in `test-web-apps` and would
 undo changes there.
+
+## Prerequisites
+
+- Harbor with a project and a robot account that may push to it
+  ([HARBOR.md](HARBOR.md), steps 1 to 10), and Harbor's CA in
+  `~/.config/vks-guides/harbor/harbor-ca.crt` ([HARBOR.md step 9](HARBOR.md#save-the-ca), or step 1 below);
+- [podman or docker](PREREQS.md#podman-and-docker-optional), [curl, jq and openssl](PREREQS.md),
+  and [kubectl](KUBECTL.md);
+- the VKS cluster's kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+- one free load-balancer address, for the app (step 6).
+
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | Harbor's address | 443 | Harbor's CA (step 1), login and push (step 4) |
+| your machine | `raw.githubusercontent.com` | 443 | the app's files (step 3) |
+| your machine | `docker.io` | 443 | the app's base image (step 3) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 5 to 8) |
+| the VKS cluster's nodes | Harbor's address | 443 | pulling the app's image (step 6) |
+| your machine and your browser | the app's address (step 7) | 80 | opening the app (step 7) |
 
 ## 1. Get Harbor's CA
 
@@ -161,7 +174,7 @@ Let the podman machine import the keychain's CAs: `podman machine stop`, then
 
 #### docker
 
-- With Colima ([Prerequisites](PREREQS.md#podman-and-docker-on-macos)), which does not read the
+- With Colima ([PREREQS.md](PREREQS.md#podman-and-docker-on-macos)), which does not read the
   keychain, put the CA into its virtual machine:
 
   ```sh
@@ -302,7 +315,7 @@ else {
 - `Cannot connect to the Docker daemon` or `permission denied … docker.sock`: see
   [Check podman and docker](PREREQS.md#check-podman-and-docker).
 - podman on Photon OS: `user namespaces are not enabled`: use docker there
-  ([Prerequisites](PREREQS.md#podman-and-docker-on-photon-os-5)).
+  ([PREREQS.md](PREREQS.md#podman-and-docker-on-photon-os-5)).
 
 ## 4. Push it to Harbor
 
@@ -414,7 +427,7 @@ project now lists the repository `test-web-apps`.
 **If not:**
 - `x509: certificate signed by unknown authority`: do step 2 for your engine. With docker, a login
   that works followed by this error at the push (`failed to fetch oauth token`) means docker is
-  older than 29.5 ([Prerequisites](PREREQS.md#podman-and-docker-optional)).
+  older than 29.5 ([PREREQS.md](PREREQS.md#podman-and-docker-optional)).
 - `unauthorized` (podman: `invalid username/password`): the robot's name or secret is wrong, or it
   has expired.
 - `denied: requested access to the resource is denied` (podman) or `insufficient_scope` (docker):
