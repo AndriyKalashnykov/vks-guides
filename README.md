@@ -42,6 +42,7 @@ monitoring and Helm.
 | [Run GitLab in a VKS cluster](docs/GITLAB.md) | GitLab Community Edition, Git and CI/CD in one product, in one pod of a VKS cluster, with a runner that runs each CI job as a pod; an alternative to Gitea and Tekton |
 | [Build and deploy on every push](docs/CICD.md) | a push to a Git repository builds the image in the VKS cluster, pushes it to Harbor and has ArgoCD roll it out, with Gitea and Tekton or with GitLab |
 | [VKS add-ons](docs/ADDONS.md) | what add-ons are, why to use them instead of installing software yourself, and how to list the catalog and what a cluster has |
+| [Headlamp: a web console for a VKS cluster](docs/HEADLAMP.md) | Broadcom's Headlamp add-on, accounts with the least rights and tokens for them, optional access by name through Contour, and the Prometheus and Kubescape plugins |
 | [Install Helm](docs/HELM.md) | the Kubernetes package manager, for installing charts such as the monitoring stack |
 | [Monitor a VKS cluster](docs/MONITORING.md) | Prometheus, Alertmanager and Grafana in a VKS cluster, from the upstream kube-prometheus-stack chart, with Helm or ArgoCD |
 | [Send a VKS cluster's logs to VCF Operations](docs/LOGGING.md) | Broadcom's Fluent Bit add-on, sending the cluster's logs over HTTPS to Log Management in VCF Operations |
@@ -99,6 +100,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [CI/CD with Gitea and Tekton](docs/CICD.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [CI/CD with GitLab](docs/CICD.md) | part | ✅ | — | — | — |
 | [VKS add-ons](docs/ADDONS.md) | — | ✅ | — | ✅ | — |
+| [Headlamp](docs/HEADLAMP.md) | — | ✅ | — | ✅ | — |
 | [Install Helm](docs/HELM.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | part | part | ✅ | ✅ |
 | [Send logs to VCF Operations](docs/LOGGING.md) | part | part | part | part | — |

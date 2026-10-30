@@ -59,6 +59,7 @@ for that reason.
 | [Run Tekton in a VKS cluster](TEKTON.md), option A | Tekton Operator | a CI/CD engine |
 | [Send a VKS cluster's logs to VCF Operations](LOGGING.md) | Fluent Bit | send the cluster's logs out |
 | [See a VKS cluster's logs and traces in Grafana](OBSERVABILITY.md) | Fluent Bit | send the logs to Loki |
+| [Headlamp: a web console for a VKS cluster](HEADLAMP.md) | Headlamp, cert-manager; Contour and Prometheus if you choose | a web page for the cluster, its plugins, access by name |
 | [OBSERVABILITY.md, step 11](OBSERVABILITY.md#11-let-vcf-operations-collect-the-clusters-kubernetes-metrics-optional) | Telegraf, Prometheus | metrics for VCF Operations; a cluster label installs them |
 
 ## See the catalog
