@@ -439,9 +439,9 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedenti
 **Clusters** lists the namespace at `https://kubernetes.default.svc/?context=<namespace>`, status
 **Unknown** until an Application uses it (picture in step 7).
 
-**If not:** not `Ready` after a minute: this prints the conditions that failed: `kubectl
---kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> get managedentity ns-<namespace> -o
-jsonpath='{range .status.conditions[?(@.status!="True")]}{.type}{": "}{.reason}{": "}{.message}{"\n"}{end}'`.
+**If not:** not `Ready` after a minute: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD
+namespace> get managedentity ns-<namespace> -o yaml` shows, under `conditions`, the ones with
+`status: "False"` and why.
 `MissingRoleBinding`: the RoleBinding was not created.
 
 ## 6. Create a VKS cluster with ArgoCD
@@ -927,9 +927,9 @@ if (-not $D) {
 ![Settings, Clusters: the VKS cluster at https://192.168.101.134:6443 with status Unknown, and the namespace with status Successful](img/argocd/09-clusters.png)
 
 **If not:**
-- Not `Ready`: this prints the conditions that failed: `kubectl --kubeconfig
-  <supervisor.kubeconfig> -n <ArgoCD namespace> get managedentity vks-<namespace>-<cluster> -o
-  jsonpath='{range .status.conditions[?(@.status!="True")]}{.type}{": "}{.reason}{": "}{.message}{"\n"}{end}'`.
+- Not `Ready`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> get
+  managedentity vks-<namespace>-<cluster> -o yaml` shows, under `conditions`, the ones with
+  `status: "False"` and why.
   `MissingRoleBinding`: the RoleBinding above is missing.
 - `secrets "cls-vks-…" not found`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD
   namespace> get secret -l argocd.argoproj.io/secret-type=cluster` lists the stored destinations.
@@ -977,9 +977,9 @@ administrator.
 ### Add every VKS cluster of a namespace (optional)
 
 Instead of one ManagedEntity per cluster, this asks the ArgoCD Service to add every VKS cluster in
-`VKS_NAMESPACE`, also the ones created later, the same way as the block above: the same destination
-`<cluster>-<namespace>` and the same Secret, so step 8 and the check above work unchanged. A
-cluster already added with the block above stays as it is.
+`VKS_NAMESPACE`, also the ones created later once they are ready, the same way as the block above:
+the same destination `<cluster>-<namespace>` and the same Secret, so step 8 and the check above work
+unchanged. A cluster already added with the block above stays as it is.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1066,7 +1066,7 @@ spec:
 **Expect:** `rolebinding…/argocd-k8s-sa-vks created` (or `unchanged`) and
 `entitymanagementpolicy…/vks-clusters-<namespace> created`.
 
-**If not:** the same as for the block above.
+**If not:** `clusterroles…"argocd-manage-vks" not found` or `Forbidden`: as for the block above.
 
 This shows what the policy decided for each cluster:
 
@@ -1363,7 +1363,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applicat
 prints two `NotFound` lines.
 
 This deletes the project, the namespace destination, ArgoCD's role in `VKS_NAMESPACE` and step 7's
-policy, if you made it. Run it only if steps 5 and 6 printed `created` for them. It deletes nothing while an Application of the
+policy. Run it only if steps 5 and 6 printed `created` for them (and step 7 for the policy). It deletes nothing while an Application of the
 project is left.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
