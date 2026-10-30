@@ -123,8 +123,13 @@ Remove-Item -Recurse -Force $TMP
 If this machine cannot reach dl.k8s.io, get `kubectl` from the Supervisor instead. This downloads
 the Supervisor's tool package, takes `kubectl` out of it and installs it like the block above. It
 works for amd64 Linux, macOS and Windows only. This `kubectl` has the Supervisor's version, which
-may be too old for your VKS cluster. The download does not check the Supervisor's certificate
-(`curl -k`). Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
+may be too old for your VKS cluster. The download checks the Supervisor's certificate against the
+vCenter CA, so first do step 1 of
+[Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca), including its
+`mv` block (on Linux and macOS it needs only curl, unzip and openssl). On Windows, then trust that
+CA with `Import-Certificate -FilePath "$HOME\.kube\vcenter-ca.pem" -CertStoreLocation
+Cert:\CurrentUser\Root` and confirm with **Yes**. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP
+address or DNS name.
 
 On Apple silicon this kubectl runs through Rosetta. If you have not installed Rosetta, do it
 first: `softwareupdate --install-rosetta --agree-to-license`.
@@ -134,6 +139,7 @@ first: `softwareupdate --install-rosetta --agree-to-license`.
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
+SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
 INSTALL_DIR="/usr/local/bin"
 
 case "$(uname -s)/$(uname -m)" in
@@ -145,7 +151,9 @@ TMP="$(mktemp -d)"
 
 if [ -z "$P" ]; then
   echo "FAILED: no Supervisor kubectl for $(uname -s)/$(uname -m)"
-elif ! curl -fsSk --connect-timeout 20 --speed-time 60 -o "$TMP/p.zip" "https://${SUPERVISOR_ENDPOINT}/wcp/plugin/${P}/vsphere-plugin.zip" \
+elif [ ! -s "$SUPERVISOR_CA" ]; then
+  echo "FAILED: no vCenter CA at $SUPERVISOR_CA (LOGIN.md, Create Supervisor context with CA, step 1)"
+elif ! curl -fsS --connect-timeout 20 --speed-time 60 --cacert "$SUPERVISOR_CA" -o "$TMP/p.zip" "https://${SUPERVISOR_ENDPOINT}/wcp/plugin/${P}/vsphere-plugin.zip" \
      || ! unzip -oq "$TMP/p.zip" bin/kubectl -d "$TMP"; then
   echo "FAILED: download from https://${SUPERVISOR_ENDPOINT}"
 else
@@ -172,10 +180,13 @@ fi; rm -rf "$TMP"
 $SUPERVISOR_ENDPOINT = "10.0.0.10"       # Supervisor IP or FQDN
 $INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
 
-$global:LASTEXITCODE = $null
+$ProgressPreference = 'SilentlyContinue'
+if ([Net.ServicePointManager]::SecurityProtocol -ne 'SystemDefault') { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 'Tls12' }
 $TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
-curl.exe -fsSk --connect-timeout 20 --speed-time 60 -o "$TMP\p.zip" "https://$SUPERVISOR_ENDPOINT/wcp/plugin/windows-amd64/vsphere-plugin.zip"
-if ($LASTEXITCODE -eq 0) { Expand-Archive -Force -Path "$TMP\p.zip" -DestinationPath "$TMP\p" -ErrorAction SilentlyContinue }
+try {
+  Invoke-WebRequest -UseBasicParsing -TimeoutSec 300 -Uri "https://$SUPERVISOR_ENDPOINT/wcp/plugin/windows-amd64/vsphere-plugin.zip" -OutFile "$TMP\p.zip"
+  Expand-Archive -Force -Path "$TMP\p.zip" -DestinationPath "$TMP\p" -ErrorAction SilentlyContinue
+} catch { $_.Exception.Message }
 
 if (-not (Test-Path "$TMP\p\bin\kubectl.exe")) {
   "FAILED: download from https://$SUPERVISOR_ENDPOINT"
@@ -203,8 +214,15 @@ Remove-Item -Recurse -Force $TMP
 **If not:**
 - `FAILED: no Supervisor kubectl for …` (Linux arm64): the Supervisor has none for this machine.
   Get dl.k8s.io unblocked and use [From dl.k8s.io](#from-dlk8sio).
+- `FAILED: no vCenter CA at …`: do step 1 of
+  [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca) first, including
+  its `mv` block.
 - `FAILED: download from …`: `SUPERVISOR_ENDPOINT` is wrong, or this machine cannot reach the
-  Supervisor. The `curl:` or `unzip:` line above it says which (in PowerShell, `curl:` only).
+  Supervisor. The `curl:` or `unzip:` line above it says which (in PowerShell, the message above
+  it). `curl: (60)` (PowerShell: `Could not establish trust relationship`): the CA is not the
+  vCenter CA, on Windows it is not trusted yet, or the certificate is not for
+  `SUPERVISOR_ENDPOINT` (curl says `subject name`): use the Supervisor's DNS name.
+  `curl: (77)`: the file at `SUPERVISOR_CA` is not a certificate; do step 1 again.
 - `bad CPU type in executable` (Apple silicon): install Rosetta with
   `softwareupdate --install-rosetta --agree-to-license`, then run the block again.
 - `note: …` and `WARNING: …` lines: as in [From dl.k8s.io](#from-dlk8sio).
