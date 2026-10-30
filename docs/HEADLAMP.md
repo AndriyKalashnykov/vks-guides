@@ -587,7 +587,9 @@ Headlamp shows its own text in the browser's language; **Settings** (gear) → *
   a new one (step 5).
 - The Namespaces list is empty: the account cannot list namespaces (step 4 gives an account limited
   to one namespace that right). Or set it yourself: **Settings** → **Cluster** → **Allowed
-  namespaces**, add your namespace.
+  namespaces**, add your namespace:
+
+  ![Cluster Settings: Allowed namespaces with headlamp-demo](img/headlamp/16-allowed-namespaces.png)
 
 ## 8. Log in with your own SSO user instead (optional)
 
