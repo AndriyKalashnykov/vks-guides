@@ -1159,9 +1159,12 @@ $V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o jso
 
 The Supervisor login lasts about 10 hours. This logs you in again with the password in this
 terminal and keeps the context `supervisor`. Run it only when a `kubectl` command to the
-Supervisor answers `error: You must be logged in to the server (Unauthorized)`, or a `vcf` command
-answers `Unable to read password from terminal` or `the server has asked for the client to provide
-credentials`. The VKS cluster's kubeconfig does not need it. In a new terminal, first run the
+Supervisor answers `error: You must be logged in to the server (Unauthorized)` or `… (the server
+has asked for the client to provide credentials)`, or a `vcf` command answers `Unable to read
+password from terminal` or `the server has asked for the client to provide credentials`. Its
+kubeconfig holds only a token: when the token ends, every context in it fails at once, while
+`vcf context list` still shows them as before, and only a new login (this block) helps, not a new
+file. The VKS cluster's kubeconfig does not need it. In a new terminal, first run the
 password step of the Create section you used, and mind the lock-out. Set `SUPERVISOR_CA` to the
 file you created the context with (the vCenter CA, or `supervisor.crt`), or to `""` if you created
 it without CA.
