@@ -154,7 +154,7 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 **Expect:** a new prompt. The password stays in this terminal until you close it or run
 [Log out](#log-out); in a new terminal, run this line again.
 
-**3. Create the context**
+<a id="create-the-context"></a>**3. Create the context**
 
 This logs you in to the Supervisor with the VCF CLI, as your SSO user with the password from step
 2, and checks the Supervisor's certificate against `SUPERVISOR_CA` (step 1's vCenter CA, or
@@ -415,15 +415,15 @@ that matches the one from your administrator, ignoring colons and upper/lower ca
   Supervisor.
 - A fingerprint that does not match: delete the file and do not log in with it.
 
-**3. Create the context:** run step 3 of
-[Create Supervisor context with CA](#create-supervisor-context-with-ca) with
+**3. Create the context:** run
+[step 3, *Create the context*, of Create Supervisor context with CA](#create-the-context) with
 `SUPERVISOR_CA="$HOME/.kube/supervisor.crt"` (PowerShell: `"$HOME\.kube\supervisor.crt"`).
 `x509: certificate is valid for …, not …` there means the certificate does not list the address
 in `SUPERVISOR_ENDPOINT`: use the DNS name or IP address the message lists.
 `x509: cannot validate certificate for <IP> because it doesn't contain any IP SANs` means it lists
 only DNS names: use the Supervisor's DNS name.
 `x509: certificate signed by unknown authority` means the Supervisor's certificate changed since
-you fetched it: fetch it again (step 2).
+you fetched it: fetch it again (step 2 above).
 
 </details>
 
@@ -597,9 +597,10 @@ kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" get nodes
 expired (about a year after the cluster made it); run
 [Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig) again.
 
-## Match kubectl to the cluster's version
+## Match kubectl to the cluster's version (optional)
 
-kubectl must be within one minor version of the cluster. This prints both versions:
+Optional: kubectl must be within one minor version of the cluster to be supported. This prints both
+versions, so you can tell:
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 

@@ -12,7 +12,7 @@
 `kubectl` is the Kubernetes command-line tool. Run **one** of the two install blocks:
 [From dl.k8s.io](#from-dlk8sio), or [From the Supervisor](#from-the-supervisor-dlk8sio-blocked)
 when this machine cannot reach dl.k8s.io. After you log in,
-[match it to your cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version).
+[match it to your cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
 
 ## From dl.k8s.io
 

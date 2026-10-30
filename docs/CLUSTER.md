@@ -297,7 +297,7 @@ Never switch the cluster's virtual machines on or off in the vSphere Client: VKS
 ## 7. Get the kubeconfig and check the cluster
 
 Run [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) and
-[Match kubectl to the cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version). Then
+[Match kubectl to the cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional). Then
 this checks the nodes and the default storage class.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
