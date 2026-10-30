@@ -19,22 +19,38 @@ You install Harbor in the vSphere Client; the blocks before and after need
 Written for VCF 9.1.1 and Harbor Service 2.15.2 on a Supervisor with vSphere Distributed Switch
 networking and the Foundation Load Balancer (not NSX). Upgrading Harbor is not covered.
 
-You need:
-
-- a vCenter administrator's SSO user (it may manage Supervisor Services and read Secrets on the
-  Supervisor);
-- a Broadcom support account that can download **vSphere Supervisor Services**;
-- a Supervisor that reaches `projects.packages.broadcom.com` (and `ghcr.io`, for Harbor's
-  scanner, Trivy);
-- a storage class with room for about 18 GiB, and one free load-balancer address;
-- someone who can create a DNS record.
-
 **Installing or uninstalling Harbor updates every node of every VKS cluster on this
 Supervisor**: VKS replaces some nodes and updates others in place, restarting their container
 runtimes. Do it before you create VKS clusters, or in a maintenance window.
 
 The blocks keep their files in `~/.config/vks-guides/harbor` (PowerShell:
 `$HOME\.config\vks-guides\harbor`). Run them all on the same machine.
+
+## Prerequisites
+
+- a vCenter administrator's SSO user (it may manage Supervisor Services and read Secrets on the
+  Supervisor), with a [Supervisor login](LOGIN.md) ([VCF CLI](VCF.md));
+- a Broadcom support account that can download **vSphere Supervisor Services**;
+- [kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md); for step 13 on Windows, `openssl.exe`
+  from [Git for Windows](https://git-scm.com/install/);
+- for step 10's podman or docker login (optional): [podman or docker](PREREQS.md#podman-and-docker-optional);
+- for step 11: a VKS cluster ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
+  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+- a storage class with room for about 18 GiB, and one free load-balancer address;
+- someone who can create a DNS record.
+
+The connections this guide needs, for a firewall (all TCP):
+
+| from | to | port | for |
+|---|---|---|---|
+| your browser | `support.broadcom.com` | 443 | downloading the Harbor files (step 2) |
+| your browser | vCenter (the vSphere Client) | 443 | registering, installing, changing and removing Harbor (steps 5, 6, 12 to 14) |
+| your machine | the Supervisor's address | 443 | kubectl with the Supervisor kubeconfig (steps 1, 4, 6 to 9, 12 to 14) |
+| the Supervisor | `projects.packages.broadcom.com` | 443 | Harbor's images (step 6) |
+| the Supervisor | `ghcr.io` | 443 | Harbor's scanner, Trivy: its vulnerability data |
+| your machine and your browser | Harbor's address | 443 | checks, API calls, web page, podman or docker login (steps 7, 9, 10) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (step 11) |
+| the VKS cluster's nodes | Harbor's address | 443 | pulling images from Harbor (step 11) |
 
 ## 1. Check the Supervisor
 

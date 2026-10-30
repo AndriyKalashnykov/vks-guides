@@ -14,19 +14,30 @@ podman or docker, pushes it to a Harbor project, runs it in a VKS cluster from H
 it in a browser and with `curl`. The page it shows names the engine that built it, so you can tell
 it from the same app pulled from Docker Hub.
 
-Needs:
-- Harbor with a project and a robot account that may push to it
-  ([HARBOR.md](HARBOR.md), steps 1 to 10), and Harbor's CA in
-  `~/.config/vks-guides/harbor/harbor-ca.crt` ([step 9](HARBOR.md#save-the-ca), or step 1 below);
-- podman or docker ([Prerequisites](PREREQS.md#podman-and-docker-optional)), `curl`, `jq` and
-  `openssl`, and [kubectl](KUBECTL.md);
-- the VKS cluster's kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
-- a machine that reaches `github.com` and `docker.io` (the app's base image).
-
 Every step works with podman or docker. Steps 3, 4 and 6 start with `CONTAINER_ENGINE="podman"`:
 keep it for podman, or change it to `CONTAINER_ENGINE="docker"` for docker. The app runs in its
 own namespace, `harbor-demo`: [ARGOCD.md](ARGOCD.md) keeps the same app in `test-web-apps` and would
 undo changes there.
+
+## Prerequisites
+
+- Harbor with a project and a robot account that may push to it
+  ([HARBOR.md](HARBOR.md), steps 1 to 10), and Harbor's CA in
+  `~/.config/vks-guides/harbor/harbor-ca.crt` ([HARBOR.md step 9](HARBOR.md#save-the-ca), or step 1 below);
+- [podman or docker](PREREQS.md#podman-and-docker-optional), [curl, jq and openssl](PREREQS.md),
+  and [kubectl](KUBECTL.md);
+- the VKS cluster's kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+
+The connections this guide needs, for a firewall (all TCP):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | Harbor's address | 443 | Harbor's CA (step 1), login and push (step 4) |
+| your machine | `raw.githubusercontent.com` | 443 | the app's files (step 3) |
+| your machine | `docker.io` | 443 | the app's base image (step 3) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 5 to 8) |
+| the VKS cluster's nodes | Harbor's address | 443 | pulling the app's image (step 6) |
+| your machine and your browser | the app's address (step 7) | 80 | opening the app (step 7) |
 
 ## 1. Get Harbor's CA
 

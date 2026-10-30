@@ -13,6 +13,19 @@ vSphere service that holds your vSphere Namespace). The
 plugin bundle adds its other commands (`vcf cluster`, `vcf addon`, …). Download two files from
 Broadcom, then run the install block; it needs no internet access.
 
+## Prerequisites
+
+- a Broadcom support account with access to your company's VMware downloads ([Download](#download));
+- [tar](PREREQS.md) (Linux, macOS);
+- for [the check of your contexts](#what-a-login-creates-and-when-it-matters) only:
+  [kubectl](KUBECTL.md) and [jq](PREREQS.md).
+
+The connections this guide needs, for a firewall (all TCP):
+
+| from | to | port | for |
+|---|---|---|---|
+| your browser | `support.broadcom.com` | 443 | Download |
+
 ## Download
 
 You need a Broadcom support account with access to your company's VMware downloads (ask your

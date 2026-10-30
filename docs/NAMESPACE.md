@@ -15,17 +15,28 @@
 > - [Create a Self-Service Namespace](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/configuring-and-managing-vsphere-namespaces/provision-a-self-service-namespace/create-a-self-service-namespace.html) and [Delete a Self-Service Namespace](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/configuring-and-managing-vsphere-namespaces/provision-a-self-service-namespace/delete-a-self-service-namespace.html) (step 10, kubectl)
 
 You create the namespace in the vSphere Client, give users a role in it, and add a storage
-policy and VM classes. Steps 2 to 7 are clicks. Step 1 has a block that needs
-[unzip and openssl](PREREQS.md); steps 8 and 9 use a terminal and need [kubectl](KUBECTL.md),
-[jq](PREREQS.md) and a [Supervisor login](LOGIN.md). The names are
-those of the vSphere Client for VCF 9.1.1, on a Supervisor with vSphere Distributed Switch
-networking. The screenshots show example names; yours differ.
+policy and VM classes. Steps 2 to 7 are clicks. The names are those of the vSphere Client for
+VCF 9.1.1, on a Supervisor with vSphere Distributed Switch networking. The screenshots show example
+names; yours differ.
 
-You need a vCenter user who may create vSphere Namespaces (a vCenter administrator) and a
-Supervisor that is running. If you only use a namespace someone else made, go to
+If you only use a namespace someone else made, go to
 [Check the namespace](#8-check-the-namespace). If the Supervisor's Namespace Service is on, you
 can instead create the namespace from a YAML file with kubectl:
 [step 10](#10-create-a-namespace-with-kubectl-and-a-yaml-file).
+
+## Prerequisites
+
+- a vCenter user who may create vSphere Namespaces (a vCenter administrator), and a Supervisor
+  that is running;
+- for step 1: [unzip and openssl](PREREQS.md);
+- for steps 8 to 10: [kubectl](KUBECTL.md), [jq](PREREQS.md) and a [Supervisor login](LOGIN.md).
+
+The connections this guide needs, for a firewall (all TCP):
+
+| from | to | port | for |
+|---|---|---|---|
+| your browser | vCenter (`https://<your vCenter>/ui`) | 443 | the vSphere Client (steps 1 to 7, 9) |
+| your machine | the Supervisor's address | 443 | kubectl (steps 8 to 10) |
 
 ## 1. Find the Supervisor's address and vCenter's CA
 

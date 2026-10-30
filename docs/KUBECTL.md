@@ -14,6 +14,20 @@
 when this machine cannot reach dl.k8s.io. After you log in,
 [match it to your cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
 
+## Prerequisites
+
+- [curl](PREREQS.md); for [From the Supervisor](#from-the-supervisor-dlk8sio-blocked) also
+  [unzip and openssl](PREREQS.md), the Supervisor's IP address or DNS name, and the vCenter CA
+  from step 1 of [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca).
+
+The connections this guide needs, for a firewall (all TCP):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | `dl.k8s.io` | 443 | From dl.k8s.io |
+| your machine | vCenter | 443 | From the Supervisor: the vCenter CA ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca), step 1) |
+| your machine | the Supervisor's address | 443 | From the Supervisor |
+
 ## From dl.k8s.io
 
 This installs `kubectl`, so that you can type `kubectl` in any terminal. It downloads the official

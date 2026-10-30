@@ -49,17 +49,31 @@ What VCF 9.1 itself offers:
 - **Traces:** none of these Broadcom pages describes a view of an app's traces; this guide keeps
   them in Jaeger.
 
-You need:
-
-- MONITORING.md steps 1 to 7, or steps 1 to 3 and 9, and [Helm](HELM.md);
-- the [VCF CLI](VCF.md) with its plugins and a [Supervisor login](LOGIN.md), for the Fluent Bit
-  add-on;
-- 10 GiB more storage for Loki, inside the vSphere Namespace's storage limit, if one is set;
-- nodes that reach `docker.io` and `ghcr.io`, and a machine that reaches `github.com` and
-  `release-assets.githubusercontent.com`.
-
 The blocks keep their files in `~/.config/vks-guides/observability` (PowerShell:
 `$HOME\.config\vks-guides\observability`).
+
+## Prerequisites
+
+- [MONITORING.md](MONITORING.md) steps 1 to 7, or steps 1 to 3 and 9, and [Helm](HELM.md);
+- the [VCF CLI](VCF.md) with its plugins and a [Supervisor login](LOGIN.md), for the Fluent Bit
+  add-on;
+- [kubectl](KUBECTL.md), [curl and jq](PREREQS.md);
+- 10 GiB more storage for Loki, inside the vSphere Namespace's storage limit, if one is set;
+- for step 11, what [its list](#11-let-vcf-operations-collect-the-clusters-kubernetes-metrics-optional) names.
+
+The connections this guide needs, for a firewall (all TCP):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | `github.com`, `release-assets.githubusercontent.com` | 443 | the Loki and Jaeger charts (steps 3, 4) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (steps 1 to 8, 11.5, 12) |
+| your machine | the Supervisor's address | 443 | the VCF CLI (step 5), kubectl (steps 11, 12) |
+| the cluster's nodes | `docker.io`, `ghcr.io` | 443 | the Loki, Jaeger and sample app images |
+| the cluster's nodes | `projects.packages.broadcom.com`, or your own copy of it ([ADDONS.md](ADDONS.md)) | 443 | the Fluent Bit add-on; the Telegraf and Prometheus add-ons (step 11) |
+| Fluent Bit, on every node | Log Management's DNS name | 9543 | only if you set `LOGS_FQDN` (step 5) |
+| your browser | VCF Operations | 443 | steps 10, 11.6 |
+| your browser | `support.broadcom.com`, vCenter (the vSphere Client) | 443 | step 11.2; steps 11.3, 11.4, 12 |
+| the Supervisor | `projects.packages.broadcom.com` | 443 | the Metrics Aggregator service (step 11) |
 
 ## 1. Check the cluster
 

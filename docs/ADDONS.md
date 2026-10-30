@@ -20,6 +20,17 @@ Supervisor, for all vSphere Namespaces. An add-on runs inside one VKS cluster, f
 cluster. Harbor is also an add-on: that is a separate registry inside one VKS cluster, not the
 Supervisor Service.
 
+## Prerequisites
+
+- for the two blocks at the end: the [VCF CLI](VCF.md) with the context `supervisor`
+  ([LOGIN.md](LOGIN.md)).
+
+The connections this guide needs, for a firewall (all TCP):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | the Supervisor's address | 443 | the VCF CLI ([See the catalog](#see-the-catalog), [See what a cluster has](#see-what-a-cluster-has)) |
+
 ## Why use an add-on instead of installing the software yourself
 
 Anyone with the cluster's administrator kubeconfig can also install the same software straight into

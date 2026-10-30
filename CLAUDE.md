@@ -24,6 +24,10 @@ blocks; there is nothing to build.
 - Each guide opens with a `> [!NOTE]` callout, first line `**Official … documentation … for this
   guide**`, listing the official docs it follows (Broadcom VCF 9.1 TechDocs; kubernetes.io or the
   tool's own docs where Broadcom has none). Open a link before adding it.
+- Each guide has a `## Prerequisites` chapter right after its intro: the guides to do first, the
+  shared tools as a link to PREREQS.md (never their install), what this guide alone needs (roles,
+  resources), and a table of the connections its blocks make, for a firewall:
+  `| from | to | port | for |`, every row taken from a block or a URL in the guide.
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
 - Passwords are typed (`read -rs` / `Read-Host -AsSecureString`) and passed only as the
   `VCF_CLI_VSPHERE_PASSWORD` env var for one command; never on argv, never saved.

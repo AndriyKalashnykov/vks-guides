@@ -14,17 +14,25 @@ SQLite on a 5 GiB volume. Gitea is upstream; Broadcom does not support it. You r
 `kubectl port-forward`; step 8 also lets other machines (such as ArgoCD on the Supervisor) clone
 from it over plain HTTP. Upgrades and backups are not covered.
 
-You need:
+The blocks keep their files in `~/.config/vks-guides/gitea` (PowerShell:
+`$HOME\.config\vks-guides\gitea`).
+
+## Prerequisites
 
 - a VKS cluster with a default storage class ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md), [git](https://git-scm.com/install/), and for
   step 4 option B [Helm](HELM.md);
-- nodes that reach `docker.io`;
 - for step 8, one free load-balancer address.
 
-The blocks keep their files in `~/.config/vks-guides/gitea` (PowerShell:
-`$HOME\.config\vks-guides\gitea`).
+The connections this guide needs, for a firewall (all TCP):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps), and the port-forward to Gitea (steps 6, 7) |
+| the cluster's nodes | `docker.io` | 443 | Gitea's image (step 4) |
+| your machine | `dl.gitea.com` | 443 | Gitea's Helm chart (step 4, option B) |
+| ArgoCD, your machine, other machines that clone | Gitea's load-balancer address (step 8) | 3000 | cloning over plain HTTP |
 
 ## 1. Check the cluster
 

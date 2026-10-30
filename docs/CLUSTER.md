@@ -25,9 +25,23 @@ of the vSphere Client for VCF 9.1.1 with VKS 3.7. The screenshots show example n
 differ. Steps 3 to 5 were tested as a vCenter administrator; the terminal steps also as a user
 with only **Namespaces Edit**.
 
-You need a vSphere Namespace that passes [Check the namespace](NAMESPACE.md#8-check-the-namespace),
-and the **Edit** role on it. To create the cluster from a YAML file with kubectl instead of
-clicks, see [step 9](#9-create-the-cluster-with-kubectl-and-a-yaml-file).
+To create the cluster from a YAML file with kubectl instead of clicks, see
+[step 9](#9-create-the-cluster-with-kubectl-and-a-yaml-file).
+
+## Prerequisites
+
+- a vSphere Namespace that passes [Check the namespace](NAMESPACE.md#8-check-the-namespace), and
+  the **Edit** role on it;
+- a [Supervisor login](LOGIN.md) with the [VCF CLI](VCF.md), [kubectl](KUBECTL.md) and
+  [jq](PREREQS.md).
+
+The connections this guide needs, for a firewall (all TCP):
+
+| from | to | port | for |
+|---|---|---|---|
+| your browser | vCenter (the vSphere Client) | 443 | creating and watching the cluster (steps 3 to 6) |
+| your machine | the Supervisor's address | 443 | kubectl with the Supervisor kubeconfig (steps 1, 2, 6, 8, 9) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 7, 8) |
 
 ## 1. Check the namespace
 

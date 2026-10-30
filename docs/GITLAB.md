@@ -20,23 +20,32 @@ backups are not covered.
 > Kubernetes, its [Helm chart](https://docs.gitlab.com/charts/), which needs PostgreSQL, Redis and
 > object storage outside the cluster. For production, use one of those.
 
-You need:
-
-- a VKS cluster with a default storage class ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), with a worker that has 6 GiB memory and
-  8 GiB disk free, such as a new `best-effort-large` worker (4 CPU, 16 GiB): GitLab alone uses
-  about 4 GiB. To build images with it as in [CICD.md](CICD.md), make the cluster with the worker
-  from CICD.md's *You need* first: the default disk is too small for that;
-- [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md), [git](https://git-scm.com/install/), and for
-  step 8 [Helm](HELM.md);
-- nodes that reach `docker.io` and `registry.gitlab.com`;
-- for step 7, one free load-balancer address.
-
 Already run GitLab? Step 8 installs only the runner: set `GITLAB_URL` in it to your GitLab, and
 create the runner in your own project.
 
 The blocks keep their files in `~/.config/vks-guides/gitlab` (PowerShell:
 `$HOME\.config\vks-guides\gitlab`).
+
+## Prerequisites
+
+- a VKS cluster with a default storage class ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
+  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), with a worker that has 6 GiB memory and
+  8 GiB disk free, such as a new `best-effort-large` worker (4 CPU, 16 GiB): GitLab alone uses
+  about 4 GiB. To build images with it as in [CICD.md](CICD.md), make the cluster with the worker
+  from [CICD.md's Prerequisites](CICD.md#prerequisites) first: the default disk is too small for that;
+- [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md), [git](https://git-scm.com/install/), and for
+  step 8 [Helm](HELM.md);
+- for step 7, one free load-balancer address.
+
+The connections this guide needs, for a firewall (all TCP):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps), and the port-forward to GitLab (steps 5, 6, 8, 9) |
+| the cluster's nodes | `docker.io` | 443 | GitLab's image (step 3), the CI job image (step 9) |
+| the cluster's nodes | `registry.gitlab.com` | 443 | the runner and its helper image (steps 8, 9) |
+| your machine | `gitlab-charts.s3.amazonaws.com` | 443 | the runner's Helm chart (step 8) |
+| ArgoCD, your machine, other machines that clone | GitLab's load-balancer address (step 7) | 80 | cloning over plain HTTP |
 
 ## 1. Check the cluster
 

@@ -12,20 +12,35 @@
 > - Kubernetes: [Version Skew Policy](https://kubernetes.io/releases/version-skew-policy/)
 
 You log in to the Supervisor with the VCF CLI and your vCenter SSO user, then read your VKS
-cluster's kubeconfig from it. Needs [kubectl](KUBECTL.md), the [VCF CLI](VCF.md) and
-[Prerequisites](PREREQS.md). Have these at hand:
-
-- the Supervisor's IP address or DNS name, and vCenter's DNS name;
-- an SSO user with a role on your vSphere Namespace (for example `administrator@vsphere.local`),
-  and its password (a login through a web page, Okta or Entra ID is not covered);
-- the vSphere Namespace's name and, once you see it in
-  [Check your vSphere Namespace](#check-your-vsphere-namespace), the VKS cluster's name.
+cluster's kubeconfig from it.
 
 Run the sections in order, in one terminal, doing **one** of
 [Create Supervisor context with CA](#create-supervisor-context-with-ca) or
 [Create Supervisor context without CA](#create-supervisor-context-without-ca). After that, you
 need only [Renew the Supervisor login](#renew-the-supervisor-login) when the login ends, and
 [Log out](#log-out) when you are done.
+
+## Prerequisites
+
+- [kubectl](KUBECTL.md), the [VCF CLI](VCF.md), and [curl, unzip, openssl and jq](PREREQS.md);
+- the Supervisor's IP address or DNS name, and vCenter's DNS name
+  ([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca), step 1);
+- an SSO user with a role on your vSphere Namespace (for example `administrator@vsphere.local`),
+  and its password (a login through a web page, Okta or Entra ID is not covered); to read a VKS
+  cluster's kubeconfig, the **Edit** role;
+- the vSphere Namespace's name and, once you see it in
+  [Check your vSphere Namespace](#check-your-vsphere-namespace), the VKS cluster's name.
+
+The connections this guide needs, for a firewall (all TCP):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine | vCenter | 443 | the vCenter CA ([Create Supervisor context with CA](#create-supervisor-context-with-ca), step 1) |
+| your machine | the Supervisor's address | 443 | the VCF CLI and kubectl to the Supervisor (create the context, check the namespace, get the kubeconfig, renew) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl to the VKS cluster |
+| your browser | vCenter (the vSphere Client) | 443 | [Download the VKS cluster's kubeconfig from the vSphere Client](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client) |
+| the person's machine | the Supervisor's address | 443 | [The person's own SSO account](#the-persons-own-sso-account): the plugin and its login |
+| the person's machine | the VKS cluster's API address | 6443 | the person's kubeconfig ([Give a person or team a kubeconfig](#give-a-person-or-team-a-kubeconfig-without-the-vcf-cli-optional)) |
 
 ## Create Supervisor context with CA
 
