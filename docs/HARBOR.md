@@ -172,12 +172,18 @@ foreach ($f in $HARBOR_MANIFEST, $HARBOR_VALUES_TEMPLATE) {
   without **legacy** in its name; download the other one.
 - Any other checksum: a damaged or wrong download. Delete it and download it again.
 
-## 3. Make the secrets file
+## 3. Make the secrets file (optional)
 
 Harbor is installed with seven passwords and keys. This block makes seven random ones and saves
 them in `secrets.env` (on Linux, macOS and WSL, readable only by you). A file that exists is
 kept. Nothing secret is printed. To use your own admin password instead, put it in the file
-using only letters and digits: step 4 refuses any other character.
+using only letters, digits and `-`: step 4 refuses any other character.
+
+Skip this step to install Harbor with Broadcom's default values instead (step 4's table lists
+them). Step 4 then saves them in `secrets.env`, so the later steps work the same. The defaults are
+public: use them for tests only. Decide before step 6, because the admin password, the database
+password and `secretKey` cannot be changed after the install. If you change your mind after step 4,
+run step 4 again.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -187,7 +193,9 @@ HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 SECRETS="$HARBOR_DIR/secrets.env"
 mkdir -p "$HARBOR_DIR"
-if [ -e "$SECRETS" ]; then
+if grep -q "^HARBOR_SECRET_KEY='0123456789ABCDEF'\$" "$SECRETS" 2>/dev/null; then
+  echo "kept the existing $SECRETS (Broadcom's default values; for random ones, before step 6 delete it, run this block again, then step 4)"
+elif [ -e "$SECRETS" ]; then
   echo "kept the existing $SECRETS"
 else
   ( umask 077
@@ -200,7 +208,7 @@ else
       printf "HARBOR_REGISTRY_SECRET='%s'\n" "$(openssl rand -hex 16)"
     } > "$SECRETS" )
 fi
-awk -F "'" '/^HARBOR_/ { n++; if ($2 !~ /^[A-Za-z0-9]+$/) bad++ } /^HARBOR_SECRET_KEY=/ { k = length($2) } /^HARBOR_XSRF_KEY=/ { x = length($2) } END { printf "secrets file: %d values, %d not letters and digits, secretKey %d characters, xsrfKey %d characters\n", n, bad, k, x }' "$SECRETS"
+awk -F "'" '/^HARBOR_/ { n++; if ($2 !~ /^[A-Za-z0-9-]+$/) bad++ } /^HARBOR_SECRET_KEY=/ { k = length($2) } /^HARBOR_XSRF_KEY=/ { x = length($2) } END { printf "secrets file: %d values, %d not letters, digits or -, secretKey %d characters, xsrfKey %d characters\n", n, bad, k, x }' "$SECRETS"
 ```
 
 </details>
@@ -219,7 +227,11 @@ function New-Hex($n) {
 }
 New-Item -ItemType Directory -Force -Path $HARBOR_DIR | Out-Null
 if (Test-Path $SECRETS) {
-  "kept the existing $SECRETS"
+  if (@(Get-Content $SECRETS) -ccontains "HARBOR_SECRET_KEY='0123456789ABCDEF'") {
+    "kept the existing $SECRETS (Broadcom's default values; for random ones, before step 6 delete it, run this block again, then step 4)"
+  } else {
+    "kept the existing $SECRETS"
+  }
 } else {
   Set-Content -Encoding ascii -Path $SECRETS -Value @(
     "HARBOR_ADMIN_PASSWORD='A$(New-Hex 12)z'"
@@ -235,19 +247,19 @@ $S = @{}; $BAD = 0
 foreach ($l in Get-Content $SECRETS) {
   if ($l -cmatch "^(HARBOR_[A-Z_]+)='(.*)'$") {
     $k = $Matches[1]; $v = $Matches[2]; $S[$k] = $v
-    if ($v -cnotmatch '^[A-Za-z0-9]+$') { $BAD++ }
+    if ($v -cnotmatch '^[A-Za-z0-9-]+$') { $BAD++ }
   }
 }
-"secrets file: $($S.Count) values, $BAD not letters and digits, secretKey $("$($S['HARBOR_SECRET_KEY'])".Length) characters, xsrfKey $("$($S['HARBOR_XSRF_KEY'])".Length) characters"
+"secrets file: $($S.Count) values, $BAD not letters, digits or -, secretKey $("$($S['HARBOR_SECRET_KEY'])".Length) characters, xsrfKey $("$($S['HARBOR_XSRF_KEY'])".Length) characters"
 ```
 
 </details>
 
-**Expect:** `secrets file: 7 values, 0 not letters and digits, secretKey 16 characters, xsrfKey 32 characters`,
+**Expect:** `secrets file: 7 values, 0 not letters, digits or -, secretKey 16 characters, xsrfKey 32 characters`,
 after `kept the existing …` when the file was there.
 
 **If not:** other numbers: the file was edited or cut short. If no Harbor was installed with it
-yet, delete it and run the block again.
+yet, delete it, run the block again, then step 4.
 
 **Keep this file, and a copy where you keep passwords, for as long as this Harbor exists**: any
 later change to its configuration must send the same seven values (with another
@@ -290,7 +302,13 @@ these fields:
 |---|---|---|
 | `hostname` | `yourdomain.com` | `HARBOR_FQDN` |
 | `enableNginxLoadBalancer`, `enableContourHttpProxy` | `false`, `true` | `true`, `false`: Harbor gets its own load-balancer address |
-| `harborAdminPassword`, `secretKey`, `database.password`, `core.secret`, `core.xsrfKey`, `jobservice.secret`, `registry.secret` | `Harbor12345`, `0123456789ABCDEF`, `change-it`, … | the seven values of `secrets.env` (step 3) |
+| `harborAdminPassword` | `Harbor12345` | the value in `secrets.env` (step 3); kept if you skipped step 3 |
+| `secretKey` | `0123456789ABCDEF` | the value in `secrets.env`; kept if you skipped step 3 |
+| `database.password` | `change-it` | the value in `secrets.env`; kept if you skipped step 3 |
+| `core.secret` | `change-it` | the value in `secrets.env`; kept if you skipped step 3 |
+| `core.xsrfKey` | `0123456789ABCDEF0123456789ABCDEF` | the value in `secrets.env`; kept if you skipped step 3 |
+| `jobservice.secret` | `change-it` | the value in `secrets.env`; kept if you skipped step 3 |
+| `registry.secret` | `change-it` | the value in `secrets.env`; kept if you skipped step 3 |
 | `storageClass` of the five volumes | `insert-storage-class-name-here` | `HARBOR_STORAGE_CLASS` |
 | the registry volume's `size` | `10Gi` | `HARBOR_REGISTRY_SIZE` |
 
@@ -327,11 +345,19 @@ if [ -n "$BAD_NAME" ]; then
   echo "NOT WRITTEN: set HARBOR_FQDN to this Harbor's DNS name"
 elif [ -n "$BAD_SC" ] || [ -n "$BAD_SIZE" ]; then
   echo "NOT WRITTEN: set HARBOR_STORAGE_CLASS to a name from the list, and HARBOR_REGISTRY_SIZE"
-elif [ ! -r "$SECRETS" ] || [ "$(grep -c -E "^HARBOR_[A-Z_]+='[A-Za-z0-9]+'\$" "$SECRETS")" != 7 ]; then
-  echo "NOT WRITTEN: $SECRETS is missing or not as step 3 writes it"
+elif [ -e "$SECRETS" ] && [ "$(grep -c -E "^HARBOR_[A-Z_]+='[A-Za-z0-9-]+'\$" "$SECRETS")" != 7 ]; then
+  echo "NOT WRITTEN: $SECRETS is not as step 3 writes it"
 elif [ "$GOT" != "$WANT" ]; then
   echo "NOT WRITTEN: $HARBOR_VALUES_TEMPLATE is missing or not the 2.15.2 file (step 2)"
 else
+  if [ ! -e "$SECRETS" ]; then
+    mkdir -p "$HARBOR_DIR"
+    ( umask 077
+      printf "%s\n" "HARBOR_ADMIN_PASSWORD='Harbor12345'" "HARBOR_SECRET_KEY='0123456789ABCDEF'" \
+        "HARBOR_DB_PASSWORD='change-it'" "HARBOR_CORE_SECRET='change-it'" "HARBOR_XSRF_KEY='0123456789ABCDEF0123456789ABCDEF'" \
+        "HARBOR_JOBSERVICE_SECRET='change-it'" "HARBOR_REGISTRY_SECRET='change-it'" > "$SECRETS" )
+    echo "no secrets file: Broadcom's default values (admin password Harbor12345), saved in $SECRETS"
+  fi
   rm -f "$VALUES"
   ( umask 077
     set -a; . "$SECRETS"; set +a
@@ -354,14 +380,16 @@ else
       { print }
     ' "$HARBOR_VALUES_TEMPLATE" > "$VALUES" )
   NAME="$(sed -n 's/^hostname: //p' "$VALUES")"
-  LEFT="$(grep -c -E 'yourdomain\.com|insert-storage-class-name-here|change-it|Harbor12345|0123456789ABCDEF' "$VALUES")"
+  LEFT="$(grep -c -E 'yourdomain\.com|insert-storage-class-name-here' "$VALUES")"
+  SEC="$(grep -c -E '^(harborAdminPassword|secretKey|  password|  secret|  xsrfKey): "[A-Za-z0-9-]+"$' "$VALUES")"
   SC="$(grep -c -F "storageClass: \"$HARBOR_STORAGE_CLASS\"" "$VALUES")"
   SIZE="$(awk '/^[A-Za-z][A-Za-z0-9_]*:/ { top = $1; k4 = "" } /^    [A-Za-z][A-Za-z0-9_]*:/ { k4 = $1 } /^      size:/ && top == "persistence:" && k4 == "registry:" { print $2 }' "$VALUES")"
   grep -E '^(hostname|enableNginxLoadBalancer|enableContourHttpProxy):' "$VALUES"
   echo "storage class fields set: $SC of 5"
   echo "registry volume: ${SIZE:-not found}"
+  echo "secret fields set: $SEC of 7"
   echo "placeholders left: $LEFT"
-  if [ -z "$NAME" ] || [ "$NAME" != "$HARBOR_FQDN" ] || [ "$LEFT" != 0 ] || [ "$SC" != 5 ] || [ "$SIZE" != "$HARBOR_REGISTRY_SIZE" ]; then
+  if [ -z "$NAME" ] || [ "$NAME" != "$HARBOR_FQDN" ] || [ "$LEFT" != 0 ] || [ "$SEC" != 7 ] || [ "$SC" != 5 ] || [ "$SIZE" != "$HARBOR_REGISTRY_SIZE" ]; then
     rm -f "$VALUES"
     echo "FAILED: the file did not come out as expected and was deleted"
   fi
@@ -386,17 +414,26 @@ $WANT = '52167e43d58bad377c7f10dde87bb9b8e27faacacd9a3d9e1810cb8815f53805'
 $GOT = if (Test-Path -LiteralPath $HARBOR_VALUES_TEMPLATE) { (Get-FileHash -Algorithm SHA256 -LiteralPath $HARBOR_VALUES_TEMPLATE).Hash.ToLower() } else { '' }
 $S = @{}
 if (Test-Path $SECRETS) {
-  foreach ($l in Get-Content $SECRETS) { if ($l -cmatch "^(HARBOR_[A-Z_]+)='([A-Za-z0-9]+)'$") { $S[$Matches[1]] = $Matches[2] } }
+  foreach ($l in Get-Content $SECRETS) { if ($l -cmatch "^(HARBOR_[A-Z_]+)='([A-Za-z0-9-]+)'$") { $S[$Matches[1]] = $Matches[2] } }
 }
 if ($HARBOR_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $HARBOR_FQDN -eq 'harbor.example.test') {
   "NOT WRITTEN: set HARBOR_FQDN to this Harbor's DNS name"
 } elseif ($HARBOR_STORAGE_CLASS -cnotmatch '^[a-z0-9.-]+$' -or $HARBOR_STORAGE_CLASS -eq 'my-storage-class' -or $HARBOR_REGISTRY_SIZE -cnotmatch '^[0-9A-Za-z]+$') {
   "NOT WRITTEN: set HARBOR_STORAGE_CLASS to a name from the list, and HARBOR_REGISTRY_SIZE"
-} elseif ($S.Count -ne 7) {
-  "NOT WRITTEN: $SECRETS is missing or not as step 3 writes it"
+} elseif ((Test-Path $SECRETS) -and $S.Count -ne 7) {
+  "NOT WRITTEN: $SECRETS is not as step 3 writes it"
 } elseif ($GOT -ne $WANT) {
   "NOT WRITTEN: $HARBOR_VALUES_TEMPLATE is missing or not the 2.15.2 file (step 2)"
 } else {
+  if (-not (Test-Path $SECRETS)) {
+    New-Item -ItemType Directory -Force -Path $HARBOR_DIR | Out-Null
+    Set-Content -Encoding ascii -Path $SECRETS -Value @(
+      "HARBOR_ADMIN_PASSWORD='Harbor12345'", "HARBOR_SECRET_KEY='0123456789ABCDEF'", "HARBOR_DB_PASSWORD='change-it'",
+      "HARBOR_CORE_SECRET='change-it'", "HARBOR_XSRF_KEY='0123456789ABCDEF0123456789ABCDEF'",
+      "HARBOR_JOBSERVICE_SECRET='change-it'", "HARBOR_REGISTRY_SECRET='change-it'")
+    foreach ($l in Get-Content $SECRETS) { if ($l -cmatch "^(HARBOR_[A-Z_]+)='([A-Za-z0-9-]+)'$") { $S[$Matches[1]] = $Matches[2] } }
+    "no secrets file: Broadcom's default values (admin password Harbor12345), saved in $SECRETS"
+  }
   $top = ''; $k4 = ''
   $OUT = foreach ($l in [IO.File]::ReadAllLines($HARBOR_VALUES_TEMPLATE)) {
     if ($l -cmatch '^([A-Za-z][A-Za-z0-9_]*):') { $top = $Matches[1]; $k4 = '' }
@@ -418,7 +455,8 @@ if ($HARBOR_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $HARBOR_FQDN -eq 'harbor.example
   [IO.File]::WriteAllText($VALUES, (($OUT -join "`n") + "`n"))
   $TXT = [IO.File]::ReadAllLines($VALUES)
   $NAME = "$(($TXT | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
-  $LEFT = @($TXT | Where-Object { $_ -cmatch 'yourdomain\.com|insert-storage-class-name-here|change-it|Harbor12345|0123456789ABCDEF' }).Count
+  $LEFT = @($TXT | Where-Object { $_ -cmatch 'yourdomain\.com|insert-storage-class-name-here' }).Count
+  $SEC = @($TXT | Where-Object { $_ -cmatch '^(harborAdminPassword|secretKey|  password|  secret|  xsrfKey): "[A-Za-z0-9-]+"$' }).Count
   $SC = @($TXT | Where-Object { $_.Contains("storageClass: `"$HARBOR_STORAGE_CLASS`"") }).Count
   $top = ''; $k4 = ''; $SIZE = ''
   foreach ($l in $TXT) {
@@ -429,8 +467,9 @@ if ($HARBOR_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $HARBOR_FQDN -eq 'harbor.example
   $TXT | Where-Object { $_ -cmatch '^(hostname|enableNginxLoadBalancer|enableContourHttpProxy):' }
   "storage class fields set: $SC of 5"
   "registry volume: $(if ($SIZE) { $SIZE } else { 'not found' })"
+  "secret fields set: $SEC of 7"
   "placeholders left: $LEFT"
-  if (-not $NAME -or $NAME -cne $HARBOR_FQDN -or $LEFT -ne 0 -or $SC -ne 5 -or $SIZE -cne $HARBOR_REGISTRY_SIZE) {
+  if (-not $NAME -or $NAME -cne $HARBOR_FQDN -or $LEFT -ne 0 -or $SEC -ne 7 -or $SC -ne 5 -or $SIZE -cne $HARBOR_REGISTRY_SIZE) {
     Remove-Item -Force $VALUES
     "FAILED: the file did not come out as expected and was deleted"
   }
@@ -447,8 +486,11 @@ enableNginxLoadBalancer: true
 enableContourHttpProxy: false
 storage class fields set: 5 of 5
 registry volume: 50Gi
+secret fields set: 7 of 7
 placeholders left: 0
 ```
+
+If you skipped step 3, a `no secrets file: Broadcom's default values …` line comes first.
 
 **If not:**
 - `NOT WRITTEN: …`: set the value it names, or do the step it names, then run the block again.
@@ -1196,7 +1238,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 **Expect:** `logged in as admin, administrator: true` (PowerShell: `True`).
 
 **If not:**
-- `FAILED: … is missing`: run the step that writes it (4, 9 or 3).
+- `FAILED: … is missing`: run the step that writes it (4, 9, or 3 then 4; `secrets.env` comes from step 4 if you skipped step 3).
 - `ERROR UNAUTHORIZED`: this Harbor was installed with another admin password than the one in
   `secrets.env`, or someone changed it in Harbor since.
 - A `curl:` error that the name does not match (`no alternative certificate subject name
