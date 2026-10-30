@@ -974,9 +974,16 @@ a third is downloaded when you turn it on:
 |---|---|---|---|---|
 | cert-manager | **cert-manager** in the menu: certificates, issuers | inside Headlamp | always (step 2 installs cert-manager) | nothing; it sees the certificates in its namespaces |
 | Prometheus | CPU, memory and network charts on pods, nodes, deployments | inside Headlamp | the Prometheus add-on is installed | `headlamp-prometheus-query` (block below): it shows the whole cluster's metrics |
-| Kubescape | **Kubescape**: security scan results, vulnerabilities, compliance | downloaded from ArtifactHub when turned on | Kubescape runs in the cluster and step 9 has `KUBESCAPE_PLUGIN="yes"` | `headlamp-kubescape-reports` (block below) |
+| Kubescape | **Kubescape**: security scan results, vulnerabilities, compliance | downloaded from ArtifactHub when turned on | Kubescape runs in the cluster and step 9 has `KUBESCAPE_PLUGIN="yes"` | an account for every namespace (empty `ACCESS_NAMESPACE`) and `headlamp-kubescape-reports` (block below): its pages read the whole cluster |
 
 The plugins have no rights of their own: each person sees in them what their token may read.
+
+![Settings, Plugins: app-catalog, cert-manager, headlamp-clarity, kubescape-plugin, prometheus](img/headlamp/15-plugins.png)
+
+The **cert-manager** page lists the cluster's certificates and their state (its **Expires In**
+column shows `<invalid>`, a fault of the plugin; the date is in the certificate's details):
+
+![cert-manager: four certificates, Ready](img/headlamp/21-cert-manager.png)
 
 ### Prometheus
 
@@ -1058,7 +1065,18 @@ if ($LASTEXITCODE -ne 0) {
 
 **Expect:** `Addon 'prometheus' is being installed in the cluster …`, `condition met` lines, then
 the pods `prometheus-server-…` (`2/2`), `prometheus-kube-state-metrics-…` and one
-`prometheus-node-exporter-…` per node `Running`, and the volume `prometheus-server` `Bound`. About two minutes. Then a pod's page in Headlamp shows charts.
+`prometheus-node-exporter-…` per node `Running`, and the volume `prometheus-server` `Bound`. About
+two minutes.
+
+In Headlamp, the chart button at the top of a pod's or deployment's page shows its CPU, memory,
+network and disk use. For an account limited to one namespace the plugin cannot find Prometheus by
+itself ("Error fetching prometheus info"): in that browser, **Settings** → **Plugins** →
+**prometheus**, turn off **Auto detect**, enter `tanzu-system-monitoring/prometheus-server:80`,
+**Test Connection**, **Save**:
+
+![Prometheus plugin settings: address tanzu-system-monitoring/prometheus-server:80, Connection successful](img/headlamp/17-prometheus-settings.png)
+
+![Deployment hello: memory over the last hour](img/headlamp/18-prometheus-chart.png)
 
 **If not:** a pod `Pending`: the workers lack CPU or memory (about 450m CPU and 800 MiB with
 one worker), or the storage class has no room for `PROMETHEUS_STORAGE`. No charts in Headlamp: the account
@@ -1141,13 +1159,19 @@ about 15 minutes. The configuration scan runs once a day (`kubectl --kubeconfig 
 -n kubescape get cronjob kubescape-scheduler` shows when, in UTC); to run it now:
 `kubectl --kubeconfig <the VKS kubeconfig> -n kubescape create job --from=cronjob/kubescape-scheduler kubescape-first-scan`.
 
+Kubescape's pages show the whole cluster: an account limited to one namespace sees them empty.
+
+![Kubescape Compliance: 82% CIS, 80% MITRE, 71% NSA, failed controls](img/headlamp/19-kubescape-compliance.png)
+
+![Kubescape Vulnerabilities: CVEs by severity](img/headlamp/20-kubescape-vulnerabilities.png)
+
 ### Let an account read the plugins' data (cluster administrator)
 
 This gives an account from step 4 what the plugins read:
 
-- `headlamp-kubescape-reports`: Kubescape's results in the account's namespace (the summaries; the
-  detailed reports are kept in the namespace `kubescape`), or, for an account with an empty
-  `ACCESS_NAMESPACE`, in every namespace. Given when Kubescape is in the cluster.
+- `headlamp-kubescape-reports`: Kubescape's results in every namespace. Given only to an account
+  with an empty `ACCESS_NAMESPACE`, when Kubescape is in the cluster: the plugin's pages read the
+  whole cluster and show nothing to an account limited to one namespace.
 - `headlamp-prometheus-query`, only with `PROMETHEUS_QUERY="yes"`: asks Prometheus for metrics.
   Prometheus does not follow Kubernetes rights, so the account sees the metrics of every namespace,
   and in them the names of all pods, images and Secrets. Give it only to accounts allowed to see
@@ -1180,7 +1204,7 @@ else
       '  - apiGroups: ["spdx.softwarecomposition.kubescape.io"]' '    resources: ["*"]' '    verbs: ["get", "list", "watch"]' \
       | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -
     if [ -n "$ACCESS_NAMESPACE" ]; then
-      kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$ACCESS_NAMESPACE" create rolebinding "headlamp-${ACCOUNT}-kubescape" --clusterrole=headlamp-kubescape-reports --serviceaccount="$S" --dry-run=client -o yaml | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -
+      echo "Kubescape plugin: its pages need an account for every namespace; nothing given"
     else
       kubectl --kubeconfig "$VKS_KUBECONFIG" create clusterrolebinding "headlamp-${ACCOUNT}-kubescape" --clusterrole=headlamp-kubescape-reports --serviceaccount="$S" --dry-run=client -o yaml | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -
     fi
@@ -1222,7 +1246,7 @@ if ($LASTEXITCODE -ne 0) {
     @('apiVersion: rbac.authorization.k8s.io/v1', 'kind: ClusterRole', 'metadata:', '  name: headlamp-kubescape-reports', 'rules:',
       '  - apiGroups: ["spdx.softwarecomposition.kubescape.io"]', '    resources: ["*"]', '    verbs: ["get", "list", "watch"]') -join "`n" | Apply-Yaml
     if ($ACCESS_NAMESPACE) {
-      kubectl --kubeconfig $VKS_KUBECONFIG -n $ACCESS_NAMESPACE create rolebinding "headlamp-$ACCOUNT-kubescape" --clusterrole=headlamp-kubescape-reports "--serviceaccount=$S" --dry-run=client -o yaml | Apply-Yaml
+      "Kubescape plugin: its pages need an account for every namespace; nothing given"
     } else {
       kubectl --kubeconfig $VKS_KUBECONFIG create clusterrolebinding "headlamp-$ACCOUNT-kubescape" --clusterrole=headlamp-kubescape-reports "--serviceaccount=$S" --dry-run=client -o yaml | Apply-Yaml
     }
@@ -1236,8 +1260,8 @@ if ($LASTEXITCODE -ne 0) {
 
 **Expect:** for each plugin whose software is in the cluster (and, for Prometheus, with
 `PROMETHEUS_QUERY="yes"`), its role and binding `created` (`unchanged` on a second run); for the
-others, `… nothing given`. In Headlamp the account then sees its namespace's Kubescape results and,
-with Prometheus, a pod's charts.
+others, `… nothing given`. In Headlamp the account then sees, for an account for every namespace,
+Kubescape's pages and, with Prometheus, a pod's charts.
 
 **If not:** `STOPPED: …`: run step 4 first. A person still sees no charts: Headlamp asks for
 metrics when a page opens; reload the page.
