@@ -1534,7 +1534,9 @@ the Supervisor already labelled), then both `successfully rolled out`.
 
 Wait 10 minutes after step 11.5. In VCF Operations:
 
-1. In the search box at the top, type the cluster's name; under **VKS Cluster**, click it.
+1. In the search box at the top, type the cluster's name; under **VKS Cluster**, click it. Two
+   entries with that name: one is a deleted cluster of the same name; use the one whose charts in
+   step 2 have recent values.
 2. Open **Metrics**, type `Usage` in the metric search, and double-click **CPU** →
    **Usage (Cores)** and **Memory** → **Usage (GB)**.
 
