@@ -863,7 +863,7 @@ handed over.
 2. The person installs the plugin, logs in, and sends you the name it prints.
 3. You give that name the `edit` role in `TEAM_NAMESPACE`.
 
-**Windows and macOS: first trust the vCenter CA (the person, once).** There the plugin (and on
+<a id="trust-the-vcenter-ca"></a>**Windows and macOS: first trust the vCenter CA (the person, once).** There the plugin (and on
 Windows the download below) checks the Supervisor's certificate against your user's trusted CAs,
 not `SUPERVISOR_CA`. Windows asks you to confirm with **Yes**:
 
@@ -914,6 +914,7 @@ $SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
 $INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
 
 $ProgressPreference = 'SilentlyContinue'
+if ([Net.ServicePointManager]::SecurityProtocol -ne 'SystemDefault') { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 'Tls12' }
 $TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
 $global:LASTEXITCODE = 1
 try {
