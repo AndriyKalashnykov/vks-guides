@@ -540,6 +540,81 @@ if ($LASTEXITCODE -eq 0 -and $KC) {
 - A node `NotReady`: the cluster is still starting, or a node has a problem; ask its
   administrator.
 
+## Download the VKS cluster's kubeconfig from the vSphere Client
+
+The vSphere Client gives the same file as
+[Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig), byte for byte, without the
+VCF CLI or a Supervisor login on this machine; you need only kubectl afterwards. What the file is:
+
+- **The cluster's administrator login.** Whoever has the file is an administrator of the whole
+  cluster; it is not limited to a vSphere Namespace or to one person.
+- **It cannot be withdrawn from one holder.** Only replacing the cluster's certificate authority
+  ends it, and that ends every copy at once.
+- **It stops working about a year after the cluster made it.** Every copy stops on that date,
+  wherever it was given; download it again then.
+- **It does not depend on an SSO login.** It keeps working after any vCenter login ends.
+
+1. In the vSphere Client, from the menu (☰) choose **Supervisor Management**, the **Namespaces**
+   tab, and your namespace. Open its **Resources** tab and, on the **Kubernetes** card, click
+   **GO TO SERVICE**.
+
+   ![The Resources tab of a vSphere Namespace: six cards, the Kubernetes card with 1 Kubernetes Cluster and its links GO TO SERVICE and CREATE CLUSTER](img/login/01-resources.png)
+
+2. Click **⋮** at the start of your cluster's row, then **Download Kubeconfig File**.
+
+   ![The vSphere Kubernetes Service list: the menu of the cluster's row with View YAML, Download Kubeconfig File and Delete](img/login/02-cluster-row-menu.png)
+
+   Or click the cluster's name and, on its page, **DOWNLOAD KUBECONFIG FILE**: the same file.
+
+   ![The cluster's page: its name, VIEW YAML, DOWNLOAD KUBECONFIG FILE, and a Summary with Status Available](img/login/03-cluster-page.png)
+
+The browser saves it as `<cluster>-kubeconfig.yaml` in your downloads folder, readable by other
+users of this machine. This moves it to `~/.kube/<cluster>.kubeconfig`, readable only by you,
+then lists the cluster's nodes to show it works. Set `DOWNLOADED` to where the browser saved it;
+on WSL, a browser on Windows saves it under `/mnt/c/Users/<you>/Downloads`.
+
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+DOWNLOADED="$HOME/Downloads/${VKS_CLUSTER}-kubeconfig.yaml"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+mkdir -p "$HOME/.kube"
+if [ -f "$DOWNLOADED" ] && kubectl --kubeconfig "$DOWNLOADED" config view >/dev/null 2>&1; then
+  install -m 600 "$DOWNLOADED" "$VKS_KUBECONFIG" && rm -f "$DOWNLOADED"
+  kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes
+else
+  echo "FAILED: no kubeconfig at $DOWNLOADED"
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$DOWNLOADED = "$HOME\Downloads\${VKS_CLUSTER}-kubeconfig.yaml"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+New-Item -ItemType Directory -Force "$HOME\.kube" | Out-Null
+$global:LASTEXITCODE = $null
+if (Test-Path $DOWNLOADED) { kubectl --kubeconfig $DOWNLOADED config view *> $null }
+if ((Test-Path $DOWNLOADED) -and $LASTEXITCODE -eq 0) {
+  Move-Item -Force $DOWNLOADED $VKS_KUBECONFIG
+  kubectl --kubeconfig $VKS_KUBECONFIG get nodes
+} else {
+  "FAILED: no kubeconfig at $DOWNLOADED"
+}
+```
+
+**Expect:** the cluster's nodes, each `Ready`.
+
+**If not:**
+- `FAILED: no kubeconfig at …`: set `DOWNLOADED` to the file the browser saved (a second
+  download of the same name may be saved as `<cluster>-kubeconfig (1).yaml`).
+- `error: You must be logged in to the server (Unauthorized)`: the file has expired; download it
+  again.
+
 ## Use the VKS cluster
 
 Pick one of the two ways.
