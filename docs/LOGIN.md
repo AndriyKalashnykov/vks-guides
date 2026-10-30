@@ -582,7 +582,7 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 mkdir -p "$HOME/.kube"
 if [ -f "$DOWNLOADED" ] && kubectl --kubeconfig "$DOWNLOADED" config view >/dev/null 2>&1; then
-  chmod 600 "$DOWNLOADED" && mv "$DOWNLOADED" "$VKS_KUBECONFIG"
+  install -m 600 "$DOWNLOADED" "$VKS_KUBECONFIG" && rm -f "$DOWNLOADED"
   kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes
 else
   echo "FAILED: no kubeconfig at $DOWNLOADED"
