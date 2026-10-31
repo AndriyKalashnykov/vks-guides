@@ -58,14 +58,24 @@ blocks; there is nothing to build.
   from terminal` instead, on every shell, also where the paste is bracketed and the password could
   have been typed (the reader renews the login and runs the block again).
 - A behaviour change is run for real before README's "Tested on" table claims it. On the owner's
-  nested-vsphere-lab the agent logs in itself and never asks the owner to: `make login
-  VCF_CONTEXT=supervisor` (or `make kubectl-login VCF_CONTEXT=supervisor`) in that checkout logs
-  in to the Supervisor with the lab's own secrets, so the agent never handles the password, and
-  names the VCF CLI context `supervisor`, as the guides' `vcf context use supervisor` expects.
-  `make walkbox-login WALKBOX_OS=ubuntu|photon|almalinux|windows` logs a walkbox in the same way
-  (LOGIN.md's files: `~/.kube/supervisor.kubeconfig`, context `supervisor`); use it whenever a
-  walkbox run needs the SSO password, and never ask the owner (one attempt per run: mind the
-  lock-out).
+  nested-vsphere-lab the agent logs in itself, only through that checkout's make targets, which read
+  the lab's own secrets, so it never handles the password and never asks the owner. On this host
+  the guides' login is the VCF CLI context `supervisor` recording LOGIN.md's file
+  `~/.kube/supervisor.kubeconfig` (check: `yq '.contexts[] | select(.name=="supervisor") |
+  .clusterOpts.path' ~/.config/vcf/config.yaml`). Renew it with `make vcf-context-refresh
+  VCF_REFRESH_CONTEXT=supervisor`; it sends nothing while the token has more than 5 minutes left.
+  If `supervisor` records another file, re-point it (no password; tell the lab session first;
+  the delete also removes `supervisor:<ns>` contexts): `vcf context delete supervisor -y
+  --skip-delete-kubeconfig-context`, then `vcf context create supervisor --type k8s --kubeconfig
+  "$HOME/.kube/supervisor.kubeconfig" --kubecontext supervisor --skip-create-related-contexts`,
+  then refresh. If the context or that file is missing, ask the
+  lab session. Never run `make login VCF_CONTEXT=supervisor` or `make kubectl-login
+  VCF_CONTEXT=supervisor` (they overwrite the lab's own kubeconfig), or any `vcf context refresh`
+  not run through `make vcf-context-refresh` (vcf writes the file `KUBECONFIG` names,
+  `~/.kube/config` when unset, and re-records it). `make walkbox-login
+  WALKBOX_OS=ubuntu|photon|almalinux|windows` logs a walkbox in (LOGIN.md's files:
+  `~/.kube/supervisor.kubeconfig`, context `supervisor`); use it whenever a walkbox run needs the
+  SSO password (one attempt per run: mind the lock-out).
 - Coordinate every lab use with the nested-vsphere-lab session (find it with ListAgents, message
   it with SendMessage): announce before installing anything cluster-wide on a VKS cluster (CRDs,
   DaemonSets, host ports) or starting the walkbox, say when the lab is clean, and send it any lab
