@@ -17,7 +17,7 @@ when this machine cannot reach dl.k8s.io. After you log in,
 ## Prerequisites
 
 - [curl](PREREQS.md); for [From the Supervisor](#from-the-supervisor-dlk8sio-blocked) also
-  [unzip and openssl](PREREQS.md), the Supervisor's IP address or DNS name, and the vCenter CA
+  [unzip (Photon OS: bsdtar) and openssl](PREREQS.md), the Supervisor's IP address or DNS name, and the vCenter CA
   from step 1 of [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):
@@ -140,7 +140,7 @@ works for amd64 Linux, macOS and Windows only. This `kubectl` has the Supervisor
 may be too old for your VKS cluster. The download checks the Supervisor's certificate against the
 vCenter CA, so first do step 1 of
 [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca), including its
-`mv` block (on Linux and macOS it needs only curl, unzip and openssl). On Windows, then trust that
+`mv` block (on Linux and macOS it needs only curl, unzip or bsdtar, and openssl). On Windows, then trust that
 CA with `Import-Certificate -FilePath "$HOME\.kube\vcenter-ca.pem" -CertStoreLocation
 Cert:\CurrentUser\Root` and confirm with **Yes**. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP
 address or DNS name.
@@ -168,7 +168,7 @@ if [ -z "$P" ]; then
 elif [ ! -s "$SUPERVISOR_CA" ]; then
   echo "FAILED: no vCenter CA at $SUPERVISOR_CA (LOGIN.md, Create Supervisor context with CA, step 1)"
 elif ! curl -fsS --connect-timeout 20 --speed-time 60 --cacert "$SUPERVISOR_CA" -o "$TMP/p.zip" "https://${SUPERVISOR_ENDPOINT}/wcp/plugin/${P}/vsphere-plugin.zip" \
-     || ! { if command -v unzip >/dev/null 2>&1; then unzip -oq "$TMP/p.zip" bin/kubectl -d "$TMP"; else bsdtar -xf "$TMP/p.zip" -C "$TMP" bin/kubectl; fi; }; then
+     || ! { if command -v unzip >/dev/null 2>&1 || ! command -v bsdtar >/dev/null 2>&1; then unzip -oq "$TMP/p.zip" bin/kubectl -d "$TMP"; else bsdtar -xf "$TMP/p.zip" -C "$TMP" bin/kubectl; fi; }; then
   echo "FAILED: download from https://${SUPERVISOR_ENDPOINT}"
 else
   if { mkdir -p "$INSTALL_DIR" 2>/dev/null && [ -w "$INSTALL_DIR" ] && install -m 0755 "$TMP/bin/kubectl" "$INSTALL_DIR/kubectl"; } \
@@ -232,7 +232,7 @@ Remove-Item -Recurse -Force $TMP
   [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca) first, including
   its `mv` block.
 - `FAILED: download from …`: `SUPERVISOR_ENDPOINT` is wrong, or this machine cannot reach the
-  Supervisor. The `curl:` or `unzip:` line above it says which (in PowerShell, the message above
+  Supervisor. The `curl:`, `unzip:` or `bsdtar:` line above it says which (in PowerShell, the message above
   it). `curl: (60)` (PowerShell: `Could not establish trust relationship`): the CA is not the
   vCenter CA, on Windows it is not trusted yet, or the certificate is not for
   `SUPERVISOR_ENDPOINT` (curl says `subject name`): use the Supervisor's DNS name.

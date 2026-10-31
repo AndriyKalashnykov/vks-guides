@@ -13,8 +13,9 @@
 > - Docker: [Install on Ubuntu](https://docs.docker.com/engine/install/ubuntu/), [Install on RHEL](https://docs.docker.com/engine/install/rhel/), [Linux post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/), [Install Docker Desktop on Windows](https://docs.docker.com/desktop/setup/install/windows-install/); Photon OS 5: [Docker Containers](https://vmware.github.io/photon/docs-v5/administration-guide/containers/docker-containers/); Colima: [README](https://github.com/abiosoft/colima)
 > - Podman: [Podman Installation](https://podman.io/docs/installation), [Podman for Windows](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-for-windows.md)
 
-The small command-line tools the other guides use: `curl`, `tar`, `unzip`, `jq`, `openssl`. Do the
-section for your OS, then [Check](#check) (Linux, macOS and WSL; PowerShell needs no check).
+The small command-line tools the other guides use: `curl`, `tar`, `unzip` (Photon OS: `bsdtar`), `jq`,
+`openssl`. Do the section for your OS, then [Check](#check) (Linux, macOS and WSL; PowerShell needs
+no check).
 
 ## Linux (Debian / Ubuntu)
 

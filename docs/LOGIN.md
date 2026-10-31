@@ -22,7 +22,7 @@ need only [Renew the Supervisor login](#renew-the-supervisor-login) when the log
 
 ## Prerequisites
 
-- [kubectl](KUBECTL.md), the [VCF CLI](VCF.md), and [curl, unzip, openssl and jq](PREREQS.md);
+- [kubectl](KUBECTL.md), the [VCF CLI](VCF.md), and [curl, unzip (Photon OS: bsdtar), openssl and jq](PREREQS.md);
 - the Supervisor's IP address or DNS name, and vCenter's DNS name
   ([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca), step 1);
 - an SSO user with a role on your vSphere Namespace (for example `administrator@vsphere.local`),
@@ -68,7 +68,7 @@ CA_FILE="$HOME/.kube/vcenter-ca.pem"
 TMP="$(mktemp -d)"
 if ! curl -fsSk --connect-timeout 20 --speed-time 60 -o "$TMP/certs.zip" "https://${VCENTER_FQDN}/certs/download.zip"; then
   echo "FAILED: download from https://${VCENTER_FQDN}"
-elif ! { if command -v unzip >/dev/null 2>&1; then unzip -oqj "$TMP/certs.zip" 'certs/lin/*' -d "$TMP/certs"
+elif ! { if command -v unzip >/dev/null 2>&1 || ! command -v bsdtar >/dev/null 2>&1; then unzip -oqj "$TMP/certs.zip" 'certs/lin/*' -d "$TMP/certs"
           else mkdir -p "$TMP/certs" && bsdtar -xf "$TMP/certs.zip" -C "$TMP/certs" --strip-components 2 'certs/lin/*'; fi; } \
      || [ -z "$(find "$TMP/certs" -name '*.0')" ]; then
   echo "FAILED: no CA certificate in the download from https://${VCENTER_FQDN}"
@@ -912,7 +912,7 @@ case "$(uname -s)" in Darwin) OS=darwin ;; *) OS=linux ;; esac
 TMP="$(mktemp -d)"
 if curl -fsS --connect-timeout 20 --speed-time 60 --cacert "$SUPERVISOR_CA" -o "$TMP/plugin.zip" \
      "https://${SUPERVISOR_ENDPOINT}/wcp/plugin/${OS}-amd64/vsphere-plugin.zip" \
-   && { if command -v unzip >/dev/null 2>&1; then unzip -q -o "$TMP/plugin.zip" -d "$TMP"; else bsdtar -xf "$TMP/plugin.zip" -C "$TMP"; fi; } \
+   && { if command -v unzip >/dev/null 2>&1 || ! command -v bsdtar >/dev/null 2>&1; then unzip -q -o "$TMP/plugin.zip" -d "$TMP"; else bsdtar -xf "$TMP/plugin.zip" -C "$TMP"; fi; } \
    && "$TMP/bin/kubectl-vsphere" version; then
   mkdir -p "$INSTALL_DIR" && install -m 755 "$TMP/bin/kubectl-vsphere" "$INSTALL_DIR/kubectl-vsphere" \
     && echo "installed $INSTALL_DIR/kubectl-vsphere"
