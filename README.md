@@ -91,7 +91,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Install kubectl](docs/KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install the VCF CLI](docs/VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in](docs/LOGIN.md) | ✅ | ✅ | ✅ | part | ✅ | ✅ |
-| [Run Keycloak in a VKS cluster](docs/KEYCLOAK-VKS.md) | ✅ | — | — | — | ✅ | — |
+| [Run Keycloak in a VKS cluster](docs/KEYCLOAK-VKS.md) | ✅ | ✅ | ✅ | — | ✅ | part |
 | [Log in with Keycloak](docs/KEYCLOAK.md) | ✅ | — | part | — | ✅ | — |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | ✅ | — | — | ✅ | ✅ |
 | [Create a VKS cluster](docs/CLUSTER.md) | ✅ | ✅ | ✅ | — | ✅ | part |
