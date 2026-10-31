@@ -425,8 +425,11 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak wait
 **Expect:** four `created` lines (`configured` or `unchanged` when run again), then
 `certificate.cert-manager.io/keycloak-ca condition met` and `…/keycloak-tls condition met`.
 
-**If not:** `no matches for kind "Issuer"`: step 2 did not finish. `timed out`:
-`kubectl -n keycloak describe certificate keycloak-tls` shows why.
+**If not:**
+- `no matches for kind "Issuer"`: step 2 did not finish.
+- `failed calling webhook "webhook.cert-manager.io"`: cert-manager is still starting. Wait a minute
+  and run this block again.
+- `timed out`: `kubectl -n keycloak describe certificate keycloak-tls` shows why.
 
 ## 5. Run PostgreSQL and Keycloak
 
@@ -970,7 +973,7 @@ whose browser they sign in with. Do it on your own machine too, before step 11.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS):** Chrome uses its own certificate database in your home. This adds
 the CA there (it needs `certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu,
-`sudo dnf install -y nss-tools` on AlmaLinux).
+`sudo dnf install -y nss-tools` on AlmaLinux, `sudo tdnf install -y nss` on Photon OS).
 
 ```sh
 mkdir -p "$HOME/.pki/nssdb"
@@ -1004,9 +1007,9 @@ confirm with **Yes**:
 Import-Certificate -FilePath "$HOME\keycloak-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
-**Expect:** Linux: a `Keycloak CA` line with `C,,`. WSL: `copied to /mnt/c/Users/<you>`. Windows: a
-line with the CA's thumbprint and `CN=Keycloak CA`. Then the browser opens Keycloak's address with
-no certificate warning (restart the browser first).
+**Expect:** Linux: a `Keycloak CA` line with `C,,`. macOS: no output after your password. WSL:
+`copied to /mnt/c/Users/<you>`. Windows: a line with the CA's thumbprint and `CN=Keycloak CA`. Then
+the browser opens Keycloak's address with no certificate warning (restart the browser first).
 
 **If not:**
 - `certutil: command not found`: install it (the package named above).
