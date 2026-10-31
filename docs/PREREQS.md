@@ -5,8 +5,8 @@
 >
 > - Ubuntu: [Install and manage packages](https://ubuntu.com/server/docs/how-to/software/package-management/)
 > - AlmaLinux 10: Red Hat's [Installing packages](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/managing_software_with_the_dnf_tool/installing-rhel-content#installing-packages)
-> - Arch Linux: [pacman](https://wiki.archlinux.org/title/Pacman), [System maintenance](https://wiki.archlinux.org/title/System_maintenance) (why `-Syu`), [Docker](https://wiki.archlinux.org/title/Docker), [Podman](https://wiki.archlinux.org/title/Podman)
 > - Photon OS 5: [tdnf Commands](https://vmware.github.io/photon/docs-v5/administration-guide/managing-packages-with-tdnf/standard-syntax-for-tndf/commands/)
+> - Arch Linux: [pacman](https://wiki.archlinux.org/title/Pacman), [System maintenance](https://wiki.archlinux.org/title/System_maintenance) (why `-Syu`), [Docker](https://wiki.archlinux.org/title/Docker), [Podman](https://wiki.archlinux.org/title/Podman), [Package signing](https://wiki.archlinux.org/title/Pacman/Package_signing)
 > - Homebrew: [Installation](https://docs.brew.sh/Installation); jq: [Download jq](https://jqlang.org/download/)
 > - Microsoft: [Starting Windows PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/starting-windows-powershell?view=powershell-5.1), [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Working across Windows and Linux file systems](https://learn.microsoft.com/en-us/windows/wsl/filesystems)
 > - curl: [curl shipped by Microsoft](https://curl.se/windows/microsoft.html) (`curl.exe` in Windows)
@@ -85,7 +85,11 @@ sudo pacman -Syu --needed --noconfirm curl tar unzip jq openssl
 **Expect:** `installing …` lines for what was missing, or `… is up to date -- skipping` and
 `there is nothing to do`, with no `error:` line. Then run [Check](#check).
 
-**If not:** `sudo: command not found`: run it as `root`, without `sudo`.
+**If not:**
+- `sudo: command not found`: run it as `root`, without `sudo`.
+- `error: … signature from … is unknown trust` or `invalid or corrupted package (PGP signature)`:
+  the machine's Arch Linux signing keys are out of date. Run
+  `sudo pacman -Sy --needed --noconfirm archlinux-keyring`, then the block again.
 
 ## macOS
 
@@ -197,7 +201,7 @@ Only for [IMAGE.md](IMAGE.md), where you build an image and push it to Harbor. I
 for your OS, then run [Check podman and docker](#check-podman-and-docker). Use docker 29.5 or
 newer: docker 29.0 to 29.4 does not trust Harbor's CA when it pushes. Ubuntu's own `docker.io` is
 29.1, so the Ubuntu and AlmaLinux blocks install Docker's own packages; Arch Linux's own `docker` is
-newer.
+29.5 or newer.
 
 The `docker` group gives its members the same rights as `root` on that machine. Adding your user to
 it lets you run `docker` without `sudo`, after you log out and back in.
@@ -299,6 +303,10 @@ sudo pacman -Syu --needed --noconfirm docker docker-buildx && sudo usermod -aG d
 
 **Expect:** `docker installed: log out and back in`. Log out and back in, then run
 [Check podman and docker](#check-podman-and-docker).
+
+**If not:** `Job for docker.service failed`, with `upgrading linux` in the output above: the
+upgrade brought a new kernel, and docker cannot start on the one still running. Restart the
+machine; docker then starts by itself.
 
 ### podman and docker on macOS
 
