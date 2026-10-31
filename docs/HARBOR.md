@@ -650,7 +650,8 @@ then `lines changed:` and the number of values you set (`0` when all are `""`).
 - `NOT WRITTEN: …`: set the value it names, or do the step it names, then run the block again.
 - `FAILED: …`: the file is laid out differently from step 4's; run *Write the file* again first.
 
-To install with your organization's certificate, run step 13's first block now, then go on with
+To install with your organization's certificate, run step 13 *Write the certificate into the file*
+now (step 13 *Request the certificate* first if you have no certificate yet), then go on with
 step 5.
 
 ## 5. Register the service with vCenter
@@ -1192,7 +1193,8 @@ on macOS), `Harbor at https://<your Harbor name> with this CA: http=200`, then `
   (PowerShell: no error above it): the Secret has no `ca.crt`, and VKS clusters cannot trust
   Harbor either
   ([Broadcom KB 441275](https://knowledge.broadcom.com/external/article/441275/error-failed-to-call-extension-handler-g.html)).
-- `found: none`: Harbor is still being installed (step 6), or `tlsSecretLabels` was changed in
+- `found: none`: Harbor is still being installed (step 6) or reconfigured (**FINISH** a moment
+  ago: run it again in a minute), or `tlsSecretLabels` was changed in
   `harbor-data-values.yml`. Two or more names: stop; this guide cannot tell which is Harbor's.
 - `http=000`: the name does not resolve or answer (step 7, *Check the DNS record*), or Harbor
   answered with a certificate this CA did not sign: the name leads to another server. The `curl`
@@ -1750,8 +1752,10 @@ them to the new name.
 
 1. Get a DNS record for the new name with Harbor's address (step 7).
 2. Write the new name into `harbor-data-values.yml` with the block below. With your
-   organization's certificate (step 13), get one for the new name, run step 13's first block
-   after this one, and in 3 replace everything with the file instead of the `hostname:` line.
+   organization's certificate (step 13), you need one for the new name: move the old
+   `harbor.key` and `harbor.csr` out of your home folder, run step 13 *Request the certificate*,
+   and when the certificate is back, step 13 *Write the certificate into the file*. In 3,
+   replace everything with the file instead of the `hostname:` line.
 3. In the vSphere Client, select the Supervisor, then **Configure** → **Supervisor Services** →
    **Overview**. Select **Harbor**, click **MANAGE**, keep the installed version, click **NEXT**
    twice. In **YAML Service Config**, change only the `hostname:` line to the new name, then click
@@ -2009,8 +2013,9 @@ if [ -z "$HARBOR_FQDN" ]; then
 elif [ -e "$HARBOR_TLS_KEY" ]; then
   echo "NOT WRITTEN: $HARBOR_TLS_KEY already exists; use it with its certificate, or move it away first"
 else
+  CN="$HARBOR_FQDN"; [ "${#CN}" -le 64 ] || CN="${HARBOR_FQDN%%.*}"
   printf '[req]\nprompt = no\ndistinguished_name = dn\nreq_extensions = ext\n[dn]\nCN = %s\n[ext]\nsubjectAltName = DNS:%s\nextendedKeyUsage = serverAuth\n' \
-    "$HARBOR_FQDN" "$HARBOR_FQDN" > "$TMP/req.cnf"
+    "$CN" "$HARBOR_FQDN" > "$TMP/req.cnf"
   if ( umask 077; openssl req -new -newkey rsa:2048 -nodes -keyout "$HARBOR_TLS_KEY" -out "$HARBOR_CSR" -config "$TMP/req.cnf" 2>"$TMP/err" ); then
     openssl req -in "$HARBOR_CSR" -noout -subject
     openssl req -in "$HARBOR_CSR" -noout -text | grep -A1 'Subject Alternative Name' | tail -n 1 | sed 's/^ *//'
@@ -2045,7 +2050,8 @@ elseif (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { 'FAILED:
 elseif (Test-Path $HARBOR_TLS_KEY) { "NOT WRITTEN: $HARBOR_TLS_KEY already exists; use it with its certificate, or move it away first" }
 else {
   $CNF = [IO.Path]::GetTempFileName()
-  [IO.File]::WriteAllText($CNF, "[req]`nprompt = no`ndistinguished_name = dn`nreq_extensions = ext`n[dn]`nCN = $HARBOR_FQDN`n[ext]`nsubjectAltName = DNS:$HARBOR_FQDN`nextendedKeyUsage = serverAuth`n")
+  $CN = if ($HARBOR_FQDN.Length -le 64) { $HARBOR_FQDN } else { $HARBOR_FQDN.Split('.')[0] }
+  [IO.File]::WriteAllText($CNF, "[req]`nprompt = no`ndistinguished_name = dn`nreq_extensions = ext`n[dn]`nCN = $CN`n[ext]`nsubjectAltName = DNS:$HARBOR_FQDN`nextendedKeyUsage = serverAuth`n")
   $global:LASTEXITCODE = $null
   $ERRF = [IO.Path]::GetTempFileName()
   openssl.exe req -new -newkey rsa:2048 -nodes -keyout $HARBOR_TLS_KEY -out $HARBOR_CSR -config $CNF 2>$ERRF
@@ -2064,16 +2070,16 @@ else {
 
 </details>
 
-**Expect:** a `subject=` line with your Harbor name, `DNS:<HARBOR_FQDN>`, and
+**Expect:** a `subject=` line with your Harbor name (only its first part if the name is longer
+than 64 characters), `DNS:<HARBOR_FQDN>`, and
 `send this file: …harbor.csr`.
 
 **If not:**
 - `NOT WRITTEN: … already exists`: a key from an earlier request is there. If its certificate is
   still on its way, wait for it; to start over, move `harbor.key` and `harbor.csr` elsewhere.
 - `FAILED: no hostname …`: do step 4 first.
-- `FAILED: openssl …`: the lines above it say why (`string too long`: a name longer than 64
-  characters). `openssl.exe not found`: install Git for Windows. If your team requires a larger
-  key, change `rsa:2048`.
+- `FAILED: openssl …`: the lines above it say why. `openssl.exe not found`: install Git for
+  Windows. If your team requires a larger key, change `rsa:2048`.
 
 When the two files are back, the next block checks that `harbor.crt` belongs to `harbor.key`.
 
