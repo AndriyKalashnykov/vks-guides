@@ -16,9 +16,9 @@ HTTPS certificate and a name, and sets up a realm that VKS clusters can use for 
 > [!NOTE]
 > **Why plain manifests, not Helm or the Keycloak Operator.** Keycloak publishes no Helm chart for
 > the server; Bitnami's chart is frozen, and the community chart covers no database. The official
-> Keycloak Operator needs the looser `baseline` Pod Security level and cluster-wide resources, and
-> its realm import cannot set up the groups mapper. Plain manifests with Keycloak's official image
-> need only kubectl, run under the strict `restricted` level, and show everything they do.
+> Keycloak Operator's pods set no Pod Security settings, so they need the looser `baseline` level,
+> and it adds cluster-wide resources. Plain manifests with Keycloak's official image need only
+> kubectl, run under the strict `restricted` level, and show everything they do.
 
 Run the steps in order. Who does what:
 
@@ -41,14 +41,14 @@ The cluster for Keycloak:
 1. Its vSphere Namespace offers the VM class `best-effort-small` (2 CPUs, 4 GB) or larger
    ([NAMESPACE.md step 8](NAMESPACE.md#8-check-the-namespace) lists them under `VM classes:`; a
    vCenter administrator adds one with [NAMESPACE.md step 6](NAMESPACE.md#6-add-the-vm-classes)).
-   Measured: Keycloak uses about 0.5 to 0.8 GB and PostgreSQL under 0.1 GB, and they ask for
+   Keycloak uses about 0.5 to 0.8 GB and PostgreSQL under 0.1 GB, and they ask for
    1.5 GB of a `best-effort-small` worker's 2.9 GB. Choose `best-effort-medium` (8 GB) for many
    users or other apps in the same cluster.
 2. Create the cluster with
    [CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), with that
    `vmClass` and one worker (`replicas: 1`). With `best-effort-small` it takes about 53 GB of the
    namespace's storage (two nodes of 20 GB disk plus 4 GB memory each, and Keycloak's 5 GB volume),
-   and 24 GB more while it updates ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)).
+   and 48 GB more while it updates ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)).
    Keep it for Keycloak: the clusters that log in through Keycloak are other clusters
    ([KEYCLOAK.md](KEYCLOAK.md)). To change its size later, see
    [CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional).
@@ -79,7 +79,10 @@ memory the workers can give pods. Keycloak and PostgreSQL ask for about 1.5 GB o
 VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-if kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
+if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
+elif ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
+elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (LOGIN.md)"
+elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
   echo "default storage class: $(printf '%s' "$J" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | .metadata.name] | if length == 0 then "NONE" else join(" ") end')"
   kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' \
     -o custom-columns='WORKER:.metadata.name,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory'
@@ -99,7 +102,9 @@ $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide
+if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $global:LASTEXITCODE = 1 }
+elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (LOGIN.md)"; $global:LASTEXITCODE = 1 }
+else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
 if ($LASTEXITCODE -eq 0) { $J = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) {
   $D = @((ConvertFrom-Json $J).items | Where-Object { $_.metadata.annotations.'storageclass.kubernetes.io/is-default-class' -eq 'true' } | ForEach-Object { $_.metadata.name })
@@ -136,10 +141,12 @@ VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
+for T in vcf kubectl jq; do command -v "$T" >/dev/null 2>&1 || echo "MISSING: $T (PREREQS.md, KUBECTL.md, VCF.md)"; done
 vcf context use supervisor </dev/null
-if ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
-  echo "FAILED: the VCF CLI (see the error above)"
-elif [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "cert-manager")] | length')" = 1 ]; then
+if ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)" \
+   || ! N="$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "cert-manager")] | length')" || [ -z "$N" ]; then
+  echo "FAILED: the VCF CLI or jq (see the error above)"
+elif [ "$N" = 1 ]; then
   echo "cert-manager: already installed"
 elif kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io >/dev/null 2>&1; then
   echo "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
@@ -164,11 +171,12 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
+foreach ($T in 'vcf', 'kubectl') { if (-not (Get-Command $T -ErrorAction SilentlyContinue)) { "MISSING: $T (KUBECTL.md, VCF.md)" } }
 $null | vcf context use supervisor
 $global:LASTEXITCODE = $null
 $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
-if ($LASTEXITCODE -ne 0) {
-  "FAILED: the VCF CLI (see the error above)"
+if ($LASTEXITCODE -ne 0 -or -not $L.Trim()) {
+  "FAILED: the VCF CLI or jq (see the error above)"
 } elseif (@(ConvertFrom-Json $L | ForEach-Object { $_ } | ForEach-Object { $_.addonName }) -contains 'cert-manager') {
   "cert-manager: already installed"
 } elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io 2>$null) -and $LASTEXITCODE -eq 0) {
@@ -196,7 +204,7 @@ if ($LASTEXITCODE -ne 0) {
 `cert-manager: already installed`.
 
 **If not:**
-- `FAILED: the VCF CLI`: log in to the Supervisor again ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)),
+- `MISSING: …`: install that tool. `FAILED: the VCF CLI or jq`: log in to the Supervisor again ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)),
   and check `VKS_NAMESPACE` and `VKS_CLUSTER`.
 - `STOPPED: … not the add-on`: someone installed cert-manager another way. Use that cert-manager
   for step 4 at your own judgement, or remove it and run this block again.
@@ -218,17 +226,22 @@ VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
+command -v kubectl >/dev/null 2>&1 || echo "MISSING: kubectl (KUBECTL.md)"
 kc create namespace keycloak --dry-run=client -o yaml | kc apply -f - >/dev/null \
   && kc label namespace keycloak --overwrite pod-security.kubernetes.io/enforce=restricted \
        pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
 for S in keycloak-db:keycloak keycloak-admin:admin; do
+  P=
   if kc -n keycloak get secret "${S%%:*}" >/dev/null 2>&1; then
     echo "secret ${S%%:*}: exists, kept"
+  elif ! P="$(openssl rand -hex 24)" || [ ${#P} -ne 48 ]; then
+    echo "FAILED: no password made for ${S%%:*}: openssl (PREREQS.md)"
   else
     printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: %s\nstringData:\n  username: %s\n  password: %s\n' \
-      "${S%%:*}" "${S#*:}" "$(openssl rand -hex 24)" | kc -n keycloak create -f -
+      "${S%%:*}" "${S#*:}" "$P" | kc -n keycloak create -f -
   fi
 done
+unset P
 ```
 
 </details>
@@ -241,6 +254,7 @@ $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 function kc { $input | kubectl --kubeconfig $VKS_KUBECONFIG @args }
+if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" }
 kc create namespace keycloak --dry-run=client -o yaml | kc apply -f - | Out-Null
 kc label namespace keycloak --overwrite pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
 foreach ($S in @(@('keycloak-db', 'keycloak'), @('keycloak-admin', 'admin'))) {
@@ -266,7 +280,8 @@ foreach ($S in @(@('keycloak-db', 'keycloak'), @('keycloak-admin', 'admin'))) {
 This makes a CA (certificate authority) of your own with cert-manager, valid for 10 years, and from
 it a certificate for `KEYCLOAK_HOST`, the DNS name Keycloak will have (step 7), and for its name
 inside the cluster. cert-manager renews the certificate before it ends; Keycloak picks the new one
-up within an hour.
+up within an hour. The CA itself is renewed with a new key after about 6.5 years: then hand out the
+new CA (step 6) again, as for a new Keycloak.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -488,7 +503,9 @@ spec:
           requests:
             storage: 5Gi
 EOF
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n keycloak rollout status statefulset/postgres --timeout=10m || echo "FAILED: PostgreSQL did not start (see above)"
+if ! kubectl --kubeconfig "$VKS_KUBECONFIG" -n keycloak rollout status statefulset/postgres --timeout=10m; then
+  echo "FAILED: PostgreSQL did not start (see above)"
+else
 cat <<EOF | kubectl --kubeconfig "$VKS_KUBECONFIG" -n keycloak apply -f -
 apiVersion: apps/v1
 kind: Deployment
@@ -605,6 +622,7 @@ spec:
 EOF
 kubectl --kubeconfig "$VKS_KUBECONFIG" -n keycloak rollout status deployment/keycloak --timeout=10m \
   && echo "Keycloak's address: $(kubectl --kubeconfig "$VKS_KUBECONFIG" -n keycloak get service keycloak -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+fi
 ```
 
 </details>
@@ -923,9 +941,9 @@ People sign in to Keycloak in a browser, which must trust Keycloak's CA. Give ea
 `keycloak-ca.pem` from step 6 (it holds no secret), and each person adds it once on the machine
 whose browser they sign in with. Do it on your own machine too, before step 11.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS):** Chrome uses its own certificate database in your home.
-This adds the CA there (it needs `certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu,
-`sudo dnf install -y nss-tools` on AlmaLinux):
+**Linux:** Chrome uses its own certificate database in your home. This adds the CA there (it needs
+`certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on
+AlmaLinux). In WSL, the browser runs on Windows: use the Windows line.
 
 ```sh
 mkdir -p "$HOME/.pki/nssdb"
@@ -1064,14 +1082,15 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak exec deploy/keycloak -- bash -c
 each group (`exists` for what was there), with a `Created new …` line from Keycloak before each.
 
 **If not:** `FAILED: the admin login`: Keycloak is not ready yet (step 5) or the Secret
-`keycloak-admin` was changed after Keycloak's first start; Keycloak keeps the first password.
+`keycloak-admin` was changed after Keycloak's first start (Keycloak keeps the first password), or
+the administrator `admin` was deleted or got another password in the admin console.
 
 In the admin console (step 11), the realm's **Clients** list shows `kubernetes-device`; its
 **Capability config** has **Client authentication** off and **OAuth 2.0 Device Authorization Grant**
 on; and under **Client scopes**, `kubernetes-device-dedicated`, the mapper `groups` has **Full
 group path** off and **Add to ID token** on.
 
-![The vks realm's Clients list with kubernetes-device, named kubectl (oidc-login, device code)](img/keycloak-vks/02-clients.jpg)
+![The realm's Clients list with kubernetes-device, named kubectl (oidc-login, device code)](img/keycloak-vks/02-clients.jpg)
 
 ![The client's Capability config: Client authentication off, Standard flow off, OAuth 2.0 Device Authorization Grant on](img/keycloak-vks/03-client-capability.jpg)
 
@@ -1088,7 +1107,7 @@ Google Authenticator) at their first sign in. First type the temporary password,
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
-printf 'Temporary password: '; read -rs KC_USER_PASSWORD; echo
+printf 'Temporary password: '; IFS= read -rs KC_USER_PASSWORD; echo
 ```
 
 **Windows (PowerShell):**
@@ -1162,6 +1181,7 @@ keytool -importcert -noprompt -alias keycloak-ca -file /etc/keycloak-tls/ca.crt 
 '@
   $B64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(("REALM=$REALM`n" + $IN).Replace("`r", '')))
   $global:LASTEXITCODE = $null
+  $OutputEncoding = New-Object Text.UTF8Encoding $false
   ConvertTo-Json -Depth 5 -Compress $U | kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak exec -i deploy/keycloak -- bash -c "echo $B64 | base64 -d > /tmp/add-user.sh && bash /tmp/add-user.sh"
   if ($LASTEXITCODE -eq 0) { "added $USERNAME to $GROUP" }
   Remove-Variable U, KC_USER_PASSWORD
@@ -1207,8 +1227,10 @@ kubectl --kubeconfig "$VKS_KUBECONFIG" -n keycloak get secret keycloak-admin -o 
 $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
+$global:LASTEXITCODE = $null
 $B = kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak get secret keycloak-admin -o 'jsonpath={.data.password}'
-"admin password: $([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B)))"
+if ($LASTEXITCODE -eq 0 -and $B) { "admin password: $([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B)))" }
+else { "FAILED: no password read (see the error above)" }
 ```
 
 ![Keycloak's sign-in page for the admin console: Username or email, Password, Sign In](img/keycloak-vks/01-admin-signin.jpg)
@@ -1230,9 +1252,11 @@ and hands people a kubeconfig for it. Its values come from this guide:
 
 ## 13. Remove Keycloak (optional)
 
-This deletes the namespace `keycloak` with Keycloak, PostgreSQL and its volume, the users and the
-CA. Clusters that trust this Keycloak no longer accept its logins; a new CA made by step 4 is a
-different CA. cert-manager stays.
+This deletes the namespace `keycloak` with Keycloak, PostgreSQL, the users and the CA, then waits
+until PostgreSQL's volume is gone. Clusters that trust this Keycloak no longer accept its logins; a
+new CA made by step 4 is a different CA. cert-manager stays. To delete Keycloak's cluster too, run
+this first and [CLUSTER.md step 8](CLUSTER.md#8-delete-the-cluster-optional) after it: a volume
+still in use when the cluster goes is left behind in the vSphere Namespace and stops its removal.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -1241,6 +1265,12 @@ VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace keycloak --wait --timeout=10m
+for i in $(seq 60); do
+  V="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o jsonpath='{range .items[?(@.spec.claimRef.namespace=="keycloak")]}{.metadata.name}{" "}{end}')"
+  [ -z "$V" ] && break
+  sleep 5
+done
+if [ -z "$V" ]; then echo "Keycloak's volume is gone"; else echo "STILL THERE: $V"; fi
 ```
 
 **Windows (PowerShell):**
@@ -1250,6 +1280,18 @@ $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig $VKS_KUBECONFIG delete namespace keycloak --wait --timeout=10m
+foreach ($i in 1..60) {
+  $V = kubectl --kubeconfig $VKS_KUBECONFIG get pv -o jsonpath='{range .items[?(@.spec.claimRef.namespace==''keycloak'')]}{.metadata.name}{'' ''}{end}'
+  if (-not $V) { break }
+  Start-Sleep 5
+}
+if (-not $V) { "Keycloak's volume is gone" } else { "STILL THERE: $V" }
 ```
+
+**Expect:** `namespace "keycloak" deleted`, then `Keycloak's volume is gone` (it took about 10
+seconds).
+
+**If not:** `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not
+delete the cluster until it is gone.
 
 Back to [README](../README.md).

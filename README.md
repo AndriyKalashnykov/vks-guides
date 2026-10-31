@@ -94,7 +94,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Run Keycloak in a VKS cluster](docs/KEYCLOAK-VKS.md) | ✅ | — | — | ✅ | — |
 | [Log in with Keycloak](docs/KEYCLOAK.md) | ✅ | — | part | ✅ | — |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | ✅ | — | ✅ | ✅ |
-| [Create a VKS cluster](docs/CLUSTER.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Create a VKS cluster](docs/CLUSTER.md) | ✅ | ✅ | ✅ | ✅ | part |
 | [Install Harbor](docs/HARBOR.md) | ✅ | ✅ | part | part | part |
 | [Build an image, push it to Harbor and run it](docs/IMAGE.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Build an image with docker (short version)](docs/IMAGE-DOCKER.md) | ✅ | — | — | — | ✅ |

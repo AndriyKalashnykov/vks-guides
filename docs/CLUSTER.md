@@ -62,11 +62,13 @@ the Kubernetes releases and the cluster classes.
 | storage class | one from step 1 |
 | control-plane nodes | `1`, or `3` for a cluster that must stay up when a node fails |
 | worker nodes | `1` or more |
-| storage | room in the namespace's storage limit for each node: about 20 GB of disk plus its VM class's memory (its swap file), and one node more for updates and resizes (see below) |
+| storage | room in the namespace's storage limit for each node: about 20 GB of disk plus the memory its VM class does not reserve (its swap file), and room for one more node per node pool and for the control plane during updates and resizes (see below) |
 
-Each node of a cluster takes about 20 GB of disk plus its memory from the namespace's storage, and an
-update or resize first adds one node. So a cluster of 1 control-plane node and 1 worker of
-`best-effort-small` needs about (20 + 4) × 3 = 72 GB; with `best-effort-medium`, (20 + 8) × 3 = 84 GB.
+Each node of a cluster takes about 20 GB of disk plus its memory from the namespace's storage
+(`best-effort-*` classes reserve no memory, so all of it). An update or resize first adds one new
+node for the control plane and one for each node pool, at the same time. So a cluster of 1
+control-plane node and 1 worker of `best-effort-small` needs about (20 + 4) × 4 = 96 GB; with
+`best-effort-medium`, (20 + 8) × 4 = 112 GB.
 In the vSphere Client, open the namespace: its **Summary** tab shows, under **Capacity and Usage**,
 **Storage**, how much is used and the limit. The limit minus what is used must leave that room.
 
@@ -667,7 +669,8 @@ then deletes the old one. The cluster keeps its address, and apps with a volume 
 It took about 3 minutes for a cluster of 1 control-plane node and 1 worker.
 
 Before you start, check the namespace's storage limit as in [step 2](#2-choose-a-name-and-the-values):
-during the change the cluster has one node more.
+during the change the cluster has one node more for the control plane and one more per node pool.
+Tested as a vCenter administrator.
 
 1. In the vSphere Client, open your namespace, its **Resources** tab, and **Kubernetes service**.
    On your cluster's row, open the ⋮ menu and choose **View YAML**.
@@ -677,15 +680,17 @@ during the change the cluster has one node more.
 2. In the YAML pane below the list, click the pencil icon (**Reload and edit latest YAML**). Under
    `spec`, `topology`:
    - for the node size, change the `value` under `- name: vmClass` (in `variables`) to another
-     VM class of the namespace (step 9's first block lists them);
+     VM class of the namespace (step 9's first block lists them). A cluster made on the create page
+     with **Overrides** has a `vmClass` under `controlPlane` or a node pool's `overrides` as well;
+     change those too;
    - for the number of workers, change `replicas` under `workers`, `machineDeployments`.
 
    The editor's **Find and replace** (Ctrl+H) finds the line.
 
    ![The YAML pane in edit mode: SAVE and CANCEL, the note that edit mode checks only YAML syntax, and the vmClass value changed to best-effort-small](img/cluster/23-yaml-edit.jpg)
 
-3. Click **SAVE**. The vSphere Client checks only that the text is YAML: a VM class the namespace
-   does not have is saved too, and the change then never finishes. Check it with the block below.
+3. Click **SAVE**. The vSphere Client checks only that the text is YAML, not that the change
+   works: check it with the block below.
 
    ![After SAVE: Cluster 'keycloak' is being updated, and The updated YAML was sent to the server](img/cluster/24-yaml-saved.jpg)
 
@@ -722,7 +727,7 @@ $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 
 $global:LASTEXITCODE = $null
-$V = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get cluster $VKS_CLUSTER -o jsonpath='{.spec.topology.variables[?(@.name=="vmClass")].value}'
+$V = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get cluster $VKS_CLUSTER -o jsonpath='{.spec.topology.variables[?(@.name==''vmClass'')].value}'
 if ($LASTEXITCODE -eq 0) {
   "the cluster asks for: $V"
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get virtualmachines -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" -o custom-columns='NODE:.metadata.name,CLASS:.spec.className,POWER:.status.powerState'
@@ -732,15 +737,17 @@ if ($LASTEXITCODE -eq 0) {
 }
 ```
 
-**Expect:** `the cluster asks for:` the new class; during the change, one node more than the
-cluster has, some still of the old class; at the end, every node of the new class, `PoweredOn`,
+**Expect:** `the cluster asks for:` the new class; during the change, a new node for the control
+plane and for each node pool next to the old ones; at the end, every node of the new class, `PoweredOn`,
 and `control plane up to date: True`, `workers up to date: True`.
 
 **If not:**
 - After 20 minutes still a node of the old class, or a node that never powers on:
   `kubectl --kubeconfig <supervisor file> -n <namespace> describe cluster <cluster>` names the
-  reason. A VM class the namespace does not have, or a namespace storage limit that leaves no room
-  for one node more ([step 2](#2-choose-a-name-and-the-values)), stops the change. Set the value
-  back, or fix the cause, and save again.
+  reason. A namespace storage limit without room for the new nodes
+  ([step 2](#2-choose-a-name-and-the-values)) stops the change. Fix the cause, or set the value
+  back, and save again.
+- Nodes of the old class after the change finished: the cluster has a `vmClass` under `overrides`
+  too (step 2 above).
 - Pods `Pending` with `Insufficient memory` after the change: the new class is too small for what
   runs in the cluster; choose a larger one.
