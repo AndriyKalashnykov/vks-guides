@@ -44,11 +44,16 @@ sudo dnf install -y curl tar unzip jq openssl
 ## Photon OS 5
 
 This refreshes the package list and installs the tools the guides use, plus basic tools Photon OS
-lacks by default (`coreutils`, `findutils`, `gawk`, `diffutils`, `sed`, `grep`). For zip files it
-installs `libarchive`, whose `bsdtar` the guides use where there is no `unzip`: the Photon images
-of VKS have no `unzip` package. The line can update the SSH server (keep `openssh openssh-socket`
-in it); its end restarts it, so new SSH logins work. Keep this session open until a new one logs
-in.
+lacks by default (`coreutils`, `findutils`, `gawk`, `diffutils`, `sed`, `grep`).
+
+It installs `libarchive` instead of `unzip`. Photon OS 5's own package repositories have `unzip`,
+but recent Photon VM Service images for a vSphere Namespace are set to a shorter package list from
+Broadcom, without `unzip`, so `sudo tdnf install -y unzip` can fail there. The guides unpack zip
+files with `unzip` where it is installed, and otherwise with `libarchive`'s `bsdtar`, which gives
+the same files.
+
+The line can update the SSH server (keep `openssh openssh-socket` in it); its end restarts it, so
+new SSH logins work. Keep this session open until a new one logs in.
 
 ```sh
 sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar libarchive jq openssl coreutils findutils gawk diffutils sed grep openssh openssh-socket && sudo /usr/sbin/sshd -t && sudo systemctl try-restart sshd.service
