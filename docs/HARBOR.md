@@ -1950,7 +1950,8 @@ Harbor makes its own CA and a ten-year certificate unless you give it yours. Giv
 browsers and tools must trust Harbor through your organization's CA. Safari and Chrome on macOS
 also need a certificate valid for 825 days or less, which Harbor's own is not.
 
-You need three PEM files from your certificate team:
+You need three PEM files from your certificate team (*Request the certificate* below makes the
+key and the request to send them):
 
 - the server certificate for `HARBOR_FQDN` (a subject alternative name `DNS:<HARBOR_FQDN>` or a
   wildcard such as `DNS:*.<its domain>`, usage
@@ -1977,6 +1978,94 @@ Nothing renews this certificate: before it expires, get a new one and do this st
 
 To go back to Harbor's own certificate, set the three variables to `""` and do the same. Harbor
 then serves its earlier CA again.
+
+### Request the certificate
+
+Skip this if your certificate team gives you all three files. Otherwise this makes Harbor's
+private key, `harbor.key`, and a certificate request, `harbor.csr`, for the name in step 4's file,
+both in your home folder. The key never leaves this machine: send only `harbor.csr` to your
+certificate team and ask for two PEM files back:
+
+- the server certificate, followed by any intermediate CA certificates: save it as `harbor.crt`
+  in your home folder;
+- the root CA certificate that signed it: save it as `harbor-root-ca.crt` there.
+
+<details>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+HARBOR_TLS_KEY="$HOME/harbor.key"
+HARBOR_CSR="$HOME/harbor.csr"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+
+HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
+TMP="$(mktemp -d)"
+if [ -z "$HARBOR_FQDN" ]; then
+  echo "FAILED: no hostname in $HARBOR_DIR/harbor-data-values.yml (step 4)"
+elif [ -e "$HARBOR_TLS_KEY" ]; then
+  echo "NOT WRITTEN: $HARBOR_TLS_KEY already exists; use it with its certificate, or move it away first"
+else
+  printf '[req]\nprompt = no\ndistinguished_name = dn\nreq_extensions = ext\n[dn]\nCN = %s\n[ext]\nsubjectAltName = DNS:%s\nextendedKeyUsage = serverAuth\n' \
+    "$HARBOR_FQDN" "$HARBOR_FQDN" > "$TMP/req.cnf"
+  if ( umask 077; openssl req -new -newkey rsa:2048 -nodes -keyout "$HARBOR_TLS_KEY" -out "$HARBOR_CSR" -config "$TMP/req.cnf" 2>/dev/null ); then
+    openssl req -in "$HARBOR_CSR" -noout -subject
+    openssl req -in "$HARBOR_CSR" -noout -text | grep -A1 'Subject Alternative Name' | tail -n 1 | sed 's/^ *//'
+    echo "send this file: $HARBOR_CSR"
+  else
+    rm -f "$HARBOR_TLS_KEY" "$HARBOR_CSR"
+    echo "FAILED: openssl could not make the request"
+  fi
+fi
+rm -rf "$TMP"
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+This runs `openssl.exe` from [Git for Windows](https://git-scm.com/install/), as the next block
+does.
+
+```powershell
+$HARBOR_TLS_KEY = "$HOME\harbor.key"
+$HARBOR_CSR = "$HOME\harbor.csr"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+
+if (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { $env:Path += ';C:\Program Files\Git\usr\bin' }
+$HARBOR_FQDN = if (Test-Path "$HARBOR_DIR\harbor-data-values.yml") {
+  (Select-String -Path "$HARBOR_DIR\harbor-data-values.yml" -Pattern '^hostname: (.+)$' | Select-Object -First 1).Matches.Groups[1].Value }
+if (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" }
+elseif (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { 'FAILED: openssl.exe not found (install Git for Windows)' }
+elseif (Test-Path $HARBOR_TLS_KEY) { "NOT WRITTEN: $HARBOR_TLS_KEY already exists; use it with its certificate, or move it away first" }
+else {
+  $CNF = [IO.Path]::GetTempFileName()
+  [IO.File]::WriteAllText($CNF, "[req]`nprompt = no`ndistinguished_name = dn`nreq_extensions = ext`n[dn]`nCN = $HARBOR_FQDN`n[ext]`nsubjectAltName = DNS:$HARBOR_FQDN`nextendedKeyUsage = serverAuth`n")
+  $global:LASTEXITCODE = $null
+  openssl.exe req -new -newkey rsa:2048 -nodes -keyout $HARBOR_TLS_KEY -out $HARBOR_CSR -config $CNF 2>$null
+  if ($LASTEXITCODE -eq 0) {
+    openssl.exe req -in $HARBOR_CSR -noout -subject
+    ((openssl.exe req -in $HARBOR_CSR -noout -text) -match '^\s*DNS:' | Select-Object -First 1).Trim()
+    "send this file: $HARBOR_CSR"
+  } else {
+    Remove-Item -Force -ErrorAction SilentlyContinue $HARBOR_TLS_KEY, $HARBOR_CSR
+    'FAILED: openssl could not make the request'
+  }
+  Remove-Item -Force $CNF
+}
+```
+
+</details>
+
+**Expect:** `subject=CN=<HARBOR_FQDN>` (some OpenSSL versions print `subject=CN = …`),
+`DNS:<HARBOR_FQDN>`, and `send this file: …harbor.csr`.
+
+**If not:**
+- `NOT WRITTEN: … already exists`: a key from an earlier request is there. If its certificate is
+  still on its way, wait for it; to start over, move `harbor.key` and `harbor.csr` elsewhere.
+- `FAILED: no hostname …`: do step 4 first.
+
+When the two files are back, the next block checks that `harbor.crt` belongs to `harbor.key`.
 
 ### Write the certificate into the file
 
