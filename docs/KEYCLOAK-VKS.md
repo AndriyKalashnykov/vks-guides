@@ -13,16 +13,40 @@ This runs Keycloak, with a PostgreSQL database for its data, in its own VKS clus
 HTTPS certificate and a name, and sets up a realm that VKS clusters can use for logins
 ([KEYCLOAK.md](KEYCLOAK.md)).
 
+> [!NOTE]
+> **Why plain manifests, not Helm or the Keycloak Operator.** Keycloak publishes no Helm chart for
+> the server; Bitnami's chart is frozen, and the community chart covers no database. The official
+> Keycloak Operator needs the looser `baseline` Pod Security level and cluster-wide resources, and
+> its realm import cannot set up the groups mapper. Plain manifests with Keycloak's official image
+> need only kubectl, run under the strict `restricted` level, and show everything they do.
+
+Run the steps in order. Who does what:
+
+- a vCenter administrator: the VM class for the cluster (Prerequisites);
+- you, the administrator of Keycloak's cluster: steps 1 to 7 and 9 to 13;
+- whoever runs your DNS: the record in step 7;
+- everyone who signs in to Keycloak, you included: step 8, once.
+
 ## Prerequisites
 
-- a VKS cluster for Keycloak ([CLUSTER.md](CLUSTER.md)), with at least one worker of class
-  `best-effort-medium` (2 CPUs, 8 GB) or larger, a default storage class, and its administrator
-  kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+- a VKS cluster for Keycloak alone, made as below;
 - the [VCF CLI](VCF.md) with the context `supervisor` ([LOGIN.md](LOGIN.md)), for the cert-manager
   add-on;
 - [kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md);
-- a DNS name for Keycloak that you can point at an address (step 6), resolvable by the people who
+- a DNS name for Keycloak that you can point at an address (step 7), resolvable by the people who
   sign in and by the control-plane nodes of every VKS cluster that will trust Keycloak.
+
+The cluster for Keycloak:
+
+1. Its vSphere Namespace offers the VM class `best-effort-medium` (2 CPUs, 8 GB). If
+   [NAMESPACE.md step 8](NAMESPACE.md#8-check-the-namespace) does not list it under `VM classes:`,
+   a vCenter administrator adds it ([NAMESPACE.md step 6](NAMESPACE.md#6-add-the-vm-classes)).
+2. Create the cluster with
+   [CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), with
+   `vmClass` `best-effort-medium` and one worker (`replicas: 1`). Keep it for Keycloak: the clusters
+   that log in through Keycloak are other clusters ([KEYCLOAK.md](KEYCLOAK.md)).
+3. Save its kubeconfig as `~/.kube/<cluster name>.kubeconfig`
+   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 [its other hosts](PREREQS.md#registry-hosts-for-a-firewall)):
@@ -136,11 +160,9 @@ done
 ## 4. Make Keycloak's certificate
 
 This makes a CA (certificate authority) of your own with cert-manager, valid for 10 years, and from
-it a certificate for `KEYCLOAK_HOST`, the DNS name Keycloak will have (step 6), and for its name
+it a certificate for `KEYCLOAK_HOST`, the DNS name Keycloak will have (step 7), and for its name
 inside the cluster. cert-manager renews the certificate before it ends; Keycloak picks the new one
-up within an hour. To use your organization's certificate instead, see
-[HARBOR.md step 13](HARBOR.md) for how to request one, and put it in the Secret `keycloak-tls`
-(keys `tls.crt`, `tls.key` and `ca.crt`) instead of running this block.
+up within an hour.
 
 ```sh
 VKS_CLUSTER="my-keycloak-cluster"
@@ -470,7 +492,7 @@ curl -fsS --connect-timeout 20 --cacert "$KEYCLOAK_CA" "https://${KEYCLOAK_HOST}
 
 People sign in to Keycloak in a browser, which must trust Keycloak's CA. Give each person
 `keycloak-ca.pem` from step 6 (it holds no secret), and each person adds it once on the machine
-whose browser they sign in with. With your organization's certificate (step 4), skip this step.
+whose browser they sign in with. Do it on your own machine too, before step 11.
 
 **Windows (PowerShell):** Edge and Chrome use your user's trusted root CAs. Windows asks you to
 confirm with **Yes**:
@@ -561,8 +583,10 @@ each group (`exists` for what was there), with a `Created new …` line from Key
 
 ## 10. Add a person
 
-This adds a person to the realm with a temporary password, which they change at their first sign
-in, and puts them in a group. With `OTP="yes"` they also set up a one-time-code app (such as
+This adds a person to the realm with their name, email address and a temporary password, which
+they change at their first sign in, and puts them in a group. Keycloak requires the first name,
+last name and email address; without them it stops the person's first sign in at **Update Account
+Information**. With `OTP="yes"` they also set up a one-time-code app (such as
 Google Authenticator) at their first sign in. First type the temporary password, on its own:
 
 ```sh
@@ -576,6 +600,8 @@ VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 REALM="my-realm"
 USERNAME="alice"
+FIRST_NAME="Alice"
+LAST_NAME="Smith"
 EMAIL="alice@example.com"
 GROUP="team-a"
 OTP="no"
@@ -583,8 +609,8 @@ OTP="no"
 if [ -z "${KC_USER_PASSWORD:-}" ]; then
   echo "STOPPED: type the temporary password first (the line above)"
 else
-  KC_PW="$KC_USER_PASSWORD" jq -n --arg u "$USERNAME" --arg e "$EMAIL" --arg g "$GROUP" --arg otp "$OTP" \
-    '{username:$u, email:$e, emailVerified:true, enabled:true, groups:["/" + $g],
+  KC_PW="$KC_USER_PASSWORD" jq -n --arg u "$USERNAME" --arg f "$FIRST_NAME" --arg l "$LAST_NAME" --arg e "$EMAIL" --arg g "$GROUP" --arg otp "$OTP" \
+    '{username:$u, firstName:$f, lastName:$l, email:$e, emailVerified:true, enabled:true, groups:["/" + $g],
       credentials:[{type:"password", value:env.KC_PW, temporary:true}],
       requiredActions:(if $otp == "yes" then ["CONFIGURE_TOTP"] else [] end)}' \
   | kubectl --kubeconfig "$VKS_KUBECONFIG" -n keycloak exec -i deploy/keycloak -- bash -c '
@@ -600,6 +626,10 @@ fi
 
 **Expect:** `Logging into …`, an ID, then `added alice to team-a`.
 
+Then give the person their username and the temporary password, through a password manager's
+share or another private channel, and the kubeconfig from [KEYCLOAK.md](KEYCLOAK.md) step 3. At
+their first sign in (KEYCLOAK.md step 4), Keycloak asks them for a new password.
+
 **If not:**
 - `STOPPED: type the temporary password first`: run the one-line block above, then this one, in
   the same terminal.
@@ -608,8 +638,9 @@ fi
 
 ## 11. Open the admin console (optional)
 
-Keycloak's web page for administrators is `https://<KEYCLOAK_HOST>/admin`. This prints the
-password of the administrator `admin` from step 3. Clear the terminal after you have signed in.
+Keycloak's web page for administrators is `https://<KEYCLOAK_HOST>/admin`; your browser must trust
+Keycloak's CA (step 8). This prints the password of the administrator `admin` from step 3. Clear
+the terminal after you have signed in.
 
 ```sh
 VKS_CLUSTER="my-keycloak-cluster"
@@ -623,8 +654,8 @@ your own administrator under **Users** in the realm `master` and give it the rol
 
 ## 12. Use Keycloak for VKS cluster logins
 
-[KEYCLOAK.md](KEYCLOAK.md) turns Keycloak logins on for a VKS cluster and hands people a
-kubeconfig. Its values come from this guide:
+[KEYCLOAK.md](KEYCLOAK.md) turns Keycloak logins on for another VKS cluster, when you create it,
+and hands people a kubeconfig for it. Its values come from this guide:
 
 | KEYCLOAK.md asks for | from this guide |
 |---|---|
