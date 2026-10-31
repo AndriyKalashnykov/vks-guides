@@ -65,8 +65,9 @@ the Kubernetes releases and the cluster classes.
 | storage | room in the namespace's storage limit for each node: about 20 GB of disk plus the memory its VM class does not reserve (its swap file), and room for one more node per node pool and for the control plane during updates and resizes (see below) |
 
 Each node of a cluster takes about 20 GB of disk plus its memory from the namespace's storage
-(`best-effort-*` classes reserve no memory, so all of it). An update or resize first adds one new
-node for the control plane and one for each node pool, at the same time. So a cluster of 1
+(`best-effort-*` classes reserve no memory, so all of it). A change of VM class or Kubernetes
+version first adds one new node for the control plane and one for each node pool, at the same
+time (more workers add only those workers). So a cluster of 1
 control-plane node and 1 worker of `best-effort-small` needs about (20 + 4) × 4 = 96 GB; with
 `best-effort-medium`, (20 + 8) × 4 = 112 GB.
 In the vSphere Client, open the namespace: its **Summary** tab shows, under **Capacity and Usage**,

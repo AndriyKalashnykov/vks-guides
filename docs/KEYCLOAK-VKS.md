@@ -176,7 +176,7 @@ $null | vcf context use supervisor
 $global:LASTEXITCODE = $null
 $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
 if ($LASTEXITCODE -ne 0 -or -not $L.Trim()) {
-  "FAILED: the VCF CLI or jq (see the error above)"
+  "FAILED: the VCF CLI (see the error above)"
 } elseif (@(ConvertFrom-Json $L | ForEach-Object { $_ } | ForEach-Object { $_.addonName }) -contains 'cert-manager') {
   "cert-manager: already installed"
 } elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io 2>$null) -and $LASTEXITCODE -eq 0) {
@@ -204,7 +204,7 @@ if ($LASTEXITCODE -ne 0 -or -not $L.Trim()) {
 `cert-manager: already installed`.
 
 **If not:**
-- `MISSING: …`: install that tool. `FAILED: the VCF CLI or jq`: log in to the Supervisor again ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)),
+- `MISSING: …`: install that tool. `FAILED: the VCF CLI …`: log in to the Supervisor again ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)),
   and check `VKS_NAMESPACE` and `VKS_CLUSTER`.
 - `STOPPED: … not the add-on`: someone installed cert-manager another way. Use that cert-manager
   for step 4 at your own judgement, or remove it and run this block again.
@@ -715,7 +715,7 @@ spec:
             storage: 5Gi
 "@ | kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak apply -f -
 kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak rollout status statefulset/postgres --timeout=10m
-if ($LASTEXITCODE -ne 0) { "FAILED: PostgreSQL did not start (see above)" }
+if ($LASTEXITCODE -ne 0) { "FAILED: PostgreSQL did not start (see above)" } else {
 @"
 apiVersion: apps/v1
 kind: Deployment
@@ -832,6 +832,7 @@ spec:
 "@ | kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak apply -f -
 kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak rollout status deployment/keycloak --timeout=10m
 if ($LASTEXITCODE -eq 0) { "Keycloak's address: $(kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak get service keycloak -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" }
+}
 ```
 
 </details>
@@ -941,7 +942,7 @@ People sign in to Keycloak in a browser, which must trust Keycloak's CA. Give ea
 `keycloak-ca.pem` from step 6 (it holds no secret), and each person adds it once on the machine
 whose browser they sign in with. Do it on your own machine too, before step 11.
 
-**Linux:** Chrome uses its own certificate database in your home. This adds the CA there (it needs
+**Linux (Ubuntu, AlmaLinux):** Chrome uses its own certificate database in your home. This adds the CA there (it needs
 `certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on
 AlmaLinux). In WSL, the browser runs on Windows: use the Windows line.
 
@@ -1265,8 +1266,11 @@ VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace keycloak --wait --timeout=10m
+V="(not checked)"
 for i in $(seq 60); do
-  V="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o jsonpath='{range .items[?(@.spec.claimRef.namespace=="keycloak")]}{.metadata.name}{" "}{end}')"
+  if ! V="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o jsonpath='{range .items[?(@.spec.claimRef.namespace=="keycloak")]}{.metadata.name}{" "}{end}')"; then
+    V="(the check failed, see the error above)"; break
+  fi
   [ -z "$V" ] && break
   sleep 5
 done
@@ -1280,18 +1284,21 @@ $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig $VKS_KUBECONFIG delete namespace keycloak --wait --timeout=10m
+$V = "(not checked)"
 foreach ($i in 1..60) {
+  $global:LASTEXITCODE = $null
   $V = kubectl --kubeconfig $VKS_KUBECONFIG get pv -o jsonpath='{range .items[?(@.spec.claimRef.namespace==''keycloak'')]}{.metadata.name}{'' ''}{end}'
+  if ($LASTEXITCODE -ne 0) { $V = "(the check failed, see the error above)"; break }
   if (-not $V) { break }
   Start-Sleep 5
 }
 if (-not $V) { "Keycloak's volume is gone" } else { "STILL THERE: $V" }
 ```
 
-**Expect:** `namespace "keycloak" deleted`, then `Keycloak's volume is gone` (it took about 10
-seconds).
+**Expect:** `namespace "keycloak" deleted`, then `Keycloak's volume is gone`.
 
 **If not:** `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not
-delete the cluster until it is gone.
+delete the cluster until it is gone. `STILL THERE: (the check failed …)`: log in to the Supervisor
+again ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)) and run the block again.
 
 Back to [README](../README.md).
