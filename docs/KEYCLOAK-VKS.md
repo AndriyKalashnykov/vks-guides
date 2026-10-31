@@ -1071,11 +1071,11 @@ In the admin console (step 11), the realm's **Clients** list shows `kubernetes-d
 on; and under **Client scopes**, `kubernetes-device-dedicated`, the mapper `groups` has **Full
 group path** off and **Add to ID token** on.
 
-![The vks realm's Clients list with kubernetes-device, named kubectl (oidc-login, device code)](img/keycloak/02-clients.jpg)
+![The vks realm's Clients list with kubernetes-device, named kubectl (oidc-login, device code)](img/keycloak-vks/02-clients.jpg)
 
-![The client's Capability config: Client authentication off, Standard flow off, OAuth 2.0 Device Authorization Grant on](img/keycloak/03-client-capability.jpg)
+![The client's Capability config: Client authentication off, Standard flow off, OAuth 2.0 Device Authorization Grant on](img/keycloak-vks/03-client-capability.jpg)
 
-![The groups mapper: Group Membership, Token Claim Name groups, Full group path off, Add to ID token on](img/keycloak/04-groups-mapper.jpg)
+![The groups mapper: Group Membership, Token Claim Name groups, Full group path off, Add to ID token on](img/keycloak-vks/04-groups-mapper.jpg)
 
 ## 10. Add a person
 
@@ -1184,7 +1184,7 @@ their first sign in (KEYCLOAK.md step 4), Keycloak asks them for a new password.
 
 Under **Groups**, a group's **Members** tab lists the people added to it.
 
-![The group team-a's Members tab: alice, carol and erin with their email addresses and names](img/keycloak/05-group-members.jpg)
+![The group team-a's Members tab: alice, carol and erin with their email addresses and names](img/keycloak-vks/05-group-members.jpg)
 
 ## 11. Open the admin console (optional)
 
@@ -1211,7 +1211,7 @@ $B = kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak get secret keycloak-admin 
 "admin password: $([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B)))"
 ```
 
-![Keycloak's sign-in page for the admin console: Username or email, Password, Sign In](img/keycloak/01-admin-signin.jpg)
+![Keycloak's sign-in page for the admin console: Username or email, Password, Sign In](img/keycloak-vks/01-admin-signin.jpg)
 
 Sign in as `admin`. Keycloak marks this first administrator as temporary: for lasting use, create
 your own administrator under **Users** in the realm `master` and give it the role `admin`.
