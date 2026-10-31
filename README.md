@@ -31,6 +31,7 @@ monitoring and Helm.
 | [Install kubectl](docs/KUBECTL.md) | the Kubernetes command-line tool, for working with your clusters |
 | [Install the VCF CLI](docs/VCF.md) | VMware's command-line tool, for logging in to the Supervisor and managing VKS clusters |
 | [Log in to the Supervisor and a VKS cluster](docs/LOGIN.md) | your SSO login to the Supervisor, and the kubeconfig `kubectl` uses to reach your VKS cluster |
+| [Run Keycloak in a VKS cluster](docs/KEYCLOAK-VKS.md) | Keycloak with PostgreSQL in its own VKS cluster, with a certificate, a name, a realm for VKS logins and the people in it |
 | [Log in to a VKS cluster with Keycloak](docs/KEYCLOAK.md) | a person's Keycloak user on a VKS cluster made for it, with only kubectl and kubelogin on their machine |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | a vCenter administrator's vSphere Namespace for VKS clusters, and the check that it is ready |
 | [Create a VKS cluster](docs/CLUSTER.md) | a VKS cluster made in the vSphere Client, checked, and deleted |
@@ -90,9 +91,10 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Install kubectl](docs/KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install the VCF CLI](docs/VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in](docs/LOGIN.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Run Keycloak in a VKS cluster](docs/KEYCLOAK-VKS.md) | ✅ | — | — | ✅ | — |
 | [Log in with Keycloak](docs/KEYCLOAK.md) | ✅ | — | part | ✅ | — |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | ✅ | — | ✅ | ✅ |
-| [Create a VKS cluster](docs/CLUSTER.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Create a VKS cluster](docs/CLUSTER.md) | ✅ | ✅ | ✅ | ✅ | part |
 | [Install Harbor](docs/HARBOR.md) | ✅ | ✅ | part | part | part |
 | [Build an image, push it to Harbor and run it](docs/IMAGE.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Build an image with docker (short version)](docs/IMAGE-DOCKER.md) | ✅ | — | — | — | ✅ |
@@ -108,35 +110,6 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Send logs to VCF Operations](docs/LOGGING.md) | part | part | part | part | — |
 | [Logs and traces in Grafana](docs/OBSERVABILITY.md) | part | ✅ | part | part | part |
-
-In *Send logs to VCF Operations*, steps 2 to 6 were not run on VKS 3.8: that lab has no Log
-Management.
-
-Earlier versions of these guides, on VCF 9.1.1 with VKS 3.7.2, from Linux and Windows on amd64 and
-macOS on Apple silicon:
-
-| guide | Ubuntu (bash, zsh) | Photon OS 5 (bash) | macOS 26 (bash, zsh) | Windows PowerShell 5.1 | WSL 2 Ubuntu (bash, as root) |
-|---|---|---|---|---|---|
-| [Prerequisites](docs/PREREQS.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Install kubectl](docs/KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Install the VCF CLI](docs/VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Log in](docs/LOGIN.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | ✅ | part | ✅ | — |
-| [Create a VKS cluster](docs/CLUSTER.md) | ✅ | ✅ | part | ✅ | — |
-| [Install Harbor](docs/HARBOR.md) | ✅ | part | part | ✅ | — |
-| [ArgoCD](docs/ARGOCD.md) | ✅ | part | ✅ | ✅ | — |
-| [Run Gitea](docs/GITEA.md) | ✅ | ✅ | — | ✅ | ✅ |
-| [Run Tekton](docs/TEKTON.md) | ✅ | ✅ | — | ✅ | — |
-| [Run GitLab](docs/GITLAB.md) | ✅ | ✅ | — | ✅ | — |
-| [CI/CD with Gitea and Tekton](docs/CICD.md) | part | — | — | part | — |
-| [CI/CD with GitLab](docs/CICD.md) | — | part | — | part | — |
-| [Install Helm](docs/HELM.md) | ✅ | ✅ | — | ✅ | — |
-| [Monitor a VKS cluster](docs/MONITORING.md) | ✅ | part | — | part | — |
-| [Send logs to VCF Operations](docs/LOGGING.md) | part | part | — | part | ✅ |
-| [Logs and traces in Grafana](docs/OBSERVABILITY.md) | ✅ | part | — | part | — |
-
-Windows was Windows Server 2025. Linux on arm64, Intel Macs and Windows on arm64 were not tested.
-In *Send logs to VCF Operations*, the logs went to a test HTTPS receiver, not to Log Management.
 
 ## License
 

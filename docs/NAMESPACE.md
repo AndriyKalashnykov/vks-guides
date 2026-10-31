@@ -543,4 +543,9 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG delete namespace $VKS_NAMESPACE
 **Expect:** `namespace "<name>" deleted`. In the vSphere Client's **Namespaces** tab the row shows
 **Config Status** **Removing**, then disappears.
 
+**If not:** `admission webhook "default.validating.namespace.supervisor.vmware.com" denied the
+request` with `Principal … is not associated with namespace …`: the namespace was not made with
+this step (for example in the vSphere Client). Remove it in the vSphere Client
+([step 9](#9-remove-the-namespace-optional)).
+
 Back to [README](../README.md).
