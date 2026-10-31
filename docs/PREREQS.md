@@ -384,6 +384,8 @@ elif ! curl -fsSL --connect-timeout 20 --speed-time 60 -o "$TMP/k.zip" "$URL" \
   echo "FAILED: download of $URL"
 elif [ "$( (sha256sum "$TMP/k.zip" 2>/dev/null || shasum -a 256 "$TMP/k.zip") | cut -d' ' -f1)" != "$SUM" ]; then
   echo "FAILED: checksum mismatch for $URL"
+elif ! command -v unzip >/dev/null 2>&1 && ! command -v bsdtar >/dev/null 2>&1; then
+  echo "MISSING: unzip (see the section for your OS above)"
 elif ! { if command -v unzip >/dev/null 2>&1 || ! command -v bsdtar >/dev/null 2>&1; then unzip -p "$TMP/k.zip" kubelogin; else bsdtar -xOf "$TMP/k.zip" kubelogin; fi; } > "$TMP/kubectl-oidc_login" \
      || ! chmod 755 "$TMP/kubectl-oidc_login" || ! "$TMP/kubectl-oidc_login" version; then
   echo "FAILED: no working kubelogin in $URL"
@@ -424,8 +426,9 @@ if (-not $SUM) {
     "note: $INSTALL_DIR added to your PATH"
   }
   if (($env:Path -split ';') -notcontains $INSTALL_DIR) { $env:Path = "$INSTALL_DIR;$env:Path" }
+  $global:LASTEXITCODE = 1
   & "$INSTALL_DIR\kubectl-oidc_login.exe" version
-  "installed $INSTALL_DIR\kubectl-oidc_login.exe"
+  if ($LASTEXITCODE -eq 0) { "installed $INSTALL_DIR\kubectl-oidc_login.exe" } else { "FAILED: no working kubelogin in $URL" }
 }
 Remove-Item -Recurse -Force $TMP
 ```

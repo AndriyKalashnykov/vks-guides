@@ -30,7 +30,8 @@ What the Keycloak administrator sets up in the realm (the issuer is
   Grant** on, **Standard flow** off;
 - on that client, a **Group Membership** mapper: **Token Claim Name** `groups`, **Full group path**
   off, **Add to ID token** on. Group names must be unique in the realm;
-- users with an email address, who may not change their username;
+- users with an email address (Keycloak otherwise stops their sign-in at **Update profile**), who
+  may not change their username;
 - an HTTPS certificate from a CA that the people's browsers trust, and that CA as a PEM file for
   you.
 
@@ -48,15 +49,13 @@ The file you hand over holds no secret, so it may be sent openly; the person's t
 
 ## 1. Turn Keycloak login on (when you create the cluster)
 
-Create the cluster with [CLUSTER.md step
-9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file) (kubectl and a YAML file); the
-create page in the vSphere Client (CLUSTER.md steps 3 to 5) has no field for this. In
-`cluster.yaml`, add the entry below at the end of `spec.topology.variables`, after the
-`vsphereOptions` entry, with the same indentation as `- name: vsphereOptions`. Change the issuer and
-the CA (from the Keycloak administrator, each line indented as shown), then apply the file as step 9
-says. `kubernetes` in `audiences` is for kubelogin's browser login; it does no harm without such a
-client. A cluster that already exists is not covered here: it has a `kubernetes` entry of its own,
-and changing it replaces the control-plane nodes.
+Create the cluster with kubectl and a YAML file, as in
+[CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file). In `cluster.yaml`,
+add the entry below at the end of `spec.topology.variables`, after the `vsphereOptions` entry, with
+the same indentation as `- name: vsphereOptions`. Change the issuer and the CA (from the Keycloak
+administrator, each line indented as shown), then apply the file as step 9 says. A cluster that
+already exists is not covered here: it has a `kubernetes` entry of its own, and changing it replaces
+the control-plane nodes.
 
 ```yaml
     variables:
@@ -73,9 +72,7 @@ and changing it replaces the control-plane nodes.
                 - issuer:
                     url: https://keycloak.example.com/realms/my-realm   # <-- the issuer
                     audiences:
-                      - kubernetes
                       - kubernetes-device
-                    audienceMatchPolicy: MatchAny
                     certificateAuthority: |                             # <-- the CA, indented
                       -----BEGIN CERTIFICATE-----
                       MIIBwTCCAWegAwIBAgIU...
@@ -111,7 +108,8 @@ if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md
 elif [ ! -s "$ADMIN_KUBECONFIG" ]; then echo "MISSING: $ADMIN_KUBECONFIG"
 else
   adm create namespace "$TEAM_NAMESPACE" --dry-run=client -o yaml | adm apply -f - >/dev/null
-  adm -n "$TEAM_NAMESPACE" create rolebinding "keycloak-${KEYCLOAK_GROUP}-edit" --clusterrole=edit --group="keycloak:${KEYCLOAK_GROUP}"
+  adm -n "$TEAM_NAMESPACE" create rolebinding "keycloak-${KEYCLOAK_GROUP}-edit" --clusterrole=edit \
+    --group="keycloak:${KEYCLOAK_GROUP}" --dry-run=client -o yaml | adm apply -f -
   echo "create deployments in $TEAM_NAMESPACE: $(adm auth can-i create deployments -n "$TEAM_NAMESPACE" --as=keycloak:test --as-group="keycloak:${KEYCLOAK_GROUP}")"
   echo "list pods in kube-system: $(adm auth can-i list pods -n kube-system --as=keycloak:test --as-group="keycloak:${KEYCLOAK_GROUP}")"
 fi
@@ -129,13 +127,14 @@ if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubect
 elseif (-not (Test-Path $ADMIN_KUBECONFIG)) { "MISSING: $ADMIN_KUBECONFIG" }
 else {
   adm create namespace $TEAM_NAMESPACE --dry-run=client -o yaml | adm apply -f - | Out-Null
-  adm -n $TEAM_NAMESPACE create rolebinding "keycloak-$KEYCLOAK_GROUP-edit" --clusterrole=edit "--group=keycloak:$KEYCLOAK_GROUP"
+  adm -n $TEAM_NAMESPACE create rolebinding "keycloak-$KEYCLOAK_GROUP-edit" --clusterrole=edit "--group=keycloak:$KEYCLOAK_GROUP" --dry-run=client -o yaml | adm apply -f -
   "create deployments in ${TEAM_NAMESPACE}: $(adm auth can-i create deployments -n $TEAM_NAMESPACE --as=keycloak:test "--as-group=keycloak:$KEYCLOAK_GROUP")"
   "list pods in kube-system: $(adm auth can-i list pods -n kube-system --as=keycloak:test "--as-group=keycloak:$KEYCLOAK_GROUP")"
 }
 ```
 
-**Expect:** `rolebinding.rbac.authorization.k8s.io/keycloak-team-a-edit created`, then
+**Expect:** `rolebinding.rbac.authorization.k8s.io/keycloak-team-a-edit created` (`configured` or
+`unchanged` when run again), then
 `create deployments in team-a: yes` and `list pods in kube-system: no`.
 
 **If not:** `Forbidden` or `Unauthorized`: `ADMIN_KUBECONFIG` is not the cluster's administrator
@@ -156,14 +155,15 @@ KEYCLOAK_ISSUER="https://keycloak.example.com/realms/my-realm"
 KEYCLOAK_CA="$HOME/keycloak-ca.pem"
 TEAM_NAMESPACE="team-a"
 NAME="my-vks-cluster-keycloak"
-KEYCLOAK_KUBECONFIG="$HOME/${NAME}.kubeconfig"
+KEYCLOAK_KUBECONFIG="$HOME/.kube/${NAME}.kubeconfig"
 
 if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
-elif [ ! -s "$KEYCLOAK_CA" ]; then echo "MISSING: $KEYCLOAK_CA (the CA from the Keycloak administrator)"
+elif [ ! -s "$ADMIN_KUBECONFIG" ]; then echo "MISSING: $ADMIN_KUBECONFIG"
+elif ! grep -q 'BEGIN CERTIFICATE' "$KEYCLOAK_CA" 2>/dev/null; then echo "NOT A PEM FILE: $KEYCLOAK_CA (the CA from the Keycloak administrator)"
 elif SERVER="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" config view --minify -o jsonpath='{.clusters[0].cluster.server}')" \
   && CA="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')" \
   && KC_CA="$(base64 < "$KEYCLOAK_CA" | tr -d '\n')" && [ -n "$SERVER" ] && [ -n "$CA" ] && [ -n "$KC_CA" ]; then
-  rm -f "$KEYCLOAK_KUBECONFIG"
+  mkdir -p "$(dirname "$KEYCLOAK_KUBECONFIG")" && rm -f "$KEYCLOAK_KUBECONFIG"
   kcfg() { kubectl config --kubeconfig "$KEYCLOAK_KUBECONFIG" "$@" >/dev/null; }
   kcfg set-cluster "$NAME" --server="$SERVER" && kcfg set "clusters.${NAME}.certificate-authority-data" "$CA" \
     && kcfg set-credentials keycloak --exec-api-version=client.authentication.k8s.io/v1 --exec-command=kubectl \
@@ -171,7 +171,7 @@ elif SERVER="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" config view --minify -o 
       --exec-arg=--oidc-client-id=kubernetes-device --exec-arg=--grant-type=device-code \
       --exec-arg=--skip-open-browser --exec-arg=--certificate-authority-data="$KC_CA" --exec-interactive-mode=IfAvailable \
     && kcfg set-context "$NAME" --cluster="$NAME" --user=keycloak --namespace="$TEAM_NAMESPACE" && kcfg use-context "$NAME" \
-    && echo "send this file: $KEYCLOAK_KUBECONFIG"
+    && echo "send this file: $KEYCLOAK_KUBECONFIG" || echo "FAILED: see the kubectl error above"
 else
   echo "FAILED: no server or CA read from $ADMIN_KUBECONFIG"
 fi
@@ -188,26 +188,29 @@ $KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/my-realm"
 $KEYCLOAK_CA = "$HOME\keycloak-ca.pem"
 $TEAM_NAMESPACE = "team-a"
 $NAME = "my-vks-cluster-keycloak"
-$KEYCLOAK_KUBECONFIG = "$HOME\$NAME.kubeconfig"
+$KEYCLOAK_KUBECONFIG = "$HOME\.kube\$NAME.kubeconfig"
 
 if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" }
-elseif (-not (Test-Path $KEYCLOAK_CA)) { "MISSING: $KEYCLOAK_CA (the CA from the Keycloak administrator)" }
+elseif (-not (Test-Path $ADMIN_KUBECONFIG)) { "MISSING: $ADMIN_KUBECONFIG" }
+elseif (-not (Select-String -Quiet -Path $KEYCLOAK_CA -Pattern 'BEGIN CERTIFICATE' -ErrorAction SilentlyContinue)) { "NOT A PEM FILE: $KEYCLOAK_CA (the CA from the Keycloak administrator)" }
 else {
   $SERVER = kubectl --kubeconfig $ADMIN_KUBECONFIG config view --minify -o jsonpath='{.clusters[0].cluster.server}'
   $CA = kubectl --kubeconfig $ADMIN_KUBECONFIG config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}'
   $KC_CA = [Convert]::ToBase64String([IO.File]::ReadAllBytes($KEYCLOAK_CA))
   if ($SERVER -and $CA -and $KC_CA) {
+    New-Item -ItemType Directory -Force -Path (Split-Path $KEYCLOAK_KUBECONFIG) | Out-Null
     Remove-Item -Force $KEYCLOAK_KUBECONFIG -ErrorAction SilentlyContinue
-    $K = @('config', "--kubeconfig=$KEYCLOAK_KUBECONFIG")
-    kubectl @K set-cluster $NAME "--server=$SERVER" | Out-Null
-    kubectl @K set "clusters.$NAME.certificate-authority-data" $CA | Out-Null
+    $K = @('config', "--kubeconfig=$KEYCLOAK_KUBECONFIG"); $OK = $true
+    kubectl @K set-cluster $NAME "--server=$SERVER" | Out-Null; if ($LASTEXITCODE) { $OK = $false }
+    kubectl @K set "clusters.$NAME.certificate-authority-data" $CA | Out-Null; if ($LASTEXITCODE) { $OK = $false }
     kubectl @K set-credentials keycloak --exec-api-version=client.authentication.k8s.io/v1 --exec-command=kubectl `
       --exec-arg=oidc-login --exec-arg=get-token "--exec-arg=--oidc-issuer-url=$KEYCLOAK_ISSUER" `
       --exec-arg=--oidc-client-id=kubernetes-device --exec-arg=--grant-type=device-code `
       --exec-arg=--skip-open-browser "--exec-arg=--certificate-authority-data=$KC_CA" --exec-interactive-mode=IfAvailable | Out-Null
-    kubectl @K set-context $NAME "--cluster=$NAME" --user=keycloak "--namespace=$TEAM_NAMESPACE" | Out-Null
-    kubectl @K use-context $NAME | Out-Null
-    if ($LASTEXITCODE -eq 0) { "send this file: $KEYCLOAK_KUBECONFIG" }
+    if ($LASTEXITCODE) { $OK = $false }
+    kubectl @K set-context $NAME "--cluster=$NAME" --user=keycloak "--namespace=$TEAM_NAMESPACE" | Out-Null; if ($LASTEXITCODE) { $OK = $false }
+    kubectl @K use-context $NAME | Out-Null; if ($LASTEXITCODE) { $OK = $false }
+    if ($OK) { "send this file: $KEYCLOAK_KUBECONFIG" } else { "FAILED: see the kubectl error above" }
   } else {
     "FAILED: no server or CA read from $ADMIN_KUBECONFIG"
   }
@@ -218,8 +221,10 @@ else {
 
 **Expect:** `send this file: …/my-vks-cluster-keycloak.kubeconfig`.
 
-**If not:** `unknown flag: --exec-interactive-mode`: kubectl is too old; update it
-([KUBECTL.md](KUBECTL.md)). `FAILED: …`: as in step 2, or `KEYCLOAK_CA` is not the PEM file.
+**If not:**
+- `unknown flag: --exec-interactive-mode`, then `FAILED`: kubectl is too old; update it
+  ([KUBECTL.md](KUBECTL.md)).
+- `FAILED: no server or CA read …`: `ADMIN_KUBECONFIG` is not the cluster's administrator kubeconfig.
 
 ## 4. Log in (the person)
 
@@ -250,19 +255,23 @@ else { kubectl --kubeconfig $KEYCLOAK_KUBECONFIG auth whoami }
 ```
 
 kubelogin prints `Please visit the following URL in your browser:` and a Keycloak address that
-ends in `user_code=XXXX-XXXX`. Open it in a browser on any machine, check that the page shows the
-same code, sign in to Keycloak and allow access. Enter only a code your own kubectl printed.
-kubectl then answers. Later commands log in again by themselves while your Keycloak session lasts.
+ends in `user_code=XXXX-XXXX`. Open it in a browser on any machine, sign in to Keycloak, and answer
+**Grant Access to kubectl (oidc-login, device code)** with **Yes**; the page then says **Device
+Login Successful**. Open only an address your own kubectl printed. kubectl then answers. Later
+commands renew the login by themselves while your Keycloak session lasts.
 
-**Expect:** `Username  keycloak:<you>` and `Groups  [keycloak:team-a system:authenticated]`;
+**Expect:** `Username  keycloak:<you>`, a `UID` line, and `Groups` that include `keycloak:team-a`;
 `kubectl --kubeconfig "$KEYCLOAK_KUBECONFIG" get pods` then answers for `team-a`.
 
 **If not:**
 - `MISSING: …`: install that tool, or save the file under that name.
 - `x509: certificate signed by unknown authority` from kubelogin: `KEYCLOAK_CA` in step 3 is not the
   CA of Keycloak's certificate, or Keycloak's certificate changed; ask for a new file.
-- `Unauthorized`: the cluster does not accept the login; the issuer or CA in step 1 differs from
-  Keycloak's.
+- `could not load the certificate`: `KEYCLOAK_CA` in step 3 was not a certificate; ask for a new
+  file.
+- `Unauthorized`: the cluster does not accept the login. Its control-plane nodes cannot reach
+  Keycloak (its name and port, see the table), or the issuer, CA or client name in step 1 differs
+  from Keycloak's.
 - `Forbidden`: your groups are not the one given rights in step 2. A group shown as
   `keycloak:/team-a` means **Full group path** is on in Keycloak.
 
@@ -282,7 +291,9 @@ kubectl oidc-login clean
 kubectl oidc-login clean
 ```
 
-**Expect:** no output; the next command asks for a new code.
+**Expect:** `Deleted the token cache from …/.kube/cache/oidc-login`, then a line about the keyring
+(`Could not delete the token cache from the keyring: …` where there is none). The next command asks
+for a new code.
 
 ## 6. Take access away (cluster administrator)
 
