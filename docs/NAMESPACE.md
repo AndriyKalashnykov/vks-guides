@@ -68,7 +68,8 @@ for vCenter.
 CA_ZIP="$HOME/Downloads/download.zip"
 
 TMP="$(mktemp -d)"
-if ! unzip -oqj "$CA_ZIP" 'certs/lin/*.0' -d "$TMP"; then
+if ! { if command -v unzip >/dev/null 2>&1; then unzip -oqj "$CA_ZIP" 'certs/lin/*.0' -d "$TMP"
+        else bsdtar -xf "$CA_ZIP" -C "$TMP" --strip-components 2 'certs/lin/*.0'; fi; }; then
   echo "FAILED: no CA certificate in $CA_ZIP"
 else
   for f in "$TMP"/*.0; do openssl x509 -in "$f" -noout -subject -fingerprint -sha256; done

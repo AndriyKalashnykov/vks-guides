@@ -57,7 +57,8 @@ install guides to do. The PowerShell block checks only `kubectl`, `vcf` and `hel
 
 ```sh
 for t in curl tar unzip jq openssl kubectl vcf helm; do
-  command -v "$t" >/dev/null 2>&1 && echo "ok       $t" || echo "MISSING  $t"
+  command -v "$t" >/dev/null 2>&1 || { [ "$t" = unzip ] && command -v bsdtar >/dev/null 2>&1; } \
+    && echo "ok       $t" || echo "MISSING  $t"
 done
 ```
 

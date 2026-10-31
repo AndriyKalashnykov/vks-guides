@@ -168,7 +168,7 @@ if [ -z "$P" ]; then
 elif [ ! -s "$SUPERVISOR_CA" ]; then
   echo "FAILED: no vCenter CA at $SUPERVISOR_CA (LOGIN.md, Create Supervisor context with CA, step 1)"
 elif ! curl -fsS --connect-timeout 20 --speed-time 60 --cacert "$SUPERVISOR_CA" -o "$TMP/p.zip" "https://${SUPERVISOR_ENDPOINT}/wcp/plugin/${P}/vsphere-plugin.zip" \
-     || ! unzip -oq "$TMP/p.zip" bin/kubectl -d "$TMP"; then
+     || ! { if command -v unzip >/dev/null 2>&1; then unzip -oq "$TMP/p.zip" bin/kubectl -d "$TMP"; else bsdtar -xf "$TMP/p.zip" -C "$TMP" bin/kubectl; fi; }; then
   echo "FAILED: download from https://${SUPERVISOR_ENDPOINT}"
 else
   if { mkdir -p "$INSTALL_DIR" 2>/dev/null && [ -w "$INSTALL_DIR" ] && install -m 0755 "$TMP/bin/kubectl" "$INSTALL_DIR/kubectl"; } \

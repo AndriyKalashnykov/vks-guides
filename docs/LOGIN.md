@@ -68,7 +68,9 @@ CA_FILE="$HOME/.kube/vcenter-ca.pem"
 TMP="$(mktemp -d)"
 if ! curl -fsSk --connect-timeout 20 --speed-time 60 -o "$TMP/certs.zip" "https://${VCENTER_FQDN}/certs/download.zip"; then
   echo "FAILED: download from https://${VCENTER_FQDN}"
-elif ! unzip -oqj "$TMP/certs.zip" 'certs/lin/*' -d "$TMP/certs" || [ -z "$(find "$TMP/certs" -name '*.0')" ]; then
+elif ! { if command -v unzip >/dev/null 2>&1; then unzip -oqj "$TMP/certs.zip" 'certs/lin/*' -d "$TMP/certs"
+          else mkdir -p "$TMP/certs" && bsdtar -xf "$TMP/certs.zip" -C "$TMP/certs" --strip-components 2 'certs/lin/*'; fi; } \
+     || [ -z "$(find "$TMP/certs" -name '*.0')" ]; then
   echo "FAILED: no CA certificate in the download from https://${VCENTER_FQDN}"
 else
   mkdir -p "$(dirname "$CA_FILE")"
@@ -910,7 +912,8 @@ case "$(uname -s)" in Darwin) OS=darwin ;; *) OS=linux ;; esac
 TMP="$(mktemp -d)"
 if curl -fsS --connect-timeout 20 --speed-time 60 --cacert "$SUPERVISOR_CA" -o "$TMP/plugin.zip" \
      "https://${SUPERVISOR_ENDPOINT}/wcp/plugin/${OS}-amd64/vsphere-plugin.zip" \
-   && unzip -q -o "$TMP/plugin.zip" -d "$TMP" && "$TMP/bin/kubectl-vsphere" version; then
+   && { if command -v unzip >/dev/null 2>&1; then unzip -q -o "$TMP/plugin.zip" -d "$TMP"; else bsdtar -xf "$TMP/plugin.zip" -C "$TMP"; fi; } \
+   && "$TMP/bin/kubectl-vsphere" version; then
   mkdir -p "$INSTALL_DIR" && install -m 755 "$TMP/bin/kubectl-vsphere" "$INSTALL_DIR/kubectl-vsphere" \
     && echo "installed $INSTALL_DIR/kubectl-vsphere"
 else

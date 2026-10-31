@@ -43,22 +43,27 @@ sudo dnf install -y curl tar unzip jq openssl
 ## Photon OS 5
 
 This refreshes the package list and installs the tools the guides use, plus basic tools Photon OS
-lacks by default (`coreutils`, `findutils`, `gawk`, `diffutils`, `sed`, `grep`). Keep
-`openssh openssh-socket` in the line: without them the machine stops accepting SSH logins.
+lacks by default (`coreutils`, `findutils`, `gawk`, `diffutils`, `sed`, `grep`). For zip files it
+installs `libarchive`, whose `bsdtar` the guides use where there is no `unzip`: the Photon images
+of VKS have no `unzip` package. The line can update the SSH server; its end restarts it, so new
+SSH logins work. Keep this session open until a new one logs in.
 
 ```sh
-sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar unzip jq openssl coreutils findutils gawk diffutils sed grep openssh openssh-socket
+sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar libarchive jq openssl coreutils findutils gawk diffutils sed grep openssh openssh-socket && sudo /usr/sbin/sshd -t && sudo systemctl try-restart sshd.service
 ```
 
-**Expect:** the prompt returns with no `Error` line (`Nothing to do.` when all are installed).
-Then run [Check](#check).
+**Expect:** the prompt returns with no `Error` line (`Nothing to do.` when all are installed), and
+an `ssh` from a new terminal logs in. Then run [Check](#check).
 
 **If not:**
 - `sudo: command not found`: run it as `root`, without `sudo`.
+- A new `ssh` gets `kex_exchange_identification: … Connection reset by peer`: in the open session,
+  run `sudo /usr/sbin/sshd -t && sudo systemctl try-restart sshd.service`. If `sshd -t` prints an
+  error, fix that line in `/etc/ssh/sshd_config` first. Do not close the session.
 - SSH as `root`, or `ssh -L` port forwarding, stops working: the updated SSH server refuses both
   when you never changed `/etc/ssh/sshd_config`. Log in as another user, or set
   `PermitRootLogin` and `AllowTcpForwarding` there as you need and run
-  `sudo systemctl restart sshd`.
+  `sudo /usr/sbin/sshd -t && sudo systemctl try-restart sshd.service`.
 
 ## macOS
 
@@ -120,7 +125,8 @@ This checks that each tool the guides use is installed and prints `ok` or `MISSI
 
 ```sh
 for t in curl tar unzip jq openssl tr awk diff find; do
-  command -v "$t" >/dev/null 2>&1 && echo "ok       $t" || echo "MISSING  $t"
+  command -v "$t" >/dev/null 2>&1 || { [ "$t" = unzip ] && command -v bsdtar >/dev/null 2>&1; } \
+    && echo "ok       $t" || echo "MISSING  $t"
 done
 ```
 
@@ -241,14 +247,14 @@ running. Restart the machine; docker then starts by itself.
 ### podman and docker on Photon OS 5
 
 docker only: podman cannot run without `root` on Photon OS. This installs and starts docker and
-adds you to the `docker` group. Keep `openssh openssh-socket` in the line: without them the
-machine stops accepting SSH logins.
+adds you to the `docker` group. Like the line above, it can update the SSH server and restarts it.
 
 ```sh
-sudo tdnf install -y docker openssh openssh-socket && sudo usermod -aG docker "$USER" && sudo systemctl enable --now docker && echo "docker installed: log out and back in"
+sudo tdnf install -y docker openssh openssh-socket && sudo /usr/sbin/sshd -t && sudo systemctl try-restart sshd.service && sudo usermod -aG docker "$USER" && sudo systemctl enable --now docker && echo "docker installed: log out and back in"
 ```
 
-**Expect:** `docker installed: log out and back in`.
+**Expect:** `docker installed: log out and back in`. Check that an `ssh` from a new terminal logs
+in before you log out.
 
 ### podman and docker on macOS
 
