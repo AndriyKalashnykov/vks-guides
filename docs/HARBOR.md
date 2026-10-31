@@ -1752,10 +1752,10 @@ them to the new name.
 
 1. Get a DNS record for the new name with Harbor's address (step 7).
 2. Write the new name into `harbor-data-values.yml` with the block below. With your
-   organization's certificate (step 13), you need one for the new name: move the old
-   `harbor.key` and `harbor.csr` out of your home folder, run step 13 *Request the certificate*,
-   and when the certificate is back, step 13 *Write the certificate into the file*. In 3,
-   replace everything with the file instead of the `hostname:` line.
+   organization's certificate (step 13), you need one for the new name: after that block, move
+   the old `harbor.key` and `harbor.csr` out of your home folder, run step 13 *Request the
+   certificate*, and when the certificate is back, step 13 *Write the certificate into the file*.
+   In 3, replace everything with the file instead of the `hostname:` line.
 3. In the vSphere Client, select the Supervisor, then **Configure** → **Supervisor Services** →
    **Overview**. Select **Harbor**, click **MANAGE**, keep the installed version, click **NEXT**
    twice. In **YAML Service Config**, change only the `hostname:` line to the new name, then click
@@ -1954,8 +1954,8 @@ Harbor makes its own CA and a ten-year certificate unless you give it yours. Giv
 browsers and tools must trust Harbor through your organization's CA. Safari and Chrome on macOS
 also need a certificate valid for 825 days or less, which Harbor's own is not.
 
-You need three PEM files from your certificate team (*Request the certificate* below makes the
-key and the request to send them):
+You need three PEM files, from your certificate team or, for the key, made by *Request the
+certificate* below:
 
 - the server certificate for `HARBOR_FQDN` (a subject alternative name `DNS:<HARBOR_FQDN>` or a
   wildcard such as `DNS:*.<its domain>`, usage
