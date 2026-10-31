@@ -1961,13 +1961,17 @@ key and the request to send them):
 
 Nothing renews this certificate: before it expires, get a new one and do this step again.
 
-- **Before the install:** run the block below after step 4, then go on with step 5.
+Ask for the certificate early: *Request the certificate* below makes the request, and your
+certificate team may take days.
+
+- **Before the install:** run *Write the certificate into the file* below after step 4, then go
+  on with step 5.
 - **On an installed Harbor:** this replaces Harbor's CA. VKS gives the new CA to every node of
   every VKS cluster on the Supervisor, replacing some nodes and updating others in place, and
   pulls from Harbor fail on some nodes until that ends. Do it in a
   maintenance window:
   1. Step 6 *Record the VKS cluster machines*.
-  2. The block below.
+  2. *Write the certificate into the file* below.
   3. In the vSphere Client, select the Supervisor, then **Configure** → **Supervisor Services** →
      **Overview**. Select **Harbor**, click **MANAGE**, keep the installed version, click **NEXT**
      twice. In **YAML Service Config**, replace everything with the file (step 6 *Copy the
@@ -1983,7 +1987,7 @@ then serves its earlier CA again.
 
 Skip this if your certificate team gives you all three files. Otherwise this makes Harbor's
 private key, `harbor.key`, and a certificate request, `harbor.csr`, for the name in step 4's file,
-both in your home folder. The key never leaves this machine: send only `harbor.csr` to your
+both in your home folder. The key stays with you: send only `harbor.csr` to your
 certificate team and ask for two PEM files back:
 
 - the server certificate, followed by any intermediate CA certificates: save it as `harbor.crt`
@@ -2007,13 +2011,14 @@ elif [ -e "$HARBOR_TLS_KEY" ]; then
 else
   printf '[req]\nprompt = no\ndistinguished_name = dn\nreq_extensions = ext\n[dn]\nCN = %s\n[ext]\nsubjectAltName = DNS:%s\nextendedKeyUsage = serverAuth\n' \
     "$HARBOR_FQDN" "$HARBOR_FQDN" > "$TMP/req.cnf"
-  if ( umask 077; openssl req -new -newkey rsa:2048 -nodes -keyout "$HARBOR_TLS_KEY" -out "$HARBOR_CSR" -config "$TMP/req.cnf" 2>/dev/null ); then
+  if ( umask 077; openssl req -new -newkey rsa:2048 -nodes -keyout "$HARBOR_TLS_KEY" -out "$HARBOR_CSR" -config "$TMP/req.cnf" 2>"$TMP/err" ); then
     openssl req -in "$HARBOR_CSR" -noout -subject
     openssl req -in "$HARBOR_CSR" -noout -text | grep -A1 'Subject Alternative Name' | tail -n 1 | sed 's/^ *//'
     echo "send this file: $HARBOR_CSR"
   else
     rm -f "$HARBOR_TLS_KEY" "$HARBOR_CSR"
-    echo "FAILED: openssl could not make the request"
+    cat "$TMP/err"
+    echo "FAILED: openssl could not make the request (see the lines above)"
   fi
 fi
 rm -rf "$TMP"
@@ -2033,8 +2038,8 @@ $HARBOR_CSR = "$HOME\harbor.csr"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 if (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { $env:Path += ';C:\Program Files\Git\usr\bin' }
-$HARBOR_FQDN = if (Test-Path "$HARBOR_DIR\harbor-data-values.yml") {
-  (Select-String -Path "$HARBOR_DIR\harbor-data-values.yml" -Pattern '^hostname: (.+)$' | Select-Object -First 1).Matches.Groups[1].Value }
+$VALUES = "$HARBOR_DIR\harbor-data-values.yml"
+$HARBOR_FQDN = if (Test-Path $VALUES) { "$((Get-Content $VALUES | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')" } else { '' }
 if (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" }
 elseif (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { 'FAILED: openssl.exe not found (install Git for Windows)' }
 elseif (Test-Path $HARBOR_TLS_KEY) { "NOT WRITTEN: $HARBOR_TLS_KEY already exists; use it with its certificate, or move it away first" }
@@ -2042,28 +2047,33 @@ else {
   $CNF = [IO.Path]::GetTempFileName()
   [IO.File]::WriteAllText($CNF, "[req]`nprompt = no`ndistinguished_name = dn`nreq_extensions = ext`n[dn]`nCN = $HARBOR_FQDN`n[ext]`nsubjectAltName = DNS:$HARBOR_FQDN`nextendedKeyUsage = serverAuth`n")
   $global:LASTEXITCODE = $null
-  openssl.exe req -new -newkey rsa:2048 -nodes -keyout $HARBOR_TLS_KEY -out $HARBOR_CSR -config $CNF 2>$null
+  $ERRF = [IO.Path]::GetTempFileName()
+  openssl.exe req -new -newkey rsa:2048 -nodes -keyout $HARBOR_TLS_KEY -out $HARBOR_CSR -config $CNF 2>$ERRF
   if ($LASTEXITCODE -eq 0) {
     openssl.exe req -in $HARBOR_CSR -noout -subject
     ((openssl.exe req -in $HARBOR_CSR -noout -text) -match '^\s*DNS:' | Select-Object -First 1).Trim()
     "send this file: $HARBOR_CSR"
   } else {
     Remove-Item -Force -ErrorAction SilentlyContinue $HARBOR_TLS_KEY, $HARBOR_CSR
-    'FAILED: openssl could not make the request'
+    Get-Content $ERRF
+    'FAILED: openssl could not make the request (see the lines above)'
   }
-  Remove-Item -Force $CNF
+  Remove-Item -Force $CNF, $ERRF
 }
 ```
 
 </details>
 
-**Expect:** `subject=CN=<HARBOR_FQDN>` (some OpenSSL versions print `subject=CN = …`),
-`DNS:<HARBOR_FQDN>`, and `send this file: …harbor.csr`.
+**Expect:** a `subject=` line with your Harbor name, `DNS:<HARBOR_FQDN>`, and
+`send this file: …harbor.csr`.
 
 **If not:**
 - `NOT WRITTEN: … already exists`: a key from an earlier request is there. If its certificate is
   still on its way, wait for it; to start over, move `harbor.key` and `harbor.csr` elsewhere.
 - `FAILED: no hostname …`: do step 4 first.
+- `FAILED: openssl …`: the lines above it say why (`string too long`: a name longer than 64
+  characters). `openssl.exe not found`: install Git for Windows. If your team requires a larger
+  key, change `rsa:2048`.
 
 When the two files are back, the next block checks that `harbor.crt` belongs to `harbor.key`.
 
@@ -2223,7 +2233,9 @@ Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $TMP
 **Expect:** the certificate's `subject=` and `notAfter=`, then `tls.crt: |`, `tls.key: |` and
 `ca.crt: |`. With the three variables `""`: `tls.crt:`, `tls.key:` and `ca.crt:` only.
 
-**If not:** `NOT WRITTEN: …` names the file or check that failed; the file is as it was. Do not
+**If not:** `NOT WRITTEN: …` names the file or check that failed; the file is as it was. A
+certificate refused for its name (`no DNS:…`) or its usage (`TLS Web Server Authentication`): ask
+your certificate team for a TLS server certificate with `DNS:<HARBOR_FQDN>`. Do not
 paste a file this block refused into the vSphere Client: a wrong `ca.crt` stops VKS cluster
 creation and updates on the whole Supervisor.
 
