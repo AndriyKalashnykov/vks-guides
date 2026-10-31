@@ -153,12 +153,17 @@ elif [ "$N" = 1 ]; then
 elif kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io >/dev/null 2>&1; then
   echo "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
 elif vcf addon install create cert-manager --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
+  OK=""
   for i in $(seq 60); do
-    printf 'apiVersion: cert-manager.io/v1\nkind: Issuer\nmetadata:\n  name: check\nspec:\n  selfSigned: {}\n' \
-      | kubectl --kubeconfig "$VKS_KUBECONFIG" -n cert-manager create --dry-run=server -f - >/dev/null 2>&1 && break
+    if kubectl --kubeconfig "$VKS_KUBECONFIG" -n cert-manager get deployment cert-manager-webhook >/dev/null 2>&1 \
+       && printf 'apiVersion: cert-manager.io/v1\nkind: Issuer\nmetadata:\n  name: check\nspec:\n  selfSigned: {}\n' \
+          | kubectl --kubeconfig "$VKS_KUBECONFIG" -n default create --dry-run=server -f - >/dev/null 2>&1; then
+      OK=1; break
+    fi
     sleep 5
   done
   kubectl --kubeconfig "$VKS_KUBECONFIG" -n cert-manager wait --for=condition=Available deployment --all --timeout=5m
+  [ -n "$OK" ] || echo "FAILED: cert-manager does not accept requests yet"
 else
   echo "FAILED: the cert-manager add-on (see the error above)"
 fi
@@ -189,13 +194,18 @@ if ($LASTEXITCODE -ne 0 -or -not $L.Trim()) {
   if ($LASTEXITCODE -ne 0) {
     "FAILED: the cert-manager add-on (see the error above)"
   } else {
+    $OK = $false
     foreach ($i in 1..60) {
-      "apiVersion: cert-manager.io/v1`nkind: Issuer`nmetadata:`n  name: check`nspec:`n  selfSigned: {}" |
-        kubectl --kubeconfig $VKS_KUBECONFIG -n cert-manager create --dry-run=server -f - 2>$null | Out-Null
-      if ($LASTEXITCODE -eq 0) { break }
+      kubectl --kubeconfig $VKS_KUBECONFIG -n cert-manager get deployment cert-manager-webhook 2>$null | Out-Null
+      if ($LASTEXITCODE -eq 0) {
+        "apiVersion: cert-manager.io/v1`nkind: Issuer`nmetadata:`n  name: check`nspec:`n  selfSigned: {}" |
+          kubectl --kubeconfig $VKS_KUBECONFIG -n default create --dry-run=server -f - 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) { $OK = $true; break }
+      }
       Start-Sleep 5
     }
     kubectl --kubeconfig $VKS_KUBECONFIG -n cert-manager wait --for=condition=Available deployment --all --timeout=5m
+    if (-not $OK) { "FAILED: cert-manager does not accept requests yet" }
   }
 }
 ```
@@ -212,6 +222,8 @@ if ($LASTEXITCODE -ne 0 -or -not $L.Trim()) {
   and check `VKS_NAMESPACE` and `VKS_CLUSTER`.
 - `STOPPED: … not the add-on`: someone installed cert-manager another way. Use that cert-manager
   for step 4 at your own judgement, or remove it and run this block again.
+- `FAILED: cert-manager does not accept requests yet`: wait a few minutes, then go on with step 4;
+  if step 4 says `failed calling webhook`, wait and run step 4 again.
 - `timed out waiting for the condition`: the nodes cannot pull from `projects.packages.broadcom.com`
   (see the table above); `kubectl -n cert-manager get pods` shows the reason.
 
@@ -419,9 +431,8 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak wait
 ## 5. Run PostgreSQL and Keycloak
 
 This runs PostgreSQL with a 2 GB volume, waits until it is ready, then runs Keycloak in front of it
-and gives Keycloak a load balancer address on port 443. It takes about a minute. The volume holds
-about 70 MB with a few people in it; the rest is room for PostgreSQL's write-ahead log, which may
-grow to 1 GB. Keycloak keeps no data of its own and writes about 180 MB on the node.
+and gives Keycloak a load balancer address on port 443. It takes about a minute. PostgreSQL uses
+about 70 MB of its volume with a few people in it, and Keycloak about 180 MB of the node's disk.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -856,8 +867,8 @@ rolled out`, then `Keycloak's address:` and an IP address.
 - `secret "keycloak-tls" not found` in `describe pod -l app=keycloak`: step 4 did not finish; run
   it, then this block again.
 - `The StatefulSet "postgres" is invalid: spec.volumeClaimTemplates`: your PostgreSQL was made with
-  a 5 GB volume by an earlier version of this block. It keeps that volume and keeps working; the
-  rest of the block still runs. To silence the line, change `storage: 2Gi` to `storage: 5Gi`.
+  a 5 GB volume by an earlier version of this block. It keeps working, and the rest of the block
+  still runs, but no change to PostgreSQL applies until you set `storage: 5Gi` in the block.
 - `exceeded its progress deadline` when you run the block again after a failed run: Keycloak was
   still starting. Wait a minute and run the block again.
 - `Keycloak's address:` with nothing after it: the cluster has no free load balancer address; ask
@@ -957,7 +968,7 @@ People sign in to Keycloak in a browser, which must trust Keycloak's CA. Give ea
 `keycloak-ca.pem` from step 6 (it holds no secret), and each person adds it once on the machine
 whose browser they sign in with. Do it on your own machine too, before step 11.
 
-**Linux (Ubuntu, AlmaLinux):** Chrome uses its own certificate database in your home. This adds
+**Linux (Ubuntu, AlmaLinux, Photon OS):** Chrome uses its own certificate database in your home. This adds
 the CA there (it needs `certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu,
 `sudo dnf install -y nss-tools` on AlmaLinux).
 
@@ -981,7 +992,9 @@ security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychai
 the Windows line in PowerShell:
 
 ```sh
-cp ~/keycloak-ca.pem "$(wslpath "$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')")/" && echo "copied to Windows"
+P="$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')"
+W="$([ -n "$P" ] && wslpath "$P" 2>/dev/null)"
+if [ -n "$W" ] && [ -d "$W" ] && cp ~/keycloak-ca.pem "$W/"; then echo "copied to $W"; else echo "FAILED: no Windows home folder found"; fi
 ```
 
 **Windows (PowerShell):** Edge and Chrome use your user's trusted root CAs. Windows asks you to
@@ -990,6 +1003,17 @@ confirm with **Yes**:
 ```powershell
 Import-Certificate -FilePath "$HOME\keycloak-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
 ```
+
+**Expect:** Linux: a `Keycloak CA` line with `C,,`. WSL: `copied to /mnt/c/Users/<you>`. Windows: a
+line with the CA's thumbprint and `CN=Keycloak CA`. Then the browser opens Keycloak's address with
+no certificate warning (restart the browser first).
+
+**If not:**
+- `certutil: command not found`: install it (the package named above).
+- `FAILED: no Windows home folder found` (WSL): copy `keycloak-ca.pem` to Windows by hand, for
+  example with Explorer at `\\wsl$`.
+- `UI is not allowed in this operation` (Windows): run the line in PowerShell on the desktop, not
+  over a remote session, so Windows can ask for **Yes**.
 
 ## 9. Create the realm and the client
 
