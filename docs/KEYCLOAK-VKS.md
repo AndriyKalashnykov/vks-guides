@@ -43,7 +43,9 @@ The cluster for Keycloak:
    a vCenter administrator adds it ([NAMESPACE.md step 6](NAMESPACE.md#6-add-the-vm-classes)).
 2. Create the cluster with
    [CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), with
-   `vmClass` `best-effort-medium` and one worker (`replicas: 1`). Keep it for Keycloak: the clusters
+   `vmClass` `best-effort-medium` and one worker (`replicas: 1`). It takes about 61 GB of the
+   namespace's storage (two nodes of 20 GB disk plus 8 GB memory each, and Keycloak's 5 GB volume),
+   and 28 GB more while it updates ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)). Keep it for Keycloak: the clusters
    that log in through Keycloak are other clusters ([KEYCLOAK.md](KEYCLOAK.md)).
 3. Save its kubeconfig as `~/.kube/<cluster name>.kubeconfig`
    ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).

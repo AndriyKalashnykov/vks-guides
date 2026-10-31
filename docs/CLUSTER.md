@@ -62,6 +62,21 @@ the Kubernetes releases and the cluster classes.
 | storage class | one from step 1 |
 | control-plane nodes | `1`, or `3` for a cluster that must stay up when a node fails |
 | worker nodes | `1` or more |
+| storage | room in the namespace's storage limit for each node: about 20 GB of disk plus its VM class's memory (its swap file), and one node more for updates and resizes (see below) |
+
+Each node of a cluster takes about 20 GB of disk plus its memory from the namespace's storage, and an
+update or resize first adds one node. So a cluster of 1 control-plane node and 1 worker of
+`best-effort-small` needs about (20 + 4) × 3 = 72 GB; with `best-effort-medium`, (20 + 8) × 3 = 84 GB.
+In the vSphere Client, open the namespace: its **Summary** tab shows, under **Capacity and Usage**,
+**Storage**, how much is used and the limit. The limit minus what is used must leave that room.
+
+![The namespace's Summary tab: Capacity and Usage with Storage 109.32 GB used and a 200 GB limit](img/cluster/20-namespace-storage.jpg)
+
+If it does not, a vCenter administrator clicks **EDIT LIMITS** there and raises **Storage** (or
+clears it for no limit), then **OK**. Above the limit, vCenter shows *The storage usage exceeds the
+quota set for the namespace*.
+
+![The Resource Limits window: CPU and Memory with no limit, Storage 200 GB](img/cluster/21-edit-limits.jpg)
 
 Never reuse a cluster's name in the same namespace: a new cluster under an old name can get the
 old cluster's address and never become available. After `dev-1`, take `dev-2`.
