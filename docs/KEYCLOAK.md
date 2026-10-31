@@ -20,8 +20,10 @@ that holds no secret. Tested on VKS 3.8 (Kubernetes v1.37.1) with Keycloak 26.8.
   administrator kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
 - [kubectl](KUBECTL.md) for the administrator; [kubectl](KUBECTL.md) and
   [kubelogin](PREREQS.md#kubelogin-optional) for each person;
-- a Keycloak realm, set up by its administrator as below; the Keycloak name must resolve from the
-  people's machines and from the cluster's control-plane nodes.
+- a Keycloak realm, set up by its administrator as below (no Keycloak yet:
+  [KEYCLOAK-VKS.md](KEYCLOAK-VKS.md) runs one in a VKS cluster and sets the realm up); the
+  Keycloak name must resolve from the people's machines and from the cluster's control-plane
+  nodes.
 
 What the Keycloak administrator sets up in the realm (the issuer is
 `https://<keycloak>/realms/<realm>`):
@@ -255,10 +257,23 @@ else { kubectl --kubeconfig $KEYCLOAK_KUBECONFIG auth whoami }
 ```
 
 kubelogin prints `Please visit the following URL in your browser:` and a Keycloak address that
-ends in `user_code=XXXX-XXXX`. Open it in a browser on any machine, sign in to Keycloak, and answer
-**Grant Access to kubectl (oidc-login, device code)** with **Yes**; the page then says **Device
-Login Successful**. Open only an address your own kubectl printed. kubectl then answers. Later
-commands renew the login by themselves while your Keycloak session lasts.
+ends in `user_code=XXXX-XXXX`. Open it in a browser on any machine, and open only an address your own
+kubectl printed. Sign in to Keycloak:
+
+![Keycloak's sign-in page of the realm: Username or email, Password, Sign In](img/keycloak/06-person-signin.jpg)
+
+At your first sign in with a temporary password, Keycloak asks for a new one:
+
+![Update password: You need to change your password to activate your account, New Password, Confirm password](img/keycloak/07-update-password.jpg)
+
+Answer **Grant Access to kubectl (oidc-login, device code)** with **Yes**:
+
+![Grant Access to kubectl (oidc-login, device code): User profile, Email address, User roles, Yes and No](img/keycloak/08-grant-access.jpg)
+
+The page then says **Device Login Successful**, and kubectl answers. Later commands renew the login
+by themselves while your Keycloak session lasts.
+
+![Device Login Successful: You may close this browser window and go back to your device](img/keycloak/09-device-login-successful.jpg)
 
 **Expect:** `Username  keycloak:<you>`, a `UID` line, and `Groups` that include `keycloak:team-a`;
 `kubectl --kubeconfig "$KEYCLOAK_KUBECONFIG" get pods` then answers for `team-a`.
