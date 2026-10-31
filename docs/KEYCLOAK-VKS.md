@@ -38,15 +38,20 @@ Run the steps in order. Who does what:
 
 The cluster for Keycloak:
 
-1. Its vSphere Namespace offers the VM class `best-effort-medium` (2 CPUs, 8 GB). If
-   [NAMESPACE.md step 8](NAMESPACE.md#8-check-the-namespace) does not list it under `VM classes:`,
-   a vCenter administrator adds it ([NAMESPACE.md step 6](NAMESPACE.md#6-add-the-vm-classes)).
+1. Its vSphere Namespace offers the VM class `best-effort-small` (2 CPUs, 4 GB) or larger
+   ([NAMESPACE.md step 8](NAMESPACE.md#8-check-the-namespace) lists them under `VM classes:`; a
+   vCenter administrator adds one with [NAMESPACE.md step 6](NAMESPACE.md#6-add-the-vm-classes)).
+   Measured: Keycloak uses about 0.5 to 0.8 GB and PostgreSQL under 0.1 GB, and they ask for
+   1.5 GB of a `best-effort-small` worker's 2.9 GB. Choose `best-effort-medium` (8 GB) for many
+   users or other apps in the same cluster.
 2. Create the cluster with
-   [CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), with
-   `vmClass` `best-effort-medium` and one worker (`replicas: 1`). It takes about 61 GB of the
-   namespace's storage (two nodes of 20 GB disk plus 8 GB memory each, and Keycloak's 5 GB volume),
-   and 28 GB more while it updates ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)). Keep it for Keycloak: the clusters
-   that log in through Keycloak are other clusters ([KEYCLOAK.md](KEYCLOAK.md)).
+   [CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), with that
+   `vmClass` and one worker (`replicas: 1`). With `best-effort-small` it takes about 53 GB of the
+   namespace's storage (two nodes of 20 GB disk plus 4 GB memory each, and Keycloak's 5 GB volume),
+   and 24 GB more while it updates ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)).
+   Keep it for Keycloak: the clusters that log in through Keycloak are other clusters
+   ([KEYCLOAK.md](KEYCLOAK.md)). To change its size later, see
+   [CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional).
 3. Save its kubeconfig as `~/.kube/<cluster name>.kubeconfig`
    ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
 
@@ -82,7 +87,7 @@ fi
 ```
 
 **Expect:** each node `Ready`, `default storage class:` and a class name, and a worker with
-`MEMORY` of about `6197436Ki` for `best-effort-medium`.
+`MEMORY` of about `2908348Ki` for `best-effort-small` (`6197436Ki` for `best-effort-medium`).
 
 **If not:** `default storage class: NONE`: give the cluster a default class as in
 [CLUSTER.md](CLUSTER.md), step 9's `defaultStorageClass`. `NOTE: namespace keycloak exists
