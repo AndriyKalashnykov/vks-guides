@@ -5,6 +5,7 @@
 >
 > - Ubuntu: [Install and manage packages](https://ubuntu.com/server/docs/how-to/software/package-management/)
 > - AlmaLinux 10: Red Hat's [Installing packages](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/managing_software_with_the_dnf_tool/installing-rhel-content#installing-packages)
+> - Arch Linux: [pacman](https://wiki.archlinux.org/title/Pacman), [System maintenance](https://wiki.archlinux.org/title/System_maintenance) (why `-Syu`), [Docker](https://wiki.archlinux.org/title/Docker), [Podman](https://wiki.archlinux.org/title/Podman)
 > - Photon OS 5: [tdnf Commands](https://vmware.github.io/photon/docs-v5/administration-guide/managing-packages-with-tdnf/standard-syntax-for-tndf/commands/)
 > - Homebrew: [Installation](https://docs.brew.sh/Installation); jq: [Download jq](https://jqlang.org/download/)
 > - Microsoft: [Starting Windows PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/starting-windows-powershell?view=powershell-5.1), [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Working across Windows and Linux file systems](https://learn.microsoft.com/en-us/windows/wsl/filesystems)
@@ -23,7 +24,7 @@ no check).
 sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
 ```
 
-On other distributions (except AlmaLinux and Photon OS, below), install the same five packages
+On other distributions (except AlmaLinux, Photon OS and Arch Linux, below), install the same five packages
 with your package manager.
 
 ## AlmaLinux 10
@@ -71,6 +72,20 @@ an `ssh` from a new terminal logs in. Then run [Check](#check).
   when you never changed `/etc/ssh/sshd_config`. Log in as another user, or set
   `PermitRootLogin` and `AllowTcpForwarding` there as you need and run
   `sudo /usr/sbin/sshd -t && sudo systemctl try-restart sshd.service`.
+
+## Arch Linux
+
+This installs the tools with `pacman`. `-Syu` also upgrades the rest of the system first: Arch Linux
+does not support installing packages without that upgrade.
+
+```sh
+sudo pacman -Syu --needed --noconfirm curl tar unzip jq openssl
+```
+
+**Expect:** `installing …` lines for what was missing, or `… is up to date -- skipping` and
+`there is nothing to do`, with no `error:` line. Then run [Check](#check).
+
+**If not:** `sudo: command not found`: run it as `root`, without `sudo`.
 
 ## macOS
 
@@ -181,7 +196,8 @@ echo "PATH set in $RC"
 Only for [IMAGE.md](IMAGE.md), where you build an image and push it to Harbor. Install one or both
 for your OS, then run [Check podman and docker](#check-podman-and-docker). Use docker 29.5 or
 newer: docker 29.0 to 29.4 does not trust Harbor's CA when it pushes. Ubuntu's own `docker.io` is
-29.1, so these blocks install Docker's own packages.
+29.1, so the Ubuntu and AlmaLinux blocks install Docker's own packages; Arch Linux's own `docker` is
+newer.
 
 The `docker` group gives its members the same rights as `root` on that machine. Adding your user to
 it lets you run `docker` without `sudo`, after you log out and back in.
@@ -266,6 +282,23 @@ in before you log out.
 
 **If not:** no `docker installed` line, or a new `ssh` is reset: see the SSH lines under **If not**
 in [Photon OS 5](#photon-os-5).
+
+### podman and docker on Arch Linux
+
+podman:
+
+```sh
+sudo pacman -Syu --needed --noconfirm podman
+```
+
+docker: this installs and starts docker and its build plugin, and adds you to the `docker` group:
+
+```sh
+sudo pacman -Syu --needed --noconfirm docker docker-buildx && sudo usermod -aG docker "$USER" && sudo systemctl enable --now docker.socket docker.service && echo "docker installed: log out and back in"
+```
+
+**Expect:** `docker installed: log out and back in`. Log out and back in, then run
+[Check podman and docker](#check-podman-and-docker).
 
 ### podman and docker on macOS
 
