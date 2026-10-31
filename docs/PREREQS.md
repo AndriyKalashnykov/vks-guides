@@ -46,8 +46,9 @@ sudo dnf install -y curl tar unzip jq openssl
 This refreshes the package list and installs the tools the guides use, plus basic tools Photon OS
 lacks by default (`coreutils`, `findutils`, `gawk`, `diffutils`, `sed`, `grep`). For zip files it
 installs `libarchive`, whose `bsdtar` the guides use where there is no `unzip`: the Photon images
-of VKS have no `unzip` package. The line can update the SSH server; its end restarts it, so new
-SSH logins work. Keep this session open until a new one logs in.
+of VKS have no `unzip` package. The line can update the SSH server (keep `openssh openssh-socket`
+in it); its end restarts it, so new SSH logins work. Keep this session open until a new one logs
+in.
 
 ```sh
 sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar libarchive jq openssl coreutils findutils gawk diffutils sed grep openssh openssh-socket && sudo /usr/sbin/sshd -t && sudo systemctl try-restart sshd.service
@@ -248,7 +249,8 @@ running. Restart the machine; docker then starts by itself.
 ### podman and docker on Photon OS 5
 
 docker only: podman cannot run without `root` on Photon OS. This installs and starts docker and
-adds you to the `docker` group. Like the line above, it can update the SSH server and restarts it.
+adds you to the `docker` group. Like the line in [Photon OS 5](#photon-os-5), it can update the SSH
+server and restarts it.
 
 ```sh
 sudo tdnf install -y docker openssh openssh-socket && sudo /usr/sbin/sshd -t && sudo systemctl try-restart sshd.service && sudo usermod -aG docker "$USER" && sudo systemctl enable --now docker && echo "docker installed: log out and back in"
@@ -256,6 +258,9 @@ sudo tdnf install -y docker openssh openssh-socket && sudo /usr/sbin/sshd -t && 
 
 **Expect:** `docker installed: log out and back in`. Check that an `ssh` from a new terminal logs
 in before you log out.
+
+**If not:** no `docker installed` line, or a new `ssh` is reset: see the SSH lines under **If not**
+in [Photon OS 5](#photon-os-5).
 
 ### podman and docker on macOS
 

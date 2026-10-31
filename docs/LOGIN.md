@@ -126,7 +126,7 @@ ignoring colons and upper/lower case.
 - `FAILED: download …`: `VCENTER_FQDN` is wrong, or this machine cannot reach vCenter. The
   `curl:` line above it says which.
 - `FAILED: no CA certificate …`: the address answered, but it is not vCenter. Check
-  `VCENTER_FQDN`.
+  `VCENTER_FQDN`. After `unzip: command not found`: do [PREREQS.md](PREREQS.md).
 - A fingerprint that matches none of your administrator's: do not keep the file. Check
   `VCENTER_FQDN`. A company proxy that replaces HTTPS certificates also causes this.
 
