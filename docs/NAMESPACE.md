@@ -28,7 +28,7 @@ can instead create the namespace from a YAML file with kubectl:
 
 - a vCenter user who may create vSphere Namespaces (a vCenter administrator), and a Supervisor
   that is running;
-- for step 1: [unzip and openssl](PREREQS.md);
+- for step 1: [unzip (Photon OS: bsdtar) and openssl](PREREQS.md);
 - for steps 8 to 10: [kubectl](KUBECTL.md), [jq](PREREQS.md) and a [Supervisor login](LOGIN.md).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):
@@ -68,7 +68,8 @@ for vCenter.
 CA_ZIP="$HOME/Downloads/download.zip"
 
 TMP="$(mktemp -d)"
-if ! unzip -oqj "$CA_ZIP" 'certs/lin/*.0' -d "$TMP"; then
+if ! { if command -v unzip >/dev/null 2>&1 || ! command -v bsdtar >/dev/null 2>&1; then unzip -oqj "$CA_ZIP" 'certs/lin/*.0' -d "$TMP"
+        else bsdtar -xf "$CA_ZIP" -C "$TMP" --strip-components 2 'certs/lin/*.0'; fi; }; then
   echo "FAILED: no CA certificate in $CA_ZIP"
 else
   for f in "$TMP"/*.0; do openssl x509 -in "$f" -noout -subject -fingerprint -sha256; done
@@ -110,7 +111,8 @@ Remove-Item -Recurse -Force $TMP
   created on it yet.
 - `FAILED: no CA certificate …` or `cannot find …`: the file is not in `Downloads` under that
   name. Set `CA_ZIP` to where the browser saved it. Under `unzip: command not found`: install
-  unzip ([PREREQS.md](PREREQS.md)).
+  unzip ([PREREQS.md](PREREQS.md)). Under `bsdtar:` with a file name: the zip is damaged; download
+  it again.
 
 ## 2. Find the storage policies and the VM classes
 
