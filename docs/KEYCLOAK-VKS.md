@@ -46,8 +46,9 @@ The cluster for Keycloak:
    users or other apps in the same cluster.
 2. Create the cluster with
    [CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), with that
-   `vmClass` and one worker (`replicas: 1`). With `best-effort-small` it takes about 53 GB of the
-   namespace's storage (two nodes of 20 GB disk plus 4 GB memory each, and Keycloak's 5 GB volume),
+   `vmClass`, one control-plane node and one worker (`replicas: 1` for both). With
+   `best-effort-small` it takes about 50 GB of the namespace's storage (two nodes of 20 GB disk plus
+   4 GB memory each, and Keycloak's 2 GB volume),
    and 48 GB more while it updates ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)).
    Keep it for Keycloak: the clusters that log in through Keycloak are other clusters
    ([KEYCLOAK.md](KEYCLOAK.md)). To change its size later, see
@@ -130,8 +131,9 @@ already`: Keycloak may be installed; steps 3 to 5 keep what exists.
 
 Keycloak's HTTPS certificate (step 4) comes from cert-manager, a Broadcom add-on of the VKS
 cluster ([what add-ons are](ADDONS.md)). Run this once per cluster, before step 4: it installs
-cert-manager with the VCF CLI when the cluster does not have it, and waits until it runs. When
-the add-on is there already (for example from [HEADLAMP.md](HEADLAMP.md)), it changes nothing.
+cert-manager with the VCF CLI when the cluster does not have it, and waits until it accepts
+certificate requests. When the add-on is there already (for example from
+[HEADLAMP.md](HEADLAMP.md)), it changes nothing.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -152,7 +154,8 @@ elif kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io
   echo "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
 elif vcf addon install create cert-manager --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
   for i in $(seq 60); do
-    kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io >/dev/null 2>&1 && break
+    printf 'apiVersion: cert-manager.io/v1\nkind: Issuer\nmetadata:\n  name: check\nspec:\n  selfSigned: {}\n' \
+      | kubectl --kubeconfig "$VKS_KUBECONFIG" -n cert-manager create --dry-run=server -f - >/dev/null 2>&1 && break
     sleep 5
   done
   kubectl --kubeconfig "$VKS_KUBECONFIG" -n cert-manager wait --for=condition=Available deployment --all --timeout=5m
@@ -187,7 +190,8 @@ if ($LASTEXITCODE -ne 0 -or -not $L.Trim()) {
     "FAILED: the cert-manager add-on (see the error above)"
   } else {
     foreach ($i in 1..60) {
-      kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io 2>$null | Out-Null
+      "apiVersion: cert-manager.io/v1`nkind: Issuer`nmetadata:`n  name: check`nspec:`n  selfSigned: {}" |
+        kubectl --kubeconfig $VKS_KUBECONFIG -n cert-manager create --dry-run=server -f - 2>$null | Out-Null
       if ($LASTEXITCODE -eq 0) { break }
       Start-Sleep 5
     }
@@ -414,8 +418,10 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak wait
 
 ## 5. Run PostgreSQL and Keycloak
 
-This runs PostgreSQL with a 5 GB volume, waits until it is ready, then runs Keycloak in front of it
-and gives Keycloak a load balancer address on port 443. It takes about a minute.
+This runs PostgreSQL with a 2 GB volume, waits until it is ready, then runs Keycloak in front of it
+and gives Keycloak a load balancer address on port 443. It takes about a minute. The volume holds
+about 70 MB with a few people in it; the rest is room for PostgreSQL's write-ahead log, which may
+grow to 1 GB. Keycloak keeps no data of its own and writes about 180 MB on the node.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -501,7 +507,7 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 5Gi
+            storage: 2Gi
 EOF
 if ! kubectl --kubeconfig "$VKS_KUBECONFIG" -n keycloak rollout status statefulset/postgres --timeout=10m; then
   echo "FAILED: PostgreSQL did not start (see above)"
@@ -592,6 +598,7 @@ spec:
             requests:
               cpu: 500m
               memory: 1250Mi
+              ephemeral-storage: 256Mi
             limits:
               memory: 2Gi
           securityContext:
@@ -712,7 +719,7 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 5Gi
+            storage: 2Gi
 "@ | kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak apply -f -
 kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak rollout status statefulset/postgres --timeout=10m
 if ($LASTEXITCODE -ne 0) { "FAILED: PostgreSQL did not start (see above)" } else {
@@ -802,6 +809,7 @@ spec:
             requests:
               cpu: 500m
               memory: 1250Mi
+              ephemeral-storage: 256Mi
             limits:
               memory: 2Gi
           securityContext:
@@ -845,6 +853,13 @@ rolled out`, then `Keycloak's address:` and an IP address.
   (or `-l app=keycloak`) shows the reason. `ImagePullBackOff`: the nodes cannot reach `quay.io` or
   `docker.io` (see the table above). `Pending` with `Insufficient memory`: the worker is too small
   (see the Prerequisites).
+- `secret "keycloak-tls" not found` in `describe pod -l app=keycloak`: step 4 did not finish; run
+  it, then this block again.
+- `The StatefulSet "postgres" is invalid: spec.volumeClaimTemplates`: your PostgreSQL was made with
+  a 5 GB volume by an earlier version of this block. It keeps that volume and keeps working; the
+  rest of the block still runs. To silence the line, change `storage: 2Gi` to `storage: 5Gi`.
+- `exceeded its progress deadline` when you run the block again after a failed run: Keycloak was
+  still starting. Wait a minute and run the block again.
 - `Keycloak's address:` with nothing after it: the cluster has no free load balancer address; ask
   your vSphere administrator.
 
@@ -942,9 +957,9 @@ People sign in to Keycloak in a browser, which must trust Keycloak's CA. Give ea
 `keycloak-ca.pem` from step 6 (it holds no secret), and each person adds it once on the machine
 whose browser they sign in with. Do it on your own machine too, before step 11.
 
-**Linux (Ubuntu, AlmaLinux):** Chrome uses its own certificate database in your home. This adds the CA there (it needs
-`certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on
-AlmaLinux). In WSL, the browser runs on Windows: use the Windows line.
+**Linux (Ubuntu, AlmaLinux):** Chrome uses its own certificate database in your home. This adds
+the CA there (it needs `certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu,
+`sudo dnf install -y nss-tools` on AlmaLinux).
 
 ```sh
 mkdir -p "$HOME/.pki/nssdb"
@@ -960,6 +975,13 @@ Firefox keeps its own list: **Settings** → **Privacy & Security** → **View C
 
 ```sh
 security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychain-db" "$HOME/keycloak-ca.pem"
+```
+
+**WSL:** the browser runs on Windows. This copies the file to your Windows home folder; then run
+the Windows line in PowerShell:
+
+```sh
+cp ~/keycloak-ca.pem "$(wslpath "$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')")/" && echo "copied to Windows"
 ```
 
 **Windows (PowerShell):** Edge and Chrome use your user's trusted root CAs. Windows asks you to
@@ -1295,7 +1317,8 @@ foreach ($i in 1..60) {
 if (-not $V) { "Keycloak's volume is gone" } else { "STILL THERE: $V" }
 ```
 
-**Expect:** `namespace "keycloak" deleted`, then `Keycloak's volume is gone`.
+**Expect:** `namespace "keycloak" deleted`, then `Keycloak's volume is gone`, within about 30
+seconds. Run again, it prints `namespaces "keycloak" not found` first.
 
 **If not:** `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not
 delete the cluster until it is gone. `STILL THERE: (the check failed …)`: log in to the Supervisor
