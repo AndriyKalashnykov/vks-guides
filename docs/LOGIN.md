@@ -636,13 +636,14 @@ if ((Test-Path $DOWNLOADED) -and $LASTEXITCODE -eq 0) {
 
 As the cluster's administrator (with the file from
 [Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig)), you can give someone access
-to one namespace of the VKS cluster that needs only kubectl on their machine. Three ways:
+to one namespace of the VKS cluster that needs only kubectl on their machine. Four ways:
 
 | way | for | lasts | to take it away |
 |---|---|---|---|
 | [A ServiceAccount token](#a-serviceaccount-token) | a team or a person | the days you set | delete the ServiceAccount: every copy stops |
 | [A personal certificate](#a-personal-certificate) | one person | the days you set | it cannot be withdrawn: delete its RoleBinding and never bind its name again |
 | [The person's own SSO account](#the-persons-own-sso-account) | one SSO user | 10 hours per login | delete the person's RoleBinding, and disable the SSO user |
+| [A Keycloak account](KEYCLOAK.md) (clusters made for it) | a Keycloak group | while the person's Keycloak session lasts | delete the group's RoleBinding |
 
 Whoever has the file from the first two has that access. Give it through a password manager's
 share or as an encrypted file, never by email, chat or a shared folder, then delete your copy.

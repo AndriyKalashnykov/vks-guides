@@ -31,6 +31,7 @@ monitoring and Helm.
 | [Install kubectl](docs/KUBECTL.md) | the Kubernetes command-line tool, for working with your clusters |
 | [Install the VCF CLI](docs/VCF.md) | VMware's command-line tool, for logging in to the Supervisor and managing VKS clusters |
 | [Log in to the Supervisor and a VKS cluster](docs/LOGIN.md) | your SSO login to the Supervisor, and the kubeconfig `kubectl` uses to reach your VKS cluster |
+| [Log in to a VKS cluster with Keycloak](docs/KEYCLOAK.md) | a person's Keycloak user on a VKS cluster made for it, with only kubectl and kubelogin on their machine |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | a vCenter administrator's vSphere Namespace for VKS clusters, and the check that it is ready |
 | [Create a VKS cluster](docs/CLUSTER.md) | a VKS cluster made in the vSphere Client, checked, and deleted |
 | [Install Harbor](docs/HARBOR.md) | a vCenter administrator's Harbor registry on the Supervisor, trusted by its VKS clusters |
@@ -89,6 +90,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Install kubectl](docs/KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install the VCF CLI](docs/VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in](docs/LOGIN.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Log in with Keycloak](docs/KEYCLOAK.md) | ✅ | — | part | ✅ | — |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | ✅ | — | ✅ | ✅ |
 | [Create a VKS cluster](docs/CLUSTER.md) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install Harbor](docs/HARBOR.md) | ✅ | ✅ | part | part | part |

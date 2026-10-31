@@ -359,6 +359,89 @@ foreach ($e in 'podman', 'docker') {
   or a newer release of your distribution.
 - `NOT RUNNING: podman` on macOS or Windows: `podman machine start`.
 
+## kubelogin (optional)
+
+Only for [KEYCLOAK.md](KEYCLOAK.md), where a person logs in to a VKS cluster with Keycloak. This
+downloads kubelogin `KUBELOGIN_VERSION` from GitHub, checks it against its published checksum, and
+installs it as `kubectl-oidc_login`, the name under which kubectl runs it as `kubectl oidc-login`.
+Install [kubectl](KUBECTL.md) first.
+
+<details>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+KUBELOGIN_VERSION="v1.36.4"
+INSTALL_DIR="$HOME/.local/bin"
+
+case "$(uname -s)" in Linux) OS=linux ;; Darwin) OS=darwin ;; *) OS="" ;; esac
+case "$(uname -m)" in x86_64|amd64) ARCH=amd64 ;; arm64|aarch64) ARCH=arm64 ;; *) ARCH="" ;; esac
+URL="https://github.com/int128/kubelogin/releases/download/${KUBELOGIN_VERSION}/kubelogin_${OS}_${ARCH}.zip"
+TMP="$(mktemp -d)"
+if [ -z "$OS" ] || [ -z "$ARCH" ]; then
+  echo "FAILED: unsupported $(uname -s)/$(uname -m)"
+elif ! curl -fsSL --connect-timeout 20 --speed-time 60 -o "$TMP/k.zip" "$URL" \
+     || ! SUM="$(curl -fsSL --connect-timeout 20 --speed-time 60 "$URL.sha256" | cut -d' ' -f1)"; then
+  echo "FAILED: download of $URL"
+elif [ "$( (sha256sum "$TMP/k.zip" 2>/dev/null || shasum -a 256 "$TMP/k.zip") | cut -d' ' -f1)" != "$SUM" ]; then
+  echo "FAILED: checksum mismatch for $URL"
+elif ! command -v unzip >/dev/null 2>&1 && ! command -v bsdtar >/dev/null 2>&1; then
+  echo "MISSING: unzip (see the section for your OS above)"
+elif ! { if command -v unzip >/dev/null 2>&1 || ! command -v bsdtar >/dev/null 2>&1; then unzip -p "$TMP/k.zip" kubelogin; else bsdtar -xOf "$TMP/k.zip" kubelogin; fi; } > "$TMP/kubectl-oidc_login" \
+     || ! chmod 755 "$TMP/kubectl-oidc_login" || ! "$TMP/kubectl-oidc_login" version; then
+  echo "FAILED: no working kubelogin in $URL"
+else
+  mkdir -p "$INSTALL_DIR" && install -m 755 "$TMP/kubectl-oidc_login" "$INSTALL_DIR/kubectl-oidc_login"
+  case ":$PATH:" in *":$INSTALL_DIR:"*) ;; *) PATH="$INSTALL_DIR:$PATH"; echo "note: $INSTALL_DIR added to PATH for this terminal only (see below)";; esac
+  echo "installed $INSTALL_DIR/kubectl-oidc_login"
+fi; rm -rf "$TMP"
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$KUBELOGIN_VERSION = "v1.36.4"
+$INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
+
+$ARCH = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
+$URL = "https://github.com/int128/kubelogin/releases/download/$KUBELOGIN_VERSION/kubelogin_windows_$ARCH.zip"
+$TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
+$global:LASTEXITCODE = $null
+curl.exe -fsSL --connect-timeout 20 --speed-time 60 -o "$TMP\k.zip" $URL
+$SUM = if ($LASTEXITCODE -eq 0) { "$(curl.exe -fsSL --connect-timeout 20 --speed-time 60 "$URL.sha256")".Split(' ')[0] }
+if (-not $SUM) {
+  "FAILED: download of $URL"
+} elseif ((Get-FileHash -Algorithm SHA256 "$TMP\k.zip").Hash -ne $SUM) {
+  "FAILED: checksum mismatch for $URL"
+} else {
+  Expand-Archive -Path "$TMP\k.zip" -DestinationPath "$TMP\x"
+  New-Item -ItemType Directory -Force -Path $INSTALL_DIR | Out-Null
+  Copy-Item -Force "$TMP\x\kubelogin.exe" "$INSTALL_DIR\kubectl-oidc_login.exe"
+  $USER_PATH = [Environment]::GetEnvironmentVariable('Path', 'User')
+  if (("$USER_PATH" -split ';') -notcontains $INSTALL_DIR) {
+    $NEW_PATH = @("$USER_PATH".TrimEnd(';'), $INSTALL_DIR) | Where-Object { $_ }
+    [Environment]::SetEnvironmentVariable('Path', ($NEW_PATH -join ';'), 'User')
+    "note: $INSTALL_DIR added to your PATH"
+  }
+  if (($env:Path -split ';') -notcontains $INSTALL_DIR) { $env:Path = "$INSTALL_DIR;$env:Path" }
+  $global:LASTEXITCODE = 1
+  & "$INSTALL_DIR\kubectl-oidc_login.exe" version
+  if ($LASTEXITCODE -eq 0) { "installed $INSTALL_DIR\kubectl-oidc_login.exe" } else { "FAILED: no working kubelogin in $URL" }
+}
+Remove-Item -Recurse -Force $TMP
+```
+
+</details>
+
+**Expect:** `kubelogin version v1.36.4 …` (Windows: `kubelogin version` with no number, as its
+build prints it), then `installed …`. `kubectl oidc-login --help` then prints kubelogin's help.
+
+**If not:** `FAILED: download …`: this machine cannot reach `github.com` and
+`release-assets.githubusercontent.com` on port 443. `note: … added to PATH for this terminal only`:
+see [`~/.local/bin` on your PATH](#localbin-on-your-path).
+
 Back to [README](../README.md).
 
 ## Registry hosts, for a firewall
