@@ -16,13 +16,13 @@ cluster's administrator file. You give a name a role there (`edit` to deploy, `v
 with a RoleBinding; a ServiceAccount is such a name for a team or a tool rather than a person. Pick
 one way:
 
-| way | for | they need | lasts | to take it away |
-|---|---|---|---|---|
-| [A ServiceAccount token](#a-serviceaccount-token) | a team, a person or a tool | kubectl | the days you set | delete the ServiceAccount: every copy stops |
-| [A personal certificate](#a-personal-certificate) | one person | kubectl | the days you set | cannot be withdrawn: delete its RoleBinding and never bind its name again |
-| [The person's own SSO account](#the-persons-own-sso-account) | one vCenter SSO user | kubectl, and the VCF CLI or the kubectl vSphere plugin | 10 hours per login | delete the person's RoleBinding and their role on the vSphere Namespace |
-| [A Keycloak account through the Supervisor](#a-keycloak-account-through-the-supervisor) | a Keycloak group; set up once per Supervisor, then per vSphere Namespace and cluster | kubectl and the VCF CLI | while the person's sign-in lasts | disable the Keycloak user, or delete the group's RoleBinding and its role on the vSphere Namespace |
-| [A Keycloak account on one cluster](KEYCLOAK.md) (clusters made for it) | a Keycloak group, on that cluster | kubectl and kubelogin | while the person's sign-in lasts | delete the group's RoleBinding |
+| way | for | set up by | they need | lasts | to take it away |
+|---|---|---|---|---|---|
+| [A ServiceAccount token](#a-serviceaccount-token) | a team, a person or a tool | the cluster administrator | kubectl | the days you set | delete the ServiceAccount: every copy stops |
+| [A personal certificate](#a-personal-certificate) | one person | the cluster administrator | kubectl | the days you set | cannot be withdrawn: delete its RoleBinding and never bind its name again |
+| [The person's own SSO account](#the-persons-own-sso-account) | one vCenter SSO user | a vCenter administrator, then the cluster administrator | kubectl, and the VCF CLI or the kubectl vSphere plugin | 10 hours per login | delete the person's RoleBinding and their role on the vSphere Namespace |
+| [A Keycloak account through the Supervisor](#a-keycloak-account-through-the-supervisor) | a Keycloak group | the Keycloak administrator (users, groups), a vSphere administrator (once per Supervisor), a vCenter administrator, then the cluster administrator | kubectl and the VCF CLI | while the person's sign-in lasts | disable the Keycloak user, or delete the group's RoleBinding and its role on the vSphere Namespace |
+| [A Keycloak account on one cluster](KEYCLOAK.md) (clusters made for it) | a Keycloak group, on that cluster | the Keycloak administrator (users, groups), whoever creates the cluster, then the cluster administrator | kubectl and kubelogin | while the person's sign-in lasts | delete the group's RoleBinding |
 
 The first two hand out a file that works for whoever holds a copy; the Keycloak ways a file with no
 secret, which only tells kubectl where to sign in. Which file holds what, how to hand it over, use
