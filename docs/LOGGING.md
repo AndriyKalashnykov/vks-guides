@@ -458,7 +458,7 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 LOGGING_DIR="$HOME/.config/vks-guides/logging"
 
 CA="$LOGGING_DIR/logs-ca.crt"
-if [ ! -s "$CA" ]; then
+if [ ! -f "$CA" ] || [ ! -s "$CA" ]; then
   echo "FAILED: not found: $CA (step 2)"
 else
   kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging create secret generic tls-ca-cert \
@@ -488,7 +488,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $LOGGING_DIR = "$HOME\.config\vks-guides\logging"
 
 $CA = "$LOGGING_DIR\logs-ca.crt"
-if (-not (Test-Path $CA)) {
+if (-not (Test-Path $CA -PathType Leaf) -or (Get-Item $CA).Length -eq 0) {
   "FAILED: not found: $CA (step 2)"
 } else {
   kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging create secret generic tls-ca-cert --from-file=tls_http.crt="$CA" --dry-run=client -o yaml |
