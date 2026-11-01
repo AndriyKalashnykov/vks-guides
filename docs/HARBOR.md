@@ -690,7 +690,8 @@ Harbor. This saves the current list of machines in one vSphere Namespace. Step 8
 it to show when every node has been updated. Run it for each vSphere Namespace with VKS clusters,
 right before you install.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -710,7 +711,10 @@ else
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
@@ -729,6 +733,8 @@ if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (se
   }
 }
 ```
+
+</details>
 
 **Expect:** `recorded <n> machines in <your namespace>`, one for each node of its VKS clusters.
 
@@ -975,7 +981,8 @@ VKS cluster nodes both use (a `hosts` file line does not reach the nodes).
 
 Once the record exists, this checks that Harbor's name leads to Harbor's address from this machine.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -997,7 +1004,10 @@ else
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
@@ -1018,6 +1028,8 @@ elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS
   }
 }
 ```
+
+</details>
 
 **Expect:** `DNS is right: <your Harbor name> is <the address>`.
 

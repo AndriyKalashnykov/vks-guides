@@ -54,7 +54,8 @@ short code that identifies it. Harbor is not trusted yet, so the file could be a
 administrator. In Harbor's web page, **Projects** → your project →
 **REGISTRY CERTIFICATE** downloads the same file as `ca.crt`.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
@@ -70,7 +71,10 @@ else
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $HARBOR_FQDN = "harbor.example.test"
@@ -89,6 +93,8 @@ if ($LASTEXITCODE -eq 0 -and (Test-Path $NEW)) {
   "FAILED: no CA certificate from https://$HARBOR_FQDN (see the error above)"
 }
 ```
+
+</details>
 
 **Expect:** `subject=CN = Harbor CA` (newer OpenSSL and PowerShell: `subject=CN=Harbor CA`; or
 your organization's CA, HARBOR.md step 13) and a `sha256 Fingerprint=` line. When it is the same
@@ -643,7 +649,8 @@ lines, `deployment "test-web-apps" successfully rolled out`, then
 This shows that the app answers from your machine. It waits up to 2 minutes for the app's address,
 which the Supervisor's load balancer gives it, prints the address, and fetches the app's page.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -664,7 +671,10 @@ else
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
@@ -684,6 +694,8 @@ else {
   if ($H -match '<h1>(.*)</h1>') { "page: $($Matches[1])" }
 }
 ```
+
+</details>
 
 **Expect:** `address: http://<IP>/` and `page: test-web-apps v1, from Harbor (podman)` (or
 `docker`). Open the address in a browser: it shows the same line.

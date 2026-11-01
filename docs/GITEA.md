@@ -1114,7 +1114,8 @@ from it.
 This deletes the namespace `gitea`, with Gitea, its keys and its volume. It then waits until the
 cluster has removed the volume, and prints how many volumes are left.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1134,7 +1135,10 @@ done
 echo "volumes left from gitea: $N"
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
@@ -1154,6 +1158,8 @@ foreach ($i in 1..36) {
 }
 "volumes left from gitea: $N"
 ```
+
+</details>
 
 **Expect:** `namespace "gitea" deleted`, then, within a few minutes,
 `volumes left from gitea: 0`.
