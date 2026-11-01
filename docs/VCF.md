@@ -476,24 +476,6 @@ context use <name>` sets one. `missing` for a file: it was deleted; `vcf context
 
 Use this when a kubeconfig changed and you did not expect it.
 
-```mermaid
-%%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
-flowchart TB
-  subgraph CFG["~/.config/vcf/config.yaml (names as LOGIN.md makes them)"]
-    C1["context supervisor<br/>kubeconfig: ~/.kube/supervisor.kubeconfig<br/>kube context: supervisor"]
-    C2["context supervisor:my-namespace<br/>(one per vSphere Namespace)"]
-    CUR["currentContext: set by vcf context use"]
-  end
-  subgraph KC["the recorded kubeconfig (LOGIN.md: ~/.kube/supervisor.kubeconfig)"]
-    K["contexts supervisor, supervisor:my-namespace<br/>cluster, user and its token<br/>current-context"]
-  end
-  C1 -- recorded file --> KC
-  C2 -- recorded file --> KC
-  L["vcf context create --endpoint (log in)<br/>writes the file KUBECONFIG names"] --> KC
-  R["vcf context refresh (renew)<br/>writes the file KUBECONFIG names, and records it"] --> KC
-  V["vcf context use / delete<br/>write the recorded file, whatever KUBECONFIG is now"] --> KC
-```
-
 | command | what changes for you | `config.yaml` (read by `vcf`) | kubeconfig (read by `kubectl`) |
 |---|---|---|---|
 | `vcf context create <name> --endpoint …` (log in) | you are logged in; no context is active yet | adds `<name>` and its `<name>:<namespace>` contexts, recording the kubeconfig file; does not make one active (unless you add `--set-current`) | adds their contexts, cluster and user to the file `KUBECONFIG` names (with several files, the first one that exists; `~/.kube/config` when it is not set), creating it if missing, and writes that whole file again (its comments are lost); its current-context stays |
