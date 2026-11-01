@@ -286,15 +286,18 @@ system namespaces. An account limited to one namespace also gets the right to li
 names (role `headlamp-namespace-lister`), so that Headlamp's namespace list works; it sees nothing
 inside the other namespaces. Give no one `admin` or `cluster-admin` through Headlamp.
 
+`ACCOUNT`: the person's or team's name (a-z, 0-9, -). `ROLE`: `view` or `edit`. `ACCESS_NAMESPACE`:
+empty for every namespace (view only).
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-ACCOUNT="team-a"                                   # the person's or team's name: a-z, 0-9, -
-ROLE="edit"                                        # view or edit
-ACCESS_NAMESPACE="team-a"                          # empty: every namespace (view only)
+ACCOUNT="team-a"
+ROLE="edit"
+ACCESS_NAMESPACE="team-a"
 
 A="system:serviceaccount:headlamp:${ACCOUNT}"
 case "$ROLE/$ACCESS_NAMESPACE" in
@@ -594,11 +597,11 @@ Headlamp shows its own text in the browser's language; **Settings** (gear) → *
 
 ## 8. Log in with your own SSO user instead (optional)
 
-Someone who has a Kubernetes login of their own on the cluster, through the kubectl vSphere plugin
-([LOGIN.md, "The person's own SSO account"](LOGIN.md#the-persons-own-sso-account)), can paste that
-login's token instead of one from step 5. Headlamp then has exactly that user's rights. The token
-is made for this cluster (the Supervisor refuses it) and ends 10 hours after that login; nobody can
-end it sooner, only take the user's rights away.
+Someone who has a Kubernetes login of their own on the cluster, through the VCF CLI or the kubectl
+vSphere plugin ([LOGIN.md, "The person's own SSO account"](LOGIN.md#the-persons-own-sso-account)),
+can paste that login's token instead of one from step 5. Headlamp then has exactly that user's
+rights. The token is made for this cluster (the Supervisor refuses it) and ends 10 hours after that
+login; nobody can end it sooner, only take the user's rights away.
 
 A user with **Can edit** or **Owner** on the vSphere Namespace is an administrator of every
 cluster in it, so their token can do anything there. This block stops for such a user; use an
@@ -611,16 +614,16 @@ account from step 4 instead.
 VKS_CLUSTER="my-vks-cluster"
 VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
 
-T="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config view --raw --minify --context "$VKS_CLUSTER" -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
+T="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
 E="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | . + ("=" * ((4 - length % 4) % 4)) | @base64d | fromjson | .exp' 2>/dev/null)"
 if [ -z "$T" ] || [ -z "$E" ]; then
   echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_SSO_KUBECONFIG}; log in first (LOGIN.md)"
 elif [ "$E" -le "$(date +%s)" ]; then
   echo "ENDED: that login has ended; log in again (LOGIN.md)"
-elif [ "$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" --context "$VKS_CLUSTER" auth can-i '*' '*' -A 2>/dev/null)" != no ]; then
+elif [ "$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)" != no ]; then
   echo "STOPPED: this SSO user is an administrator of the cluster, or the cluster did not answer; use an account from step 4 in Headlamp"
 else
-  echo "token for $(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" --context "$VKS_CLUSTER" auth whoami -o jsonpath='{.status.userInfo.username}'):"
+  echo "token for $(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}'):"
   echo "$T"
   echo "it ends: $(printf '%s' "$E" | jq -r 'tonumber | todate')"
 fi
@@ -635,17 +638,17 @@ fi
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
 
-$T = kubectl --kubeconfig $VKS_SSO_KUBECONFIG config view --raw --minify --context $VKS_CLUSTER -o jsonpath='{.users[0].user.token}' 2>$null
+$T = kubectl --kubeconfig $VKS_SSO_KUBECONFIG config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>$null
 $E = $null
 if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $E = ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json).exp } catch { } }
 if (-not $T -or -not $E) {
   "FAILED: no SSO login for $VKS_CLUSTER in $VKS_SSO_KUBECONFIG; log in first (LOGIN.md)"
 } elseif ($E -le [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) {
   "ENDED: that login has ended; log in again (LOGIN.md)"
-} elseif ((kubectl --kubeconfig $VKS_SSO_KUBECONFIG --context $VKS_CLUSTER auth can-i '*' '*' -A 2>$null) -ne 'no') {
+} elseif ((kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth can-i '*' '*' -A 2>$null) -ne 'no') {
   "STOPPED: this SSO user is an administrator of the cluster, or the cluster did not answer; use an account from step 4 in Headlamp"
 } else {
-  "token for $(kubectl --kubeconfig $VKS_SSO_KUBECONFIG --context $VKS_CLUSTER auth whoami -o jsonpath='{.status.userInfo.username}'):"
+  "token for $(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}'):"
   $T
   "it ends: $([DateTimeOffset]::FromUnixTimeSeconds($E).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
 }
@@ -657,7 +660,7 @@ if (-not $T -or -not $E) {
 (UTC). Paste it in step 7, then clear the terminal.
 
 **If not:** `STOPPED: …`: this user would be an administrator in Headlamp; or, if `kubectl
---kubeconfig <the SSO file> --context <cluster> get pods` also fails, the cluster did not answer. `FAILED: …` or
+--kubeconfig <the SSO file> get pods` also fails, the cluster did not answer. `FAILED: …` or
 `ENDED: …`: run the login in LOGIN.md again. In Headlamp the user sees nothing: the cluster
 administrator has not given that name rights yet
 ([LOGIN.md](LOGIN.md#the-persons-own-sso-account), step 3; add `headlamp-namespace-lister` as in step 4 so
@@ -678,6 +681,9 @@ A new certificate is made when the name or address changes; Headlamp reads it on
 starts, so the block then restarts it (some seconds away). The browser warns again for the new
 certificate: check its new fingerprint (step 6).
 
+`HEADLAMP_HOSTNAME`: empty gives `headlamp.vks.example.com`. `CERT_WITH_IP` and `KUBESCAPE_PLUGIN`:
+`yes` or `no`.
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
@@ -685,9 +691,9 @@ certificate: check its new fingerprint (step 6).
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-HEADLAMP_HOSTNAME="headlamp.example.com"            # empty: headlamp.vks.example.com
-CERT_WITH_IP="yes"                                 # yes or no
-KUBESCAPE_PLUGIN="no"                              # yes or no
+HEADLAMP_HOSTNAME="headlamp.example.com"
+CERT_WITH_IP="yes"
+KUBESCAPE_PLUGIN="no"
 DIR="$HOME/.config/vks-guides/headlamp"
 
 vcf context use supervisor </dev/null
@@ -1180,15 +1186,18 @@ This gives an account from step 4 what the plugins read:
   and in them the names of all pods, images and Secrets. Give it only to accounts allowed to see
   that.
 
+`ACCOUNT` and `ACCESS_NAMESPACE`: as in step 4 (empty: every namespace). `PROMETHEUS_QUERY`: `yes`
+adds the whole cluster's metrics.
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-ACCOUNT="team-a"                                   # as in step 4
-ACCESS_NAMESPACE="team-a"                          # as in step 4; empty: every namespace
-PROMETHEUS_QUERY="no"                              # yes: the whole cluster's metrics
+ACCOUNT="team-a"
+ACCESS_NAMESPACE="team-a"
+PROMETHEUS_QUERY="no"
 
 S="headlamp:${ACCOUNT}"
 if ! kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get serviceaccount "$ACCOUNT" >/dev/null; then

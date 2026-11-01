@@ -70,12 +70,14 @@ its plugins from the bundle. If a file does not match, it installs nothing.
 `vcf` goes into `INSTALL_DIR`, or into `~/.local/bin` if that folder needs `sudo` and `sudo` would
 ask for a password (see [PREREQS.md](PREREQS.md#sudo-optional)).
 
+`VCF_CLI_SHA256` and `VCF_PLUGINS_SHA256`: the SHA2 values of the two files, from the download page.
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VCF_CLI_SHA256=""        # SHA2 of the CLI file from the download page
-VCF_PLUGINS_SHA256=""    # SHA2 of the plugin bundle from the download page
+VCF_CLI_SHA256=""
+VCF_PLUGINS_SHA256=""
 DOWNLOAD_DIR="$HOME/Downloads"
 INSTALL_DIR="/usr/local/bin"
 VCF_CLI_VERSION="9.1.1.0100.25746586"
@@ -400,8 +402,9 @@ Keep a VKS cluster file private: no one can cancel a copy, so whoever has one co
 until it expires or the cluster is deleted, even after losing their role on the vSphere Namespace.
 If a copy leaks, tell your vSphere administrator at once.
 
-Optional: Broadcom also documents logging in to a VKS cluster as your own SSO user
-([Log in to a VKS Cluster Using vCenter SSO Credentials](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connecting-to-vsphere-with-tanzu-clusters/connect-to-a-tkg-service-cluster-as-a-vcenter-single-sign-on-user-with-kubectl/log-in-using-credentials.html)).
+Optional: Broadcom also documents logging in to a VKS cluster as your own SSO user (steps in
+[LOGIN.md](LOGIN.md#the-persons-own-sso-account);
+[Log in to a VKS Cluster Using vCenter SSO Credentials](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connecting-to-vsphere-with-tanzu-clusters/connect-to-a-tkg-service-cluster-as-a-vcenter-single-sign-on-user-with-kubectl/log-in-using-credentials.html)).
 That login ends when your role does, but also after about 10 hours, like the Supervisor login.
 These guides use the administrator file because it needs no extra login and does not end in the
 middle of a block.
