@@ -39,8 +39,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 | your machine | the Supervisor's address | 443 | the VCF CLI and kubectl to the Supervisor (create the context, check the namespace, get the kubeconfig, renew) |
 | your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl to the VKS cluster |
 | your browser | vCenter (the vSphere Client) | 443 | [Download the VKS cluster's kubeconfig from the vSphere Client](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client) |
-| the person's machine | the Supervisor's address | 443 | [The person's own SSO account](#the-persons-own-sso-account): the plugin and its login |
-| the person's machine | the VKS cluster's API address | 6443 | the person's kubeconfig ([Give a person or team a kubeconfig](#give-a-person-or-team-a-kubeconfig-without-the-vcf-cli-optional)) |
+| the person's machine | the Supervisor's address | 443 | [The person's own SSO account](#the-persons-own-sso-account): the login (VCF CLI or plugin) |
+| the person's machine | the VKS cluster's API address | 6443 | the person's kubeconfig ([Give a person or team their own kubeconfig](#give-a-person-or-team-their-own-kubeconfig-optional)) |
 
 ## Create Supervisor context with CA
 
@@ -632,11 +632,12 @@ if ((Test-Path $DOWNLOADED) -and $LASTEXITCODE -eq 0) {
 - `error: You must be logged in to the server (Unauthorized)`: the file has expired; download it
   again.
 
-## Give a person or team a kubeconfig without the VCF CLI (optional)
+## Give a person or team their own kubeconfig (optional)
 
 As the cluster's administrator (with the file from
 [Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig)), you can give someone access
-to one namespace of the VKS cluster that needs only kubectl on their machine. Four ways:
+to one namespace of the VKS cluster. The first two ways need only kubectl on their machine; the SSO
+account needs the VCF CLI or the kubectl vSphere plugin. Four ways:
 
 | way | for | lasts | to take it away |
 |---|---|---|---|
@@ -871,19 +872,119 @@ kubectl: `… deleted from team-a namespace`).
 
 ### The person's own SSO account
 
-The person logs in with their own SSO user and the kubectl vSphere plugin, which the Supervisor
-serves for Linux, macOS and Windows on amd64 (Apple silicon would need Rosetta; not tested). No file is
-handed over.
+The person logs in with their own SSO user, with the VCF CLI (step 2a) or, without it, the kubectl
+vSphere plugin (steps 2b to 2d). No file is handed over.
 
 1. A vCenter administrator gives the person's SSO user the **Can view** role on the vSphere
    Namespace ([NAMESPACE.md](NAMESPACE.md) step 4). Not **Can edit** or **Owner**: those make them
    an administrator of every VKS cluster in the namespace.
-2. The person installs the plugin, logs in, and sends you the name it prints.
+2. The person logs in and sends you the name it prints.
 3. You give that name the `edit` role in `TEAM_NAMESPACE`.
 
-<a id="trust-the-vcenter-ca"></a>**Windows and macOS: first trust the vCenter CA (the person, once).** There the plugin (and on
-Windows the download below) checks the Supervisor's certificate against your user's trusted CAs,
-not `SUPERVISOR_CA`. Windows asks you to confirm with **Yes**:
+**2a. Log in with the VCF CLI (the person).** This needs the [VCF CLI](VCF.md) and the vCenter CA
+([Create Supervisor context with CA](#create-supervisor-context-with-ca), step 1). It logs in to the
+VKS cluster as `SSO_USER` into its own kubeconfig, readable only by you, and prints the name the
+cluster knows you by. Send that name, exactly as printed, to the cluster's administrator. Type the
+password first, on its own line; run both again when kubectl answers `Unauthorized`, 10 hours
+after a login.
+
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+
+```sh
+printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
+```
+
+<details>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+SUPERVISOR_ENDPOINT="10.0.0.10"                    # Supervisor IP or FQDN
+SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
+SSO_USER="alice@vsphere.local"
+VKS_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
+
+if [ -z "$SSO_PASSWORD" ]; then
+  echo "FAILED: no password in this terminal; run the password line above"
+elif mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_SSO_KUBECONFIG" ) && chmod 600 "$VKS_SSO_KUBECONFIG" \
+     && { KUBECONFIG="$VKS_SSO_KUBECONFIG" vcf context delete "${VKS_CLUSTER}-sso" -y --skip-delete-kubeconfig-context </dev/null >/dev/null 2>&1; true; } \
+     && KUBECONFIG="$VKS_SSO_KUBECONFIG" VCF_CLI_VSPHERE_PASSWORD="$SSO_PASSWORD" \
+        vcf context create "${VKS_CLUSTER}-sso" --type k8s --endpoint "https://${SUPERVISOR_ENDPOINT}" \
+          --username "$SSO_USER" --auth-type basic --ca-certificate "$SUPERVISOR_CA" --skip-create-related-contexts \
+          --workload-cluster-name "$VKS_CLUSTER" --workload-cluster-namespace "$VKS_NAMESPACE" </dev/null \
+     && kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config use-context "${VKS_CLUSTER}-sso:${VKS_CLUSTER}" >/dev/null; then
+  echo "send this name: $(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
+else
+  echo "FAILED: login (see the error above)"
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
+$SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"
+$SSO_USER = "alice@vsphere.local"
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
+
+if (-not $SSO_PASSWORD) {
+  "FAILED: no password in this PowerShell; run the password line above"
+} else {
+  New-Item -ItemType Directory -Force -Path "$HOME\.kube" | Out-Null
+  $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $VKS_SSO_KUBECONFIG
+  try {
+    $null | vcf context delete "$VKS_CLUSTER-sso" -y --skip-delete-kubeconfig-context 2>&1 | Out-Null
+    $env:VCF_CLI_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
+    $global:LASTEXITCODE = $null
+    $null | vcf context create "$VKS_CLUSTER-sso" --type k8s --endpoint "https://$SUPERVISOR_ENDPOINT" `
+      --username $SSO_USER --auth-type basic "--ca-certificate=$SUPERVISOR_CA" --skip-create-related-contexts `
+      --workload-cluster-name $VKS_CLUSTER --workload-cluster-namespace $VKS_NAMESPACE
+    $OK = $LASTEXITCODE -eq 0
+  } finally {
+    Remove-Item Env:VCF_CLI_VSPHERE_PASSWORD -ErrorAction SilentlyContinue; $env:KUBECONFIG = $OLD_KUBECONFIG
+  }
+  if ($OK) {
+    kubectl --kubeconfig $VKS_SSO_KUBECONFIG config use-context "$VKS_CLUSTER-sso:$VKS_CLUSTER" | Out-Null
+    "send this name: $(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')"
+  } else {
+    "FAILED: login (see the error above)"
+  }
+}
+```
+
+</details>
+
+**Expect:** `Successfully logged in to Kubernetes cluster <cluster>`, the contexts `<cluster>-sso` and
+`<cluster>-sso:<cluster>`, and `send this name: sso:…` (SSO writes the name in its own letter case,
+for example `sso:Alice@vsphere.local`).
+
+**If not:**
+- `FAILED: no password …`: run the password line, then this block.
+- `x509: certificate signed by unknown authority`: `SUPERVISOR_CA` is not the vCenter CA.
+- `… Forbidden`, or `no context exists with the name`: step 1 was not done for this SSO user or
+  this vSphere Namespace.
+- `Initialization done!` and lines about plugins on the first run: harmless.
+
+**Without the VCF CLI: the kubectl vSphere plugin.** Broadcom replaced it with the VCF CLI in VCF 9
+([KB 435399](https://knowledge.broadcom.com/external/article/435399)); it still works on 9.1. The
+Supervisor serves it for Linux, macOS and Windows on amd64 (Apple silicon would need Rosetta; not
+tested).
+
+<a id="trust-the-vcenter-ca"></a>**2b. Windows and macOS: first trust the vCenter CA (the person,
+once).** There the plugin (and on Windows the download below) checks the Supervisor's certificate
+against your user's trusted CAs, not `SUPERVISOR_CA`. Windows asks you to confirm with **Yes**:
 
 ```powershell
 Import-Certificate -FilePath "$HOME\.kube\vcenter-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
@@ -896,7 +997,7 @@ On macOS (not tested): `security add-trusted-cert -r trustRoot -k ~/Library/Keyc
 **If not:** `UI is not allowed in this operation`: this PowerShell has no desktop to ask on (for
 example over SSH). Run the line in Windows PowerShell on the desktop.
 
-**2a. Install the plugin (the person, once).** This downloads it from the Supervisor, checking
+**2c. Install the plugin (the person, once).** This downloads it from the Supervisor, checking
 the Supervisor's certificate against the vCenter CA
 ([Create Supervisor context with CA](#create-supervisor-context-with-ca), step 1; on Windows,
 the trusted CA from the step above), runs it, and only then installs it.
@@ -958,7 +1059,7 @@ Remove-Item -Recurse -Force $TMP
 `SUPERVISOR_CA` is not the vCenter CA, or on Windows the step above was not done; after
 `curl: (22) … 404` (Windows: `(404) Not Found`): there is no build for this machine.
 
-**2b. Log in (the person).** This logs in to the VKS cluster as `SSO_USER` into its own kubeconfig,
+**2d. Log in with the plugin (the person).** This logs in to the VKS cluster as `SSO_USER` into its own kubeconfig,
 readable only by you, and prints the name the cluster knows you by. Send that name, exactly as
 printed, to the cluster's administrator. Run it again when kubectl answers `Unauthorized`, 10
 hours after a login.
@@ -978,7 +1079,7 @@ mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_SSO_KUBECONFIG" ) && chmod 600
 ( printf 'SSO password: '; IFS= read -rs P; echo
   KUBECONFIG="$VKS_SSO_KUBECONFIG" SSL_CERT_FILE="$SUPERVISOR_CA" KUBECTL_VSPHERE_PASSWORD="$P" \
     "$HOME/.local/bin/kubectl-vsphere" login --server "$SUPERVISOR_ENDPOINT" --vsphere-username "$SSO_USER" \
-    --tanzu-kubernetes-cluster-namespace "$VKS_NAMESPACE" --tanzu-kubernetes-cluster-name "$VKS_CLUSTER" ); chmod 600 "$VKS_SSO_KUBECONFIG"; echo "send this name: $(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" --context "$VKS_CLUSTER" auth whoami -o jsonpath='{.status.userInfo.username}')"
+    --tanzu-kubernetes-cluster-namespace "$VKS_NAMESPACE" --tanzu-kubernetes-cluster-name "$VKS_CLUSTER" ); chmod 600 "$VKS_SSO_KUBECONFIG"; echo "send this name: $(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
 ```
 
 </details>
@@ -1010,7 +1111,7 @@ try {
   Remove-Item Env:KUBECTL_VSPHERE_PASSWORD -ErrorAction SilentlyContinue; $env:KUBECONFIG = $OLD_KUBECONFIG
 }
 Remove-Variable SSO_PASSWORD
-"send this name: $(kubectl --kubeconfig $VKS_SSO_KUBECONFIG --context $VKS_CLUSTER auth whoami -o jsonpath='{.status.userInfo.username}')"
+"send this name: $(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')"
 ```
 
 </details>
@@ -1054,8 +1155,8 @@ kubectl --kubeconfig $ADMIN_KUBECONFIG -n $TEAM_NAMESPACE create rolebinding $B 
 ```
 
 **Expect:** `rolebinding.rbac.authorization.k8s.io/sso-alice-vsphere.local-edit created`. The
-person then gets `yes` from `kubectl --kubeconfig ~/.kube/<cluster>-sso.kubeconfig --context
-<cluster> -n team-a auth can-i create deployments`.
+person then gets `yes` from `kubectl --kubeconfig ~/.kube/<cluster>-sso.kubeconfig -n team-a auth
+can-i create deployments`.
 
 **If not:** `already exists`: a binding of that name is there, perhaps for the name in other letter
 case. `kubectl --kubeconfig <admin file> -n team-a get rolebinding <name> -o
