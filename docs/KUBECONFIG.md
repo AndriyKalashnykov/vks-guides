@@ -39,7 +39,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 | `~/<cluster>-keycloak-sv.kubeconfig` | [A Keycloak account through the Supervisor](ACCESS.md#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) | none: runs `vcf pinniped-auth login`, which asks for a sign-in | nothing without an account | as long as the address and CA stay | yes |
 
 Every file the guides write is readable only by you (Linux, macOS: `-rw-------`; Windows: your
-user, `SYSTEM` and `Administrators`). The sign-ins of the last two rows are kept elsewhere, also readable only by you: kubelogin's in `~/.kube/cache/oidc-login`,
+user, `SYSTEM` and `Administrators`, until [step 3](#3-hand-a-file-over) leaves only your user). The sign-ins of the last two rows are kept elsewhere, also readable only by you: kubelogin's in `~/.kube/cache/oidc-login`,
 `vcf`'s in `~/.config/vcf/pinniped`. Those folders are never sent.
 
 ## 1. See what a file holds

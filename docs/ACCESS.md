@@ -426,6 +426,7 @@ for example `sso:Alice@vsphere.local`).
 - `Invalid vSphere Supervisor endpoint`: check `SUPERVISOR_ENDPOINT` and that this machine reaches
   it on port 443.
 - `Login failed: bad request`: check `VKS_CLUSTER` and `VKS_NAMESPACE`.
+- After fixing a value, run the password line and this block again.
 - `Initialization done!` and lines about plugins on the first run: harmless.
 
 Without the VCF CLI, steps 2b to 2d use the kubectl vSphere plugin. Broadcom replaced it with the VCF CLI in VCF 9
@@ -436,13 +437,9 @@ tested).
 ### 2b. Windows and macOS: trust the vCenter CA (the person, once)
 
 There the plugin (and on Windows the download below) checks the Supervisor's certificate
-against your user's trusted CAs, not `SUPERVISOR_CA`. Windows asks you to confirm with **Yes**.
-
-**macOS (not tested):**
-
-```sh
-security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db ~/.kube/vcenter-ca.pem
-```
+against your user's trusted CAs, not `SUPERVISOR_CA`. On macOS (not tested):
+`security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db ~/.kube/vcenter-ca.pem`.
+Windows asks you to confirm with **Yes**:
 
 **Windows (PowerShell):**
 
@@ -450,7 +447,7 @@ security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db 
 Import-Certificate -FilePath "$HOME\.kube\vcenter-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
-**Expect:** Windows: a line with the CA's thumbprint and its name (`CN=CA` for vCenter's own CA).
+**Expect:** a line with the CA's thumbprint and its name (`CN=CA` for vCenter's own CA).
 
 **If not:** `UI is not allowed in this operation`: this PowerShell has no desktop to ask on (for
 example over SSH). Run the line in Windows PowerShell on the desktop.
@@ -667,7 +664,8 @@ as `<prefix>:<group>`, where `<prefix>` is the one set at registration.
 
 In the vSphere Client: menu > **Supervisor Management** > **Supervisors** > your Supervisor >
 **Configure** > **Identity Providers** shows a card for Keycloak. Its **VIEW SETTINGS** shows the
-**Issuer URL** (your Keycloak realm), the **Groups Claim** and the **Prefix**: write the prefix down.
+**Provider Name**, the **Issuer URL** (your Keycloak realm), the **Groups Claim** and the
+**Prefix**: write the provider name and the prefix down.
 The Keycloak administrator must send group names without a leading `/` (in the client's group
 mapper, **Full group path** off), or the cluster sees `<prefix>:/<group>`.
 
@@ -962,7 +960,7 @@ the one that signed in.
 ### 7. Take access away (Keycloak and cluster administrators)
 
 To take one person's access away, **disable** their user in Keycloak. Removing them from the group
-may not stop a sign-in already made (it does not when that was their only group). Before you enable
+may not stop a sign-in already made. Before you enable
 the user again, sign them out in Keycloak (the user's **Sessions** tab > **Sign out**), or their old
 sign-in can work again.
 
