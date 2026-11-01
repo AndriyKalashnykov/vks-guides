@@ -19,7 +19,7 @@ you change it.
 **Why use it.** Teams get their own Kubernetes clusters on demand, while you keep vSphere's resource
 limits, vCenter SSO and storage policies. Broadcom supports the Kubernetes releases; for a VKS
 add-on it supports either the software or only its packaging and upgrades ([VKS
-add-ons](docs/ADDONS.md)). Most guides say which parts are upstream open source that Broadcom does
+add-ons](docs/ADDONS.md)). Each guide says which parts are upstream open source that Broadcom does
 not support (such as Prometheus, Gitea and GitLab).
 
 **What the guides cover**, from an empty workstation to apps running on a VKS cluster: install

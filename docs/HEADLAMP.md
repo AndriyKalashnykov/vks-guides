@@ -1093,11 +1093,12 @@ needs `headlamp-prometheus-query` (the last block of this step, with `PROMETHEUS
 
 ### Kubescape
 
-Kubescape scans the cluster for weak settings and its images for known vulnerabilities. It is not a
-Broadcom add-on: this installs it with Helm ([HELM.md](HELM.md)) from the Kubescape project, into
-the namespace `kubescape`. Its node agent needs access to each worker (pod security `privileged`).
-It asks for about 450m CPU and 2 GiB of memory with the requests below, lowered from the chart's
-own (about 800m), and keeps its results on a 5Gi volume.
+Kubescape scans the cluster for weak settings and its images for known vulnerabilities. It is
+upstream (the Kubescape project), not a Broadcom add-on, and Broadcom does not support it, nor its
+plugin. This installs it with Helm ([HELM.md](HELM.md)) into the namespace `kubescape`. Its node
+agent needs access to each worker (pod security `privileged`). It asks for about 450m CPU and 2 GiB
+of memory with the requests below, lowered from the chart's own (about 800m), and keeps its results
+on a 5Gi volume.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

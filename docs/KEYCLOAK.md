@@ -9,10 +9,11 @@
 > - Keycloak: [Device Authorization Grant](https://www.keycloak.org/docs/latest/server_admin/index.html#device-authorization-grant)
 
 The VKS cluster itself trusts an OpenID Connect (OIDC) identity provider; Keycloak is the example
-provider here. A person logs in to one VKS cluster with their Keycloak user, in a browser on any machine, and needs
-only kubectl and kubelogin; they need no vCenter account and no VCF CLI. The cluster administrator
-turns this on when creating the cluster, gives Keycloak groups rights, and hands out a kubeconfig
-that holds no secret. Tested on VKS 3.8 (Kubernetes v1.37.1) with Keycloak 26.8.
+provider here. A person logs in to one VKS cluster with their Keycloak user, in a browser on any
+machine, and needs only kubectl and kubelogin; they need no vCenter account and no VCF CLI. The
+cluster administrator turns this on when creating the cluster, gives Keycloak groups rights, and
+hands out a kubeconfig that holds no secret. Keycloak and kubelogin are upstream; Broadcom does not
+support them. Tested on VKS 3.8 (Kubernetes v1.37.1) with Keycloak 26.8.
 
 ## Prerequisites
 

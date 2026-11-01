@@ -10,7 +10,7 @@
 
 Keycloak is an open-source OpenID Connect (OIDC) identity provider: it keeps users and groups and
 signs people in. It is the example provider in these guides; with your own OIDC provider, skip this
-guide.
+guide. Keycloak and PostgreSQL are upstream; Broadcom does not support them.
 This runs Keycloak, with a PostgreSQL database for its data, in its own VKS cluster, gives it an
 HTTPS certificate and a name, and sets up a realm that VKS clusters can use for logins
 ([KEYCLOAK.md](KEYCLOAK.md)).
