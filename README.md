@@ -41,11 +41,15 @@ success looks like and **If not:** says what to do.
 
 ## How to use
 
-1. Do the steps in order. Where a block comes in versions for different shells, paste the one for
+1. First, on the machine where you will paste the blocks, do [Prerequisites](docs/PREREQS.md) for
+   its OS, then its [Check](docs/PREREQS.md#check). Every command-line block in the guides needs
+   those tools, and fails without them (Windows PowerShell already has them; on Windows,
+   Prerequisites is where you choose PowerShell or WSL 2).
+2. Do the steps in order. Where a block comes in versions for different shells, paste the one for
    yours: **Linux, macOS, WSL (bash or zsh)** or **Windows (PowerShell)**. On Windows, a block with
    no PowerShell version runs in WSL 2 ([Prerequisites](docs/PREREQS.md#windows)).
-2. If a block starts with variables, set them first.
-3. Compare the output with the **Expect:** line under the block; if it differs, do what **If not:** says.
+3. If a block starts with variables, set them first.
+4. Compare the output with the **Expect:** line under the block; if it differs, do what **If not:** says.
 
 ## Guides
 
