@@ -903,8 +903,7 @@ them; stop and ask them.
 This shows the Application, then waits until Prometheus and Alertmanager are running. Run it a
 minute after the block above; the first install takes a few minutes.
 
-<details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -922,10 +921,7 @@ else
 fi
 ```
 
-</details>
-
-<details>
-<summary><b>Windows (PowerShell)</b></summary>
+**Windows (PowerShell):**
 
 ```powershell
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
@@ -942,8 +938,6 @@ if ($LASTEXITCODE -eq 0) {
   "FAILED: Prometheus or Alertmanager is not running"
 }
 ```
-
-</details>
 
 **Expect:** `Synced  Healthy  Succeeded` and `successfully synced (no more tasks)`, both
 `condition met`, every pod `Running`, and the Prometheus volume `Bound`. Then do steps 6 and 7.
