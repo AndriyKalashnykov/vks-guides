@@ -40,7 +40,8 @@ looks like and **If not:** says what to do.
 ## How to use
 
 1. Do the steps in order. Where a step has two blocks, paste the one for your shell:
-   **Linux, macOS, WSL (bash or zsh)** or **Windows (PowerShell)**.
+   **Linux, macOS, WSL (bash or zsh)** or **Windows (PowerShell)**. On Windows you can use either
+   PowerShell or Ubuntu in WSL 2 ([Prerequisites](docs/PREREQS.md#windows)).
 2. If a block starts with variables, set them first.
 3. Compare the output with **Expect:**. If it differs, do what **If not:** says.
 
