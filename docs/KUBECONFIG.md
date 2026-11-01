@@ -36,7 +36,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 | `~/<person>.kubeconfig` | [A personal certificate](ACCESS.md#a-personal-certificate) | a certificate and key | act as that person | `DAYS` (30 by default); cannot be withdrawn | to that person only |
 | `~/.kube/<cluster>-sso.kubeconfig` | [The person's own SSO account](ACCESS.md#the-persons-own-sso-account) | the person's SSO token | act as that person | 10 hours | no |
 | `~/.kube/<cluster>-keycloak.kubeconfig` | [KEYCLOAK.md](KEYCLOAK.md#3-make-the-persons-kubeconfig-cluster-administrator) | none: runs kubelogin, which asks for a Keycloak sign-in | nothing without a Keycloak account | as long as the cluster's address and CA stay | yes |
-| `~/<cluster>-keycloak-sv.kubeconfig` | [A Keycloak account through the Supervisor](ACCESS.md#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) | none: runs `vcf pinniped-auth login`, which asks for a sign-in | nothing without an account | as long as the address and CA stay | yes |
+| `~/<cluster>-keycloak-sv.kubeconfig` | [A group from an external identity provider, through the Supervisor](ACCESS.md#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) | none: runs `vcf pinniped-auth login`, which asks for a sign-in | nothing without an account | as long as the address and CA stay | yes |
 
 Every file the guides write is readable only by you (Linux, macOS: `-rw-------`; Windows: your
 user, `SYSTEM` and `Administrators`, until [step 3](#3-hand-a-file-over) leaves only your user). The sign-ins of the last two rows are kept elsewhere, also readable only by you: kubelogin's in `~/.kube/cache/oidc-login`,
