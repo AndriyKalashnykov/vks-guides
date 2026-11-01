@@ -13,9 +13,9 @@ and what to do if it differs.
 
 ## How to use
 
-1. **Linux, macOS:** open `bash` or `zsh`. **Windows:** open PowerShell and use the
-   **Windows (PowerShell)** blocks, or use Ubuntu in WSL 2 ([Prerequisites](docs/PREREQS.md#windows)).
-2. If a block starts with variables, set them. Then paste the whole block.
+1. Do the steps in order. Where a step has two blocks, paste the one for your shell:
+   **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)** or **Windows (PowerShell)**.
+2. If a block starts with variables, set them first.
 3. Compare the output with **Expect:**. If it differs, do what **If not:** says.
 
 ## Guides
