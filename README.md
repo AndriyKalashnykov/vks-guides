@@ -7,13 +7,13 @@ Step-by-step guides for VMware vSphere Kubernetes Service (VKS) on VCF 9.1. They
 vCenter administrators who are new to VKS and Kubernetes, and use standard Kubernetes terms, so
 Kubernetes engineers can use them as a reference too.
 
-## Before you start: install the prerequisites
+## Before you start: do Prerequisites, then run its Check
 
 On each machine where you will paste the blocks, do [Prerequisites](docs/PREREQS.md) for its OS,
-then run its [Check](docs/PREREQS.md#check), which lists any missing tool. Without these tools the
-guides' blocks stop, or take the wrong branch. On Windows, Prerequisites is also where you choose
-PowerShell or WSL 2. Then do [Getting started](docs/GET-STARTED.md) (kubectl, the VCF CLI, logging
-in): most guides need it too.
+then run its [Check](docs/PREREQS.md#check), which lists any missing tool. Without these tools,
+blocks that use them stop or take the wrong branch. On Windows, Prerequisites is also where you
+choose PowerShell or WSL 2. Then do the rest of [Getting started](docs/GET-STARTED.md) (kubectl, the
+VCF CLI, logging in): most guides need it too.
 
 ## About VKS and these guides
 

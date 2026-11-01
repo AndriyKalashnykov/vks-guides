@@ -15,9 +15,8 @@
 > - Podman: [Podman Installation](https://podman.io/docs/installation), [Podman for Windows](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-for-windows.md)
 
 The small command-line tools the other guides' blocks use: `curl`, `tar`, `unzip` (Photon OS:
-`bsdtar`), `jq`, `openssl`. Required: do the section for your OS, then [Check](#check) (Linux,
-macOS and WSL; PowerShell needs no check), before any other guide. The sections marked optional
-are needed only where a guide says so.
+`bsdtar`), `jq`, `openssl`. Required: do the section for your OS, then run [Check](#check), before
+any other guide. The sections marked optional are needed only where a guide says so.
 
 ## Linux (Debian / Ubuntu)
 
