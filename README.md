@@ -45,7 +45,7 @@ success looks like and **If not:** says what to do.
    yours: **Linux, macOS, WSL (bash or zsh)** or **Windows (PowerShell)**. On Windows, a block with
    no PowerShell version runs in WSL 2 ([Prerequisites](docs/PREREQS.md#windows)).
 2. If a block starts with variables, set them first.
-3. Compare the output with **Expect:**. If it differs, do what **If not:** says.
+3. Compare the output with the **Expect:** line under the block; if it differs, do what **If not:** says.
 
 ## Guides
 
