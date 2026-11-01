@@ -723,7 +723,7 @@ $V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o jso
 - Only `error: … .kubeconfig: no such file or directory`: `VKS_CLUSTER` is wrong, or you have not
   run [Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig) yet.
 
-## Give a person or team access to the VKS cluster (optional)
+## Access for other people (optional)
 
 To let someone else work in the VKS cluster without its administrator file, see
 [ACCESS.md](ACCESS.md); which kubeconfig files may be handed over: [KUBECONFIG.md](KUBECONFIG.md).

@@ -1,4 +1,4 @@
-# Keycloak: log in to a VKS cluster with a Keycloak account
+# OIDC sign-in on one VKS cluster, without the Supervisor (Keycloak example)
 
 > [!NOTE]
 > **Official Broadcom, Kubernetes, kubelogin and Keycloak documentation for this guide**
@@ -8,7 +8,8 @@
 > - kubelogin: [README](https://github.com/int128/kubelogin), [Usage](https://github.com/int128/kubelogin/blob/master/docs/usage.md)
 > - Keycloak: [Device Authorization Grant](https://www.keycloak.org/docs/latest/server_admin/index.html#device-authorization-grant)
 
-A person logs in to one VKS cluster with their Keycloak user, in a browser on any machine, and needs
+The VKS cluster itself trusts an OpenID Connect (OIDC) identity provider; Keycloak is the example
+provider here. A person logs in to one VKS cluster with their Keycloak user, in a browser on any machine, and needs
 only kubectl and kubelogin; they need no vCenter account and no VCF CLI. The cluster administrator
 turns this on when creating the cluster, gives Keycloak groups rights, and hands out a kubeconfig
 that holds no secret. Tested on VKS 3.8 (Kubernetes v1.37.1) with Keycloak 26.8.
