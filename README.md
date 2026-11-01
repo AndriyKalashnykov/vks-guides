@@ -3,13 +3,35 @@
 
 # VMware VKS How-to Guides
 
-Copy-paste guides for VMware vSphere Kubernetes Service (VKS) on VCF 9.1, from an empty machine
-to apps running on a VKS cluster: install `kubectl` and the VCF CLI, log in to the Supervisor,
-create a vSphere Namespace and a VKS cluster, run a private container registry (Harbor),
-deploy clusters and apps from Git with ArgoCD, monitor a cluster with Prometheus and Grafana,
-send its logs to VCF Operations, and see its logs and traces in Grafana.
-Each command-line step is a block for bash, zsh or Windows PowerShell, with the output to expect
-and what to do if it differs.
+Step-by-step guides for VMware vSphere Kubernetes Service (VKS) on VCF 9.1. They are written for
+vCenter administrators who are new to VKS and Kubernetes, and use standard Kubernetes terms, so
+Kubernetes engineers can use them as a reference too.
+
+**What VKS is.** VKS runs upstream Kubernetes clusters on vSphere. The Supervisor is a Kubernetes
+control plane that vSphere runs on your ESXi clusters, managed from vCenter. On it you create a
+vSphere Namespace: its CPU, memory and storage limits, VM classes, storage policies and who may
+use it. In that namespace you declare VKS clusters. The Supervisor creates their control-plane and
+worker nodes as VMs, and scales and upgrades them, with Cluster API.
+
+**Why use it.** Teams get their own Kubernetes clusters on demand, while you keep vSphere's
+resource limits, vCenter SSO and storage policies. Broadcom supports the Kubernetes releases, the
+VKS add-ons and the Supervisor Services (such as Harbor and ArgoCD). The guides name each part
+that is upstream open source instead (such as Prometheus, Gitea, Tekton and Keycloak).
+
+**What the guides cover**, from an empty workstation to apps running on a VKS cluster: install
+kubectl, the VCF CLI and Helm, log in with vCenter SSO and manage kubeconfig files; give people
+access with Kubernetes RBAC and an external OIDC identity provider; create a vSphere Namespace and
+a VKS cluster, install add-ons and run a private container registry (Harbor); build container
+images and run them from the registry; deploy from Git with ArgoCD and build on every push (Gitea
+and Tekton, or GitLab); browse a cluster in a web console (Headlamp), monitor it with Prometheus
+and Grafana, forward its logs to VCF Operations, and see its logs and traces in Grafana (Loki,
+Jaeger).
+
+**How each guide works.** It opens with the official Broadcom or upstream docs it follows, and
+what you need first: earlier guides, tools, vSphere roles and the network connections to allow.
+Steps use the vSphere Client where VCF has one, with screenshots. Command-line steps are blocks
+you paste into bash, zsh or Windows PowerShell. After each step, **Expect:** shows what success
+looks like and **If not:** says what to do.
 
 ## How to use
 
