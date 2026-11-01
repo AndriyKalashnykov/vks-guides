@@ -31,6 +31,8 @@ monitoring and Helm.
 | [Install kubectl](docs/KUBECTL.md) | the Kubernetes command-line tool, for working with your clusters |
 | [Install the VCF CLI](docs/VCF.md) | VMware's command-line tool, for logging in to the Supervisor and managing VKS clusters |
 | [Log in to the Supervisor and a VKS cluster](docs/LOGIN.md) | your SSO login to the Supervisor, and the kubeconfig `kubectl` uses to reach your VKS cluster |
+| [Give a person or team access to a VKS cluster](docs/ACCESS.md) | a ServiceAccount token, a personal certificate, the person's own SSO account, or a Keycloak group through the Supervisor |
+| [Kubeconfig files](docs/KUBECONFIG.md) | what each kubeconfig the guides make holds, which ones may be handed over, and how to use and merge them |
 | [Run Keycloak in a VKS cluster](docs/KEYCLOAK-VKS.md) | Keycloak with PostgreSQL in its own VKS cluster, with a certificate, a name, a realm for VKS logins and the people in it |
 | [Log in to a VKS cluster with Keycloak](docs/KEYCLOAK.md) | a person's Keycloak user on a VKS cluster made for it, with only kubectl and kubelogin on their machine |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | a vCenter administrator's vSphere Namespace for VKS clusters, and the check that it is ready |
@@ -91,6 +93,8 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Install kubectl](docs/KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install the VCF CLI](docs/VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in](docs/LOGIN.md) | ✅ | ✅ | ✅ | part | ✅ | ✅ |
+| [Give access](docs/ACCESS.md) | part | part | part | — | part | part |
+| [Kubeconfig files](docs/KUBECONFIG.md) | ✅ | — | — | — | ✅ | — |
 | [Run Keycloak in a VKS cluster](docs/KEYCLOAK-VKS.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | [Log in with Keycloak](docs/KEYCLOAK.md) | ✅ | — | part | — | ✅ | — |
 | [Create a vSphere Namespace](docs/NAMESPACE.md) | ✅ | ✅ | — | — | ✅ | ✅ |
