@@ -7,29 +7,33 @@ Step-by-step guides for VMware vSphere Kubernetes Service (VKS) on VCF 9.1. They
 vCenter administrators who are new to VKS and Kubernetes, and use standard Kubernetes terms, so
 Kubernetes engineers can use them as a reference too.
 
-**What VKS is.** VKS runs upstream Kubernetes clusters on vSphere. The Supervisor is a Kubernetes
-control plane that vSphere runs on your ESXi clusters, managed from vCenter. On it you create a
-vSphere Namespace: its CPU, memory and storage limits, VM classes, storage policies and who may
-use it. In that namespace you declare VKS clusters. The Supervisor creates their control-plane and
-worker nodes as VMs, and scales and upgrades them, with Cluster API.
+**What VKS is.** VKS runs conformant Kubernetes clusters, built from upstream Kubernetes
+releases, on vSphere. The Supervisor is a Kubernetes control plane that vSphere runs on your
+vSphere clusters, managed from vCenter. On it you create vSphere Namespaces and set, for each one,
+its CPU, memory and storage limits, the VM classes and storage policies it may use, and who may
+use it. A vSphere Namespace is a namespace on the Supervisor, not inside a VKS cluster. In it you
+declare VKS clusters. The Supervisor is their Cluster API management cluster: it creates their
+control-plane and worker nodes as VMs, scales them, and rolls out a new Kubernetes version when
+you change it.
 
-**Why use it.** Teams get their own Kubernetes clusters on demand, while you keep vSphere's
-resource limits, vCenter SSO and storage policies. Broadcom supports the Kubernetes releases, the
-VKS add-ons and the Supervisor Services (such as Harbor and ArgoCD). The guides name each part
-that is upstream open source instead (such as Prometheus, Gitea, Tekton and Keycloak).
+**Why use it.** Teams get their own Kubernetes clusters on demand, while you keep vSphere's resource
+limits, vCenter SSO and storage policies. Broadcom supports the Kubernetes releases; for a VKS
+add-on it supports either the software or only its packaging and upgrades ([VKS
+add-ons](docs/ADDONS.md)). Most guides say which parts are upstream open source that Broadcom does
+not support (such as Prometheus, Gitea and GitLab).
 
 **What the guides cover**, from an empty workstation to apps running on a VKS cluster: install
 kubectl, the VCF CLI and Helm, log in with vCenter SSO and manage kubeconfig files; give people
-access with Kubernetes RBAC and an external OIDC identity provider; create a vSphere Namespace and
-a VKS cluster, install add-ons and run a private container registry (Harbor); build container
-images and run them from the registry; deploy from Git with ArgoCD and build on every push (Gitea
-and Tekton, or GitLab); browse a cluster in a web console (Headlamp), monitor it with Prometheus
-and Grafana, forward its logs to VCF Operations, and see its logs and traces in Grafana (Loki,
-Jaeger).
+access with Kubernetes RBAC and an external OIDC identity provider; create a vSphere Namespace and a
+VKS cluster, install add-ons, and run a private container registry (Harbor) on the Supervisor; build
+container images and run them from the registry; deploy from Git with ArgoCD and build on every push
+(Gitea and Tekton, or GitLab); browse a cluster in a web console (Headlamp), monitor it with
+Prometheus and Grafana, forward its logs to VCF Operations, and see its logs and traces in Grafana
+(Loki, Jaeger).
 
 **How each guide works.** It opens with the official Broadcom or upstream docs it follows, and
-what you need first: earlier guides, tools, vSphere roles and the network connections to allow.
-Steps use the vSphere Client where VCF has one, with screenshots. Command-line steps are blocks
+what you need first: earlier guides, tools, the rights it needs and the network connections to
+allow. Steps in the vSphere Client are shown with screenshots. Command-line steps are blocks
 you paste into bash, zsh or Windows PowerShell. After each step, **Expect:** shows what success
 looks like and **If not:** says what to do.
 
