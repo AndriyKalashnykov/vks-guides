@@ -960,10 +960,11 @@ the one that signed in.
 ### 7. Take access away (Keycloak and cluster administrators)
 
 To take one person's access away, **disable** their user in Keycloak, or sign them out (the user's
-**Sessions** tab > **Sign out**): their next sign-in refresh is refused. Removing them from one of
-their groups takes that group away at the next refresh, but removing their **last** group does not:
-the cluster keeps the groups it saw before. Before you enable a user again, sign them out, or their
-old sign-in can work again.
+**Sessions** tab > **Sign out**): the next time their sign-in is renewed, it is refused. A credential
+the cluster already gave them keeps working until it expires. Removing them from one of their groups
+takes that group away when the sign-in is next renewed. Removing them from their **last** group does
+not: the Supervisor keeps the groups it saw before, so also disable the user or sign them out. Before
+you enable a user again, sign them out, or their old sign-in can work again.
 
 To take the group's access away, delete its RoleBinding (step 3) and its role on the vSphere
 Namespace (step 2, `ROLE="REMOVE"`). For a group with **Can edit**, the namespace role is what made
