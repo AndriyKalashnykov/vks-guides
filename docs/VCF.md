@@ -303,7 +303,7 @@ withdrawn: it works until the certificate expires or the cluster is deleted, eve
 loses their permission on the vSphere Namespace. Keep it private.
 
 To log in to a VKS cluster as your own SSO user instead, see Broadcom's
-([Log in to a VKS Cluster Using vCenter SSO Credentials](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connecting-to-vsphere-with-tanzu-clusters/connect-to-a-tkg-service-cluster-as-a-vcenter-single-sign-on-user-with-kubectl/log-in-using-credentials.html);
+[Log in to a VKS Cluster Using vCenter SSO Credentials](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connecting-to-vsphere-with-tanzu-clusters/connect-to-a-tkg-service-cluster-as-a-vcenter-single-sign-on-user-with-kubectl/log-in-using-credentials.html)
 and the steps in [ACCESS.md](ACCESS.md#the-persons-own-sso-account). That login loses its rights
 when your permission is removed.
 
@@ -322,12 +322,12 @@ separate files are these guides' choice:
 ```mermaid
 %%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
 flowchart TB
-  subgraph def["vcf's default: one file"]
-    dk["kubectl"] --> df["~/.kube/config<br/>the Supervisor, VKS clusters, your other clusters<br/>its current-context decides the server"]
-  end
   subgraph guides["these guides: one file per server (names are the guides' choice)"]
     gk["kubectl --kubeconfig FILE"] --> gs["~/.kube/supervisor.kubeconfig<br/>your SSO login, about 10 hours"]
     gk --> gc["~/.kube/my-vks-cluster.kubeconfig<br/>the administrator certificate, about a year"]
+  end
+  subgraph def["vcf's default: one file"]
+    dk["kubectl"] --> df["~/.kube/config<br/>the Supervisor, VKS clusters, your other clusters<br/>its current-context decides the server"]
   end
 ```
 
