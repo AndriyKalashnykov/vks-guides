@@ -5,7 +5,7 @@ These need a VKS cluster ([Namespaces and clusters](CLUSTERS.md)) and its admini
 
 | guide | what it is |
 |---|---|
-| [Give a person or team access to a VKS cluster](ACCESS.md) | a ServiceAccount token, a personal certificate, the person's own SSO account, or a Keycloak group through the Supervisor |
+| [Give a person or team access to a VKS cluster](ACCESS.md) | a ServiceAccount token, a personal certificate, the person's own SSO account, or a group from an external identity provider through the Supervisor (tested with Keycloak) |
 | [Run Keycloak in a VKS cluster](KEYCLOAK-VKS.md) | Keycloak with PostgreSQL in its own VKS cluster, with a certificate, a name, a realm for VKS logins and the people in it |
 | [Log in to a VKS cluster with Keycloak](KEYCLOAK.md) | a person's Keycloak user on a VKS cluster made for it, with only kubectl and kubelogin on their machine |
 
