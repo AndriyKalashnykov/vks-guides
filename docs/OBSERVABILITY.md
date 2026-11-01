@@ -35,8 +35,8 @@ flowchart TB
   cluster -.- sup["vSphere<br>Supervisor<br>integration"] --> ops["VCF Operations"]
 ```
 
-Loki and Jaeger keep their data inside the cluster. The Loki and Jaeger charts are upstream;
-Broadcom does not support them.
+Loki and Jaeger keep their data inside the cluster. The Loki and Jaeger charts and the podinfo
+sample app are upstream; Broadcom does not support them.
 
 What VCF 9.1 itself offers:
 

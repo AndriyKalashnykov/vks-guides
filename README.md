@@ -19,8 +19,10 @@ you change it.
 **Why use it.** Teams get their own Kubernetes clusters on demand, while you keep vSphere's resource
 limits, vCenter SSO and storage policies. Broadcom supports the Kubernetes releases; for a VKS
 add-on it supports either the software or only its packaging and upgrades ([VKS
-add-ons](docs/ADDONS.md)). Each guide says which parts are upstream open source that Broadcom does
-not support (such as Prometheus, Gitea and GitLab).
+add-ons](docs/ADDONS.md)). Where a guide installs open-source software that Broadcom does not
+support, it says so (such as Prometheus, Gitea, GitLab and Kaniko). Tools a guide downloads for your
+own machine from their own projects (Helm, kubelogin, podman, docker), and the sample apps and test
+images the guides run, are not Broadcom's either.
 
 **What the guides cover**, from an empty workstation to apps running on a VKS cluster: install
 kubectl, the VCF CLI and Helm, log in with vCenter SSO and manage kubeconfig files; give people
@@ -31,17 +33,17 @@ container images and run them from the registry; deploy from Git with ArgoCD and
 Prometheus and Grafana, forward its logs to VCF Operations, and see its logs and traces in Grafana
 (Loki, Jaeger).
 
-**How each guide works.** It opens with the official Broadcom or upstream docs it follows, and
-what you need first: earlier guides, tools, the rights it needs and the network connections to
-allow. Steps in the vSphere Client are shown with screenshots. Command-line steps are blocks
-you paste into bash, zsh or Windows PowerShell. After each step, **Expect:** shows what success
-looks like and **If not:** says what to do.
+**How each guide works.** It opens with the official Broadcom or upstream docs it follows, and what
+you need first: earlier guides, tools, and, where it needs them, the rights and the network
+connections to allow. Steps in the vSphere Client are shown with screenshots. Command-line steps are
+blocks you paste into bash, zsh or Windows PowerShell. After each step, **Expect:** shows what
+success looks like and **If not:** says what to do.
 
 ## How to use
 
-1. Do the steps in order. Where a step has two blocks, paste the one for your shell:
-   **Linux, macOS, WSL (bash or zsh)** or **Windows (PowerShell)**. On Windows you can use either
-   PowerShell or Ubuntu in WSL 2 ([Prerequisites](docs/PREREQS.md#windows)).
+1. Do the steps in order. Where a block comes in versions for different shells, paste the one for
+   yours: **Linux, macOS, WSL (bash or zsh)** or **Windows (PowerShell)**. On Windows, a block with
+   no PowerShell version runs in WSL 2 ([Prerequisites](docs/PREREQS.md#windows)).
 2. If a block starts with variables, set them first.
 3. Compare the output with **Expect:**. If it differs, do what **If not:** says.
 

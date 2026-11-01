@@ -973,9 +973,9 @@ People sign in to Keycloak in a browser, which must trust Keycloak's CA. Give ea
 `keycloak-ca.pem` from step 6 (it holds no secret), and each person adds it once on the machine
 whose browser they sign in with. Do it on your own machine too, before step 11.
 
-**Linux:** Chrome uses its own certificate database in your home. This
-adds the CA there (it needs `certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu,
-`sudo dnf install -y nss-tools` on AlmaLinux, `sudo tdnf install -y nss` on Photon OS).
+**Linux:** Chrome uses its own certificate database in your home. This adds the CA there (it needs
+`certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on
+AlmaLinux, `sudo tdnf install -y nss` on Photon OS).
 
 ```sh
 mkdir -p "$HOME/.pki/nssdb"

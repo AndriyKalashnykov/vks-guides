@@ -14,8 +14,9 @@
 This ties the other guides together. You push a change to an app's Git repository; the cluster
 builds its image with Kaniko and pushes it to Harbor; the build writes the image's digest (its
 unique `sha256:` fingerprint) into a second repository, `deploy`; ArgoCD on the Supervisor sees the
-new commit and rolls it out to the VKS cluster. The app is
-[`argocd/test-web-apps`](../argocd/test-web-apps): a page that says `test-web-apps v1`.
+new commit and rolls it out to the VKS cluster. Kaniko and the `alpine/git` image are upstream;
+Broadcom does not support them. The app is [`argocd/test-web-apps`](../argocd/test-web-apps): a page
+that says `test-web-apps v1`.
 
 You can do it with Gitea and Tekton, or with GitLab. Steps 4, 6 and 7 have a section for each; the
 other steps are the same, and where their blocks set `GIT_SERVER="gitea"`, change it to

@@ -11,8 +11,8 @@
 
 Headlamp is a web page for looking at and changing what runs in a Kubernetes cluster: workloads,
 their logs, configuration, events, a map of how objects connect. This installs Broadcom's Headlamp
-add-on ([what add-ons are](ADDONS.md)) in a VKS cluster, gives people accounts with only the
-rights they need, and logs in with a token.
+add-on (Ecosystem tier: Broadcom supports its packaging and upgrades; [what add-ons are](ADDONS.md))
+in a VKS cluster, gives people accounts with only the rights they need, and logs in with a token.
 
 Headlamp has no users of its own. Whoever opens it pastes a token, and Headlamp then acts with
 exactly that token's rights: someone with a read-only token can look, not change.
