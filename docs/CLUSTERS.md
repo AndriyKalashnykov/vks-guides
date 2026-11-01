@@ -1,4 +1,4 @@
-# Namespaces and clusters
+# vSphere Namespaces and VKS clusters
 
 Create the vSphere Namespace (a vCenter administrator's task), then a VKS cluster in it. Add-ons and
 Harbor are optional.

@@ -20,15 +20,15 @@ and what to do if it differs.
 
 ## Guides
 
-The guides are in six groups. Start with Get started, then Namespaces and clusters; the other
-groups are optional, in any order once you have a VKS cluster. Each group's page lists its guides,
-the order to follow and where each was tested.
+The guides are in six groups. Start with Get started, then vSphere Namespaces and VKS clusters;
+the other groups are optional, in any order once you have a VKS cluster. Each group's page lists
+its guides, the order to follow and where each was tested.
 
 | group | what it is for |
 |---|---|
 | [Get started](docs/GET-STARTED.md) | tools, login, kubeconfig files |
 | [Access and sign-in](docs/ACCESS-SIGN-IN.md) | give others access, sign-in through an external identity provider (tested with Keycloak) |
-| [Namespaces and clusters](docs/CLUSTERS.md) | vSphere Namespace, VKS cluster, add-ons, Harbor |
+| [vSphere Namespaces and VKS clusters](docs/CLUSTERS.md) | vSphere Namespace, VKS cluster, add-ons, Harbor |
 | [Images](docs/IMAGES.md) | build, push and run an image from Harbor |
 | [GitOps and CI/CD](docs/GITOPS-CICD.md) | ArgoCD, Gitea, Tekton, GitLab, build and deploy on push |
 | [Operate and observe](docs/OPERATE.md) | web console, monitoring, logs and traces |

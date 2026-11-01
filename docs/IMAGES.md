@@ -1,7 +1,7 @@
 # Images
 
-These need Harbor ([Namespaces and clusters](CLUSTERS.md)). Pick one: the full guide (podman or
-docker, every OS) or the short docker-on-Linux version.
+These need Harbor ([vSphere Namespaces and VKS clusters](CLUSTERS.md)). Pick one: the full guide
+(podman or docker, every OS) or the short docker-on-Linux version.
 
 | guide | what it is |
 |---|---|
