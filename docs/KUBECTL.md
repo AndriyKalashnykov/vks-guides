@@ -165,7 +165,7 @@ TMP="$(mktemp -d)"
 
 if [ -z "$P" ]; then
   echo "FAILED: no Supervisor kubectl for $(uname -s)/$(uname -m)"
-elif [ ! -s "$SUPERVISOR_CA" ]; then
+elif [ ! -f "$SUPERVISOR_CA" ] || [ ! -s "$SUPERVISOR_CA" ]; then
   echo "FAILED: no vCenter CA at $SUPERVISOR_CA (LOGIN.md, Create Supervisor context with CA, step 1)"
 elif ! curl -fsS --connect-timeout 20 --speed-time 60 --cacert "$SUPERVISOR_CA" -o "$TMP/p.zip" "https://${SUPERVISOR_ENDPOINT}/wcp/plugin/${P}/vsphere-plugin.zip" \
      || ! { if command -v unzip >/dev/null 2>&1 || ! command -v bsdtar >/dev/null 2>&1; then unzip -oq "$TMP/p.zip" bin/kubectl -d "$TMP"; else bsdtar -xf "$TMP/p.zip" -C "$TMP" bin/kubectl; fi; }; then
