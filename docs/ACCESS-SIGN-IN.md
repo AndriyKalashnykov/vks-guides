@@ -1,13 +1,15 @@
 # Access and sign-in
 
 These need a VKS cluster ([Namespaces and clusters](CLUSTERS.md)) and its administrator kubeconfig
-([Log in](LOGIN.md)). Run Keycloak in a VKS cluster comes before either Keycloak way.
+([Log in](LOGIN.md)). Single sign-on uses an external identity provider: any OpenID Connect
+(OIDC) provider your organization runs. These guides use Keycloak as the example provider; without
+one, run it first ([Run an OIDC identity provider](KEYCLOAK-VKS.md)).
 
 | guide | what it is |
 |---|---|
-| [Give a person or team access to a VKS cluster](ACCESS.md) | a ServiceAccount token, a personal certificate, the person's own SSO account, or a group from an external identity provider through the Supervisor (tested with Keycloak) |
-| [Run Keycloak in a VKS cluster](KEYCLOAK-VKS.md) | Keycloak with PostgreSQL in its own VKS cluster, with a certificate, a name, a realm for VKS logins and the people in it |
-| [Log in to a VKS cluster with Keycloak](KEYCLOAK.md) | a person's Keycloak user on a VKS cluster made for it, with only kubectl and kubelogin on their machine |
+| [Identity and access for VKS clusters](ACCESS.md) | the ways to give a person, team or tool access to a VKS cluster: a ServiceAccount token, a client certificate, a vCenter SSO account, or a group from the external identity provider through the Supervisor |
+| [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | the example provider (Keycloak with PostgreSQL) in its own VKS cluster, with a certificate, a DNS name, a realm for VKS sign-ins, users and groups |
+| [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | a VKS cluster created to trust the identity provider directly; people need only kubectl and kubelogin |
 
 ## Tested on
 
@@ -17,8 +19,8 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 
 | guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows PowerShell 5.1 | WSL 2 Ubuntu (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Give access](ACCESS.md) | part | part | part | — | part | part |
-| [Run Keycloak in a VKS cluster](KEYCLOAK-VKS.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
-| [Log in with Keycloak](KEYCLOAK.md) | ✅ | — | part | — | ✅ | — |
+| [Identity and access for VKS clusters](ACCESS.md) | part | part | part | — | part | part |
+| [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | ✅ | — | part | — | ✅ | — |
 
 Back to [README](../README.md).
