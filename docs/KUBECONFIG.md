@@ -24,6 +24,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 |---|---|---|---|
 | your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl to a VKS cluster ([Use a file](#2-use-a-file), [Merge files](#4-merge-files-into-kubeconfig-optional)) |
 | your machine | the Supervisor's address | 443 | kubectl to the Supervisor, and the sign-in of files that run `vcf` |
+| your browser (kubelogin: your machine) | Keycloak | 443 | the sign-in of files that run `vcf` or kubelogin |
 
 ## The files the guides make
 
@@ -37,8 +38,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 | `~/.kube/<cluster>-keycloak.kubeconfig` | [KEYCLOAK.md](KEYCLOAK.md#3-make-the-persons-kubeconfig-cluster-administrator) | none: runs kubelogin, which asks for a Keycloak sign-in | nothing without a Keycloak account | as long as the cluster's address and CA stay | yes |
 | `~/<cluster>-keycloak-sv.kubeconfig` | [A Keycloak account through the Supervisor](ACCESS.md#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) | none: runs `vcf pinniped-auth login`, which asks for a sign-in | nothing without an account | as long as the address and CA stay | yes |
 
-Every file the guides write is readable only by you (`-rw-------`). The sign-ins of the last two
-rows are kept elsewhere, also readable only by you: kubelogin's in `~/.kube/cache/oidc-login`,
+Every file the guides write is readable only by you (Linux, macOS: `-rw-------`; Windows: your
+user, `SYSTEM` and `Administrators`). The sign-ins of the last two rows are kept elsewhere, also readable only by you: kubelogin's in `~/.kube/cache/oidc-login`,
 `vcf`'s in `~/.config/vcf/pinniped`. Those folders are never sent.
 
 ## 1. See what a file holds
@@ -66,72 +67,33 @@ kubectl --kubeconfig $KUBECONFIG_FILE config view | Select-String -Pattern 'serv
 then the `server:` line and one of:
 - `client-key-data: DATA+OMITTED`: a key; whoever has the file is that user;
 - `token: REDACTED`: a token; whoever has the file is that user until the token ends;
-- `command: vcf` or `command: kubectl`: no secret; the file asks for a sign-in.
+- `command: vcf` or `command: kubectl`: no secret; the file asks for a sign-in. Before the first
+  use of such a file from someone else, check that `server:` is the address you were told and the
+  command is `vcf` or `kubectl`: a file can run any program.
 
 **If not:** `-rw-r--r--` or more: run `chmod 600` on the file (Windows: see
 [Hand a file over](#3-hand-a-file-over)). `No such file`: set `KUBECONFIG_FILE` to the file.
 
 ## 2. Use a file
 
-Name the file in each command; nothing else changes, in any terminal:
+Name the file with `--kubeconfig` in each command, or make it the default in this terminal, as in
+[Use the VKS cluster](LOGIN.md#use-the-vks-cluster), with any file from the table.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
-
-```sh
-VKS_CLUSTER="my-vks-cluster"
-
-kubectl --kubeconfig "$HOME/.kube/${VKS_CLUSTER}.kubeconfig" get nodes
-```
-
-**Windows (PowerShell):**
-
-```powershell
-$VKS_CLUSTER = "my-vks-cluster"
-
-kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" get nodes
-```
-
-**Expect:** the cluster's nodes, each `Ready`.
-
-**If not:** `Unauthorized`: the file's login has ended (see *works for* in
-[the table](#the-files-the-guides-make)); get a new file the way it was made.
-
-Or make it the default in this terminal; every `kubectl` command in this terminal then uses it, and
-a new terminal does not:
-
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
-
-```sh
-VKS_CLUSTER="my-vks-cluster"
-
-export KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-kubectl config get-contexts
-```
-
-**Windows (PowerShell):**
-
-```powershell
-$VKS_CLUSTER = "my-vks-cluster"
-
-$env:KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-kubectl config get-contexts
-```
-
-**Expect:** the file's contexts (a *context* is a saved "this cluster, as this user"), the current
-one marked `*`.
-
-A file with several contexts, such as `~/.kube/supervisor.kubeconfig` (`supervisor` and one
-`supervisor:<namespace>` per vSphere Namespace) or a merged `~/.kube/config`, uses its current
-context. Pick another for one command with `--context <name>`, or make it the current one with
-`kubectl config use-context <name>`, which changes the file. `KUBECONFIG` may also list several
-files, separated by `:` (Windows: `;`); kubectl then reads them together, the first file wins
-where two use the same name, and `use-context` changes the first file.
+A file with several contexts (a *context* is a saved "this cluster, as this user"), such as
+`~/.kube/supervisor.kubeconfig` (`supervisor` and one `supervisor:<namespace>` per vSphere
+Namespace) or a merged `~/.kube/config`, uses its current context. Pick another for one command
+with `--context <name>`, or make it the current one with `kubectl config use-context <name>`,
+which changes the file. `KUBECONFIG` may also list several files, separated by `:` (Windows: `;`);
+kubectl then reads them together, the first file wins where two use the same name, and
+`use-context` changes the first file.
 
 ## 3. Hand a file over
 
-Send only a file whose row says so in [the table](#the-files-the-guides-make). Give it through a
-password manager's share or as an encrypted file, never by email, chat or a shared folder, then
-delete your copy. The person saves it in their `.kube` folder and makes it readable only by them:
+Send only a file whose *send it?* column in [the table](#the-files-the-guides-make) is not `no`. A
+file with no secret (`yes`) may go by email or chat. A file with a token or a key (`to the team
+only`, `to that person only`) goes only through a password manager's share or as an encrypted
+file, never by email, chat or a shared folder; then delete your copy. The person saves it in their
+`.kube` folder and makes it readable only by them:
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -156,8 +118,8 @@ files`, then only your user with `(F)`).
 **If not:** `No such file` (Windows: `The system cannot find the file specified`): set `HANDOUT` to
 the saved file.
 
-A file that runs `vcf` needs the [VCF CLI](VCF.md) on the person's machine, one that runs
-kubelogin needs kubelogin ([KEYCLOAK.md](KEYCLOAK.md#prerequisites)).
+A file that runs `vcf` needs the [VCF CLI](VCF.md) on the person's machine; one that runs
+kubelogin needs [kubelogin](PREREQS.md#kubelogin-optional).
 
 ## 4. Merge files into `~/.kube/config` (optional)
 
@@ -246,6 +208,7 @@ cluster.
   (`kubectl --kubeconfig <file> config rename-context <old> <new>`), or, if it is already in
   `~/.kube/config`, delete it there as above, and run this again.
 - To undo: `mv ~/.kube/config.before-merge ~/.kube/config` (Windows:
-  `Move-Item -Force $HOME\.kube\config.before-merge $HOME\.kube\config`).
+  `Move-Item -Force $HOME\.kube\config.before-merge $HOME\.kube\config`); if you had no
+  `~/.kube/config` before, delete it instead. A second merge replaces `config.before-merge`.
 
 Back to [README](../README.md).

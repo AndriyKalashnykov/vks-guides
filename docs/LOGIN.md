@@ -630,11 +630,6 @@ if ((Test-Path $DOWNLOADED) -and $LASTEXITCODE -eq 0) {
 - `error: You must be logged in to the server (Unauthorized)`: the file has expired; download it
   again.
 
-## Give a person or team their own kubeconfig (optional)
-
-To let someone else work in a namespace of the VKS cluster (a ServiceAccount token, a personal
-certificate, the person's own SSO account, or a Keycloak account), see [ACCESS.md](ACCESS.md).
-
 ## Use the VKS cluster
 
 Pick one of the two ways.
@@ -727,6 +722,11 @@ $V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o jso
   `kubectl` error above it says which.
 - Only `error: … .kubeconfig: no such file or directory`: `VKS_CLUSTER` is wrong, or you have not
   run [Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig) yet.
+
+## Give a person or team access to the VKS cluster (optional)
+
+To let someone else work in the VKS cluster without its administrator file, see
+[ACCESS.md](ACCESS.md); which kubeconfig files may be handed over: [KUBECONFIG.md](KUBECONFIG.md).
 
 ## Renew the Supervisor login
 

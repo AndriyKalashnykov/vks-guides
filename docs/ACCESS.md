@@ -10,30 +10,32 @@
 > - [VCF CLI command reference: cluster](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/command-reference2/cluster2.html) (`vcf cluster kubeconfig get --export-file`)
 > - Kubernetes: [Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/) (ServiceAccount tokens, client certificates), [Certificates and Certificate Signing Requests](https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/), [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) (the `edit` and `view` roles)
 
-As the cluster's administrator you can let someone work in one namespace of a VKS cluster, without
-giving them the cluster's administrator file. Pick one way:
+As the cluster's administrator you can let someone work in one namespace of a VKS cluster (a
+folder inside the cluster for their workloads, not the vSphere Namespace), without giving them the
+cluster's administrator file. You give a name a role there (`edit` to deploy, `view` to read only)
+with a RoleBinding; a ServiceAccount is such a name for a team or a tool rather than a person. Pick
+one way:
 
 | way | for | they need | lasts | to take it away |
 |---|---|---|---|---|
 | [A ServiceAccount token](#a-serviceaccount-token) | a team, a person or a tool | kubectl | the days you set | delete the ServiceAccount: every copy stops |
 | [A personal certificate](#a-personal-certificate) | one person | kubectl | the days you set | cannot be withdrawn: delete its RoleBinding and never bind its name again |
-| [The person's own SSO account](#the-persons-own-sso-account) | one vCenter SSO user | kubectl, and the VCF CLI or the kubectl vSphere plugin | 10 hours per login | delete the person's RoleBinding, and disable the SSO user |
-| [A Keycloak account through the Supervisor](#a-keycloak-account-through-the-supervisor) | a Keycloak group, on every VKS cluster of the Supervisor | kubectl and the VCF CLI | while the person's sign-in lasts | disable the Keycloak user, or delete the group's RoleBinding |
+| [The person's own SSO account](#the-persons-own-sso-account) | one vCenter SSO user | kubectl, and the VCF CLI or the kubectl vSphere plugin | 10 hours per login | delete the person's RoleBinding and their role on the vSphere Namespace |
+| [A Keycloak account through the Supervisor](#a-keycloak-account-through-the-supervisor) | a Keycloak group; set up once per Supervisor, then per vSphere Namespace and cluster | kubectl and the VCF CLI | while the person's sign-in lasts | disable the Keycloak user, or delete the group's RoleBinding and its role on the vSphere Namespace |
 | [A Keycloak account on one cluster](KEYCLOAK.md) (clusters made for it) | a Keycloak group, on that cluster | kubectl and kubelogin | while the person's sign-in lasts | delete the group's RoleBinding |
 
-The first two are files that work for whoever holds a copy: give them through a password manager's
-share or as an encrypted file, never by email, chat or a shared folder, then delete your copy. The
-last two hand out a file with no secret in it: it only tells kubectl where to sign in. Which file
-holds what, and how to use and merge them: [KUBECONFIG.md](KUBECONFIG.md).
+The first two hand out a file that works for whoever holds a copy; the Keycloak ways a file with no
+secret, which only tells kubectl where to sign in. Which file holds what, how to hand it over, use
+and merge it: [KUBECONFIG.md](KUBECONFIG.md).
 
 ## Prerequisites
 
 - the VKS cluster's administrator kubeconfig
   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) and [kubectl](KUBECTL.md); for a
   personal certificate also openssl ([PREREQS.md](PREREQS.md); on Windows, run it in WSL);
-- for the SSO and Keycloak ways: a vCenter administrator, the vCenter CA
-  ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca), step 1), and for the person the
-  [VCF CLI](VCF.md);
+- for the SSO way and the Keycloak way through the Supervisor: a vCenter administrator, and the
+  vCenter CA ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca), step 1); for the person, the
+  [VCF CLI](VCF.md) (SSO way: or the kubectl vSphere plugin, step 2c);
 - for the Keycloak way through the Supervisor: Keycloak registered as the Supervisor's identity
   provider by the vSphere administrator (Broadcom's page above), curl and jq
   ([PREREQS.md](PREREQS.md)), and a login to the Supervisor with the **Edit** role on the
@@ -47,25 +49,19 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 | your machine | vCenter | 443 | [Give the group a role on the vSphere Namespace](#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator) |
 | your machine | the Supervisor's address | 443 | [Make the group's kubeconfig](#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) |
 | the person's machine | the VKS cluster's API address | 6443 | kubectl with the person's file (every way) |
-| the person's machine | the Supervisor's address | 443 | the SSO login; the Keycloak sign-in through the Supervisor |
+| the person's machine | the Supervisor's address | 443 | the SSO login and the plugin download (step 2c); the Keycloak sign-in through the Supervisor |
 | the person's browser | the Supervisor's address, and Keycloak | 443 | [Log in (the person)](#5-log-in-the-person) |
 
 ## A ServiceAccount token
 
-The file holds a token for a ServiceAccount: whoever has a copy acts in the cluster as
-`system:serviceaccount:<SA_NAMESPACE>:<TEAM>`, not as a person. Removing or disabling an SSO or
+The file holds a token for a ServiceAccount: whoever has a copy acts in the cluster as that
+ServiceAccount (`system:serviceaccount:kubeconfig-access:team-a`), not as a person. Removing or disabling an SSO or
 Keycloak user does not take it away; only deleting the ServiceAccount does (see
 [Take it away](#take-it-away)).
 
-The ServiceAccount lives in its own namespace, `SA_NAMESPACE`, and gets its role in
-`TEAM_NAMESPACE`. Whoever has `edit` on a namespace can make new tokens for every ServiceAccount
-in it, and token Secrets that never end. In its own namespace, where the team has no rights, the
-team cannot make a token you do not know about.
-
-Pick `DAYS` as short as the work allows: 30 is a good default, and never more than 90. The cluster
-does not shorten it (VKS 3.8 accepts 10 years), so the file lasts exactly as long as you ask.
-Never make a token Secret (type `kubernetes.io/service-account-token`) for a person: its token
-never ends.
+The ServiceAccount lives in its own namespace, `SA_NAMESPACE`, where the team has no rights (so it
+cannot make more tokens for it), and gets its role in `TEAM_NAMESPACE`. Pick `DAYS` as short as the
+work allows: 30 by default, never more than 90; the cluster does not shorten it.
 
 ### Make it
 
@@ -219,7 +215,7 @@ This makes a key and a certificate for a new name, `PERSON` plus the date and ti
 `alice-20261029223015`), valid for `DAYS` days and signed by the cluster. It gives that name the
 `edit` role in `TEAM_NAMESPACE` and writes the kubeconfig, key included, to `PERSON_KUBECONFIG`,
 readable only by you. A certificate cannot be withdrawn before it ends, so each one gets its own
-name, and that name is never given rights again. It needs openssl: on Windows, run it in WSL.
+name, and that name is never given rights again.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -295,7 +291,7 @@ kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$TEAM_NAMESPACE" delete rolebinding
 
 ```powershell
 $ADMIN_KUBECONFIG = "$HOME\.kube\my-vks-cluster.kubeconfig"
-$NAME = "alice-20261029223015"                          # from the subject= line above
+$NAME = "alice-20261029223015"
 $TEAM_NAMESPACE = "team-a"
 
 kubectl --kubeconfig $ADMIN_KUBECONFIG -n $TEAM_NAMESPACE delete rolebinding "$NAME-edit"
@@ -304,18 +300,26 @@ kubectl --kubeconfig $ADMIN_KUBECONFIG -n $TEAM_NAMESPACE delete rolebinding "$N
 **Expect:** `rolebinding.rbac.authorization.k8s.io "alice-20261029223015-edit" deleted` (newer
 kubectl: `… deleted from team-a namespace`).
 
+**If not:** `Error from server (NotFound)`: the RoleBinding is already gone, or `NAME` or
+`TEAM_NAMESPACE` is not what the make block printed and used.
+
 ## The person's own SSO account
 
 The person logs in with their own SSO user, with the VCF CLI (step 2a) or, without it, the kubectl
 vSphere plugin (steps 2b to 2d). No file is handed over.
 
-1. A vCenter administrator gives the person's SSO user the **Can view** role on the vSphere
-   Namespace ([NAMESPACE.md](NAMESPACE.md) step 4). Not **Can edit** or **Owner**: those make them
-   an administrator of every VKS cluster in the namespace.
-2. The person logs in and sends you the name it prints.
-3. You give that name the `edit` role in `TEAM_NAMESPACE`.
+### 1. Give the person a role on the vSphere Namespace (vCenter administrator)
 
-**2a. Log in with the VCF CLI (the person).** This needs the [VCF CLI](VCF.md) and the vCenter CA
+Give the person's SSO user the **Can view** role (**Namespaces View**) on the vSphere Namespace
+([NAMESPACE.md](NAMESPACE.md) step 4). Not **Can edit** or **Owner**: those make them an
+administrator of every VKS cluster in the namespace. Then send the person the Supervisor's
+address, the vSphere Namespace's and the cluster's names, and the vCenter CA file
+([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca), step 1). The person logs in (step 2a, or
+2b to 2d) and sends you the name it prints; you give that name rights (step 3).
+
+### 2a. Log in with the VCF CLI (the person)
+
+This needs the [VCF CLI](VCF.md) and the vCenter CA
 ([Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca), step 1). It logs in to the
 VKS cluster as `SSO_USER` into its own kubeconfig, readable only by you, and prints the name the
 cluster knows you by. Send that name, exactly as printed, to the cluster's administrator. Type the
@@ -362,6 +366,7 @@ elif mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_SSO_KUBECONFIG" ) && chmo
 else
   echo "FAILED: login (see the error above)"
 fi
+unset SSO_PASSWORD
 ```
 
 </details>
@@ -370,7 +375,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
+$SUPERVISOR_ENDPOINT = "10.0.0.10"
 $SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"
 $SSO_USER = "alice@vsphere.local"
 $VKS_NAMESPACE = "my-namespace"
@@ -395,6 +400,7 @@ if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   } finally {
     Remove-Item Env:VCF_CLI_VSPHERE_PASSWORD -ErrorAction SilentlyContinue; $env:KUBECONFIG = $OLD_KUBECONFIG
   }
+  Remove-Variable SSO_PASSWORD
   if ($OK) {
     kubectl --kubeconfig $VKS_SSO_KUBECONFIG config use-context "$VKS_CLUSTER-sso:$VKS_CLUSTER" | Out-Null
     "send this name: $(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')"
@@ -422,27 +428,36 @@ for example `sso:Alice@vsphere.local`).
 - `Login failed: bad request`: check `VKS_CLUSTER` and `VKS_NAMESPACE`.
 - `Initialization done!` and lines about plugins on the first run: harmless.
 
-**Without the VCF CLI: the kubectl vSphere plugin.** Broadcom replaced it with the VCF CLI in VCF 9
+Without the VCF CLI, steps 2b to 2d use the kubectl vSphere plugin. Broadcom replaced it with the VCF CLI in VCF 9
 ([KB 435399](https://knowledge.broadcom.com/external/article/435399)); it still works on 9.1. The
 Supervisor serves it for Linux, macOS and Windows on amd64 (Apple silicon would need Rosetta; not
 tested).
 
-<a id="trust-the-vcenter-ca"></a>**2b. Windows and macOS: first trust the vCenter CA (the person,
-once).** There the plugin (and on Windows the download below) checks the Supervisor's certificate
-against your user's trusted CAs, not `SUPERVISOR_CA`. Windows asks you to confirm with **Yes**:
+### 2b. Windows and macOS: trust the vCenter CA (the person, once)
+
+There the plugin (and on Windows the download below) checks the Supervisor's certificate
+against your user's trusted CAs, not `SUPERVISOR_CA`. Windows asks you to confirm with **Yes**.
+
+**macOS (not tested):**
+
+```sh
+security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db ~/.kube/vcenter-ca.pem
+```
+
+**Windows (PowerShell):**
 
 ```powershell
 Import-Certificate -FilePath "$HOME\.kube\vcenter-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
-On macOS (not tested): `security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db ~/.kube/vcenter-ca.pem`.
-
-**Expect:** a line with the CA's thumbprint and its name (`CN=CA` for vCenter's own CA).
+**Expect:** Windows: a line with the CA's thumbprint and its name (`CN=CA` for vCenter's own CA).
 
 **If not:** `UI is not allowed in this operation`: this PowerShell has no desktop to ask on (for
 example over SSH). Run the line in Windows PowerShell on the desktop.
 
-**2c. Install the plugin (the person, once).** This downloads it from the Supervisor, checking
+### 2c. Install the kubectl vSphere plugin (the person, once)
+
+This downloads it from the Supervisor, checking
 the Supervisor's certificate against the vCenter CA
 ([Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca), step 1; on Windows,
 the trusted CA from the step above), runs it, and only then installs it.
@@ -477,7 +492,7 @@ rm -rf "$TMP"
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
+$SUPERVISOR_ENDPOINT = "10.0.0.10"
 $INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
 
 $ProgressPreference = 'SilentlyContinue'
@@ -506,7 +521,9 @@ Remove-Item -Recurse -Force $TMP
 `SUPERVISOR_CA` is not the vCenter CA, or on Windows the step above was not done; after
 `curl: (22) … 404` (Windows: `(404) Not Found`): there is no build for this machine.
 
-**2d. Log in with the plugin (the person).** This logs in to the VKS cluster as `SSO_USER` into its own kubeconfig,
+### 2d. Log in with the plugin (the person)
+
+This logs in to the VKS cluster as `SSO_USER` into its own kubeconfig,
 readable only by you, and prints the name the cluster knows you by. Send that name, exactly as
 printed, to the cluster's administrator. Run it again when kubectl answers `Unauthorized`, 10
 hours after a login. **A few failed logins in a row lock the SSO user for some minutes.**
@@ -536,6 +553,8 @@ mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_SSO_KUBECONFIG" ) && chmod 600
 On Windows, type the password first, on its own (it stays in this PowerShell until the next block
 uses and removes it):
 
+**Windows (PowerShell):**
+
 ```powershell
 $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 ```
@@ -544,7 +563,7 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
+$SUPERVISOR_ENDPOINT = "10.0.0.10"
 $SSO_USER = "alice@vsphere.local"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
@@ -585,7 +604,9 @@ writes the name in its own letter case, for example `sso:Alice@vsphere.local`).
   first) and type the password carefully. Mind the lock-out.
 - `send this name:` with `Unauthorized`: the login did not work; see the error above it.
 
-**3. Give that name rights (cluster administrator).** Set `SSO_NAME` to the name the person sent,
+### 3. Give that name rights (cluster administrator)
+
+Set `SSO_NAME` to the name the person sent,
 letter for letter: a name in other letter case gets no rights.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
@@ -604,7 +625,7 @@ kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$TEAM_NAMESPACE" create rolebinding
 
 ```powershell
 $ADMIN_KUBECONFIG = "$HOME\.kube\my-vks-cluster.kubeconfig"
-$SSO_NAME = "sso:Alice@vsphere.local"                 # exactly as the person sent it
+$SSO_NAME = "sso:Alice@vsphere.local"
 $TEAM_NAMESPACE = "team-a"
 
 $B = ($SSO_NAME.ToLower() -replace '[^a-z0-9.]', '-') + '-edit'
@@ -622,14 +643,15 @@ jsonpath='{.subjects[0].name}'` must print `SSO_NAME` letter for letter; if not,
 binding and run this again.
 
 To take it away, delete that RoleBinding (`kubectl --kubeconfig <admin file> -n team-a delete
-rolebinding sso-alice-vsphere.local-edit`) and disable the SSO user in vCenter; a login already
-made keeps working until its 10 hours end.
+rolebinding sso-alice-vsphere.local-edit`; it stops at once) and remove the person's role on the
+vSphere Namespace ([NAMESPACE.md](NAMESPACE.md) step 4); disable the SSO user too if they should
+lose vCenter as well.
 
 ## A Keycloak account through the Supervisor
 
 Your vSphere administrator can register Keycloak as the Supervisor's identity provider. People in a
-Keycloak group then sign in to the VKS clusters with their Keycloak account (password and one-time
-code) in a browser; they need no vCenter account. One Supervisor takes one identity provider, and it
+Keycloak group then sign in to the VKS clusters with their Keycloak account (their password, and a
+one-time code if the realm asks for one) in a browser; they need no vCenter account. One Supervisor takes one identity provider, and it
 applies to all its VKS clusters. The cluster knows the person as `<prefix>:<user>` and their groups
 as `<prefix>:<group>`, where `<prefix>` is the one set at registration.
 
@@ -638,12 +660,16 @@ as `<prefix>:<group>`, where `<prefix>` is the one set at registration.
 3. Give the group rights inside the VKS cluster (cluster administrator).
 4. Make the group's kubeconfig and hand it over (cluster administrator).
 5. Log in (the person).
+6. Log out (the person).
+7. Take access away (Keycloak and cluster administrators).
 
 ### 1. Check that Keycloak is registered (vSphere administrator)
 
 In the vSphere Client: menu > **Supervisor Management** > **Supervisors** > your Supervisor >
 **Configure** > **Identity Providers** shows a card for Keycloak. Its **VIEW SETTINGS** shows the
 **Issuer URL** (your Keycloak realm), the **Groups Claim** and the **Prefix**: write the prefix down.
+The Keycloak administrator must send group names without a leading `/` (in the client's group
+mapper, **Full group path** off), or the cluster sees `<prefix>:/<group>`.
 
 ![The Supervisor's Identity Providers page with a card for keycloak](img/access/01-identity-providers.jpg)
 
@@ -652,8 +678,8 @@ In the vSphere Client: menu > **Supervisor Management** > **Supervisors** > your
 ### 2. Give the group a role on the vSphere Namespace (vCenter administrator)
 
 The vSphere Client's **Add Permission** window offers only vCenter's own domains, so this uses
-vCenter's API. It gives the Keycloak group `KC_GROUP` (its name in Keycloak, without the prefix)
-the role `ROLE` on the vSphere Namespace: `VIEW` (Can view) for people who only use the clusters,
+vCenter's API. It gives the Keycloak group `KC_GROUP` (without the prefix) the role `ROLE` on
+the vSphere Namespace: `VIEW` (Can view) for people who only use the clusters,
 `EDIT` (Can edit), which makes every member an administrator of every VKS cluster in the namespace,
 or `REMOVE` to take the role away. It then reads the permission back. Type the vCenter
 administrator's password first, on its own line. **A few failed logins in a row lock the user for
@@ -671,6 +697,9 @@ printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
 $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 ```
 
+`IDP_NAME`: the **Provider Name** from step 1. `KC_GROUP`: the group's name in Keycloak, letters,
+digits, `-` or `_` only. A group that already has a role gets the new one.
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
@@ -678,7 +707,7 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 VCENTER_FQDN="vcenter.example.com"
 VCENTER_CA="$HOME/.kube/vcenter-ca.pem"
 SSO_USER="administrator@vsphere.local"
-SUPERVISOR_NAME="supervisor"
+IDP_NAME="keycloak"
 VKS_NAMESPACE="my-namespace"
 KC_GROUP="k8s-devs"
 ROLE="VIEW"
@@ -691,15 +720,16 @@ else
   B64="$(printf '%s:%s' "$SSO_USER" "$SSO_PASSWORD" | base64 | tr -d '\n')"; unset SSO_PASSWORD
   TOK="$(printf 'header = "Authorization: Basic %s"\n' "$B64" | curl -sS --connect-timeout 20 --cacert "$VCENTER_CA" -X POST -K - "https://${VCENTER_FQDN}/api/session" | tr -d '"')"; unset B64
   api() { printf 'header = "vmware-api-session-id: %s"\n' "$TOK" | curl -sS --connect-timeout 20 --cacert "$VCENTER_CA" -K - "$@"; }
-  NS_API="https://${VCENTER_FQDN}/api/vcenter/namespace-management/supervisors"
-  SUP="$(api "$NS_API/summaries" | jq -r --arg n "$SUPERVISOR_NAME" '.items[]? | select(.info.name == $n) | .supervisor')"
-  IDP="$(api "$NS_API/$SUP/identity/providers" 2>/dev/null | jq -r '.[0].provider // empty' 2>/dev/null)"
+  SUP="$(api "https://${VCENTER_FQDN}/api/vcenter/namespaces/instances/v2/${VKS_NAMESPACE}" | jq -r '.supervisor // empty' 2>/dev/null)"
+  IDP="$(api "https://${VCENTER_FQDN}/api/vcenter/namespace-management/supervisors/${SUP}/identity/providers" | jq -r --arg n "$IDP_NAME" '.[]? | select(.display_name == $n) | .provider' 2>/dev/null)"
   URL="https://${VCENTER_FQDN}/api/vcenter/namespaces/instances/${VKS_NAMESPACE}/access/no-domain/${KC_GROUP}?type=GROUP"
-  if [ -z "$IDP" ]; then
-    echo "FAILED: no vCenter login, Supervisor ${SUPERVISOR_NAME} or identity provider (see above)"
+  if [ -z "$SUP" ] || [ -z "$IDP" ]; then
+    echo "FAILED: no vCenter login, vSphere Namespace ${VKS_NAMESPACE} or identity provider ${IDP_NAME} (see above)"
   else
     if [ "$ROLE" = "REMOVE" ]; then
       api -X DELETE "$URL"
+    elif api "$URL" | grep -q '"role"'; then
+      api -X PUT -H 'Content-Type: application/json' -d "{\"role\":\"${ROLE}\",\"identity_provider\":\"${IDP}\"}" "$URL"
     else
       api -X POST -H 'Content-Type: application/json' -d "{\"role\":\"${ROLE}\",\"identity_provider\":\"${IDP}\"}" "$URL"
     fi
@@ -718,7 +748,7 @@ fi
 $VCENTER_FQDN = "vcenter.example.com"
 $VCENTER_CA = "$HOME\.kube\vcenter-ca.pem"
 $SSO_USER = "administrator@vsphere.local"
-$SUPERVISOR_NAME = "supervisor"
+$IDP_NAME = "keycloak"
 $VKS_NAMESPACE = "my-namespace"
 $KC_GROUP = "k8s-devs"
 $ROLE = "VIEW"
@@ -733,19 +763,20 @@ if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   $TOK = ("header = `"Authorization: Basic $B64`"" | curl.exe -sS --connect-timeout 20 --ssl-no-revoke --cacert $VCENTER_CA -X POST -K - "https://$VCENTER_FQDN/api/session") -replace '"', ''
   Remove-Variable B64
   function api { "header = `"vmware-api-session-id: $TOK`"" | curl.exe -sS --connect-timeout 20 --ssl-no-revoke --cacert $VCENTER_CA -K - @args }
-  $NS_API = "https://$VCENTER_FQDN/api/vcenter/namespace-management/supervisors"
-  $SUP = ((api "$NS_API/summaries" | ConvertFrom-Json).items | Where-Object { $_.info.name -eq $SUPERVISOR_NAME }).supervisor
-  $IDP = $null; if ($SUP) { $IDP = @(api "$NS_API/$SUP/identity/providers" | ConvertFrom-Json)[0].provider }
+  $SUP = $null; $IDP = $null
+  try { $SUP = (api "https://$VCENTER_FQDN/api/vcenter/namespaces/instances/v2/$VKS_NAMESPACE" | ConvertFrom-Json).supervisor } catch { }
+  if ($SUP) { $IDP = (@(api "https://$VCENTER_FQDN/api/vcenter/namespace-management/supervisors/$SUP/identity/providers" | ConvertFrom-Json) | Where-Object { $_.display_name -eq $IDP_NAME }).provider }
   $URL = "https://$VCENTER_FQDN/api/vcenter/namespaces/instances/$VKS_NAMESPACE/access/no-domain/${KC_GROUP}?type=GROUP"
-  if (-not $IDP) {
-    "FAILED: no vCenter login, Supervisor $SUPERVISOR_NAME or identity provider (see above)"
+  if (-not $SUP -or -not $IDP) {
+    "FAILED: no vCenter login, vSphere Namespace $VKS_NAMESPACE or identity provider $IDP_NAME (see above)"
   } else {
     if ($ROLE -eq "REMOVE") {
       api -X DELETE $URL
     } else {
+      $METHOD = "POST"; if ((api $URL) -match '"role"') { $METHOD = "PUT" }
       $BODY = Join-Path $env:TEMP ([guid]::NewGuid())
       Set-Content -Encoding ascii -Path $BODY -Value (@{ role = $ROLE; identity_provider = $IDP } | ConvertTo-Json -Compress)
-      api -X POST -H "Content-Type: application/json" --data-binary "@$BODY" $URL
+      api -X $METHOD -H "Content-Type: application/json" --data-binary "@$BODY" $URL
       Remove-Item -Force $BODY
     }
     "now: $(api $URL)"
@@ -765,9 +796,10 @@ Kubernetes role in the vSphere Namespace (a RoleBinding `view:<prefix>:<group>`)
 - `FAILED: no password …`: run the password line, then this block.
 - `FAILED: not found: …`: save the vCenter CA first
   ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca), step 1).
-- `FAILED: no vCenter login, …`: check `SSO_USER` and `VCENTER_FQDN`, then run the password line
-  and this block again; mind the lock-out. Or check `SUPERVISOR_NAME` (the vSphere Client's
-  **Supervisors** list), or Keycloak is not registered (step 1).
+- `FAILED: no vCenter login, …` under `curl: (60)` or `SSL`: `VCENTER_CA` is not vCenter's CA.
+- `FAILED: no vCenter login, …` otherwise: check `SSO_USER` and `VCENTER_FQDN`, then run the
+  password line and this block again; mind the lock-out. Or check `VKS_NAMESPACE` and `IDP_NAME`
+  (step 1).
 
 ### 3. Give the group rights inside the VKS cluster (cluster administrator)
 
@@ -859,12 +891,20 @@ harmless ([VCF.md](VCF.md)). Send the file and the name of the namespace from st
 You need kubectl and the [VCF CLI](VCF.md) (the file runs `vcf`; you do not log in with it), and a
 browser that trusts Keycloak's and the Supervisor's certificates. Save the file in your `.kube`
 folder, readable only by you ([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)). The first command
-opens the browser: choose **keycloak**, sign in with your password and one-time code, and kubectl
-goes on. Later commands sign in again by themselves until your Keycloak session ends.
+opens the browser: choose **keycloak**, sign in with your Keycloak password (and one-time code, if
+asked), and kubectl goes on. Later commands sign in again by themselves until your Keycloak
+session ends. Before the first use, check that the file runs `vcf pinniped-auth` and that its
+`server:` is the cluster address you were told ([KUBECONFIG.md](KUBECONFIG.md#1-see-what-a-file-holds)).
 
 On a machine without a browser (over SSH, a jump box), the command prints a link instead: open it
 in the browser on your own computer, sign in, copy the code the last page shows, and paste it at
 `Optionally, paste your authorization code:`.
+
+![Choose an identity provider to log in: keycloak](img/access/03-choose-identity-provider.jpg)
+
+![Keycloak's sign-in page](img/access/04-keycloak-sign-in.jpg)
+
+![Without a browser: the last page shows the code to paste](img/access/05-finish-your-login.jpg)
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -885,12 +925,6 @@ kubectl --kubeconfig $KC_KUBECONFIG auth whoami
 if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $KC_KUBECONFIG -n $TEAM_NAMESPACE auth can-i create deployments }
 ```
 
-![Choose an identity provider to log in: keycloak](img/access/03-choose-identity-provider.jpg)
-
-![Keycloak's sign-in page](img/access/04-keycloak-sign-in.jpg)
-
-![Without a browser: the last page shows the code to paste](img/access/05-finish-your-login.jpg)
-
 **Expect:** `Username  <prefix>:<you>`, `Groups  [<prefix>:<group> system:authenticated]`, then
 `yes` (`no` with the `view` role).
 
@@ -902,14 +936,38 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $KC_KUBECONFIG -n $TEAM_NAMESPAC
 - The browser warns about the certificate: it does not trust Keycloak's or the Supervisor's CA;
   ask your administrators for them.
 
-To log out, sign out of Keycloak in the browser, and delete the VCF CLI's saved sign-in:
-`rm -f ~/.config/vcf/pinniped/sessions.yaml ~/.config/vcf/pinniped/credentials.yaml` (PowerShell:
-`Remove-Item $HOME\.config\vcf\pinniped\sessions.yaml, $HOME\.config\vcf\pinniped\credentials.yaml`).
-The next command asks for a sign-in.
+### 6. Log out (the person)
 
-To take a person's access away, **disable** their user in Keycloak; removing them from the group
-does not stop a sign-in already made. Before you enable the user again, sign them out in Keycloak
-(the user's **Sessions** tab > **Sign out**), or their old sign-in works again. To take the group's
-access away, delete its RoleBinding (step 3) and its namespace role (step 2, `ROLE="REMOVE"`).
+This deletes the VCF CLI's saved sign-in; the next command asks for a sign-in again. Also sign out
+of Keycloak in the browser.
+
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+
+```sh
+rm -f "$HOME/.config/vcf/pinniped/sessions.yaml" "$HOME/.config/vcf/pinniped/credentials.yaml"
+```
+
+**Windows (PowerShell):**
+
+```powershell
+Remove-Item -ErrorAction SilentlyContinue "$HOME\.config\vcf\pinniped\sessions.yaml", "$HOME\.config\vcf\pinniped\credentials.yaml"
+```
+
+**Expect:** no output; the next `kubectl --kubeconfig <your file> …` opens the sign-in (or prints
+the link).
+
+**If not:** the next command still answers without a sign-in: you ran it in another account than
+the one that signed in.
+
+### 7. Take access away (Keycloak and cluster administrators)
+
+To take one person's access away, **disable** their user in Keycloak. Removing them from the group
+may not stop a sign-in already made (it does not when that was their only group). Before you enable
+the user again, sign them out in Keycloak (the user's **Sessions** tab > **Sign out**), or their old
+sign-in can work again.
+
+To take the group's access away, delete its RoleBinding (step 3) and its role on the vSphere
+Namespace (step 2, `ROLE="REMOVE"`). For a group with **Can edit**, the namespace role is what made
+it an administrator of the clusters: remove it.
 
 Back to [README](../README.md).

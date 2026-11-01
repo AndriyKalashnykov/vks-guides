@@ -617,9 +617,9 @@ VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
 T="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
 E="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | . + ("=" * ((4 - length % 4) % 4)) | @base64d | fromjson | .exp' 2>/dev/null)"
 if [ -z "$T" ] || [ -z "$E" ]; then
-  echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_SSO_KUBECONFIG}; log in first (LOGIN.md)"
+  echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_SSO_KUBECONFIG}; log in first (ACCESS.md)"
 elif [ "$E" -le "$(date +%s)" ]; then
-  echo "ENDED: that login has ended; log in again (LOGIN.md)"
+  echo "ENDED: that login has ended; log in again (ACCESS.md)"
 elif [ "$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)" != no ]; then
   echo "STOPPED: this SSO user is an administrator of the cluster, or the cluster did not answer; use an account from step 4 in Headlamp"
 else
@@ -642,9 +642,9 @@ $T = kubectl --kubeconfig $VKS_SSO_KUBECONFIG config view --raw --minify -o json
 $E = $null
 if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $E = ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json).exp } catch { } }
 if (-not $T -or -not $E) {
-  "FAILED: no SSO login for $VKS_CLUSTER in $VKS_SSO_KUBECONFIG; log in first (LOGIN.md)"
+  "FAILED: no SSO login for $VKS_CLUSTER in $VKS_SSO_KUBECONFIG; log in first (ACCESS.md)"
 } elseif ($E -le [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) {
-  "ENDED: that login has ended; log in again (LOGIN.md)"
+  "ENDED: that login has ended; log in again (ACCESS.md)"
 } elseif ((kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth can-i '*' '*' -A 2>$null) -ne 'no') {
   "STOPPED: this SSO user is an administrator of the cluster, or the cluster did not answer; use an account from step 4 in Headlamp"
 } else {
@@ -661,7 +661,7 @@ if (-not $T -or -not $E) {
 
 **If not:** `STOPPED: …`: this user would be an administrator in Headlamp; or, if `kubectl
 --kubeconfig <the SSO file> get pods` also fails, the cluster did not answer. `FAILED: …` or
-`ENDED: …`: run the login in LOGIN.md again. In Headlamp the user sees nothing: the cluster
+`ENDED: …`: run the login in ACCESS.md again. In Headlamp the user sees nothing: the cluster
 administrator has not given that name rights yet
 ([ACCESS.md](ACCESS.md#the-persons-own-sso-account), step 3; add `headlamp-namespace-lister` as in step 4 so
 that the Namespaces list works).
