@@ -42,7 +42,7 @@ installed, that kubectl reaches your VKS cluster and its nodes are `Ready`, whic
 cluster uses by default (Gitea's volume comes from it), and that no `gitea` namespace exists yet.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -104,7 +104,7 @@ This creates the namespace `gitea`, a separate area of the cluster for everythin
 Gitea does not need root, so the namespace accepts only pods that run without admin rights (the
 `restricted` level).
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -153,7 +153,7 @@ holds sensitive values). It never replaces them: with new keys, Gitea could not 
 stored.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -237,7 +237,7 @@ It then waits until Gitea answers.
 `SERVICE_RANGE`: leave it empty to read it from the cluster.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -532,7 +532,7 @@ and waits for Gitea to answer.
 `SERVICE_RANGE`: leave it empty to read it from the cluster.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -849,7 +849,7 @@ password at the first login (step 6). Set `GITEA_ADMIN_EMAIL` to your email addr
 one but sends no mail. Clear the terminal after step 6.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -899,7 +899,7 @@ created!` (`gitea-admin exists already` on a second run).
 - `gitea-admin exists already` and you lost the password: this sets a new random one and prints
   it (`new password: …`); then do step 6 again.
 
-  **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+  **Linux, macOS, WSL (bash or zsh):**
 
   ```sh
   VKS_CLUSTER="my-vks-cluster"
@@ -925,7 +925,7 @@ Gitea has no address outside the cluster yet. This connects port 3300 on your ma
 you can open its web page at <http://localhost:3300>. It runs until you press **Ctrl+C**; keep it
 running for steps 7 and 8.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -962,7 +962,7 @@ Run this in a second terminal while step 6 runs. It makes a local repository wit
 `gitea-admin/hello`. Git asks for the password you set in step 6. `credential.helper=` stops git
 from saving it.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 GITEA_ADMIN_EMAIL="you@example.com"
@@ -1022,7 +1022,7 @@ step 6's `localhost:3300` for that.
    shows that other machines can clone it:
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1119,7 +1119,7 @@ This deletes the namespace `gitea`, with Gitea, its keys and its volume. It then
 cluster has removed the volume, and prints how many volumes are left.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"

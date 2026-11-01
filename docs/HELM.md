@@ -26,7 +26,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 ## Install Helm
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HELM_VERSION="v4.3.1"

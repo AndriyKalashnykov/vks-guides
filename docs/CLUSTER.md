@@ -89,7 +89,7 @@ it updates every node of every VKS cluster.
 
 This checks that nothing in the namespace holds the name.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -201,7 +201,7 @@ Creating the cluster takes a few minutes. Watch its row in the vSphere Client (t
 reloads the list), or run this block: it shows the cluster and each of its machines (the virtual
 machines that become its nodes), with their state. Run it again until the cluster is available.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -235,7 +235,7 @@ downloads its node image.
 stuck on an address left over from an older cluster of the same name. This prints the address the
 cluster uses and the address its load balancer got; they must be the same.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -267,7 +267,7 @@ the address comes first. Two different addresses: the cluster kept an old addres
 If the addresses match, this shows why the cluster waits: read the `Conditions` and the `Events`
 at the end.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -289,7 +289,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE describe clusters.
 
 If no event says why, this shows whether vSphere could make each node's virtual machine.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -333,7 +333,7 @@ Run [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig)
 [Match kubectl to the cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional). Then
 this checks the nodes and the default storage class.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -391,7 +391,7 @@ the name is wrong, or you may not read it.
 Then this lists the disks of the cluster's apps: first as the cluster sees them, then as they
 sit in the vSphere Namespace.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -421,7 +421,7 @@ app), and run the block again.
 
 Then this deletes the cluster.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -454,7 +454,7 @@ Optional: the deleted cluster's disks still use the vSphere Namespace's storage.
 them (the second list of the disk block above) and what they hold, for good.** It deletes nothing
 while a cluster of that name exists.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -498,7 +498,7 @@ steps 1 and 2 first. Tested as a vCenter administrator.
    class, and the namespace's VM classes and storage classes.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -624,7 +624,7 @@ Leave `class: node-pool` (the node pool type the cluster class defines), `servic
 3. This checks the file on the Supervisor without creating anything (`--dry-run=server`), then
    creates the cluster.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -703,7 +703,7 @@ While the nodes are replaced, the cluster's status shows an ⓘ, and its YAML's 
 This shows the VM class the cluster asks for, the class of each node, and whether all nodes are up
 to date. Run it until both lines say `True`.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"

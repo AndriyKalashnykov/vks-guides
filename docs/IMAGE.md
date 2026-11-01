@@ -55,7 +55,7 @@ administrator. In Harbor's web page, **Projects** → your project →
 **REGISTRY CERTIFICATE** downloads the same file as `ca.crt`.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
@@ -100,7 +100,7 @@ if ($LASTEXITCODE -eq 0 -and (Test-Path $NEW)) {
 your organization's CA, HARBOR.md step 13) and a `sha256 Fingerprint=` line. When it is the same
 as your administrator's, keep the file:
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 mv "$HOME/.config/vks-guides/harbor/harbor-ca.crt.new" "$HOME/.config/vks-guides/harbor/harbor-ca.crt"
@@ -236,7 +236,7 @@ build with both, run the block twice, once with each; the images get the tags `v
 `v1-docker`.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 CONTAINER_ENGINE="podman"
@@ -335,7 +335,7 @@ docker built. Built with both? Run the block once with each.
 
 Type the robot's secret in this terminal (it is not shown):
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'Robot secret: '; IFS= read -rs HARBOR_ROBOT_SECRET; echo
@@ -354,7 +354,7 @@ Then this uploads (pushes) your image to your Harbor project:
 - it logs out again, so the robot's login is not left on this machine.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 CONTAINER_ENGINE="podman"
@@ -449,7 +449,7 @@ also works, but it can also push. Anyone who may read Secrets in the namespace c
 
 Type the pull robot's secret in this terminal (it is not shown):
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'Pull robot secret: '; IFS= read -rs HARBOR_PULL_SECRET; echo
@@ -471,7 +471,7 @@ Then this saves the pull robot's login in your VKS cluster. It creates:
 The cluster's nodes log in to Harbor with it when they download the app's image in step 6.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -552,7 +552,7 @@ The first line picks which push to run: `CONTAINER_ENGINE="podman"` runs the ima
 `CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) the one docker pushed.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -650,7 +650,7 @@ This shows that the app answers from your machine. It waits up to 2 minutes for 
 which the Supervisor's load balancer gives it, prints the address, and fetches the app's page.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -712,7 +712,7 @@ else {
 
 This deletes the app and its namespace from the cluster and the files this guide wrote.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"

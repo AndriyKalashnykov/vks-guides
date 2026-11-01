@@ -10,7 +10,7 @@
 
 Keycloak is an open-source OpenID Connect (OIDC) identity provider: it keeps users and groups and
 signs people in. It is the example provider in these guides; with your own OIDC provider, skip this
-guide.
+guide. Keycloak and PostgreSQL are upstream; Broadcom does not support them.
 This runs Keycloak, with a PostgreSQL database for its data, in its own VKS cluster, gives it an
 HTTPS certificate and a name, and sets up a realm that VKS clusters can use for logins
 ([KEYCLOAK.md](KEYCLOAK.md)).
@@ -76,7 +76,7 @@ This checks that the nodes are ready, that the cluster has a default storage cla
 memory the workers can give pods. Keycloak and PostgreSQL ask for about 1.5 GB of it.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-keycloak-cluster"
@@ -138,7 +138,7 @@ certificate requests. When the add-on is there already (for example from
 [HEADLAMP.md](HEADLAMP.md)), it changes nothing.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -237,7 +237,7 @@ Keycloak's first administrator, `admin`. Nothing prints a password. A Secret tha
 PostgreSQL keeps the password it was first given.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-keycloak-cluster"
@@ -302,7 +302,7 @@ up within an hour. The CA itself is renewed with a new key after about 6.5 years
 new CA (step 6) again, as for a new Keycloak.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-keycloak-cluster"
@@ -440,7 +440,7 @@ and gives Keycloak a load balancer address on port 443. It takes about a minute.
 about 70 MB of its volume with a few people in it, and Keycloak about 180 MB of the node's disk.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-keycloak-cluster"
@@ -886,7 +886,7 @@ Everyone who signs in needs this file to trust Keycloak (step 7), and [KEYCLOAK.
 needs it as `KEYCLOAK_CA`.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-keycloak-cluster"
@@ -936,7 +936,7 @@ Create a DNS record (type A) for `KEYCLOAK_HOST` with Keycloak's address from st
 that the people who sign in and the control-plane nodes of the clusters that trust Keycloak use.
 Then this checks the name, the certificate and the address it answers with (its issuer).
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 KEYCLOAK_HOST="keycloak.example.com"
@@ -973,9 +973,9 @@ People sign in to Keycloak in a browser, which must trust Keycloak's CA. Give ea
 `keycloak-ca.pem` from step 6 (it holds no secret), and each person adds it once on the machine
 whose browser they sign in with. Do it on your own machine too, before step 11.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS):** Chrome uses its own certificate database in your home. This
-adds the CA there (it needs `certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu,
-`sudo dnf install -y nss-tools` on AlmaLinux, `sudo tdnf install -y nss` on Photon OS).
+**Linux:** Chrome uses its own certificate database in your home. This adds the CA there (it needs
+`certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on
+AlmaLinux, `sudo tdnf install -y nss` on Photon OS).
 
 ```sh
 mkdir -p "$HOME/.pki/nssdb"
@@ -1029,7 +1029,7 @@ inside the Keycloak pod, as the administrator from step 3, whose password never 
 It skips what exists, so you can run it again to add groups.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-keycloak-cluster"
@@ -1156,7 +1156,7 @@ last name and email address; without them it stops the person's first sign in at
 Information**. With `OTP="yes"` they also set up a one-time-code app (such as
 Google Authenticator) at their first sign in. First type the temporary password, on its own:
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'Temporary password: '; IFS= read -rs KC_USER_PASSWORD; echo
@@ -1171,7 +1171,7 @@ $KC_USER_PASSWORD = Read-Host 'Temporary password' -AsSecureString
 Then:
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-keycloak-cluster"
@@ -1264,7 +1264,7 @@ Keycloak's web page for administrators is `https://<KEYCLOAK_HOST>/admin`; your 
 Keycloak's CA (step 8). This prints the password of the administrator `admin` from step 3. Clear
 the terminal after you have signed in.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-keycloak-cluster"
@@ -1310,7 +1310,7 @@ new CA made by step 4 is a different CA. cert-manager stays. To delete Keycloak'
 this first and [CLUSTER.md step 8](CLUSTER.md#8-delete-the-cluster-optional) after it: a volume
 still in use when the cluster goes is left behind in the vSphere Namespace and stops its removal.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-keycloak-cluster"

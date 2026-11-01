@@ -50,7 +50,7 @@ This checks that the cluster is ready for this guide:
   add-on runs no full Prometheus, so it is fine.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -111,7 +111,7 @@ This creates the namespace `monitoring`, which holds everything this guide insta
 node-exporter, reads each node's own CPU, memory and disk figures; that needs extra rights, so
 this namespace allows them.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -157,7 +157,7 @@ metadata:
 **Type the password.** Choose the password you will log in to Grafana with, as `admin` (step 7).
 Paste this line on its own, then type it; nothing is shown as you type (PowerShell shows `*`).
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'Grafana admin password: '; IFS= read -rs GRAFANA_PASSWORD; echo
@@ -175,7 +175,7 @@ It replaces any earlier one, then forgets the password in this terminal. The pas
 appears on a command line, where other users of this machine could see it.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -247,7 +247,7 @@ installs it with. It:
     through the VKS node firewall.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 CHART_VERSION="92.13.1"
@@ -381,7 +381,7 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 monitoring may now use. This finds them and marks them, so the install below does not delete
 them. On most clusters it prints `nothing to keep` and changes nothing.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -426,7 +426,7 @@ until Prometheus and Alertmanager (which sends alerts) run, then lists the pods 
 disk. The first run takes a few minutes, while the nodes download the images.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -506,7 +506,7 @@ follow.
 This checks that Prometheus collects metrics: it asks Prometheus how many of the things it
 measures (nodes, pods, cluster services) answer, and names any that do not.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -539,7 +539,7 @@ Grafana runs inside the cluster and has no address you can open. This connects i
 <http://localhost:3000> on your machine while the command runs. Leave it running while you use
 Grafana; press **Ctrl+C** to stop.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -578,7 +578,7 @@ permissions VCF Operations' monitoring uses are not deleted too. This block remo
 install, one item it leaves in `kube-system`, and the namespace `monitoring`. The new object
 types the chart added stay; the next block removes them.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -610,7 +610,7 @@ deleted` and `namespace "monitoring" deleted`.
 object of those kinds in the cluster. Run it only if step 1 printed
 `Prometheus Operator CRDs: 0`; otherwise something else in the cluster uses them.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -646,7 +646,7 @@ This makes sure the names this step uses are free, so you do not overwrite someo
 install: the ArgoCD project `monitoring`, the ArgoCD Application `prometheus`, and a Helm install
 named `prometheus` in the cluster.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -692,7 +692,7 @@ change anything in the cluster. Set `ARGOCD_DESTINATION` to the VKS cluster's na
 (**Settings** → **Clusters**; `<cluster>-<namespace>` after [ARGOCD.md](ARGOCD.md) step 7).
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -903,7 +903,7 @@ them; stop and ask them.
 This shows the Application, then waits until Prometheus and Alertmanager are running. Run it a
 minute after the block above; the first install takes a few minutes.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -961,7 +961,7 @@ if ($LASTEXITCODE -eq 0) {
 with it what ArgoCD installed) and the project, then a Service the Prometheus Operator left in
 `kube-system`, and the namespace. The chart's CRDs stay; to delete them, see step 8.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"

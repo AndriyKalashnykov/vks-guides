@@ -11,8 +11,8 @@
 
 Headlamp is a web page for looking at and changing what runs in a Kubernetes cluster: workloads,
 their logs, configuration, events, a map of how objects connect. This installs Broadcom's Headlamp
-add-on ([what add-ons are](ADDONS.md)) in a VKS cluster, gives people accounts with only the
-rights they need, and logs in with a token.
+add-on (Ecosystem tier: Broadcom supports its packaging and upgrades; [what add-ons are](ADDONS.md))
+in a VKS cluster, gives people accounts with only the rights they need, and logs in with a token.
 
 Headlamp has no users of its own. Whoever opens it pastes a token, and Headlamp then acts with
 exactly that token's rights: someone with a read-only token can look, not change.
@@ -51,7 +51,7 @@ Only for the Kubescape plugin (step 11):
 
 This lists the Headlamp releases your Supervisor offers.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 vcf context use supervisor </dev/null
@@ -82,7 +82,7 @@ cert-manager first when the cluster does not have it. Set `HEADLAMP_RELEASE` to 
 step 1. The block waits until Headlamp runs, then shows its address.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -212,7 +212,7 @@ Anyone who may create pods or tokens in the namespace `headlamp` can use that ac
 controls the cluster. Give no one but cluster administrators rights in `headlamp`.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -290,7 +290,7 @@ inside the other namespaces. Give no one `admin` or `cluster-admin` through Head
 empty for every namespace (view only).
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -383,7 +383,7 @@ Send it the way you send a password: not in a ticket or a shared chat. Run the b
 give a new token before the old one ends; each token works until its own end.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -443,7 +443,7 @@ cluster limits token lifetimes; give a new token before it ends.
 To take access away, delete the account and every binding that names it: every token it was given
 stops working within seconds.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
@@ -478,7 +478,7 @@ only about that. It needs the cluster's kubeconfig, so the administrator runs it
 sends the address and the fingerprint along with the token.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -608,7 +608,7 @@ cluster in it, so their token can do anything there. This block stops for such a
 account from step 4 instead.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -685,7 +685,7 @@ certificate: check its new fingerprint (step 6).
 `yes` or `no`.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -816,7 +816,7 @@ This installs the Contour add-on with its own load balancer address, and turns o
 would otherwise open on every node. A Contour that is already installed is left as it is.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -902,7 +902,7 @@ certificate is for it. This tells Contour to pass that name to Headlamp, and che
 answers with Headlamp's certificate:
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1002,7 +1002,7 @@ the plugin finds Prometheus by itself. `PROMETHEUS_STORAGE` is the size of Prome
 add-on's own default is 150Gi).
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -1093,14 +1093,15 @@ needs `headlamp-prometheus-query` (the last block of this step, with `PROMETHEUS
 
 ### Kubescape
 
-Kubescape scans the cluster for weak settings and its images for known vulnerabilities. It is not a
-Broadcom add-on: this installs it with Helm ([HELM.md](HELM.md)) from the Kubescape project, into
-the namespace `kubescape`. Its node agent needs access to each worker (pod security `privileged`).
-It asks for about 450m CPU and 2 GiB of memory with the requests below, lowered from the chart's
-own (about 800m), and keeps its results on a 5Gi volume.
+Kubescape scans the cluster for weak settings and its images for known vulnerabilities. It is
+upstream (the Kubescape project), not a Broadcom add-on, and Broadcom does not support it, nor its
+plugin. This installs it with Helm ([HELM.md](HELM.md)) into the namespace `kubescape`. Its node
+agent needs access to each worker (pod security `privileged`). It asks for about 450m CPU and 2 GiB
+of memory with the requests below, lowered from the chart's own (about 800m), and keeps its results
+on a 5Gi volume.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1190,7 +1191,7 @@ This gives an account from step 4 what the plugins read:
 adds the whole cluster's metrics.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1287,7 +1288,7 @@ deletes what this guide gave those accounts elsewhere: their bindings, and the r
 and Kubescape stay; the lines after the block remove them.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"

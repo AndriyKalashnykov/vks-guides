@@ -14,9 +14,9 @@ ArgoCD first. For build and deploy on every push, use Gitea and Tekton, or GitLa
 
 ✅ every block run, "part" some blocks run, — not run.
 
-On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
+On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines:
 
-| guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows PowerShell 5.1 | WSL 2 Ubuntu (bash, as root) |
+| guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
 | [ArgoCD](ARGOCD.md) | ✅ | part | ✅ | — | ✅ | ✅ |
 | [Run Gitea](GITEA.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
@@ -24,5 +24,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
 | [Run GitLab](GITLAB.md) | part | ✅ | part | — | part | — |
 | [CI/CD with Gitea and Tekton](CICD.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | [CI/CD with GitLab](CICD.md) | part | ✅ | — | — | — | — |
+
+Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
 
 Back to [README](../README.md).

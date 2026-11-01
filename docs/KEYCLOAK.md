@@ -9,10 +9,11 @@
 > - Keycloak: [Device Authorization Grant](https://www.keycloak.org/docs/latest/server_admin/index.html#device-authorization-grant)
 
 The VKS cluster itself trusts an OpenID Connect (OIDC) identity provider; Keycloak is the example
-provider here. A person logs in to one VKS cluster with their Keycloak user, in a browser on any machine, and needs
-only kubectl and kubelogin; they need no vCenter account and no VCF CLI. The cluster administrator
-turns this on when creating the cluster, gives Keycloak groups rights, and hands out a kubeconfig
-that holds no secret. Tested on VKS 3.8 (Kubernetes v1.37.1) with Keycloak 26.8.
+provider here. A person logs in to one VKS cluster with their Keycloak user, in a browser on any
+machine, and needs only kubectl and kubelogin; they need no vCenter account and no VCF CLI. The
+cluster administrator turns this on when creating the cluster, gives Keycloak groups rights, and
+hands out a kubeconfig that holds no secret. Keycloak and kubelogin are upstream; Broadcom does not
+support them. Tested on VKS 3.8 (Kubernetes v1.37.1) with Keycloak 26.8.
 
 ## Prerequisites
 
@@ -99,7 +100,7 @@ the control-plane nodes.
 This gives the Keycloak group `KEYCLOAK_GROUP` the `edit` role in `TEAM_NAMESPACE`, then shows what
 a member may do. Bind groups, never `system:authenticated`: every user of the realm is in it.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
@@ -150,7 +151,7 @@ login through kubelogin with a device code, checking Keycloak against `KEYCLOAK_
 starts in `TEAM_NAMESPACE`. Send the file to the person; one file serves the whole group.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
@@ -234,7 +235,7 @@ else {
 Install [kubectl](KUBECTL.md) and [kubelogin](PREREQS.md#kubelogin-optional), and save the file as
 `KEYCLOAK_KUBECONFIG`. This checks both tools and the file, then asks the cluster who you are.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 KEYCLOAK_KUBECONFIG="$HOME/.kube/my-vks-cluster-keycloak.kubeconfig"
@@ -295,7 +296,7 @@ by themselves while your Keycloak session lasts.
 
 This deletes the person's cached Keycloak tokens on this machine:
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 kubectl oidc-login clean
