@@ -147,16 +147,31 @@ Pick one:
 
 ## Check
 
-This checks that each tool the guides use is installed and prints `ok` or `MISSING` for each.
+This prints `ok` or `MISSING` for each tool the guides use: the ones above, and the ones the next
+guides install (`kubectl`, `vcf`, and `helm` for the guides that install apps with Helm).
+
+**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
 ```sh
-for t in curl tar unzip jq openssl tr awk diff find; do
+for t in curl tar unzip jq openssl tr awk diff find kubectl vcf helm; do
   command -v "$t" >/dev/null 2>&1 || { [ "$t" = unzip ] && command -v bsdtar >/dev/null 2>&1; } \
     && echo "ok       $t" || echo "MISSING  $t"
 done
 ```
 
-**Expect:** nine `ok` lines.
+**Windows (PowerShell):**
+
+```powershell
+foreach ($t in 'curl.exe', 'tar.exe', 'kubectl', 'vcf', 'helm') {
+  if (Get-Command $t -ErrorAction SilentlyContinue) { "ok       $t" } else { "MISSING  $t" }
+}
+```
+
+**Expect:** an `ok` line for each tool, except the ones you have not installed yet.
+
+**If not:** for a `MISSING` tool from the first nine, run your OS's block above; for `kubectl`,
+[Install kubectl](KUBECTL.md); for `vcf`, [Install the VCF CLI](VCF.md); for `helm`,
+[Install Helm](HELM.md), if a guide you follow uses it.
 
 ## sudo (optional)
 
