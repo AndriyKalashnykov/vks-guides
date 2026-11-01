@@ -3,7 +3,7 @@
 Copy-paste how-to guides for VMware vSphere Kubernetes Service (VKS), VCF 9.x. README.md links six
 group pages (docs/GET-STARTED.md, ACCESS-SIGN-IN.md, CLUSTERS.md, IMAGES.md, GITOPS-CICD.md, OPERATE.md);
 each lists its guides, the order to follow and its "Tested on" rows (a new guide gets a row in its
-group's two tables). The guides in docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md, ACCESS.md, KUBECONFIG.md, KEYCLOAK.md, KEYCLOAK-VKS.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md,
+group's two tables). The guides in docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md, ACCESS.md, KUBECONFIG.md, KEYCLOAK.md, KEYCLOAK-VKS.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md, NEXUS.md,
 GITEA.md, TEKTON.md, GITLAB.md, CICD.md, ADDONS.md, HEADLAMP.md, HELM.md, MONITORING.md, LOGGING.md, OBSERVABILITY.md (screenshots in
 docs/img/). Readers paste
 blocks; there is nothing to build.
