@@ -14,13 +14,9 @@ certificate and an address, creates a Docker repository with a user that may pus
 only pull, and lets VKS clusters pull images from it.
 
 > [!NOTE]
-> **Why plain manifests, not Helm.** Sonatype's only maintained Helm chart,
-> [nxrm-ha](https://github.com/sonatype/nxrm3-ha-repository/blob/main/nxrm-ha/README.md), is for
-> the paid Pro edition and breaks the free Community Edition since 3.84
-> ([issue 125](https://github.com/sonatype/nxrm3-ha-repository/issues/125)); the old chart is
-> [unsupported since 2023](https://github.com/sonatype/nxrm3-helm-repository). Sonatype does not
-> support containers on the built-in H2 database, so Nexus needs PostgreSQL. Plain manifests need
-> only kubectl, run under the strict `restricted` level, and show everything they do.
+> **Why plain manifests, not Helm.** Sonatype's maintained chart,
+> [nxrm-ha](https://github.com/sonatype/nxrm3-ha-repository/blob/main/nxrm-ha/README.md), is for the
+> paid Pro edition; the old chart is [unsupported](https://github.com/sonatype/nxrm3-helm-repository).
 
 Nexus is reached at one address, `NEXUS_REGISTRY`: its load balancer IP address (step 4), or a DNS
 name you point at it. Every block, image name and VKS cluster uses that same value. Images are
@@ -48,9 +44,10 @@ Run the steps in order. Who does what:
 Sizing. Sonatype recommends, for its smallest profile (XS, up to 100 requests a second),
 4 vCPUs and 16 GiB of memory for Nexus, with at most two-thirds of the memory given to Nexus
 ([System requirements](https://help.sonatype.com/en/sonatype-nexus-repository-system-requirements.html)):
-the VM class `best-effort-large` (4 CPUs, 16 GB). This guide was tested with less: its manifests
-ask for 0.5 CPU and 3 GiB for Nexus (at most 4 GiB), 0.1 CPU and 512 MiB for PostgreSQL (at most
-1 GiB), and 0.05 CPU and 32 MiB for the TLS proxy, on a `best-effort-medium` worker (2 CPUs, 8 GB).
+the VM class `best-effort-large` (4 CPUs, 16 GB). This guide's manifests ask for 0.5 CPU and
+3 GiB for Nexus (at most 4 GiB), 0.1 CPU and 512 MiB for PostgreSQL (at most 1 GiB) and a little
+for nginx, so by those requests the smallest worker they fit on is `best-effort-medium` (2 CPUs,
+8 GB).
 <!-- TODO-MEASURE: VKS lab numbers (kubectl top, worker allocatable, esxi host memory) on best-effort-medium -->
 The Community Edition stops adding new components above 40,000 components or 100,000 requests a
 day ([3.87.0 release notes](https://help.sonatype.com/en/sonatype-nexus-repository-3-87-0-release-notes.html)).
@@ -76,7 +73,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 | from | to | port | for |
 |---|---|---|---|
 | your machine | the Supervisor's address | 443 | the VCF CLI (step 2), kubectl with the Supervisor kubeconfig (step 11) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 1 to 7, 11 to 13) |
+| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 1 to 8, 12 and 13) |
+| your machine | each pulling VKS cluster's API address (its kubeconfig) | 6443 | the Secret and the test pod (step 11) |
 | the cluster's nodes | `projects.packages.broadcom.com` | 443 | the cert-manager add-on (step 2) |
 | the cluster's nodes | `docker.io` | 443 | the Nexus, PostgreSQL and TLS proxy images (step 6) |
 | your machine | Nexus's address (step 4) | 443 | Nexus's REST API (steps 7 to 9), login and push (step 10) |
@@ -142,6 +140,7 @@ if ($LASTEXITCODE -eq 0) {
 [CLUSTER.md](CLUSTER.md), step 9's `defaultStorageClass`. A worker with less than about
 `4500000Ki`: Nexus does not fit; use a larger VM class. `NOTE: namespace nexus exists already`:
 Nexus may be installed; steps 3 to 6 keep what exists.
+<!-- TODO-MEASURE: the worker memory threshold (about 4500000Ki) Nexus, PostgreSQL and nginx need on VKS -->
 
 ## 2. Install cert-manager
 
@@ -213,12 +212,14 @@ if ($LASTEXITCODE -eq 0) {
 **Expect:** `namespace/nexus labeled` (or `not labeled` when run again), then
 `secret/nexus-db created` (or `exists, kept`).
 
+**If not:** `Error from server (Forbidden)`: the kubeconfig is not the cluster's administrator file.
+
 ## 4. Create the Service and get Nexus's address
 
 This creates Nexus's Service, which gets an address from the Supervisor's load balancer, port 443,
-and prints that address. Nexus itself starts in step 6. The address stays as long as the Service:
-if you delete the Service and create it again, it can get another address, and then step 5, step 7
-and every image name, login and VKS cluster that uses the old address must change.
+and prints that address. Nexus itself starts in step 6. The address stays while the Service exists;
+deleting the Service gives its address back, and a new Service can get another one: then step 5,
+step 7 and every image name, login and VKS cluster that uses the old address must change.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -297,7 +298,7 @@ your vSphere administrator.
 This makes a CA (certificate authority) of your own with cert-manager, valid for 10 years, and from
 it a certificate for Nexus's address from step 4, for `NEXUS_REGISTRY` when it is a DNS name, and
 for Nexus's name inside the cluster. cert-manager renews the certificate before it ends; the TLS
-proxy picks the new one up within 5 minutes, without restarting Nexus. The CA itself is renewed
+proxy picks the new one up within about 6 minutes, without restarting Nexus. The CA itself is renewed
 with a new key after about 6.5 years: then hand out the new CA (steps 7, 10 and 11) again.
 
 <details>
@@ -492,7 +493,7 @@ data:
     }
   start.sh: |
     s="$(sha256sum /etc/nexus-tls/tls.crt)"
-    (while sleep 300; do n="$(sha256sum /etc/nexus-tls/tls.crt)"; if [ "$n" = "$s" ]; then :; else nginx -s reload && s="$n"; fi; done) &
+    (while sleep 300; do n="$(sha256sum /etc/nexus-tls/tls.crt)"; if [ "$n" = "$s" ]; then :; else nginx -t && nginx -s reload && s="$n"; fi; done) &
     exec nginx -g 'daemon off;'
 EOF
 cat <<EOF | kubectl --kubeconfig "$VKS_KUBECONFIG" -n nexus apply -f -
@@ -526,6 +527,7 @@ spec:
         runAsUser: 999
         runAsGroup: 999
         fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -604,7 +606,7 @@ spec:
           image: ${NEXUS_IMAGE}
           env:
             - name: INSTALL4J_ADD_VM_PARAMS
-              value: "-Xms1g -Xmx2g -XX:MaxDirectMemorySize=1g -Djava.util.prefs.userRoot=/nexus-data/javaprefs"
+              value: "-Xms1g -Xmx2g -XX:MaxDirectMemorySize=512m -Djava.util.prefs.userRoot=/nexus-data/javaprefs"
             - name: NEXUS_DATASTORE_NEXUS_JDBCURL
               value: jdbc:postgresql://postgres:5432/nexus
             - name: NEXUS_DATASTORE_NEXUS_USERNAME
@@ -625,9 +627,15 @@ spec:
               port: 8081
             periodSeconds: 10
             failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /service/rest/v1/status
+              port: 8081
+            periodSeconds: 30
+            failureThreshold: 6
           readinessProbe:
             httpGet:
-              path: /service/rest/v1/status/writable
+              path: /service/rest/v1/status
               port: 8081
           resources:
             requests:
@@ -724,7 +732,7 @@ data:
     }
   start.sh: |
     s="$(sha256sum /etc/nexus-tls/tls.crt)"
-    (while sleep 300; do n="$(sha256sum /etc/nexus-tls/tls.crt)"; if [ "$n" = "$s" ]; then :; else nginx -s reload && s="$n"; fi; done) &
+    (while sleep 300; do n="$(sha256sum /etc/nexus-tls/tls.crt)"; if [ "$n" = "$s" ]; then :; else nginx -t && nginx -s reload && s="$n"; fi; done) &
     exec nginx -g 'daemon off;'
 '@ | kubectl --kubeconfig $VKS_KUBECONFIG -n nexus apply -f -
 @"
@@ -758,6 +766,7 @@ spec:
         runAsUser: 999
         runAsGroup: 999
         fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -835,7 +844,7 @@ spec:
           image: $NEXUS_IMAGE
           env:
             - name: INSTALL4J_ADD_VM_PARAMS
-              value: "-Xms1g -Xmx2g -XX:MaxDirectMemorySize=1g -Djava.util.prefs.userRoot=/nexus-data/javaprefs"
+              value: "-Xms1g -Xmx2g -XX:MaxDirectMemorySize=512m -Djava.util.prefs.userRoot=/nexus-data/javaprefs"
             - name: NEXUS_DATASTORE_NEXUS_JDBCURL
               value: jdbc:postgresql://postgres:5432/nexus
             - name: NEXUS_DATASTORE_NEXUS_USERNAME
@@ -856,9 +865,15 @@ spec:
               port: 8081
             periodSeconds: 10
             failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /service/rest/v1/status
+              port: 8081
+            periodSeconds: 30
+            failureThreshold: 6
           readinessProbe:
             httpGet:
-              path: /service/rest/v1/status/writable
+              path: /service/rest/v1/status
               port: 8081
           resources:
             requests:
@@ -921,7 +936,8 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n nexus exec postgres-0 -- psql -U nexus -
 
 **Expect:** `created` lines, `partitioned roll out complete` for PostgreSQL and then for Nexus, then
 `database owner: nexus` and `pg_trgm:` with a version such as `1.6` (Nexus adds it at its first
-start).
+start). A second run prints `unchanged` or `statefulset.apps/… configured` with no change: nothing
+restarts.
 
 **If not:**
 - `FAILED: PostgreSQL did not start` or a timeout: `kubectl -n nexus describe pod -l app=postgres`
@@ -1001,6 +1017,8 @@ then `Nexus answers at https://<NEXUS_REGISTRY>`.
 - `The requested URL returned error: 503`: Nexus is still starting; run the block again in a
   minute.
 - `Connection refused` or a timeout: this machine cannot reach Nexus's address on port 443.
+- `Connection refused` or SSL errors after it worked: the address changed; run step 4, then steps
+  5, 7, 10 and 11 with the new address.
 - `CERT_TRUST_REVOCATION_STATUS_UNKNOWN` (Windows): `curl.exe` without `--ssl-no-revoke`; a CA of
   your own publishes no revocation list.
 
@@ -1299,7 +1317,8 @@ mkdir -p "$HOME/.config/containers/certs.d/$NEXUS_REGISTRY" \
   && cp "$NEXUS_CA" "$HOME/.config/containers/certs.d/$NEXUS_REGISTRY/ca.crt" && echo "podman trusts $NEXUS_REGISTRY"
 ```
 
-**Linux, docker** (run it as a block of its own: it uses `sudo`; podman reads this folder too):
+**Linux, docker** (run it as a block of its own: it uses `sudo`; podman reads this folder too).
+docker 29.5 or newer reads the CA at once; older docker needs a restart of the docker service:
 
 ```sh
 NEXUS_REGISTRY="192.168.10.50"
@@ -1324,6 +1343,9 @@ Import-Certificate -FilePath "$HOME\nexus-ca.pem" -CertStoreLocation Cert:\Curre
 
 **Expect:** `podman trusts <NEXUS_REGISTRY>` or `docker trusts <NEXUS_REGISTRY>`; macOS: no output;
 Windows: a line with the CA's thumbprint and `CN=Nexus CA`.
+
+**If not:** `Permission denied` at the docker line: run it as a user who may use `sudo`. A missing
+`nexus-ca.pem` (`No such file`): run step 7 first.
 
 ### Push an image
 
@@ -1398,6 +1420,7 @@ Remove-Variable -ErrorAction SilentlyContinue NEXUS_PUSH_PASSWORD
 </details>
 
 <!-- TODO-MEASURE: docker (daemon) login + push from a walkbox to the LB IP; WWW-Authenticate realm = https://<LB IP>/repository/apps/v2/token -->
+<!-- TODO-MEASURE: docker push of the multi-arch busybox pulled with the platform option linux/amd64 has not been run -->
 
 **Expect:** the pull, `Login Succeeded`, the push, `pushed: <NEXUS_REGISTRY>/apps/busybox:1.37.0`,
 then `Removed login credentials for …` (docker: `Removing login credentials for …`).
@@ -1439,7 +1462,7 @@ S="${VKS_CLUSTER}-user-trusted-ca-secret"
 if ! openssl x509 -in "$NEXUS_CA" -noout -subject; then
   echo "FAILED: $NEXUS_CA is not a certificate (step 7)"
 elif kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get secret "$S" >/dev/null 2>&1; then
-  echo "STOPPED: the Secret $S exists already; add the key nexus-ca to it by hand"
+  echo "STOPPED: the Secret $S exists already; add a key to it (below)"
 else
   B="$(base64 < "$NEXUS_CA" | tr -d '\n')" && [ -n "$B" ] \
     && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" create secret generic "$S" --from-literal=nexus-ca="$B"
@@ -1463,7 +1486,7 @@ $PEM = Get-Content -Raw -ErrorAction SilentlyContinue $NEXUS_CA
 if (-not $PEM -or $PEM -notmatch 'BEGIN CERTIFICATE') { "FAILED: $NEXUS_CA is not a certificate (step 7)" }
 else {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret $S 2>$null | Out-Null
-  if ($LASTEXITCODE -eq 0) { "STOPPED: the Secret $S exists already; add the key nexus-ca to it by hand" }
+  if ($LASTEXITCODE -eq 0) { "STOPPED: the Secret $S exists already; add a key to it (below)" }
   else {
     $B = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($PEM))
     kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE create secret generic $S "--from-literal=nexus-ca=$B"
@@ -1473,7 +1496,70 @@ else {
 
 </details>
 
-**Expect:** `subject=CN = Nexus CA` (Linux), then `secret/my-vks-cluster-user-trusted-ca-secret created`.
+**Expect:** `subject=CN = Nexus CA` (newer OpenSSL: `subject=CN=Nexus CA`; Linux), then
+`secret/my-vks-cluster-user-trusted-ca-secret created`.
+
+**If not:**
+- `forbidden`: you need the **Edit** role on the vSphere Namespace.
+- `STOPPED: the Secret … exists already`: add Nexus's CA to it under a new key, as below, and use
+  that key in the cluster's `secretRef`.
+
+**Add a key to the Secret, or change the CA later.** VKS does not watch the Secret. To add Nexus's
+CA to an existing Secret, or to change the CA later (a new Nexus, or step 5's CA renewed), keep the
+Secret's name: add the CA under a new key (`nexus-ca-2`, then `nexus-ca-3`, …) and point the
+cluster's `secretRef.key` at it with `kubectl edit cluster`; that changes the Cluster and starts the
+node update (below).
+<!-- TODO-MEASURE: on VKS 3.8, that a new key in the same Secret plus a secretRef.key change rolls the nodes with the new CA -->
+
+<details>
+<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+NEXUS_CA="$HOME/nexus-ca.pem"
+NEXUS_CA_KEY="nexus-ca-2"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+
+S="${VKS_CLUSTER}-user-trusted-ca-secret"
+if ! openssl x509 -in "$NEXUS_CA" -noout -subject; then
+  echo "FAILED: $NEXUS_CA is not a certificate (step 7)"
+elif B="$(base64 < "$NEXUS_CA" | tr -d '\n' | base64 | tr -d '\n')" && [ -n "$B" ]; then
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" patch secret "$S" --type merge -p "{\"data\":{\"$NEXUS_CA_KEY\":\"$B\"}}"
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$NEXUS_CA = "$HOME\nexus-ca.pem"
+$NEXUS_CA_KEY = "nexus-ca-2"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+
+$S = "$VKS_CLUSTER-user-trusted-ca-secret"
+$T = Join-Path $env:TEMP "nexus-ca-patch.json"
+$PEM = Get-Content -Raw -ErrorAction SilentlyContinue $NEXUS_CA
+if (-not $PEM -or $PEM -notmatch 'BEGIN CERTIFICATE') { "FAILED: $NEXUS_CA is not a certificate (step 7)" }
+else {
+  $B = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($PEM))))
+  '{"data":{"' + $NEXUS_CA_KEY + '":"' + $B + '"}}' | Set-Content -Encoding ascii $T
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE patch secret $S --type merge --patch-file $T
+  Remove-Item -Force -ErrorAction SilentlyContinue $T
+}
+```
+
+</details>
+
+**Expect:** `subject=CN = Nexus CA` (newer OpenSSL: `subject=CN=Nexus CA`; Linux), then
+`secret/my-vks-cluster-user-trusted-ca-secret patched`.
+
+**If not:** `not found`: the Secret does not exist; run the block before this one instead.
+`forbidden`: you need the **Edit** role on the vSphere Namespace.
 
 Then point the cluster at it.
 
@@ -1492,9 +1578,11 @@ cluster's name in `name:`, and create the cluster as that step says:
                     key: nexus-ca
 ```
 
-**An existing cluster:** this adds the same setting. VKS then updates or replaces every node, one
-at a time, so pods move. A cluster that ArgoCD keeps in sync from Git ([ARGOCD.md](ARGOCD.md)) gets
-the lines in Git instead: ArgoCD would undo this change.
+**An existing cluster:** this adds the same setting. VKS replaces some nodes and updates others in
+place, so pods move. On Nexus's own cluster, Nexus is unavailable until its node is back: do that
+cluster last. A cluster made by [ARGOCD.md](ARGOCD.md): its chart has no setting for this. The
+patch below works, but ArgoCD then shows the cluster OutOfSync, and a later SYNC removes the
+setting and updates the nodes again; do not sync that Application afterwards.
 <!-- TODO-MEASURE: on VKS 3.8, how the nodes roll after the edit (control plane replaced, workers in place?) and how long -->
 
 <details>
@@ -1545,13 +1633,16 @@ Remove-Item -Force -ErrorAction SilentlyContinue $T
 </details>
 
 **Expect:** `cluster.cluster.x-k8s.io/my-vks-cluster patched`. Then wait until the cluster is
-`Ready` again ([CLUSTER.md step 6](CLUSTER.md#6-wait-for-the-cluster)).
+`Ready` again ([CLUSTER.md step 6](CLUSTER.md#6-wait-for-the-cluster)) and every machine of the
+cluster shows the new configuration.
+<!-- TODO-MEASURE: the check that every machine has the new configuration; candidate: the Cluster's ControlPlaneMachinesUpToDate and WorkerMachinesUpToDate conditions (not run) -->
 
-**If not:** `STOPPED: … osConfiguration setting already`: the cluster trusts another CA already;
-add a second `- caCert:` entry under its `additionalTrustedCAs` with `kubectl edit cluster`. VKS
-does not watch the Secret: to change the CA later (a new Nexus, or step 5's CA renewed), create a
-Secret with another name and point the cluster at it.
-<!-- TODO-MEASURE: whether a second Secret may have any name (Broadcom names <cluster>-user-trusted-ca-secret) -->
+**If not:**
+- `STOPPED: … osConfiguration setting already`: the cluster trusts another CA already; add a
+  second `- caCert:` entry under its `additionalTrustedCAs` with `kubectl edit cluster`, with this
+  Secret's name and Nexus's key (`nexus-ca`, or the key you added above).
+- `admission webhook … denied`: the cluster class refuses the variable; send the error to the
+  vSphere administrator.
 
 ### Check that a cluster can pull
 
@@ -1715,8 +1806,8 @@ login with `imagePullSecrets: [{name: nexus-pull}]` in its pod spec; for another
 this block with `-n default` changed.
 
 **If not:**
-- `CA: …`: the nodes are still being updated (wait for `Ready`), or the cluster does not point at
-  the Secret (above).
+- `CA: …`: the nodes are still being updated (wait until every machine has the new configuration,
+  above), or the cluster does not point at the Secret (above).
 - `NAME: …`: `NEXUS_REGISTRY` is not the value step 5 was run with.
 - `DNS: …`: the DNS server the nodes use does not have the record for `NEXUS_REGISTRY`.
 - `LOGIN: …`: the pull user's name or password is wrong, or the Secret's key is not exactly
@@ -1729,8 +1820,9 @@ this block with `-n default` changed.
 Sonatype backs up the database with PostgreSQL's own tools and the files at about the same time
 ([Backup and restore](https://help.sonatype.com/en/backup-and-restore.html)). This copies, to a
 new folder in your home: a dump of the database, Nexus's images and files (`blobs`), and Nexus's
-node identity (`keystores`). Make sure your machine has room for the `blobs` folder; step 9's
-repository can hold up to 20 GB.
+node identity (`keystores`), then checks the copy. Make sure your machine has room for the `blobs`
+folder; step 9's repository can hold up to 20 GB. Run it when nobody pushes and no cleanup or
+compact task runs.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1741,14 +1833,18 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 D="$HOME/nexus-backup-$(date +%Y%m%d-%H%M%S)"
 kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n nexus "$@"; }
+N="?"; L="?"
 if mkdir -p "$D" \
    && kc exec postgres-0 -- sh -c 'pg_dump -U "$POSTGRES_USER" -d nexus -Fc -f /tmp/nexus-db.dump' \
    && kc cp postgres-0:/tmp/nexus-db.dump "$D/nexus-db.dump" \
    && kc cp -c nexus nexus-0:/nexus-data/blobs "$D/blobs" \
-   && kc cp -c nexus nexus-0:/nexus-data/keystores "$D/keystores"; then
-  du -sh "$D"/* && echo "backed up to $D"
+   && kc cp -c nexus nexus-0:/nexus-data/keystores "$D/keystores" \
+   && F="$(kc exec nexus-0 -c nexus -- find /nexus-data/blobs -type f)" \
+   && N="$(printf '%s\n' "$F" | grep -c .)" && L="$(find "$D/blobs" -type f | grep -c .)" \
+   && [ -s "$D/nexus-db.dump" ] && [ -e "$D/keystores/node" ] && [ "$L" -ge "$N" ]; then
+  du -sh "$D"/* && echo "backed up to $D ($L of $N blob files)"
 else
-  echo "FAILED: the backup in $D is not complete (see the error above)"
+  echo "FAILED: the backup in $D is not complete ($L of $N blob files; see the error above)"
 fi
 kc exec postgres-0 -- rm -f /tmp/nexus-db.dump
 ```
@@ -1771,10 +1867,13 @@ kc exec postgres-0 -- sh -c 'pg_dump -U "$POSTGRES_USER" -d nexus -Fc -f /tmp/ne
 if ($LASTEXITCODE -eq 0) { kc cp postgres-0:/tmp/nexus-db.dump nexus-db.dump }
 if ($LASTEXITCODE -eq 0) { kc cp -c nexus nexus-0:/nexus-data/blobs blobs }
 if ($LASTEXITCODE -eq 0) { kc cp -c nexus nexus-0:/nexus-data/keystores keystores }
-if ($LASTEXITCODE -eq 0) {
+$N = '?'; $L = '?'
+if ($LASTEXITCODE -eq 0) { $N = @(kc exec nexus-0 -c nexus -- find /nexus-data/blobs -type f).Count }
+if ($LASTEXITCODE -eq 0) { $L = @(Get-ChildItem -Recurse -File blobs -ErrorAction SilentlyContinue).Count }
+if ($LASTEXITCODE -eq 0 -and (Test-Path nexus-db.dump) -and (Get-Item nexus-db.dump).Length -gt 0 -and (Test-Path keystores\node) -and $L -ge $N) {
   Get-ChildItem | ForEach-Object { "{0} {1:N0} MB" -f $_.Name, ((Get-ChildItem -Recurse -File $_.FullName | Measure-Object Length -Sum).Sum / 1MB) }
-  "backed up to $D"
-} else { "FAILED: the backup in $D is not complete (see the error above)" }
+  "backed up to $D ($L of $N blob files)"
+} else { "FAILED: the backup in $D is not complete ($L of $N blob files; see the error above)" }
 Pop-Location
 kc exec postgres-0 -- rm -f /tmp/nexus-db.dump
 ```
@@ -1783,10 +1882,13 @@ kc exec postgres-0 -- rm -f /tmp/nexus-db.dump
 
 <!-- TODO-MEASURE: backup on VKS (kubectl cp of blobs with tar in the alpine image, size/time), and a restore into a fresh namespace before the guide states one -->
 
-**Expect:** a size line for `blobs`, `keystores` and `nexus-db.dump`, then `backed up to …`. Two
-`tar: Removing leading` lines from kubectl are harmless.
+**Expect:** a size line for `blobs`, `keystores` and `nexus-db.dump`, then `backed up to …` with
+the same number twice in `(… of … blob files)`. Two `tar: Removing leading` lines from kubectl are
+harmless.
 
-**If not:** `FAILED: …`: run the block again; a folder from a failed run is not a backup. Keep
+**If not:** `FAILED: …`: run the block again; a folder from a failed run is not a backup (kubectl
+copies nothing and still succeeds when a path in the pod is missing, so the block counts the
+files). Keep
 backups somewhere other than this machine as well. Restoring is not covered here yet.
 
 ## 13. Remove Nexus (optional)
@@ -1797,6 +1899,8 @@ made by step 5 is a different CA. cert-manager stays, and so do the Secrets and 
 settings of step 11 (removing them updates the nodes again). To delete Nexus's cluster too, run
 this first and [CLUSTER.md step 8](CLUSTER.md#8-delete-the-cluster-optional) after it: a volume
 still in use when the cluster goes is left behind in the vSphere Namespace and stops its removal.
+Also left: `nexus-ca.pem`, the backups, the CA you trusted in step 10, and the Secret `nexus-pull`
+in each cluster from step 11.
 
 **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
 
@@ -1842,7 +1946,7 @@ delete the cluster until it is gone.
 
 ## Reach Nexus by a DNS name through Contour (optional)
 
-With DNS names, the Contour add-on can take Nexus's HTTPS on a shared address instead of its own
+(not tested with Nexus) With DNS names, the Contour add-on can take Nexus's HTTPS on a shared address instead of its own
 load balancer: install Contour as in
 [HEADLAMP.md step 10](HEADLAMP.md#10-reach-headlamp-by-a-dns-name-through-contour-optional), and
 give Nexus an HTTPProxy for its name with `timeoutPolicy` `response: infinity` and
