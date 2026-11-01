@@ -403,7 +403,7 @@ until it expires or the cluster is deleted, even after losing their role on the 
 If a copy leaks, tell your vSphere administrator at once.
 
 Optional: Broadcom also documents logging in to a VKS cluster as your own SSO user (steps in
-[LOGIN.md](LOGIN.md#the-persons-own-sso-account);
+[ACCESS.md](ACCESS.md#the-persons-own-sso-account);
 [Log in to a VKS Cluster Using vCenter SSO Credentials](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connecting-to-vsphere-with-tanzu-clusters/connect-to-a-tkg-service-cluster-as-a-vcenter-single-sign-on-user-with-kubectl/log-in-using-credentials.html)).
 That login ends when your role does, but also after about 10 hours, like the Supervisor login.
 These guides use the administrator file because it needs no extra login and does not end in the

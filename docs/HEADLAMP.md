@@ -598,7 +598,7 @@ Headlamp shows its own text in the browser's language; **Settings** (gear) → *
 ## 8. Log in with your own SSO user instead (optional)
 
 Someone who has a Kubernetes login of their own on the cluster, through the VCF CLI or the kubectl
-vSphere plugin ([LOGIN.md, "The person's own SSO account"](LOGIN.md#the-persons-own-sso-account)),
+vSphere plugin ([ACCESS.md, "The person's own SSO account"](ACCESS.md#the-persons-own-sso-account)),
 can paste that login's token instead of one from step 5. Headlamp then has exactly that user's
 rights. The token is made for this cluster (the Supervisor refuses it) and ends 10 hours after that
 login; nobody can end it sooner, only take the user's rights away.
@@ -663,7 +663,7 @@ if (-not $T -or -not $E) {
 --kubeconfig <the SSO file> get pods` also fails, the cluster did not answer. `FAILED: …` or
 `ENDED: …`: run the login in LOGIN.md again. In Headlamp the user sees nothing: the cluster
 administrator has not given that name rights yet
-([LOGIN.md](LOGIN.md#the-persons-own-sso-account), step 3; add `headlamp-namespace-lister` as in step 4 so
+([ACCESS.md](ACCESS.md#the-persons-own-sso-account), step 3; add `headlamp-namespace-lister` as in step 4 so
 that the Namespaces list works).
 
 ## 9. Change the add-on's settings (optional)
