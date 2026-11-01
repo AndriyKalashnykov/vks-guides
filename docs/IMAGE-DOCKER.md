@@ -1,4 +1,4 @@
-# Build an image with docker, push it to Harbor and run it (short version)
+# Build a container image with docker, push it and run it (short version) (Harbor example)
 
 > [!NOTE]
 > **Official documentation for this guide (Harbor, Docker and Kubernetes; Broadcom has none for

@@ -1,4 +1,4 @@
-# Identity and access for VKS clusters
+# Grant access to VKS clusters
 
 > [!NOTE]
 > **Official Broadcom documentation (VCF 9.1), Kubernetes documentation and vCenter API reference for this guide**

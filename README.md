@@ -5,7 +5,7 @@
 
 Copy-paste guides for VMware vSphere Kubernetes Service (VKS) on VCF 9.1, from an empty machine
 to apps running on a VKS cluster: install `kubectl` and the VCF CLI, log in to the Supervisor,
-create a vSphere Namespace and a VKS cluster, run Harbor as the clusters' private registry,
+create a vSphere Namespace and a VKS cluster, run a private container registry (Harbor),
 deploy clusters and apps from Git with ArgoCD, monitor a cluster with Prometheus and Grafana,
 send its logs to VCF Operations, and see its logs and traces in Grafana.
 Each command-line step is a block for bash, zsh or Windows PowerShell, with the output to expect
@@ -20,18 +20,18 @@ and what to do if it differs.
 
 ## Guides
 
-The guides are in six groups. Start with Get started, then vSphere Namespaces and VKS clusters;
+The guides are in six groups. Start with Getting started, then vSphere Namespaces and VKS clusters;
 the other groups are optional, in any order once you have a VKS cluster. Each group's page lists
 its guides, the order to follow and where each was tested.
 
 | group | what it is for |
 |---|---|
-| [Get started](docs/GET-STARTED.md) | tools, login, kubeconfig files |
-| [Access and sign-in](docs/ACCESS-SIGN-IN.md) | give others access, sign-in through an external identity provider (tested with Keycloak) |
-| [vSphere Namespaces and VKS clusters](docs/CLUSTERS.md) | vSphere Namespace, VKS cluster, add-ons, Harbor |
-| [Images](docs/IMAGES.md) | build, push and run an image from Harbor |
-| [GitOps and CI/CD](docs/GITOPS-CICD.md) | ArgoCD, Gitea, Tekton, GitLab, build and deploy on push |
-| [Operate and observe](docs/OPERATE.md) | web console, monitoring, logs and traces |
+| [Getting started](docs/GET-STARTED.md) | client tools (kubectl, VCF CLI, Helm), Supervisor and VKS cluster login, kubeconfig management |
+| [Identity and access](docs/ACCESS-SIGN-IN.md) | Kubernetes RBAC, vCenter SSO, and single sign-on through an external OIDC identity provider (Keycloak example) |
+| [vSphere Namespaces and VKS clusters](docs/CLUSTERS.md) | vSphere Namespace and VKS cluster provisioning, cluster add-ons, private container registry (Harbor) |
+| [Container images](docs/IMAGES.md) | build OCI container images, push them to a private registry, deploy them to a VKS cluster |
+| [GitOps and CI/CD](docs/GITOPS-CICD.md) | GitOps continuous delivery (ArgoCD), self-hosted Git (Gitea, GitLab), CI pipelines (Tekton, GitLab CI), build and deploy on every push |
+| [Operations and observability](docs/OPERATE.md) | cluster web UI (Headlamp), metrics and alerting (Prometheus, Grafana), log forwarding (VCF Operations), logs and distributed tracing (Loki, Jaeger) |
 
 ## Check what is installed
 

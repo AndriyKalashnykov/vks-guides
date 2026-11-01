@@ -1,4 +1,4 @@
-# Build an image, push it to Harbor and run it
+# Build a container image, push it to a registry and run it in a VKS cluster (Harbor example)
 
 > [!NOTE]
 > **Official documentation for this guide (Harbor, Docker, Podman and Kubernetes; Broadcom has none
