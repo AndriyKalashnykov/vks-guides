@@ -1,8 +1,8 @@
 # Getting started
 
-Start with [Prerequisites](PREREQS.md) for your OS: every command-line block in the guides needs its
-tools, so do it first on each machine where you paste blocks. Then install kubectl and the VCF CLI,
-in either order; Log in needs both. Helm is needed only by the guides that install apps with it.
+Start with [Prerequisites](PREREQS.md) for your OS, on each machine where you paste blocks: the
+guides' blocks use its tools. Then install kubectl and the VCF CLI, in either order; Log in needs
+both. Helm is needed only by the guides that install apps with it.
 
 | guide | what it is |
 |---|---|
