@@ -299,7 +299,9 @@ login's own file; `vcf context use` and `delete` write the file recorded for the
 Skip this if `~/.kube/config` does not exist (`ls ~/.kube/config` prints `No such file`). kind,
 minikube, Docker Desktop and `aws eks update-kubeconfig` create it even if you never ran `kubectl`
 yourself. If you have it, it holds your other clusters, and what `vcf` does to it depends on
-`KUBECONFIG` when you log in or renew:
+`KUBECONFIG` when you log in or renew. Writing into the file `KUBECONFIG` names, or into
+`~/.kube/config` when it is not set, is how `vcf` itself works; `~/.kube/supervisor.kubeconfig` is
+only the file name these guides put in `KUBECONFIG`:
 
 | | `KUBECONFIG` not set: the login goes into `~/.kube/config` (with a list in `KUBECONFIG`: into its first file) | `KUBECONFIG` names a file of its own, as in these guides |
 |---|---|---|
@@ -311,12 +313,12 @@ yourself. If you have it, it holds your other clusters, and what `vcf` does to i
 ```mermaid
 %%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
 flowchart LR
-  subgraph separate["KUBECONFIG names a file of its own"]
-    v2["vcf"] -- "adds, switches, rewrites" --> s2["~/.kube/supervisor.kubeconfig"]
+  subgraph separate["KUBECONFIG names a file of its own (these guides)"]
+    v2["vcf: log in, switch, renew"] --> s2["~/.kube/supervisor.kubeconfig<br/>the name these guides use"]
     k2["kubectl, your tools"] --> d2["~/.kube/config<br/>your clusters, untouched"]
   end
-  subgraph shared["KUBECONFIG not set"]
-    v1["vcf"] -- "adds, switches, rewrites" --> d1["~/.kube/config<br/>your clusters + the Supervisor"]
+  subgraph shared["KUBECONFIG not set (vcf's default)"]
+    v1["vcf: log in, switch, renew"] --> d1["~/.kube/config<br/>your clusters + the Supervisor"]
     k1["kubectl, your tools"] --> d1
   end
 ```
