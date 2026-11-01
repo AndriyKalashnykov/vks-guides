@@ -218,7 +218,7 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $global:LASTEXITCODE = $null
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this terminal; run the line under Type your SSO password"
-} elseif (-not (Test-Path $SUPERVISOR_CA)) {
+} elseif (-not (Test-Path $SUPERVISOR_CA) -or (Get-Item $SUPERVISOR_CA).Length -eq 0) {
   "FAILED: not found: $SUPERVISOR_CA"
 } else {
   New-Item -ItemType Directory -Force -Path (Split-Path $SUPERVISOR_KUBECONFIG) | Out-Null
@@ -948,7 +948,7 @@ $VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
 
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this PowerShell; run the password line above"
-} elseif (-not (Test-Path $SUPERVISOR_CA)) {
+} elseif (-not (Test-Path $SUPERVISOR_CA) -or (Get-Item $SUPERVISOR_CA).Length -eq 0) {
   "FAILED: not found: $SUPERVISOR_CA"
 } else {
   New-Item -ItemType Directory -Force -Path "$HOME\.kube" | Out-Null
@@ -985,10 +985,10 @@ for example `sso:Alice@vsphere.local`).
   ([Create Supervisor context with CA](#create-supervisor-context-with-ca), step 1).
 - `invalid or missing credentials`: check `SSO_USER`, then run the password line and this block
   again. Mind the lock-out.
+- `x509: certificate signed by unknown authority`: `SUPERVISOR_CA` is not the vCenter CA.
 - `Invalid vSphere Supervisor endpoint`: check `SUPERVISOR_ENDPOINT` and that this machine reaches
   it on port 443.
-- `Login failed: bad request`: check `VKS_CLUSTER` and `VKS_NAMESPACE`, and that step 1 was done for
-  this SSO user.
+- `Login failed: bad request`: check `VKS_CLUSTER` and `VKS_NAMESPACE`.
 - `Initialization done!` and lines about plugins on the first run: harmless.
 
 **Without the VCF CLI: the kubectl vSphere plugin.** Broadcom replaced it with the VCF CLI in VCF 9
@@ -1078,7 +1078,7 @@ Remove-Item -Recurse -Force $TMP
 **2d. Log in with the plugin (the person).** This logs in to the VKS cluster as `SSO_USER` into its own kubeconfig,
 readable only by you, and prints the name the cluster knows you by. Send that name, exactly as
 printed, to the cluster's administrator. Run it again when kubectl answers `Unauthorized`, 10
-hours after a login.
+hours after a login. **A few failed logins in a row lock the SSO user for some minutes.**
 
 `SUPERVISOR_ENDPOINT`: the Supervisor's IP address or DNS name.
 
@@ -1119,18 +1119,22 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
 
-New-Item -ItemType Directory -Force -Path "$HOME\.kube" | Out-Null
-$OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $VKS_SSO_KUBECONFIG
-try {
-  $env:KUBECTL_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
-  kubectl-vsphere login --server $SUPERVISOR_ENDPOINT --vsphere-username $SSO_USER `
-    --tanzu-kubernetes-cluster-namespace $VKS_NAMESPACE --tanzu-kubernetes-cluster-name $VKS_CLUSTER
-} finally {
-  Remove-Item Env:KUBECTL_VSPHERE_PASSWORD -ErrorAction SilentlyContinue; $env:KUBECONFIG = $OLD_KUBECONFIG
+if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
+  "FAILED: no password in this PowerShell; run the password line above"
+} else {
+  New-Item -ItemType Directory -Force -Path "$HOME\.kube" | Out-Null
+  $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $VKS_SSO_KUBECONFIG
+  try {
+    $env:KUBECTL_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
+    kubectl-vsphere login --server $SUPERVISOR_ENDPOINT --vsphere-username $SSO_USER `
+      --tanzu-kubernetes-cluster-namespace $VKS_NAMESPACE --tanzu-kubernetes-cluster-name $VKS_CLUSTER
+  } finally {
+    Remove-Item Env:KUBECTL_VSPHERE_PASSWORD -ErrorAction SilentlyContinue; $env:KUBECONFIG = $OLD_KUBECONFIG
+  }
+  Remove-Variable SSO_PASSWORD
+  kubectl --kubeconfig $VKS_SSO_KUBECONFIG config use-context $VKS_CLUSTER | Out-Null
+  if ($LASTEXITCODE -eq 0) { "send this name: $(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')" }
 }
-Remove-Variable SSO_PASSWORD
-kubectl --kubeconfig $VKS_SSO_KUBECONFIG config use-context $VKS_CLUSTER | Out-Null
-if ($LASTEXITCODE -eq 0) { "send this name: $(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')" }
 ```
 
 </details>
@@ -1142,8 +1146,8 @@ writes the name in its own letter case, for example `sso:Alice@vsphere.local`).
 - `x509: certificate signed by unknown authority`: `SUPERVISOR_CA` is not the vCenter CA (Windows
   and macOS: the CA step above was not done).
 - `Login failed: bad request`, then `no context exists with the name`: check `VKS_CLUSTER` and
-  `VKS_NAMESPACE`, and that step 1 was done for this SSO user. A cluster with the same name as its
-  vSphere Namespace can also hide one of the two contexts
+  `VKS_NAMESPACE`. A cluster with the same name as its vSphere Namespace can also hide one of the
+  two contexts
   ([Broadcom KB 435635](https://knowledge.broadcom.com/external/article/435635)).
 - `send this name:` with `Unauthorized`: the login did not work; see the error above it.
 

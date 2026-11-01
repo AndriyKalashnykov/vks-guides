@@ -286,7 +286,8 @@ system namespaces. An account limited to one namespace also gets the right to li
 names (role `headlamp-namespace-lister`), so that Headlamp's namespace list works; it sees nothing
 inside the other namespaces. Give no one `admin` or `cluster-admin` through Headlamp.
 
-`ACCOUNT`: the person's or team's name (a-z, 0-9). `ROLE`: `view` or `edit`. `ACCESS_NAMESPACE`: empty for every namespace (view only).
+`ACCOUNT`: the person's or team's name (a-z, 0-9, -). `ROLE`: `view` or `edit`. `ACCESS_NAMESPACE`:
+empty for every namespace (view only).
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -680,7 +681,8 @@ A new certificate is made when the name or address changes; Headlamp reads it on
 starts, so the block then restarts it (some seconds away). The browser warns again for the new
 certificate: check its new fingerprint (step 6).
 
-`HEADLAMP_HOSTNAME`: empty gives `headlamp.vks.example.com`. `CERT_WITH_IP` and `KUBESCAPE_PLUGIN`: `yes` or `no`.
+`HEADLAMP_HOSTNAME`: empty gives `headlamp.vks.example.com`. `CERT_WITH_IP` and `KUBESCAPE_PLUGIN`:
+`yes` or `no`.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
@@ -1184,7 +1186,8 @@ This gives an account from step 4 what the plugins read:
   and in them the names of all pods, images and Secrets. Give it only to accounts allowed to see
   that.
 
-`ACCOUNT` and `ACCESS_NAMESPACE`: as in step 4 (empty: every namespace). `PROMETHEUS_QUERY`: `yes` adds the whole cluster's metrics.
+`ACCOUNT` and `ACCESS_NAMESPACE`: as in step 4 (empty: every namespace). `PROMETHEUS_QUERY`: `yes`
+adds the whole cluster's metrics.
 
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
