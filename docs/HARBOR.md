@@ -2116,7 +2116,7 @@ ERR=""
 if [ -z "$HARBOR_FQDN" ]; then
   ERR="no hostname in $VALUES (step 4)"
 elif [ -n "$HARBOR_TLS_CRT$HARBOR_TLS_KEY$HARBOR_CA_CRT" ]; then
-  for f in "$HARBOR_TLS_CRT" "$HARBOR_TLS_KEY" "$HARBOR_CA_CRT"; do [ -s "$f" ] || ERR="not found: $f"; done
+  for f in "$HARBOR_TLS_CRT" "$HARBOR_TLS_KEY" "$HARBOR_CA_CRT"; do { [ -f "$f" ] && [ -s "$f" ]; } || ERR="not found: $f"; done
   if [ -z "$ERR" ]; then
     ( umask 077
       tr -d '\r' < "$HARBOR_TLS_CRT" | sed -n '/^-----BEGIN CERTIFICATE-----$/,/^-----END CERTIFICATE-----$/p' > "$TMP/tls.crt"
@@ -2198,7 +2198,7 @@ function Pem($f) { (([IO.File]::ReadAllText($f) -replace "`r", '') | Select-Stri
 if (-not $HARBOR_FQDN) { $ERR = "no hostname in $VALUES (step 4)" }
 elseif (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { $ERR = 'openssl.exe not found (install Git for Windows)' }
 elseif ("$HARBOR_TLS_CRT$HARBOR_TLS_KEY$HARBOR_CA_CRT") {
-  foreach ($f in $HARBOR_TLS_CRT, $HARBOR_TLS_KEY, $HARBOR_CA_CRT) { if (-not (Test-Path $f)) { $ERR = "not found: $f" } }
+  foreach ($f in $HARBOR_TLS_CRT, $HARBOR_TLS_KEY, $HARBOR_CA_CRT) { if (-not (Test-Path $f -PathType Leaf) -or (Get-Item $f).Length -eq 0) { $ERR = "not found: $f" } }
   if (-not $ERR) {
     $CRT = @(Pem $HARBOR_TLS_CRT | Where-Object { $_ -clike '-----BEGIN CERTIFICATE-----*' })
     $KEY = @(Pem $HARBOR_TLS_KEY | Where-Object { $_ -cmatch '^-----BEGIN [A-Z ]*PRIVATE KEY-----' })

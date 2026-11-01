@@ -192,7 +192,7 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 
 if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
-elif [ ! -s "$SUPERVISOR_CA" ]; then
+elif [ ! -f "$SUPERVISOR_CA" ] || [ ! -s "$SUPERVISOR_CA" ]; then
   echo "FAILED: not found: $SUPERVISOR_CA"
 elif mkdir -p "$(dirname "$SUPERVISOR_KUBECONFIG")" \
      && KUBECONFIG="$SUPERVISOR_KUBECONFIG" VCF_CLI_VSPHERE_PASSWORD="$SSO_PASSWORD" \
@@ -918,7 +918,7 @@ VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
 
 if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the password line above"
-elif [ ! -s "$SUPERVISOR_CA" ]; then
+elif [ ! -f "$SUPERVISOR_CA" ] || [ ! -s "$SUPERVISOR_CA" ]; then
   echo "FAILED: not found: $SUPERVISOR_CA"
 elif mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_SSO_KUBECONFIG" ) && chmod 600 "$VKS_SSO_KUBECONFIG" \
      && { KUBECONFIG="$VKS_SSO_KUBECONFIG" vcf context delete "${VKS_CLUSTER}-sso" -y --skip-delete-kubeconfig-context </dev/null >/dev/null 2>&1; true; } \
@@ -1310,7 +1310,7 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 if [ -n "$SUPERVISOR_CA" ]; then TLS="--ca-certificate=$SUPERVISOR_CA"; else TLS="--insecure-skip-tls-verify"; fi
 if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
-elif [ -n "$SUPERVISOR_CA" ] && [ ! -s "$SUPERVISOR_CA" ]; then
+elif [ -n "$SUPERVISOR_CA" ] && { [ ! -f "$SUPERVISOR_CA" ] || [ ! -s "$SUPERVISOR_CA" ]; }; then
   echo "FAILED: not found: $SUPERVISOR_CA"
 else
   KUBECONFIG="$SUPERVISOR_KUBECONFIG" VCF_CLI_VSPHERE_PASSWORD="$SSO_PASSWORD" \
