@@ -365,20 +365,24 @@ before this block; the comments it lost at the login are not restored.
 Supervisor's are not removed then). `context supervisor not found`: set `VCF_CONTEXT` to the
 name you logged in with (`vcf context list`).
 
-### Why the Supervisor and each VKS cluster have their own kubeconfig
+<a id="why-the-supervisor-and-each-vks-cluster-have-their-own-kubeconfig"></a>
 
-They are two different servers, with different logins:
+### Why these guides keep the Supervisor and each VKS cluster in separate files
+
+The Supervisor and a VKS cluster are two different servers, with different logins: that is how VKS
+works. Keeping each one's login in a file of its own is these guides' choice; one kubeconfig can
+hold both. The file names below are the guides' names; the lifetimes are how VKS issues the logins.
 
 ```mermaid
 %%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
 flowchart LR
   k["kubectl --kubeconfig"] --> sk["~/.kube/supervisor.kubeconfig<br/>your SSO login, about 10 hours"]
-  k --> ck["~/.kube/my-vks-cluster.kubeconfig<br/>the cluster's administrator, about a year"]
+  k --> ck["~/.kube/my-vks-cluster.kubeconfig<br/>the cluster's administrator certificate, about a year"]
   sk --> S["Supervisor:<br/>your vSphere Namespace"]
   ck --> C["VKS cluster:<br/>your apps"]
 ```
 
-| | Supervisor | VKS cluster |
+| | Supervisor | VKS cluster (the administrator file these guides use) |
 |---|---|---|
 | what you work with there | what is in your vSphere Namespace: VKS clusters, VMs, Supervisor Service instances such as ArgoCD | your apps |
 | login | your SSO user, with your role on each vSphere Namespace | an administrator certificate stored in the file: anyone with a copy of the file is the cluster's administrator |
@@ -402,7 +406,7 @@ list is fine.
 
 Keep a VKS cluster file private: no one can cancel a copy, so whoever has one controls the cluster
 until it expires or the cluster is deleted, even after losing their role on the vSphere Namespace.
-If a copy leaks, tell your vSphere administrator at once.
+If a copy leaks, tell your vCenter administrator at once.
 
 Optional: Broadcom also documents logging in to a VKS cluster as your own SSO user (steps in
 [ACCESS.md](ACCESS.md#the-persons-own-sso-account);
@@ -430,7 +434,7 @@ What this means for you:
 - In a terminal where you ran *Make it the default in this terminal*, `KUBECONFIG` names the VKS
   cluster's file: a `vcf` login or renewal there would be written into it.
 - `vcf context use` can print `failed to discover plugin sources …` and exit with an error even
-  though it switched (on a Supervisor with no system Harbor registry). Check the switch with
+  though it switched. Check the switch with
   `kubectl --kubeconfig <the file> config current-context`, not with the exit code.
 - A login whose token has expired makes `vcf context use` ask for the password; the guides run it
   with `</dev/null` (PowerShell: `$null | vcf context use supervisor`), so it stops with `Unable to
@@ -482,7 +486,7 @@ expect it.
 ```mermaid
 %%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 600}}}%%
 flowchart LR
-  subgraph CFG["~/.config/vcf/config.yaml"]
+  subgraph CFG["~/.config/vcf/config.yaml (names as LOGIN.md makes them)"]
     C1["context supervisor<br/>kubeconfig: ~/.kube/supervisor.kubeconfig<br/>kube context: supervisor"]
     C2["context supervisor:my-namespace<br/>(one per vSphere Namespace)"]
     CUR["currentContext: set by vcf context use"]
