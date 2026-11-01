@@ -218,7 +218,7 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $global:LASTEXITCODE = $null
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this terminal; run the line under Type your SSO password"
-} elseif (-not (Test-Path $SUPERVISOR_CA) -or (Get-Item $SUPERVISOR_CA).Length -eq 0) {
+} elseif (-not (Test-Path $SUPERVISOR_CA -PathType Leaf) -or (Get-Item $SUPERVISOR_CA).Length -eq 0) {
   "FAILED: not found: $SUPERVISOR_CA"
 } else {
   New-Item -ItemType Directory -Force -Path (Split-Path $SUPERVISOR_KUBECONFIG) | Out-Null
@@ -948,7 +948,7 @@ $VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
 
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this PowerShell; run the password line above"
-} elseif (-not (Test-Path $SUPERVISOR_CA) -or (Get-Item $SUPERVISOR_CA).Length -eq 0) {
+} elseif (-not (Test-Path $SUPERVISOR_CA -PathType Leaf) -or (Get-Item $SUPERVISOR_CA).Length -eq 0) {
   "FAILED: not found: $SUPERVISOR_CA"
 } else {
   New-Item -ItemType Directory -Force -Path "$HOME\.kube" | Out-Null
@@ -1145,6 +1145,9 @@ writes the name in its own letter case, for example `sso:Alice@vsphere.local`).
 **If not:**
 - `x509: certificate signed by unknown authority`: `SUPERVISOR_CA` is not the vCenter CA (Windows
   and macOS: the CA step above was not done).
+- `FAILED: no password …` (Windows): run the password line, then this block.
+- A login error: check `SSO_USER`, then run this block again and type the password carefully. Mind
+  the lock-out.
 - `Login failed: bad request`, then `no context exists with the name`: check `VKS_CLUSTER` and
   `VKS_NAMESPACE`. A cluster with the same name as its vSphere Namespace can also hide one of the
   two contexts
@@ -1324,7 +1327,7 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $TLS = if ($SUPERVISOR_CA) { "--ca-certificate=$SUPERVISOR_CA" } else { "--insecure-skip-tls-verify" }
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this terminal; run the line under Type your SSO password"
-} elseif ($SUPERVISOR_CA -and -not (Test-Path $SUPERVISOR_CA)) {
+} elseif ($SUPERVISOR_CA -and (-not (Test-Path $SUPERVISOR_CA -PathType Leaf) -or (Get-Item $SUPERVISOR_CA).Length -eq 0)) {
   "FAILED: not found: $SUPERVISOR_CA"
 } else {
   $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
