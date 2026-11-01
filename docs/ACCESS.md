@@ -85,7 +85,7 @@ the token ends and what it may do. One ServiceAccount per team or tool lets you 
 alone.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
@@ -197,7 +197,7 @@ workloads it started, keep working: delete the team's workloads, and delete and 
 ServiceAccount in `TEAM_NAMESPACE` that has rights. So never give `edit` on a namespace that holds
 software with wider rights.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
@@ -240,7 +240,7 @@ readable only by you. A certificate cannot be withdrawn before it ends, so each 
 name, and that name is never given rights again.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
@@ -301,7 +301,7 @@ To take its rights away, delete its RoleBinding. The certificate keeps proving i
 `notAfter`, so never give that name rights again; for new access, run step 1 again. Set `NAME` to
 the name from step 1's `subject=` line.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
@@ -355,7 +355,7 @@ by. Send that name, exactly as printed, to the cluster administrator.
 Type the password first, on its own line; run both again when kubectl answers `Unauthorized`, 10
 hours after a login. **A few failed logins in a row lock the SSO user for some minutes.**
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
@@ -370,7 +370,7 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 `SUPERVISOR_ENDPOINT`: the Supervisor's IP address or DNS name.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
@@ -491,7 +491,7 @@ the trusted CA from the step above), runs it, and only then installs it.
 `SUPERVISOR_ENDPOINT`: the Supervisor's IP address or DNS name.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
@@ -557,7 +557,7 @@ hours after a login. **A few failed logins in a row lock the SSO user for some m
 `SUPERVISOR_ENDPOINT`: the Supervisor's IP address or DNS name.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
@@ -636,7 +636,7 @@ The role from step 1 lets the person log in, but gives no rights inside the VKS 
 their name `edit` in `TEAM_NAMESPACE`. Set `SSO_NAME` to the name the person sent, letter for
 letter: a name in other letter case gets no rights.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
@@ -729,7 +729,7 @@ to take the role away.
 It then reads the permission back. Type the vCenter administrator's password first, on its own line.
 **A few failed logins in a row lock the user for some minutes.**
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
@@ -746,7 +746,7 @@ provider (in Keycloak, as the realm lists it), letters, digits, `-` or `_` only.
 already has a role gets the new one.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VCENTER_FQDN="vcenter.example.com"
@@ -852,7 +852,7 @@ The namespace role from step 2 lets the person sign in; with **Can view** it giv
 the VKS cluster. This gives the group `edit` (or `view`) in `TEAM_NAMESPACE` of the cluster. Set
 `KC_PREFIX` to the prefix from step 1.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
@@ -896,7 +896,7 @@ sent by email or chat. It needs your Supervisor login with the **Can edit** role
 Send the people the file, the namespace from step 3 and the cluster's address (the file's `server:`
 line), so that they can check the file before they use it.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -957,7 +957,7 @@ in the browser on your own computer, sign in, copy the code the last page shows,
 
 ![Without a browser: the last page shows the code to paste](img/access/05-finish-your-login.jpg)
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 KC_KUBECONFIG="$HOME/.kube/my-vks-cluster-keycloak-sv.kubeconfig"
@@ -993,7 +993,7 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $KC_KUBECONFIG -n $TEAM_NAMESPAC
 This deletes the VCF CLI's saved sign-in; the next command asks for a sign-in again. Also sign out
 of the identity provider in the browser.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 rm -f "$HOME/.config/vcf/pinniped/sessions.yaml" "$HOME/.config/vcf/pinniped/credentials.yaml"

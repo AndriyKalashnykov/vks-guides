@@ -60,7 +60,7 @@ note on this machine. Step 14 reads that note before you uninstall, so you never
 that someone else installed.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -145,7 +145,7 @@ Do not put these files into a Git repository; they are licensed to your Broadcom
 This checks that you downloaded the right two files and that they are not damaged. It prints a
 checksum (a fingerprint of the file's content) for each one; compare them with the lines below.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 HARBOR_MANIFEST="$HOME/Downloads/supervisor-service-harbor-legacy-v2.15.2+vmware.1-vks.1-25639075.yml"
@@ -203,7 +203,7 @@ password and `secretKey` cannot be changed after the install. If you change your
 run step 4 again.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
@@ -291,7 +291,7 @@ Harbor keeps its data on five disks (volumes). A storage class is a kind of vSph
 the Supervisor offers for such disks. This lists them, so you can pick one for
 `HARBOR_STORAGE_CLASS` in the next block.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -339,7 +339,7 @@ Set at the top:
 The block then checks the file, and deletes it if anything came out wrong.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
@@ -526,7 +526,7 @@ after the install Harbor cannot change a disk's class, nor the size of the datab
 disk.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_REGISTRY_STORAGE_CLASS=""
@@ -691,7 +691,7 @@ it to show when every node has been updated. Run it for each vSphere Namespace w
 right before you install.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -747,7 +747,7 @@ This copies `harbor-data-values.yml` to the clipboard, without showing it, so yo
 into the vSphere Client in *Install it*. The file holds Harbor's passwords: if your desktop keeps a
 clipboard history, switch it off for this step.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VALUES="$HOME/.config/vks-guides/harbor/harbor-data-values.yml"
@@ -830,7 +830,7 @@ Harbor answers.
 The clipboard still holds Harbor's passwords. This empties it. Run it whether the install worked
 or not.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 if command -v pbcopy >/dev/null 2>&1; then
@@ -864,7 +864,7 @@ answers on it (it tries every 15 seconds, for up to 20 minutes). It then prints 
 ask for in the next step. No DNS record is needed yet.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -944,7 +944,7 @@ The vSphere Client shows the same address: **Supervisor Management** → **Names
   lists them and their volumes; a volume that stays `Pending` means a wrong storage class: uninstall
   (step 14), fix it in step 4, install again.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -982,7 +982,7 @@ VKS cluster nodes both use (a `hosts` file line does not reach the nodes).
 Once the record exists, this checks that Harbor's name leads to Harbor's address from this machine.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1046,7 +1046,7 @@ This lists the machines (nodes) in one vSphere Namespace and counts how many wer
 step 6's record. Run it for each vSphere Namespace you recorded, until all are updated.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -1124,7 +1124,7 @@ This block:
 It needs a user who may read Secrets in Harbor's namespace on the Supervisor.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1219,7 +1219,7 @@ This checks that you can log in to Harbor as `admin` with the password from `sec
 robot account.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
@@ -1297,7 +1297,7 @@ its trust store:
 Log in as `admin`. This prints the password **on your screen**: run it only when nobody can see
 the screen, then clear the terminal.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
@@ -1337,7 +1337,7 @@ under **Access Level**, then **OK**.
 ![Harbor's New Project window with the name my-project and Public ticked](img/harbor/12-new-project-public.png)
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_PROJECT="my-project"
@@ -1418,7 +1418,7 @@ cluster's pull secret. The block prints the robot's name and secret; Harbor show
 once.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_PROJECT="my-project"
@@ -1515,7 +1515,7 @@ robot account, and logs out again. First make your engine trust Harbor's CA:
 
 As `admin`, with the password from the secrets file:
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 CONTAINER_ENGINE="podman"
@@ -1548,7 +1548,7 @@ else {
 To check the robot account, run this line and type the robot's secret at its prompt. The secret is
 not shown, and it stays only in this terminal, for the next block.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'Robot secret: '; IFS= read -rs HARBOR_ROBOT_SECRET; echo
@@ -1564,7 +1564,7 @@ This logs in to Harbor as the robot, which proves its name and secret work. It t
 no login stays saved on this machine, and forgets the secret you typed. Keep `HARBOR_ROBOT` in
 single quotes: the `$` is part of the name.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 CONTAINER_ENGINE="podman"
@@ -1624,7 +1624,7 @@ kubeconfig (the file that lets kubectl reach it) from
 [LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1784,7 +1784,7 @@ This changes the `hostname:` line in `harbor-data-values.yml` to the new name; n
 changes. The later blocks read Harbor's name from this file.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_NEW_FQDN="harbor2.example.test"
@@ -1863,7 +1863,7 @@ Run this after **FINISH**. It waits until Harbor's certificate is for the new na
 less), then deletes Harbor's web server pod, which starts again with that certificate.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -2011,7 +2011,7 @@ certificate team and ask for two PEM files back:
 - the root CA certificate that signed it: save it as `harbor-root-ca.crt` there.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_TLS_KEY="$HOME/harbor.key"
@@ -2101,7 +2101,7 @@ This checks the three files and writes them into `harbor-data-values.yml` only w
 passes. It needs `openssl`.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_TLS_CRT="$HOME/harbor.crt"
@@ -2265,7 +2265,7 @@ less): yours, or Harbor's own if you went back. It then restarts the web server,
 new one.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -2382,7 +2382,7 @@ every VKS cluster on this Supervisor** again.
 **Only uninstall a Harbor you installed.** This looks for the note that step 1 left on this
 machine. It says `MAY UNINSTALL` only if this Supervisor had no Harbor when you began.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -2432,7 +2432,7 @@ On the Supervisor, Harbor runs in its own namespace (`svc-harbor-…`). This che
 namespace is gone; until then Harbor is still being removed, and a new install fails. Run it again
 until it prints `none`: a few minutes.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -2491,7 +2491,7 @@ reloaded.
 This deletes the files this guide wrote, only when no Harbor is on the Supervisor. Ask for the
 DNS record to be removed too.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"

@@ -55,7 +55,7 @@ each node is `Ready`, the free memory and image disk on each worker, the default
 (GitLab's volume comes from it), and that no `gitlab` namespace exists yet.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -146,7 +146,7 @@ This creates the namespace `gitlab`, a separate area of the cluster for GitLab. 
 as root, so the namespace allows that (the `baseline` level), and warns about anything that would
 fail the stricter `restricted` level.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -201,7 +201,7 @@ start downloads a 1.7 GB image, which takes about 6 GB of the node's disk, and s
 database; it takes a few minutes.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -435,7 +435,7 @@ GitLab's administrator is `root`, and no one knows its password yet. This asks y
 inside the GitLab pod; it is not shown, saved, or put on a command line. Use at least 8 characters
 that are not a common word.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -473,7 +473,7 @@ GitLab has no address outside the cluster yet. This connects port 3400 on your m
 so you can open it at <http://localhost:3400>. It runs until you press **Ctrl+C**; keep it running
 for steps 6 to 9.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -512,7 +512,7 @@ Run this in a second terminal while step 5 runs. It makes a local repository wit
 `root/hello`. Git asks for the root password. `credential.helper=` stops git from saving it. Set
 `GITLAB_EMAIL` to your email address; it only labels the commit.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 GITLAB_EMAIL="you@example.com"
@@ -572,7 +572,7 @@ Use it for test projects only. Never sign in, push or send a token through it; u
    shows that other machines can clone it:
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -671,7 +671,7 @@ GitLab runs CI jobs on runners. This installs one, GitLab Runner 19.5.1, in the 
 3. In the terminal you will install from, run this and paste the token at the prompt (it is not
    shown):
 
-   **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+   **Linux, macOS, WSL (bash or zsh):**
 
    ```sh
    printf 'Runner token: '; IFS= read -rs RUNNER_TOKEN; echo
@@ -692,7 +692,7 @@ GitLab runs CI jobs on runners. This installs one, GitLab Runner 19.5.1, in the 
    to its address.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -912,7 +912,7 @@ This adds a `.gitlab-ci.yml` with one job to `root/hello` and pushes it; GitLab 
 and the runner runs the job as a pod. Run it in the second terminal, with step 5 running. Git asks
 for the root password.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 GITLAB_EMAIL="you@example.com"
@@ -970,7 +970,7 @@ GitLab's address), under **Runners**.
 This deletes the namespace `gitlab-runner`, with the runner and any CI job pods in it. GitLab
 itself stays.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -999,7 +999,7 @@ This deletes the namespace `gitlab`, with GitLab and its volume. It then waits u
 has removed the volume, and prints how many volumes are left.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"

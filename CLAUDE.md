@@ -16,13 +16,15 @@ blocks; there is nothing to build.
   values of its first block, run in one terminal, with no error handling, no block labels and no
   download timeouts.
 - Every shell block is POSIX sh that runs in bash and zsh, labeled in bold
-  `**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**`. Where Windows applies, a
+  `**Linux, macOS, WSL (bash or zsh):**`. Where Windows applies, a
   bold `**Windows (PowerShell):**` twin follows, written for Windows PowerShell 5.1: `curl.exe` (not
   the `curl` alias), `Expand-Archive`, `Get-FileHash`, installs to
   `%LOCALAPPDATA%\Programs\vks-tools`. A block pair where either block is 15 lines or more
   sits in two `<details>` cuts whose `<summary><b>…</b></summary>` is the label. PREREQS.md
   blocks sit under OS headings and have no label.
 - Wherever several OSs appear (labels, sections, lists), the order is Linux, macOS, Windows.
+- Distributions and OS versions are named only in the group pages' "Tested on" tables and in
+  PREREQS.md's install sections, never in block labels.
 - Each guide opens with a `> [!NOTE]` callout, first line `**Official … documentation … for this
   guide**`, listing the official docs it follows (Broadcom VCF 9.1 TechDocs; kubernetes.io or the
   tool's own docs where Broadcom has none). Open a link before adding it.

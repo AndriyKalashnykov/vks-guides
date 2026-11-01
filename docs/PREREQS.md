@@ -150,7 +150,7 @@ Pick one:
 This prints `ok` or `MISSING` for each tool the guides use: the ones above, and the ones the next
 guides install (`kubectl`, `vcf`, and `helm` for the guides that install apps with Helm).
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 for t in curl tar unzip jq openssl tr awk diff find kubectl vcf helm; do
@@ -376,7 +376,7 @@ podman machine start
 
 This shows, for podman and docker, whether each is installed and running, and its version.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 for e in podman docker; do
@@ -423,7 +423,7 @@ installs it as `kubectl-oidc_login`, the name under which kubectl runs it as `ku
 Install [kubectl](KUBECTL.md) first.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 KUBELOGIN_VERSION="v1.36.4"

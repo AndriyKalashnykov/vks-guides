@@ -14,13 +14,15 @@ CI/CD](GITOPS-CICD.md)); observability needs monitoring and Helm.
 
 ✅ every block run, "part" some blocks run, — not run.
 
-On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
+On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines:
 
-| guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows PowerShell 5.1 | WSL 2 Ubuntu (bash, as root) |
+| guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
 | [Headlamp](HEADLAMP.md) | part | ✅ | — | — | ✅ | part |
 | [Monitor a VKS cluster](MONITORING.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | [Send logs to VCF Operations](LOGGING.md) | part | part | part | — | part | — |
 | [Logs and traces in Grafana](OBSERVABILITY.md) | part | ✅ | part | — | part | part |
+
+Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
 
 Back to [README](../README.md).

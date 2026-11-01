@@ -73,7 +73,7 @@ ask for a password (see [PREREQS.md](PREREQS.md#sudo-optional)).
 `VCF_CLI_SHA256` and `VCF_PLUGINS_SHA256`: the SHA2 values of the two files, from the download page.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VCF_CLI_SHA256=""
@@ -216,7 +216,7 @@ online for a plugin version Broadcom has not published. The command still runs. 
 `VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION` to `v9.1.1` stops the lookup; Broadcom does not document
 this variable. This sets it for this terminal and for new ones.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 case "$(uname -s)/${BASH_VERSION:+bash}" in
@@ -384,7 +384,7 @@ same files as your login did.
    with, and run it again.
 3. Log in again as [LOGIN.md](LOGIN.md) shows.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VCF_CONTEXT="supervisor"
@@ -441,7 +441,7 @@ The block below shows your `vcf` contexts, the kubeconfig file each one uses, an
 current-context of each file. It needs `jq` ([PREREQS.md](PREREQS.md)) and `kubectl`
 ([KUBECTL.md](KUBECTL.md)).
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 vcf context list --wide

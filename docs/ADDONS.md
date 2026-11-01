@@ -78,7 +78,7 @@ for that reason.
 This lists the add-ons your Supervisor offers, with a short description of each. It needs the
 [VCF CLI](VCF.md) and a [Supervisor login](LOGIN.md).
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 vcf context use supervisor </dev/null
@@ -103,7 +103,7 @@ management` and `headlamp  Web UI for Kubernetes (Headlamp).`. A `failed to disc
 
 This lists the add-ons installed in your VKS cluster, apart from the core ones.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"

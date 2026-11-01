@@ -44,7 +44,7 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 This shows the Fluent Bit versions you can install, and lists the add-ons your VKS cluster already
 has (`fluent-bit` should not be among them). You copy a version name from it for step 4.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -89,7 +89,7 @@ Management's certificate is genuine) as `~/.config/vks-guides/logging/logs-ca.cr
 - connects to Log Management and checks that it answers with a certificate this CA vouches for.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 LOGS_FQDN="logs.example.test"
@@ -150,7 +150,7 @@ Log Management at `LOGS_FQDN`, over HTTPS, checking its certificate with the CA 
 name. Step 4 installs Fluent Bit with this file.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 LOGS_FQDN="logs.example.test"
@@ -234,7 +234,7 @@ This installs Broadcom's Fluent Bit add-on in your VKS cluster, with the setting
 Fluent Bit then runs on every node and collects its logs. Set `FLUENT_BIT_RELEASE` to the version
 name you copied in step 1.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -276,7 +276,7 @@ Fluent Bit does not start until it has the CA certificate from step 2. This bloc
 - waits until Fluent Bit runs on every node.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -345,7 +345,7 @@ This runs a pod that writes a line with a unique word into the cluster's logs, a
 Fluent Bit reports about sending.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -449,7 +449,7 @@ block replaces those settings too: run that step 5 again afterwards, with `LOGS_
 new name.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -523,7 +523,7 @@ then run step 6 again.
 This removes the Fluent Bit add-on from your VKS cluster, so its logs stop going to VCF
 Operations.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"

@@ -14,13 +14,15 @@ a private container registry (Harbor) are optional.
 
 ✅ every block run, "part" some blocks run, — not run.
 
-On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1):
+On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines:
 
-| guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows PowerShell 5.1 | WSL 2 Ubuntu (bash, as root) |
+| guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
 | [Create a vSphere Namespace](NAMESPACE.md) | ✅ | ✅ | — | — | ✅ | ✅ |
 | [Create a VKS cluster](CLUSTER.md) | ✅ | ✅ | ✅ | — | ✅ | part |
 | [VKS add-ons](ADDONS.md) | ✅ | ✅ | — | — | ✅ | ✅ |
 | [Install Harbor](HARBOR.md) | ✅ | ✅ | part | — | part | part |
+
+Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
 
 Back to [README](../README.md).

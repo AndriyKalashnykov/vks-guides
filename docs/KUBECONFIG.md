@@ -46,7 +46,7 @@ user, `SYSTEM` and `Administrators`, until [step 3](#3-hand-a-file-over) leaves 
 
 This shows who may read the file and what kind of login it holds, without printing any secret.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 KUBECONFIG_FILE="$HOME/.kube/my-vks-cluster.kubeconfig"
@@ -95,7 +95,7 @@ only`, `to that person only`) goes only through a password manager's share or as
 file, never by email, chat or a shared folder; then delete your copy. The person saves it in their
 `.kube` folder and makes it readable only by them:
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 HANDOUT="$HOME/.kube/team-a.kubeconfig"
@@ -135,7 +135,7 @@ copy does not follow later changes to a file: after a new file for the same clus
 entries (`kubectl config delete-context <name>`, `delete-cluster`, `delete-user`) and merge again.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 FILES="$HOME/.kube/my-vks-cluster.kubeconfig:$HOME/.kube/my-other-cluster.kubeconfig"

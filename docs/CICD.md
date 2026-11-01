@@ -98,7 +98,7 @@ the namespaces `gitea`, `gitlab`, `gitlab-runner` and `cicd-demo` exist, whether
 installed, and which clusters ArgoCD on the Supervisor can deploy to.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -185,7 +185,7 @@ This creates two namespaces:
   It allows root, because the build runs the app's Dockerfile as root.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -264,7 +264,7 @@ login. It signs in to Harbor as `admin` (password from HARBOR.md's `secrets.env`
 - the ConfigMap `harbor-ca` with Harbor's certificate, so the build trusts Harbor.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -398,7 +398,7 @@ starts with the stock nginx image; the first build replaces it.
 The next block signs in to Gitea as `gitea-admin`. Type that password first; it stays in this
 terminal only, and is not shown or saved:
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'gitea-admin password: '; IFS= read -rs GITEA_PASSWORD; echo
@@ -421,7 +421,7 @@ password no one knows and who may write only to `deploy`, and stores a token for
 `git-writeback` in `cicd-ci`. The build uses that token to write the new image into `deploy`.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -717,7 +717,7 @@ force-push to a project's `main`. The block runs inside GitLab's pod, so no GitL
 this machine; it takes about a minute.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1136,7 +1136,7 @@ ArgoCD reads `deploy` through the Git server's load-balancer address. ARGOCD.md'
 app stay as they are.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1278,7 +1278,7 @@ ArgoCD's status, the page, the image the app should run, and the image each pod 
 run it again with another `WANT`.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
@@ -1356,7 +1356,7 @@ has two parts, each in its own pod:
 If someone pushed to `app` while the build ran, `write-back` leaves `deploy` to that newer build.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1775,7 +1775,7 @@ The block needs the runner chart and `runner-values.yaml` from GITLAB.md step 8.
 job's result.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -2077,7 +2077,7 @@ Run it in the terminal where you typed the Gitea password in step 4 (or type it 
 first block there).
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -2368,7 +2368,7 @@ build, the build writes the new image into `deploy`, and ArgoCD rolls it out. Gi
 `gitea-admin`'s password (with GitLab, `root`'s).
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 GIT_SERVER="gitea"
@@ -2443,7 +2443,7 @@ Git server, Tekton or the runner from the other guides stay. With Gitea, run it 
 where you typed the Gitea password in step 4.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"

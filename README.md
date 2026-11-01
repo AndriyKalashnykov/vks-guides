@@ -36,7 +36,7 @@ looks like and **If not:** says what to do.
 ## How to use
 
 1. Do the steps in order. Where a step has two blocks, paste the one for your shell:
-   **Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)** or **Windows (PowerShell)**.
+   **Linux, macOS, WSL (bash or zsh)** or **Windows (PowerShell)**.
 2. If a block starts with variables, set them first.
 3. Compare the output with **Expect:**. If it differs, do what **If not:** says.
 

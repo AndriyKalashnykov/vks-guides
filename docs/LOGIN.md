@@ -57,7 +57,7 @@ checks the download itself: keep the file (next block) only when the fingerprint
 your vCenter administrator gives you. Set `VCENTER_FQDN` to vCenter's DNS name.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VCENTER_FQDN="vcsa.example.test"
@@ -130,7 +130,7 @@ ignoring colons and upper/lower case.
 
 When every fingerprint matches, keep the file:
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 CA_FILE="$HOME/.kube/vcenter-ca.pem"
@@ -154,7 +154,7 @@ The login reads the password from this terminal, so it is never on a command lin
 shell history. Paste this line on its own, then type the password; nothing is shown as you type
 (PowerShell shows `*`).
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
@@ -180,7 +180,7 @@ changed. **A few failed logins in a row lock the SSO user for some minutes**, so
 carefully. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
@@ -273,7 +273,7 @@ The login reads the password from this terminal, so it is never on a command lin
 shell history. Paste this line on its own, then type the password; nothing is shown as you type
 (PowerShell shows `*`).
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
@@ -298,7 +298,7 @@ failed logins in a row lock the SSO user for some minutes**, so type the passwor
 `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
@@ -381,7 +381,7 @@ its fingerprint. Compare the fingerprint with your vCenter administrator's befor
 it. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
@@ -447,7 +447,7 @@ you fetched it: fetch it again (step 2 above).
 This checks that your SSO user can see your vSphere Namespace, and lists the VKS clusters in
 it.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -494,7 +494,7 @@ Keep it private
 Set `VKS_CLUSTER` to a name from the `NAME` column above.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -588,7 +588,7 @@ users of this machine. This moves it to `~/.kube/<cluster>.kubeconfig`, readable
 then lists the cluster's nodes to show it works. Set `DOWNLOADED` to where the browser saved it;
 on WSL, a browser on Windows saves it under `/mnt/c/Users/<you>/Downloads`.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -638,7 +638,7 @@ Pick one of the two ways.
 
 Every `kubectl` command in this terminal then goes to the VKS cluster.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -665,7 +665,7 @@ read; a new terminal has them back.
 Add `--kubeconfig` with the VKS cluster's kubeconfig to every `kubectl` command; nothing else
 changes, in any terminal. For example:
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -692,7 +692,7 @@ expired (about a year after the cluster made it); run
 Optional: kubectl must be within one minor version of the cluster to be supported. This prints both
 versions, so you can tell:
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -742,7 +742,7 @@ password step of the Create section you used, and mind the lock-out. Set `SUPERV
 file you created the context with (the vCenter CA, or `supervisor.crt`), or to `""` if you created
 it without CA.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
@@ -799,7 +799,7 @@ This deletes the Supervisor login with its namespace contexts, its kubeconfig, `
 (they hold a copy of the login token) and the password in this terminal. The VKS cluster's
 kubeconfig is kept; delete it with `rm` if you no longer need it.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"

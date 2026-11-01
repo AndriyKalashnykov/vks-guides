@@ -54,7 +54,7 @@ each worker has free (A needs about 400m, B about 200m), and whether some Tekton
 installed.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -149,7 +149,7 @@ A's pods ask for about 400m in all, B's for 200m, each at most 100m on one worke
 Skip to step 3 for B. This lists the Tekton add-on releases your Supervisor offers. The next block
 needs the release name; no release means your VKS is older than 3.8.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 vcf context use supervisor </dev/null
@@ -178,7 +178,7 @@ which this guide does not set up. The block stops if the cluster already has ano
 waits until the operator's two pods run.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -306,7 +306,7 @@ the containers Tekton adds to each run safe enough for step 4's namespace. The o
 few minutes to accept this, so the block retries, then waits until Tekton runs.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -410,7 +410,7 @@ This downloads Tekton's three install files (Pipelines, Triggers and Triggers' i
 needs them to uninstall.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 TEKTON_DIR="$HOME/.config/vks-guides/tekton"
@@ -479,7 +479,7 @@ block retries and waits. It stops if the cluster already has the add-on (A). It 
 minutes while the nodes pull the images.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -588,7 +588,7 @@ This runs a small pipeline to show that Tekton works. It creates:
 It then runs the pipeline once, waits for it to finish, and prints the second Task's output.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -867,7 +867,7 @@ EventListener: a small web service in `tekton-demo` that reads a name from the r
 other pods, so only your machine (next block) reaches it. The block waits until the listener runs.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1105,7 +1105,7 @@ run), then
 **Open the listener to your machine.** This connects port 8180 on your machine to the listener, so
 the next block can send it a request. Keep it running, in a terminal of its own, until step 6.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1131,7 +1131,7 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo port-forward service/el-hell
 run it starts and shows its output.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1213,7 +1213,7 @@ if ($LASTEXITCODE -ne 0) {
 Stop the port-forward with **Ctrl+C** first. This deletes the namespace `tekton-demo`, with every
 run and pod in it, and the demo's cluster role and binding.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1251,7 +1251,7 @@ the Supervisor and deletes the namespace `tekton-operator`. Last, it prints how 
 types (CRDs) are left.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -1430,7 +1430,7 @@ This deletes what step 3's files installed, so it needs those files on this mach
 until Tekton's namespaces are gone, then prints how many Tekton object types (CRDs) are left.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
