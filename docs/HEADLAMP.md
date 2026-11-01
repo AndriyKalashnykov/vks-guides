@@ -286,15 +286,17 @@ system namespaces. An account limited to one namespace also gets the right to li
 names (role `headlamp-namespace-lister`), so that Headlamp's namespace list works; it sees nothing
 inside the other namespaces. Give no one `admin` or `cluster-admin` through Headlamp.
 
+`ACCOUNT`: the person's or team's name (a-z, 0-9). `ROLE`: `view` or `edit`. `ACCESS_NAMESPACE`: empty for every namespace (view only).
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-ACCOUNT="team-a"                                   # the person's or team's name: a-z, 0-9, -
-ROLE="edit"                                        # view or edit
-ACCESS_NAMESPACE="team-a"                          # empty: every namespace (view only)
+ACCOUNT="team-a"
+ROLE="edit"
+ACCESS_NAMESPACE="team-a"
 
 A="system:serviceaccount:headlamp:${ACCOUNT}"
 case "$ROLE/$ACCESS_NAMESPACE" in
@@ -678,6 +680,8 @@ A new certificate is made when the name or address changes; Headlamp reads it on
 starts, so the block then restarts it (some seconds away). The browser warns again for the new
 certificate: check its new fingerprint (step 6).
 
+`HEADLAMP_HOSTNAME`: empty gives `headlamp.vks.example.com`. `CERT_WITH_IP` and `KUBESCAPE_PLUGIN`: `yes` or `no`.
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
@@ -685,9 +689,9 @@ certificate: check its new fingerprint (step 6).
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-HEADLAMP_HOSTNAME="headlamp.example.com"            # empty: headlamp.vks.example.com
-CERT_WITH_IP="yes"                                 # yes or no
-KUBESCAPE_PLUGIN="no"                              # yes or no
+HEADLAMP_HOSTNAME="headlamp.example.com"
+CERT_WITH_IP="yes"
+KUBESCAPE_PLUGIN="no"
 DIR="$HOME/.config/vks-guides/headlamp"
 
 vcf context use supervisor </dev/null
@@ -1180,15 +1184,17 @@ This gives an account from step 4 what the plugins read:
   and in them the names of all pods, images and Secrets. Give it only to accounts allowed to see
   that.
 
+`ACCOUNT` and `ACCESS_NAMESPACE`: as in step 4 (empty: every namespace). `PROMETHEUS_QUERY`: `yes` adds the whole cluster's metrics.
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-ACCOUNT="team-a"                                   # as in step 4
-ACCESS_NAMESPACE="team-a"                          # as in step 4; empty: every namespace
-PROMETHEUS_QUERY="no"                              # yes: the whole cluster's metrics
+ACCOUNT="team-a"
+ACCESS_NAMESPACE="team-a"
+PROMETHEUS_QUERY="no"
 
 S="headlamp:${ACCOUNT}"
 if ! kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get serviceaccount "$ACCOUNT" >/dev/null; then

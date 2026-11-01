@@ -234,13 +234,15 @@ This starts Gitea in your VKS cluster. It creates:
 
 It then waits until Gitea answers.
 
+`SERVICE_RANGE`: leave it empty to read it from the cluster.
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-SERVICE_RANGE=""                      # empty: read it from the cluster
+SERVICE_RANGE=""
 
 if [ -z "$SERVICE_RANGE" ]; then
   SERVICE_RANGE="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get servicecidr -o jsonpath='{.items[*].spec.cidrs[*]}')"
@@ -527,6 +529,8 @@ and waits for Gitea to answer.
 > - Without these values the chart also installs a PostgreSQL cluster, a cache cluster and an
 >   administrator with a published password; keep `-f values.yaml` on every run.
 
+`SERVICE_RANGE`: leave it empty to read it from the cluster.
+
 <details>
 <summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
 
@@ -535,7 +539,7 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 GITEA_DIR="$HOME/.config/vks-guides/gitea"
 CHART_SHA256="5881ef9c59400bee2d5547e77c4cd0efb925143c2f5d93fb4f38446db76b0167"
-SERVICE_RANGE=""                      # empty: read it from the cluster
+SERVICE_RANGE=""
 
 if [ -z "$SERVICE_RANGE" ]; then
   SERVICE_RANGE="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get servicecidr -o jsonpath='{.items[*].spec.cidrs[*]}')"
