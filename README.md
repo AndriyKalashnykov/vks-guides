@@ -7,6 +7,16 @@ Step-by-step guides for VMware vSphere Kubernetes Service (VKS) on VCF 9.1. They
 vCenter administrators who are new to VKS and Kubernetes, and use standard Kubernetes terms, so
 Kubernetes engineers can use them as a reference too.
 
+## Before you start: do Prerequisites, then run its Check
+
+On each machine where you will paste the blocks, do [Prerequisites](docs/PREREQS.md) for its OS,
+then run its [Check](docs/PREREQS.md#check), which lists any missing tool. Without these tools,
+blocks that use them stop or take the wrong branch. On Windows, Prerequisites is also where you
+choose PowerShell or WSL 2. Then do the rest of [Getting started](docs/GET-STARTED.md) (kubectl, the
+VCF CLI, logging in): most guides need it too.
+
+## About VKS and these guides
+
 **What VKS is.** VKS runs conformant Kubernetes clusters, built from upstream Kubernetes
 releases, on vSphere. The Supervisor is a Kubernetes control plane that vSphere runs on your
 vSphere clusters, managed from vCenter. On it you create vSphere Namespaces and set, for each one,
@@ -41,15 +51,11 @@ success looks like and **If not:** says what to do.
 
 ## How to use
 
-1. First, on the machine where you will paste the blocks, do [Prerequisites](docs/PREREQS.md) for
-   its OS, then its [Check](docs/PREREQS.md#check). Every command-line block in the guides needs
-   those tools, and fails without them (Windows PowerShell already has them; on Windows,
-   Prerequisites is where you choose PowerShell or WSL 2).
-2. Do the steps in order. Where a block comes in versions for different shells, paste the one for
+1. Do the steps in order. Where a block comes in versions for different shells, paste the one for
    yours: **Linux, macOS, WSL (bash or zsh)** or **Windows (PowerShell)**. On Windows, a block with
    no PowerShell version runs in WSL 2 ([Prerequisites](docs/PREREQS.md#windows)).
-3. If a block starts with variables, set them first.
-4. Compare the output with the **Expect:** line under the block; if it differs, do what **If not:** says.
+2. If a block starts with variables, set them first.
+3. Compare the output with the **Expect:** line under the block; if it differs, do what **If not:** says.
 
 ## Guides
 
@@ -65,11 +71,6 @@ its guides, the order to follow and where each was tested.
 | [Container images](docs/IMAGES.md) | build OCI container images, push them to a private registry, deploy them to a VKS cluster |
 | [GitOps and CI/CD](docs/GITOPS-CICD.md) | GitOps continuous delivery (ArgoCD), self-hosted Git (Gitea, GitLab), CI pipelines (Tekton, GitLab CI), build and deploy on every push |
 | [Operations and observability](docs/OPERATE.md) | cluster web UI (Headlamp), metrics and alerting (Prometheus, Grafana), log forwarding (VCF Operations), logs and distributed tracing (Loki, Jaeger) |
-
-## Check what is installed
-
-To see which tools this machine already has, and which install guides to do, run
-[Prerequisites: Check](docs/PREREQS.md#check).
 
 ## License
 
