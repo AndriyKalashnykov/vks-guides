@@ -1,4 +1,4 @@
-# Get started
+# Getting started
 
 Start with Prerequisites. Then install kubectl and the VCF CLI, in either order; Log in needs both.
 Helm is needed only by the guides that install apps with it.

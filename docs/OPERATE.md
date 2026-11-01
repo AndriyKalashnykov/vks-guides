@@ -1,6 +1,6 @@
-# Operate and observe
+# Operations and observability
 
-All optional. Monitoring needs Helm ([Get started](GET-STARTED.md)) or ArgoCD ([GitOps and
+All optional. Monitoring needs Helm ([Getting started](GET-STARTED.md)) or ArgoCD ([GitOps and
 CI/CD](GITOPS-CICD.md)); observability needs monitoring and Helm.
 
 | guide | what it is |
