@@ -1059,7 +1059,9 @@ NEXUS_CA="$HOME/nexus-ca.pem"
 U="https://${NEXUS_REGISTRY}/service/rest/v1"
 cfg() { printf 'user = "admin:%s"\n' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')" > "$T/admin.cfg"; }
 nx() { curl -fsS --connect-timeout 20 --cacert "$NEXUS_CA" -K "$T/admin.cfg" "$@"; }
-if [ -z "${NEXUS_ADMIN_PASSWORD:-}" ]; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ -z "${NEXUS_ADMIN_PASSWORD:-}" ]; then
   echo "STOPPED: type the new admin password first (the line above)"
 elif [ ! -s "$NEXUS_CA" ]; then
   echo "MISSING: $NEXUS_CA (step 7)"
@@ -1183,7 +1185,9 @@ NEXUS_PULL_USER="apps-pull"
 U="https://${NEXUS_REGISTRY}/service/rest/v1"
 V="nx-repository-view-docker-${NEXUS_REPO}"
 nx() { curl -fsS --connect-timeout 20 --cacert "$NEXUS_CA" -K "$T/admin.cfg" "$@"; }
-if [ -z "${NEXUS_ADMIN_PASSWORD:-}" ] || [ -z "${NEXUS_PUSH_PASSWORD:-}" ] || [ -z "${NEXUS_PULL_PASSWORD:-}" ]; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ -z "${NEXUS_ADMIN_PASSWORD:-}" ] || [ -z "${NEXUS_PUSH_PASSWORD:-}" ] || [ -z "${NEXUS_PULL_PASSWORD:-}" ]; then
   echo "STOPPED: type the three passwords first (the line above)"
 elif T="$(umask 077 && mktemp -d)"; then
   printf 'user = "admin:%s"\n' "$(printf '%s' "$NEXUS_ADMIN_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')" > "$T/admin.cfg"
@@ -1595,7 +1599,9 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 
 S="${VKS_CLUSTER}-user-trusted-ca-secret"
 P='[{"op":"add","path":"/spec/topology/variables/-","value":{"name":"osConfiguration","value":{"trust":{"additionalTrustedCAs":[{"caCert":{"secretRef":{"name":"'"$S"'","key":"nexus-ca"}}}]}}}}]'
-if ! J="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get cluster "$VKS_CLUSTER" -o json)"; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif ! J="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get cluster "$VKS_CLUSTER" -o json)"; then
   echo "FAILED: cannot read the cluster (see the error above)"
 elif printf '%s' "$J" | jq -e '[.spec.topology.variables[]? | select(.name == "osConfiguration")] | length > 0' >/dev/null; then
   echo "STOPPED: the cluster has an osConfiguration setting already; add the caCert to it by hand (kubectl edit cluster)"
@@ -1675,7 +1681,9 @@ NEXUS_PULL_USER="apps-pull"
 
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n default "$@"; }
-if [ -z "${NEXUS_PULL_PASSWORD:-}" ]; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ -z "${NEXUS_PULL_PASSWORD:-}" ]; then
   echo "STOPPED: type the pull user's password first (the line above)"
 elif PW="$NEXUS_PULL_PASSWORD" jq -n --arg h "$NEXUS_REGISTRY" --arg u "$NEXUS_PULL_USER" \
     '{apiVersion: "v1", kind: "Secret", type: "kubernetes.io/dockerconfigjson", metadata: {name: "nexus-pull"},
