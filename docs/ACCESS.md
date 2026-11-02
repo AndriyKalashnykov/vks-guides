@@ -1016,7 +1016,8 @@ the one that signed in.
 ### 7. Take one person's access away (identity provider's administrator)
 
 Disable the user at the identity provider, or end their sessions there: their next sign-in renewal
-is refused. A credential the cluster already gave them keeps working until it expires. In Keycloak:
+is refused. A credential the cluster already gave them keeps working until it expires, at most
+5 minutes later. In Keycloak:
 
 - **Disable** the user, or sign them out (the user's **Sessions** tab > **Sign out**).
 - Removing them from one of their groups takes that group away at the next renewal, but not from
