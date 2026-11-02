@@ -1146,13 +1146,15 @@ Remove-Variable -ErrorAction SilentlyContinue NEXUS_ADMIN_PASSWORD
   `admin`'s current password. When run again, type the password you set the first time.
 - `The requested URL returned error: 400` at the password change: Nexus refused the password; type
   a longer one and run both blocks again.
+- `The requested URL returned error: 429`: Nexus blocks logins for a short while after wrong
+  passwords; wait a minute, then run the block again with the right password.
 - `MISSING: …nexus-ca.pem` or `SSL certificate problem`: run step 7 first.
 
 ## 9. Create the Docker repository, a push user and a pull user
 
 This creates a Docker repository `NEXUS_REPO` with path-based routing (images named
-`<NEXUS_REGISTRY>/<NEXUS_REPO>/<image>:<tag>`), where a tag, once pushed, cannot be pushed again
-with other content. It then creates two users with passwords you type: `NEXUS_PUSH_USER`, who may read and push in
+`<NEXUS_REGISTRY>/<NEXUS_REPO>/<image>:<tag>`), where a tag, once pushed, cannot be pushed again,
+even with the same content. It then creates two users with passwords you type: `NEXUS_PUSH_USER`, who may read and push in
 that repository only (for you and your builds), and `NEXUS_PULL_USER`, who may only read it (for
 the VKS clusters, step 11). It skips what exists.
 
@@ -1298,6 +1300,8 @@ Remove-Variable -ErrorAction SilentlyContinue NEXUS_ADMIN_PASSWORD, NEXUS_PUSH_P
 
 **If not:**
 - `The requested URL returned error: 401`: the `admin` password is wrong (step 8).
+- `The requested URL returned error: 429`: Nexus blocks logins for a short while after wrong
+  passwords; wait a minute, then run the block again.
 - `The requested URL returned error: 400` at the repository: `NEXUS_REPO` holds characters other
   than letters, digits, `-`, `_` and `.`.
 - `repository:` with `pathEnabled` `null`: the repository was made without path-based routing (for
@@ -1431,12 +1435,13 @@ then `Removed login credentials for …` (docker: `Removing login credentials fo
 
 **If not:**
 - `x509: certificate signed by unknown authority`: trust the CA for your OS and engine (above).
-- `unauthorized` (podman: `invalid username/password`): the push user's name or password is wrong
-  (step 9).
-- `denied` or `insufficient_scope`: the user may not push to this repository (step 9's role), or
-  `NEXUS_REPO` is not the repository's name.
-- `redeploy is not allowed` or `cannot be updated`: this tag was pushed before; tags in this
-  repository cannot be replaced. Push with a new tag.
+- `unauthorized` (podman: `invalid username/password`) at the login: the push user's name or
+  password is wrong (step 9).
+- `unauthorized` at `writing manifest` after `Login Succeeded`, or `denied` or
+  `insufficient_scope`: the user may not push to this repository (step 9's role).
+- `StatusCode: 405`: `NEXUS_REPO` is not the repository's name.
+- `redeploy is not allowed` or `cannot be updated`: this tag was pushed before (also when you run
+  this step again); tags in this repository cannot be replaced. Push with a new tag.
 
 ## 11. Let VKS clusters pull from Nexus
 
@@ -1714,11 +1719,12 @@ spec:
         capabilities:
           drop: ["ALL"]
 EOF
+  PUID="$(kc get pod nexus-pull-check -o jsonpath='{.metadata.uid}')"
   M=""; PH=""; n=0
   until [ -n "$M" ] || [ "$PH" = Succeeded ] || [ "$n" -ge 24 ]; do
     n=$((n + 1)); sleep 5
     PH="$(kc get pod nexus-pull-check -o jsonpath='{.status.phase}')"
-    M="$(kc get events --field-selector involvedObject.name=nexus-pull-check,reason=Failed -o jsonpath='{.items[*].message}')"
+    M="$(kc get events --field-selector "involvedObject.uid=$PUID,reason=Failed" -o jsonpath='{.items[*].message}')"
   done
   kc delete pod nexus-pull-check --ignore-not-found >/dev/null
   case "$PH:$M" in
@@ -1784,11 +1790,12 @@ spec:
         capabilities:
           drop: ["ALL"]
 "@ | kc apply -f -
+    $PUID = kc get pod nexus-pull-check -o 'jsonpath={.metadata.uid}'
     $M = ''; $PH = ''; $n = 0
     while (-not $M -and $PH -ne 'Succeeded' -and $n -lt 24) {
       $n++; Start-Sleep -Seconds 5
       $PH = kc get pod nexus-pull-check -o 'jsonpath={.status.phase}'
-      $M = "$(kc get events --field-selector involvedObject.name=nexus-pull-check,reason=Failed -o 'jsonpath={.items[*].message}')"
+      $M = "$(kc get events --field-selector "involvedObject.uid=$PUID,reason=Failed" -o 'jsonpath={.items[*].message}')"
     }
     kc delete pod nexus-pull-check --ignore-not-found | Out-Null
     if ($PH -eq 'Succeeded') { "OK: the cluster pulled $NEXUS_REGISTRY/$NEXUS_REPO/busybox:1.37.0" }
@@ -1891,7 +1898,7 @@ kc exec postgres-0 -- rm -f /tmp/nexus-db.dump
 <!-- TODO-MEASURE: backup on VKS (kubectl cp of blobs with tar in the alpine image, size/time), and a restore into a fresh namespace before the guide states one -->
 
 **Expect:** a size line for `blobs`, `keystores` and `nexus-db.dump`, then `backed up to …` with
-the same number twice in `(… of … blob files)`. Two `tar: Removing leading` lines from kubectl are
+the same number twice in `(… of … blob files)`. Three `tar: Removing leading` lines from kubectl are
 harmless.
 
 **If not:** `FAILED: …`: run the block again; a folder from a failed run is not a backup (kubectl
