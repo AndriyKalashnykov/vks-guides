@@ -481,7 +481,9 @@ APP_NAMESPACE="harbor-demo"
 IMAGE_DIR="$HOME/.config/vks-guides/image"
 
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-if [ -z "$HARBOR_PULL_SECRET" ]; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ -z "$HARBOR_PULL_SECRET" ]; then
   echo "FAILED: no pull robot secret in this terminal; run the line above"
 elif [ ! -s "$VKS_KUBECONFIG" ] || [ ! -s "$IMAGE_DIR/k8s/namespace.yaml" ]; then
   echo "FAILED: $VKS_KUBECONFIG or $IMAGE_DIR/k8s/namespace.yaml is missing (step 3)"

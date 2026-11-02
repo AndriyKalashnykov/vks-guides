@@ -36,10 +36,11 @@ blocks; there is nothing to build.
   `| from | to | port | for |` with every connection its blocks open or make another component
   open (the nodes, ArgoCD); registries by name, with a link to PREREQS.md's Registry hosts.
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
-- Passwords are typed (`read -rs` / `Read-Host -AsSecureString`) and passed only as the
+- Passwords are typed (`IFS= read -rs` / `Read-Host -AsSecureString`) and passed only as the
   `VCF_CLI_VSPHERE_PASSWORD` env var for one command; never on argv, never saved.
-- A block whose create, update, delete or reported cause depends on jq output checks
-  `command -v jq` before any command that changes something, and prints
+- A block whose create, update, delete, request body, wait or reported cause depends on jq
+  checks `command -v jq` before any command that changes the cluster, the Supervisor or a
+  server (local file writes and `vcf context use` may come first), and prints
   `MISSING: jq (PREREQS.md)`: empty output takes the wrong branch, deletes nothing, or loses a
   token a server already made.
 - Downloads use `--connect-timeout 20 --speed-time 60`; a file is replaced only after it checks out.

@@ -1125,18 +1125,22 @@ cluster has removed the volume, and prints how many volumes are left.
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace gitea --ignore-not-found --timeout=10m
-N="unknown"
-for i in $(seq 36); do
-  if J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o json)"; then
-    N="$(printf '%s' "$J" | jq '[.items[] | select(.spec.claimRef.namespace == "gitea")] | length')"
-    [ "$N" = 0 ] && break
-  elif [ "$i" = 1 ]; then
-    break
-  fi
-  sleep 5
-done
-echo "volumes left from gitea: $N"
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+else
+  kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace gitea --ignore-not-found --timeout=10m
+  N="unknown"
+  for i in $(seq 36); do
+    if J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o json)"; then
+      N="$(printf '%s' "$J" | jq '[.items[] | select(.spec.claimRef.namespace == "gitea")] | length')"
+      [ "$N" = 0 ] && break
+    elif [ "$i" = 1 ]; then
+      break
+    fi
+    sleep 5
+  done
+  echo "volumes left from gitea: $N"
+fi
 ```
 
 </details>

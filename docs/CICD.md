@@ -2094,7 +2094,10 @@ HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 HOOK="http://el-cicd-demo.cicd-ci.svc.cluster.local:8080"
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
-kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - <<'EOF'
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+else
+  kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - <<'EOF'
 apiVersion: v1
 kind: ServiceAccount
 metadata: {name: cicd-listener, namespace: cicd-ci}
@@ -2174,8 +2177,8 @@ spec:
     - from:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gitea}}
 EOF
-[ -n "$HARBOR_FQDN" ] || echo "FAILED: no hostname in $HARBOR_DIR/harbor-data-values.yml"
-[ -n "$HARBOR_FQDN" ] && kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - <<EOF
+  [ -n "$HARBOR_FQDN" ] || echo "FAILED: no hostname in $HARBOR_DIR/harbor-data-values.yml"
+  [ -n "$HARBOR_FQDN" ] && kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - <<EOF
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata: {name: cicd-demo, namespace: cicd-ci}
@@ -2186,29 +2189,30 @@ spec:
     - {name: image, value: cicd-demo/test-web-apps}
     - {name: registry, value: "${HARBOR_FQDN}"}
 EOF
-if ! kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-ci get secret cicd-webhook -o name >/dev/null 2>&1; then
-  openssl rand -hex 20 | tr -d '\n' \
-    | jq -R '{apiVersion: "v1", kind: "Secret", metadata: {name: "cicd-webhook", namespace: "cicd-ci"}, stringData: {token: .}}' \
-    | kubectl --kubeconfig "$VKS_KUBECONFIG" create -f -
+  if ! kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-ci get secret cicd-webhook -o name >/dev/null 2>&1; then
+    openssl rand -hex 20 | tr -d '\n' \
+      | jq -R '{apiVersion: "v1", kind: "Secret", metadata: {name: "cicd-webhook", namespace: "cicd-ci"}, stringData: {token: .}}' \
+      | kubectl --kubeconfig "$VKS_KUBECONFIG" create -f -
+  fi
+  if [ -z "$GITEA_PASSWORD" ]; then
+    echo "FAILED: no Gitea password in this terminal; type it (step 4), then run this again"
+  else
+    CFG="$(mktemp)"
+    P="$(printf '%s' "$GITEA_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+    printf 'user = "gitea-admin:%s"\n' "$P" > "$CFG"
+    P=""
+    api() { curl -sS --connect-timeout 20 --max-time 30 -K "$CFG" -H 'Content-Type: application/json' "$@"; }
+    for ID in $(api "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks" | jq -r --arg u "$HOOK" '.[]? | select(.config.url == $u) | .id'); do
+      api -o /dev/null -X DELETE "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks/$ID" && echo "replaced webhook $ID"
+    done
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-ci get secret cicd-webhook -o jsonpath='{.data.token}' | openssl base64 -d -A \
+      | jq -R --arg u "$HOOK" '{type: "gitea", active: true, events: ["push"], branch_filter: "main",
+                               config: {url: $u, content_type: "json", secret: .}}' \
+      | api -o /dev/null -w 'webhook: %{http_code}\n' -X POST --data-binary @- "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks"
+    rm -f "$CFG"
+  fi
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-ci wait --for=condition=Ready eventlistener/cicd-demo --timeout=5m
 fi
-if [ -z "$GITEA_PASSWORD" ]; then
-  echo "FAILED: no Gitea password in this terminal; type it (step 4), then run this again"
-else
-  CFG="$(mktemp)"
-  P="$(printf '%s' "$GITEA_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
-  printf 'user = "gitea-admin:%s"\n' "$P" > "$CFG"
-  P=""
-  api() { curl -sS --connect-timeout 20 --max-time 30 -K "$CFG" -H 'Content-Type: application/json' "$@"; }
-  for ID in $(api "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks" | jq -r --arg u "$HOOK" '.[]? | select(.config.url == $u) | .id'); do
-    api -o /dev/null -X DELETE "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks/$ID" && echo "replaced webhook $ID"
-  done
-  kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-ci get secret cicd-webhook -o jsonpath='{.data.token}' | openssl base64 -d -A \
-    | jq -R --arg u "$HOOK" '{type: "gitea", active: true, events: ["push"], branch_filter: "main",
-                             config: {url: $u, content_type: "json", secret: .}}' \
-    | api -o /dev/null -w 'webhook: %{http_code}\n' -X POST --data-binary @- "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks"
-  rm -f "$CFG"
-fi
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-ci wait --for=condition=Ready eventlistener/cicd-demo --timeout=5m
 ```
 
 </details>
