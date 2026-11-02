@@ -10,6 +10,7 @@ ArgoCD first. For build and deploy on every push, use Gitea and Tekton, or GitLa
 | [Run Tekton in a VKS cluster](TEKTON.md) | a CI/CD engine that runs each build step as a pod, with a sample pipeline started by an HTTP request |
 | [Run GitLab in a VKS cluster](GITLAB.md) | GitLab Community Edition, Git and CI/CD in one product, in one pod of a VKS cluster, with a runner that runs each CI job as a pod; an alternative to Gitea and Tekton |
 | [Build and deploy on every push](CICD.md) | a push to a Git repository builds the image in the VKS cluster, pushes it to the container registry (Harbor) and has ArgoCD roll it out, with Gitea and Tekton or with GitLab |
+| [Run Octopus Deploy in a VKS cluster](OCTOPUS.md) | a release server that promotes releases through dev, test and prod, with SQL Server Express, in a VKS cluster |
 
 ## Tested on
 
@@ -26,6 +27,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines:
 | [Run GitLab](GITLAB.md) | part | ✅ | part | — | part | — |
 | [CI/CD with Gitea and Tekton](CICD.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | [CI/CD with GitLab](CICD.md) | part | ✅ | — | — | — | — |
+| [Run Octopus Deploy](OCTOPUS.md) | — | — | — | — | — | — |
 
 Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
 
