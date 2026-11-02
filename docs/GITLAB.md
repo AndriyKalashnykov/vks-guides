@@ -1005,19 +1005,23 @@ has removed the volume, and prints how many volumes are left.
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace gitlab --ignore-not-found --timeout=10m
-N="unknown"
-for i in $(seq 36); do
-  if J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o json)"; then
-    N="$(printf '%s' "$J" | jq '[.items[] | select(.spec.claimRef.namespace == "gitlab")] | length')"
-    [ "$N" = 0 ] && break
-  elif [ "$i" = 1 ]; then
-    break
-  fi
-  sleep 5
-done
-[ -n "$N" ] || N="unknown"
-echo "volumes left from gitlab: $N"
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+else
+  kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace gitlab --ignore-not-found --timeout=10m
+  N="unknown"
+  for i in $(seq 36); do
+    if J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o json)"; then
+      N="$(printf '%s' "$J" | jq '[.items[] | select(.spec.claimRef.namespace == "gitlab")] | length')"
+      [ "$N" = 0 ] && break
+    elif [ "$i" = 1 ]; then
+      break
+    fi
+    sleep 5
+  done
+  [ -n "$N" ] || N="unknown"
+  echo "volumes left from gitlab: $N"
+fi
 ```
 
 </details>

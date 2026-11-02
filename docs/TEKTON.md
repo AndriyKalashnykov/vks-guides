@@ -190,7 +190,9 @@ TEKTON_DIR="$HOME/.config/vks-guides/tekton"
 vcf context use supervisor </dev/null
 mkdir -p "$TEKTON_DIR"
 printf 'helmValues:\n  exposure:\n    enabled: false\n' > "$TEKTON_DIR/addon-values.yaml"
-if ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
   echo "FAILED: cannot read the cluster (see the error above)"
 elif printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tasks.tekton.dev' \
      && ! printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev'; then
@@ -1140,7 +1142,9 @@ TEKTON_DIR="$HOME/.config/vks-guides/tekton"
 
 mkdir -p "$TEKTON_DIR"
 printf '{"who": "Tekton Triggers"}\n' > "$TEKTON_DIR/request.json"
-if ! R="$(curl -fsS --connect-timeout 20 -H 'Content-Type: application/json' --data-binary "@$TEKTON_DIR/request.json" http://localhost:8180)"; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif ! R="$(curl -fsS --connect-timeout 20 -H 'Content-Type: application/json' --data-binary "@$TEKTON_DIR/request.json" http://localhost:8180)"; then
   echo "FAILED: the EventListener did not accept the request"
 else
   echo "$R"

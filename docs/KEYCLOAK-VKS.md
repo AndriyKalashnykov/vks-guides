@@ -1184,7 +1184,9 @@ EMAIL="alice@example.com"
 GROUP="team-a"
 OTP="no"
 
-if [ -z "${KC_USER_PASSWORD:-}" ]; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ -z "${KC_USER_PASSWORD:-}" ]; then
   echo "STOPPED: type the temporary password first (the line above)"
 else
   KC_PW="$KC_USER_PASSWORD" jq -n --arg u "$USERNAME" --arg f "$FIRST_NAME" --arg l "$LAST_NAME" --arg e "$EMAIL" --arg g "$GROUP" --arg otp "$OTP" \
