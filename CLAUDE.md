@@ -38,8 +38,10 @@ blocks; there is nothing to build.
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
 - Passwords are typed (`read -rs` / `Read-Host -AsSecureString`) and passed only as the
   `VCF_CLI_VSPHERE_PASSWORD` env var for one command; never on argv, never saved.
-- A block that installs, updates or reports a cause from jq output first checks
-  `command -v jq` and prints `MISSING: jq (PREREQS.md)`: empty output would take the wrong branch.
+- A block whose create, update, delete or reported cause depends on jq output checks
+  `command -v jq` before any command that changes something, and prints
+  `MISSING: jq (PREREQS.md)`: empty output takes the wrong branch, deletes nothing, or loses a
+  token a server already made.
 - Downloads use `--connect-timeout 20 --speed-time 60`; a file is replaced only after it checks out.
 - Broadcom terms: "VKS cluster" (not guest/TKG cluster), "Supervisor", "vSphere Namespace",
   "VCF CLI". Text is minimal: what to run and what to expect, no notes or mechanism essays.

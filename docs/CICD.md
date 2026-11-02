@@ -276,7 +276,9 @@ HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 case "$GIT_SERVER" in gitea) CI_NAMESPACE="cicd-ci" ;; *) CI_NAMESPACE="gitlab-runner" ;; esac
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
-if [ -z "$HARBOR_FQDN" ] || [ ! -s "$HARBOR_DIR/harbor-ca.crt" ] || [ ! -r "$HARBOR_DIR/secrets.env" ]; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ -z "$HARBOR_FQDN" ] || [ ! -s "$HARBOR_DIR/harbor-ca.crt" ] || [ ! -r "$HARBOR_DIR/secrets.env" ]; then
   echo "FAILED: harbor-data-values.yml, harbor-ca.crt or secrets.env is missing in $HARBOR_DIR"
 else
   CFG="$(mktemp)"
@@ -505,7 +507,9 @@ spec:
   ports:
     - { name: http, port: 80, targetPort: http }
 EOF
-if [ -z "$GITEA_PASSWORD" ]; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ -z "$GITEA_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; type it first (the block above), then run this again"
 elif ! kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea exec deployment/gitea -- gitea admin user list >/dev/null; then
   echo "FAILED: cannot run gitea in the pod (see the error above)"
@@ -1846,7 +1850,9 @@ runners:
           read_only = true
 EOF
 gitlab_rails() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>/dev/null | tail -1 | tr -d '\r\n'; }
-if [ "$( (sha256sum "$CHART" 2>/dev/null || shasum -a 256 "$CHART" 2>/dev/null) | cut -d' ' -f1)" != "$CHART_SHA256" ] || [ ! -s "$GITLAB_DIR/runner-values.yaml" ]; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ "$( (sha256sum "$CHART" 2>/dev/null || shasum -a 256 "$CHART" 2>/dev/null) | cut -d' ' -f1)" != "$CHART_SHA256" ] || [ ! -s "$GITLAB_DIR/runner-values.yaml" ]; then
   echo "FAILED: no runner chart or runner-values.yaml in $GITLAB_DIR; do GITLAB.md step 8 first"
 else
   kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - <<'EOF'

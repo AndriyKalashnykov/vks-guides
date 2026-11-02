@@ -220,7 +220,9 @@ controls the cluster. Give no one but cluster administrators rights in `headlamp
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-if ! IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get service headlamp -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif ! IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get service headlamp -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"; then
   echo "FAILED: cannot read Headlamp's service (see the error above)"
 else
   CA="$(mktemp)"
@@ -451,10 +453,14 @@ stops working within seconds.
 VKS_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
 ACCOUNT="team-a"
 
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp delete serviceaccount "$ACCOUNT" --ignore-not-found
-kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings,rolebindings -A -o json \
-  | jq -r --arg a "$ACCOUNT" '.items[] | select(any(.subjects[]?; .kind == "ServiceAccount" and .namespace == "headlamp" and .name == $a)) | "\(.kind) \(.metadata.namespace // "-") \(.metadata.name)"' \
-  | while read -r KIND NS B; do if [ "$KIND" = ClusterRoleBinding ]; then kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrolebinding "$B" </dev/null; else kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$NS" delete rolebinding "$B" </dev/null; fi; done
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+else
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp delete serviceaccount "$ACCOUNT" --ignore-not-found
+  kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings,rolebindings -A -o json \
+    | jq -r --arg a "$ACCOUNT" '.items[] | select(any(.subjects[]?; .kind == "ServiceAccount" and .namespace == "headlamp" and .name == $a)) | "\(.kind) \(.metadata.namespace // "-") \(.metadata.name)"' \
+    | while read -r KIND NS B; do if [ "$KIND" = ClusterRoleBinding ]; then kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrolebinding "$B" </dev/null; else kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$NS" delete rolebinding "$B" </dev/null; fi; done
+fi
 ```
 
 **Windows (PowerShell):**
@@ -1304,26 +1310,30 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 vcf context use supervisor </dev/null
-vcf addon install delete headlamp --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y \
-  || echo "(not deleted; on a second run the add-on is already gone, so this goes on)"
-N=x
-for i in $(seq 60); do
-  N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace headlamp --ignore-not-found -o name)" || N=x
-  if [ -z "$N" ]; then break; fi
-  sleep 5
-done
-kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings -o json \
-  | jq -r '.items[] | select((.metadata.name | startswith("headlamp-")) and (.subjects | length > 0) and all(.subjects[]; .kind == "ServiceAccount" and .namespace == "headlamp")) | .metadata.name' \
-  | while read -r B; do kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrolebinding "$B" </dev/null; done
-kubectl --kubeconfig "$VKS_KUBECONFIG" get rolebindings -A -o json \
-  | jq -r '.items[] | select((.metadata.name | startswith("headlamp-")) and (.subjects | length > 0) and all(.subjects[]; .kind == "ServiceAccount" and .namespace == "headlamp")) | "\(.metadata.namespace) \(.metadata.name)"' \
-  | while read -r NS B; do kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$NS" delete rolebinding "$B" </dev/null; done
-USED="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings,rolebindings -A -o jsonpath='{range .items[*]}{.roleRef.name}{"\n"}{end}')"
-for R in headlamp-namespace-lister headlamp-kubescape-reports; do
-  if printf '%s\n' "$USED" | grep -qx "$R"; then echo "kept: clusterrole ${R}, still used"; else kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrole "$R" --ignore-not-found; fi
-done
-if printf '%s\n' "$USED" | grep -qx headlamp-prometheus-query; then echo "kept: role headlamp-prometheus-query, still used"; else kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring delete role headlamp-prometheus-query --ignore-not-found 2>/dev/null; fi
-if [ -z "$N" ]; then echo "removed: namespace headlamp is gone"; else echo "NOT YET: namespace headlamp is still there; run this block again in a few minutes"; fi
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+else
+  vcf addon install delete headlamp --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y \
+    || echo "(not deleted; on a second run the add-on is already gone, so this goes on)"
+  N=x
+  for i in $(seq 60); do
+    N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace headlamp --ignore-not-found -o name)" || N=x
+    if [ -z "$N" ]; then break; fi
+    sleep 5
+  done
+  kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings -o json \
+    | jq -r '.items[] | select((.metadata.name | startswith("headlamp-")) and (.subjects | length > 0) and all(.subjects[]; .kind == "ServiceAccount" and .namespace == "headlamp")) | .metadata.name' \
+    | while read -r B; do kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrolebinding "$B" </dev/null; done
+  kubectl --kubeconfig "$VKS_KUBECONFIG" get rolebindings -A -o json \
+    | jq -r '.items[] | select((.metadata.name | startswith("headlamp-")) and (.subjects | length > 0) and all(.subjects[]; .kind == "ServiceAccount" and .namespace == "headlamp")) | "\(.metadata.namespace) \(.metadata.name)"' \
+    | while read -r NS B; do kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$NS" delete rolebinding "$B" </dev/null; done
+  USED="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings,rolebindings -A -o jsonpath='{range .items[*]}{.roleRef.name}{"\n"}{end}')"
+  for R in headlamp-namespace-lister headlamp-kubescape-reports; do
+    if printf '%s\n' "$USED" | grep -qx "$R"; then echo "kept: clusterrole ${R}, still used"; else kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrole "$R" --ignore-not-found; fi
+  done
+  if printf '%s\n' "$USED" | grep -qx headlamp-prometheus-query; then echo "kept: role headlamp-prometheus-query, still used"; else kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring delete role headlamp-prometheus-query --ignore-not-found 2>/dev/null; fi
+  if [ -z "$N" ]; then echo "removed: namespace headlamp is gone"; else echo "NOT YET: namespace headlamp is still there; run this block again in a few minutes"; fi
+fi
 ```
 
 </details>

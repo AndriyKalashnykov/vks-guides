@@ -1142,7 +1142,9 @@ TEKTON_DIR="$HOME/.config/vks-guides/tekton"
 
 mkdir -p "$TEKTON_DIR"
 printf '{"who": "Tekton Triggers"}\n' > "$TEKTON_DIR/request.json"
-if ! R="$(curl -fsS --connect-timeout 20 -H 'Content-Type: application/json' --data-binary "@$TEKTON_DIR/request.json" http://localhost:8180)"; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif ! R="$(curl -fsS --connect-timeout 20 -H 'Content-Type: application/json' --data-binary "@$TEKTON_DIR/request.json" http://localhost:8180)"; then
   echo "FAILED: the EventListener did not accept the request"
 else
   echo "$R"
