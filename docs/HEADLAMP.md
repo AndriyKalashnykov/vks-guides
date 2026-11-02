@@ -91,7 +91,9 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 HEADLAMP_RELEASE="headlamp.kubernetes.vmware.com.0.45.0-vmware.2-vks.1"
 
 vcf context use supervisor </dev/null
-if ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
   echo "FAILED: the VCF CLI (see the error above)"
 else
   OK=1
@@ -616,7 +618,9 @@ VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
 
 T="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
 E="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | . + ("=" * ((4 - length % 4) % 4)) | @base64d | fromjson | .exp' 2>/dev/null)"
-if [ -z "$T" ] || [ -z "$E" ]; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ -z "$T" ] || [ -z "$E" ]; then
   echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_SSO_KUBECONFIG}; log in first (ACCESS.md)"
 elif [ "$E" -le "$(date +%s)" ]; then
   echo "ENDED: that login has ended; log in again (ACCESS.md)"
@@ -828,7 +832,9 @@ DIR="$HOME/.config/vks-guides/headlamp"
 vcf context use supervisor </dev/null
 mkdir -p "$DIR"
 printf 'envoy:\n  hostPorts:\n    enable: false\n  service:\n    type: LoadBalancer\n' > "$DIR/contour-values.yaml"
-if ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
   echo "FAILED: the VCF CLI (see the error above)"
 else
   if [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "contour")] | length')" = 1 ]; then
@@ -1015,7 +1021,9 @@ DIR="$HOME/.config/vks-guides/headlamp"
 vcf context use supervisor </dev/null
 mkdir -p "$DIR"
 printf 'deploycomponents:\n  alertmanager: false\n  pushgateway: false\nprometheus:\n  pvc:\n    storage: %s\n' "$PROMETHEUS_STORAGE" > "$DIR/prometheus-values.yaml"
-if ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
   echo "FAILED: the VCF CLI (see the error above)"
 elif [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "prometheus")] | length')" = 1 ]; then
   echo "prometheus: already installed"

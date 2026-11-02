@@ -15,7 +15,8 @@ blocks; there is nothing to build.
   IMAGE-DOCKER.md (owner's choice): a short docker-on-Linux walkthrough whose blocks share the
   values of its first block, run in one terminal, with no error handling, no block labels and no
   download timeouts.
-- Every shell block is POSIX sh that runs in bash and zsh, labeled in bold
+- Every shell block is POSIX sh, besides `IFS= read -rs` for a typed password (bash and zsh
+  only; dash rejects `-s`), and runs in bash and zsh, labeled in bold
   `**Linux, macOS, WSL (bash or zsh):**`. Where Windows applies, a
   bold `**Windows (PowerShell):**` twin follows, written for Windows PowerShell 5.1: `curl.exe` (not
   the `curl` alias), `Expand-Archive`, `Get-FileHash`, installs to
@@ -37,6 +38,8 @@ blocks; there is nothing to build.
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
 - Passwords are typed (`read -rs` / `Read-Host -AsSecureString`) and passed only as the
   `VCF_CLI_VSPHERE_PASSWORD` env var for one command; never on argv, never saved.
+- A block that installs, updates or reports a cause from jq output first checks
+  `command -v jq` and prints `MISSING: jq (PREREQS.md)`: empty output would take the wrong branch.
 - Downloads use `--connect-timeout 20 --speed-time 60`; a file is replaced only after it checks out.
 - Broadcom terms: "VKS cluster" (not guest/TKG cluster), "Supervisor", "vSphere Namespace",
   "VCF CLI". Text is minimal: what to run and what to expect, no notes or mechanism essays.

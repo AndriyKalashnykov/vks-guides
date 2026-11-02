@@ -757,7 +757,9 @@ VKS_NAMESPACE="my-namespace"
 KC_GROUP="k8s-devs"
 ROLE="VIEW"
 
-if [ -z "$SSO_PASSWORD" ]; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the password line above"
 elif [ ! -f "$VCENTER_CA" ] || [ ! -s "$VCENTER_CA" ]; then
   echo "FAILED: not found: $VCENTER_CA"
