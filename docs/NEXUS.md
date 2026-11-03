@@ -177,7 +177,7 @@ line per worker, and `default storage class:` and a class name. Nexus needs a wo
 - `? GiB image disk free`: the node's statistics could not be read (the error above says why; after
   `Forbidden`, your kubeconfig may not read them); ask the cluster's administrator whether a worker
   has 4 GiB free.
-- `NO WORKER`: add a node pool with one worker ([CLUSTER.md](CLUSTER.md) step 10).
+- `NO WORKER`: set the node pool's `replicas` to 1 ([CLUSTER.md](CLUSTER.md) step 10).
 - `default storage class: NONE`: give the cluster a default class as in [CLUSTER.md](CLUSTER.md),
   step 9's `defaultStorageClass`.
 - `NOTE: namespace nexus exists already`: Nexus may be installed; steps 3 to 6 keep what exists.
