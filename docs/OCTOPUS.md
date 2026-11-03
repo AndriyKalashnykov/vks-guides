@@ -700,7 +700,7 @@ if kc rollout status statefulset/sql --timeout=10m; then
   done
 fi
 if [ -z "$V" ]; then
-  echo "FAILED: SQL Server does not accept logins (see kubectl -n octopus describe pod sql-0 and its logs)"
+  echo "FAILED: SQL Server does not accept logins (see kubectl --kubeconfig '$VKS_KUBECONFIG' -n octopus describe pod sql-0 and its logs)"
 elif ! P="$(kc get secret sql-octopus -o jsonpath='{.data.password}' | base64 -d)" || [ -z "$P" ]; then
   echo "FAILED: no secret sql-octopus (step 3)"
 else
@@ -821,7 +821,7 @@ if ($LASTEXITCODE -eq 0) {
   }
 }
 $B = kc get secret sql-octopus -o 'jsonpath={.data.password}'
-if (-not $V) { "FAILED: SQL Server does not accept logins (see kubectl -n octopus describe pod sql-0 and its logs)" }
+if (-not $V) { "FAILED: SQL Server does not accept logins (see kubectl --kubeconfig '$VKS_KUBECONFIG' -n octopus describe pod sql-0 and its logs)" }
 elseif (-not $B) { "FAILED: no secret sql-octopus (step 3)" }
 else {
   "SQL Server: $V"
@@ -942,7 +942,7 @@ R=""
 if [ -s "$OCTOPUS_DIR/values-ca.yaml" ]; then h -f "$OCTOPUS_DIR/values-ca.yaml"; else h; fi
 if [ $? -eq 0 ] && kc rollout status statefulset/octopus-octopus-deploy --timeout=15m; then R=true; fi
 if [ "$R" != true ]; then
-  echo "FAILED: Octopus is not ready (see kubectl -n octopus describe pod octopus-octopus-deploy-0)"
+  echo "FAILED: Octopus is not ready (see kubectl --kubeconfig '$VKS_KUBECONFIG' -n octopus describe pod octopus-octopus-deploy-0)"
 elif ! M="$(helm get manifest octopus --kubeconfig "$VKS_KUBECONFIG" -n octopus)"; then
   echo "FAILED: cannot read the Helm release (see the error above)"
 else
@@ -1131,7 +1131,7 @@ if ($LASTEXITCODE -eq 0) {
 }
 if ($R -eq 'true') { $M = helm get manifest octopus --kubeconfig $VKS_KUBECONFIG -n octopus; if ($LASTEXITCODE -ne 0) { $R = 'manifest' } }
 if ($R -eq 'manifest') { "FAILED: cannot read the Helm release (see the error above)" }
-elseif ($R -ne 'true') { "FAILED: Octopus is not ready (see kubectl -n octopus describe pod octopus-octopus-deploy-0)" }
+elseif ($R -ne 'true') { "FAILED: Octopus is not ready (see kubectl --kubeconfig '$VKS_KUBECONFIG' -n octopus describe pod octopus-octopus-deploy-0)" }
 else {
   "Octopus is ready; Secrets in the Helm release: $(@($M | Select-String '^kind: Secret').Count) of $(@($M | Select-String '^kind: ').Count) objects"
   $C = @'
