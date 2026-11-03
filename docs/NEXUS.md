@@ -1768,6 +1768,7 @@ spec:
   containers:
     - name: check
       image: ${NEXUS_REGISTRY}/${NEXUS_REPO}/busybox:1.37.0
+      imagePullPolicy: Always
       command: ["true"]
       securityContext:
         allowPrivilegeEscalation: false
@@ -1839,6 +1840,7 @@ spec:
   containers:
     - name: check
       image: $NEXUS_REGISTRY/$NEXUS_REPO/busybox:1.37.0
+      imagePullPolicy: Always
       command: ["true"]
       securityContext:
         allowPrivilegeEscalation: false
@@ -1867,8 +1869,6 @@ Remove-Variable -ErrorAction SilentlyContinue NEXUS_PULL_PASSWORD
 ```
 
 </details>
-
-<!-- TODO-MEASURE: node pull on VKS 3.8 from a second cluster and from Nexus's own cluster (LB IP from inside the serving cluster); exact containerd messages for the case arms -->
 
 **Expect:** `secret/nexus-pull created` (or `configured`), `pod/nexus-pull-check created`, then
 `OK: the cluster pulled <NEXUS_REGISTRY>/apps/busybox:1.37.0`. An app in the namespace uses the
