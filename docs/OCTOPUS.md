@@ -252,7 +252,7 @@ else
   if kc get secret octopus-connectionstring >/dev/null 2>&1; then
     echo "secret octopus-connectionstring: exists, kept"
   elif P="$(kc get secret sql-octopus -o jsonpath='{.data.password}' | base64 -d)" && [ -n "$P" ]; then
-    printf 'Server=sql;Initial Catalog=OctopusDeploy;Persist Security Info=False;User ID=octopus;Password=%s;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;' "$P" \
+    printf 'Server=sql;Initial Catalog=OctopusDeploy;Persist Security Info=False;User ID=octopus;Password=%s;Encrypt=True;Connection Timeout=30;' "$P" \
       | mk octopus-connectionstring secret
   else
     echo "FAILED: no secret sql-octopus (see the error above)"
@@ -298,7 +298,7 @@ else {
     $B = kc get secret sql-octopus -o 'jsonpath={.data.password}'
     if ($LASTEXITCODE -eq 0 -and $B) {
       $P = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B))
-      mk octopus-connectionstring secret "Server=sql;Initial Catalog=OctopusDeploy;Persist Security Info=False;User ID=octopus;Password=$P;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
+      mk octopus-connectionstring secret "Server=sql;Initial Catalog=OctopusDeploy;Persist Security Info=False;User ID=octopus;Password=$P;Encrypt=True;Connection Timeout=30;"
       $P = $null
     } else { "FAILED: no secret sql-octopus (see the error above)" }
     $B = $null
@@ -1241,16 +1241,26 @@ if kc get secret octopus-tls -o go-template='{{index .data "ca.crt" | base64deco
   curl -fsS --connect-timeout 20 --cacert "$OCTOPUS_CA" "https://${IP}/api" | grep -o '"Version": *"[^"]*"' \
     && echo "Octopus answers at https://${IP}"
   G="$(kc get service octopus-grpc -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-  openssl s_client -connect "${G}:8443" -alpn h2 </dev/null 2>/dev/null | sed -n 's/^subject=/gRPC certificate: /p; /^ALPN protocol/p'
+  if [ -z "$G" ]; then
+    echo "FAILED: octopus-grpc has no address yet (step 4)"
+  else
+    curl -sSv -k --connect-timeout 20 --max-time 20 --http2 -o /dev/null "https://${G}:8443/" 2>&1 \
+      | sed -n 's/^\* ALPN: server accepted /ALPN protocol: /p; s/^\*  *subject: /gRPC certificate: /p'
+  fi
 else
   rm -f "$OCTOPUS_CA.new"; echo "FAILED: no CA read (see the error above)"
 fi
 if ( umask 077 && rm -f "$OCTOPUS_KEY.new" && kc get secret octopus-masterkey -o jsonpath='{.data.secret}' | base64 -d > "$OCTOPUS_KEY.new" ) \
    && [ -s "$OCTOPUS_KEY.new" ]; then
   if [ -s "$OCTOPUS_KEY" ] && ! cmp -s "$OCTOPUS_KEY.new" "$OCTOPUS_KEY"; then
-    O="$OCTOPUS_KEY.$(date +%Y%m%d-%H%M%S)"; mv "$OCTOPUS_KEY" "$O" && echo "kept the older key as $O"
+    O="$OCTOPUS_KEY.$(date +%Y%m%d-%H%M%S)"
+    if mv "$OCTOPUS_KEY" "$O"; then echo "kept the older key as $O"; fi
   fi
-  mv "$OCTOPUS_KEY.new" "$OCTOPUS_KEY" && ls -l "$OCTOPUS_KEY"
+  if [ -e "$OCTOPUS_KEY" ] && ! cmp -s "$OCTOPUS_KEY.new" "$OCTOPUS_KEY"; then
+    rm -f "$OCTOPUS_KEY.new"; echo "FAILED: cannot keep the older key; nothing changed"
+  else
+    mv "$OCTOPUS_KEY.new" "$OCTOPUS_KEY" && ls -l "$OCTOPUS_KEY"
+  fi
 else
   rm -f "$OCTOPUS_KEY.new"; echo "FAILED: the master key is not saved (see the error above)"
 fi
@@ -1292,14 +1302,18 @@ if ($LASTEXITCODE -eq 0 -and $B) {
 $K = kc get secret octopus-masterkey -o 'jsonpath={.data.secret}'
 if ($LASTEXITCODE -eq 0 -and $K) {
   $N = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($K)); $K = $null
-  if ((Test-Path $OCTOPUS_KEY) -and ([IO.File]::ReadAllText($OCTOPUS_KEY) -ne $N)) {
-    $O = "$OCTOPUS_KEY.$(Get-Date -Format yyyyMMdd-HHmmss)"; Move-Item $OCTOPUS_KEY $O; "kept the older key as $O"
+  if ((Test-Path $OCTOPUS_KEY) -and ([IO.File]::ReadAllText($OCTOPUS_KEY) -cne $N)) {
+    $O = "$OCTOPUS_KEY.$(Get-Date -Format yyyyMMdd-HHmmss)"
+    try { Move-Item -ErrorAction Stop $OCTOPUS_KEY $O; "kept the older key as $O" } catch { }
   } else { Remove-Item -Force -ErrorAction SilentlyContinue $OCTOPUS_KEY }
-  New-Item -ItemType File -Path $OCTOPUS_KEY | Out-Null
-  $SID = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-  icacls $OCTOPUS_KEY /inheritance:r /grant:r "*${SID}:F" | Out-Null
-  if ($LASTEXITCODE -ne 0) { Remove-Item -Force $OCTOPUS_KEY; "FAILED: cannot make $OCTOPUS_KEY readable only by you" }
-  else { [IO.File]::WriteAllText($OCTOPUS_KEY, $N); Get-Item $OCTOPUS_KEY | Select-Object Name, Length }
+  if (Test-Path $OCTOPUS_KEY) { "FAILED: cannot keep the older key; nothing changed" }
+  else {
+    New-Item -ItemType File -Path $OCTOPUS_KEY | Out-Null
+    $SID = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    icacls $OCTOPUS_KEY /inheritance:r /grant:r "*${SID}:F" | Out-Null
+    if ($LASTEXITCODE -ne 0) { Remove-Item -Force $OCTOPUS_KEY; "FAILED: cannot make $OCTOPUS_KEY readable only by you" }
+    else { [IO.File]::WriteAllText($OCTOPUS_KEY, $N); Get-Item $OCTOPUS_KEY | Select-Object Name, Length }
+  }
   $N = $null
 } else { "FAILED: the master key is not saved (see the error above)" }
 ```
@@ -1308,7 +1322,7 @@ if ($LASTEXITCODE -eq 0 -and $K) {
 
 **Expect:** a `subject=` line with `Octopus CA`, a `sha256 Fingerprint=…` line, `saved
 …/octopus-ca.pem`, a `"Version"` line with `2026.3.16049`, `Octopus answers at https://<address>`,
-`gRPC certificate: CN=Octopus gRPC` and `ALPN protocol: h2` (Windows: no ALPN line), then a line
+`ALPN protocol: h2` and `gRPC certificate: CN=Octopus gRPC` (Windows: no ALPN line), then a line
 for `octopus-masterkey.txt` with `-rw-------` (Windows: its name and a length of 24). The gRPC port
 keeps Octopus's own certificate; the Argo CD gateway trusts it by itself, when Argo CD is connected.
 When the file held another install's key, `kept the older key as …` names where it went.
@@ -1881,9 +1895,9 @@ OCTOPUS_KEY="$HOME/octopus-masterkey.txt"
 V="(not checked)"
 if [ ! -s "$OCTOPUS_KEY" ]; then
   echo "STOPPED: $OCTOPUS_KEY is missing; save the master key first (step 8)"
-elif ! S="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus get secret octopus-masterkey -o jsonpath='{.data.secret}' 2>/dev/null | base64 -d)"; then
-  echo "STOPPED: cannot read the master key Secret"
-elif [ -n "$S" ] && [ "$S" != "$(cat "$OCTOPUS_KEY")" ]; then
+elif ! S="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus get secret octopus-masterkey --ignore-not-found -o jsonpath='{.data.secret}')"; then
+  echo "STOPPED: cannot read the master key Secret (see the error above)"
+elif [ -n "$S" ] && [ "$(printf '%s' "$S" | base64 -d)" != "$(cat "$OCTOPUS_KEY")" ]; then
   unset S; echo "STOPPED: $OCTOPUS_KEY holds another install's key; run step 8 first"
 else
   unset S
@@ -1911,9 +1925,11 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $OCTOPUS_KEY = "$HOME\octopus-masterkey.txt"
 
 $V = "(not checked)"
-$S = $null
+$S = $null; $RC = 0
+if ((Test-Path $OCTOPUS_KEY) -and (Get-Item $OCTOPUS_KEY).Length -gt 0) { $S = kubectl --kubeconfig $VKS_KUBECONFIG -n octopus get secret octopus-masterkey --ignore-not-found -o 'jsonpath={.data.secret}'; $RC = $LASTEXITCODE }
 if (-not (Test-Path $OCTOPUS_KEY) -or (Get-Item $OCTOPUS_KEY).Length -eq 0) { "STOPPED: $OCTOPUS_KEY is missing; save the master key first (step 8)" }
-elseif (($S = kubectl --kubeconfig $VKS_KUBECONFIG -n octopus get secret octopus-masterkey -o 'jsonpath={.data.secret}' 2>$null) -and ([Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($S)) -ne [IO.File]::ReadAllText($OCTOPUS_KEY))) { $S = $null; "STOPPED: $OCTOPUS_KEY holds another install's key; run step 8 first" }
+elseif ($RC -ne 0) { $S = $null; "STOPPED: cannot read the master key Secret (see the error above)" }
+elseif ($S -and ([Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($S)) -cne [IO.File]::ReadAllText($OCTOPUS_KEY))) { $S = $null; "STOPPED: $OCTOPUS_KEY holds another install's key; run step 8 first" }
 else {
   $S = $null
   helm uninstall octopus --kubeconfig $VKS_KUBECONFIG -n octopus
