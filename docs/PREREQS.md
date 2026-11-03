@@ -514,3 +514,4 @@ from more hosts than its name; allow these too (measured, all TCP 443):
 | `cgr.dev` | `*.r2.cloudflarestorage.com` |
 | `registry.gitlab.com` | `gitlab.com`, `cdn.registry.gitlab-static.net` |
 | `projects.packages.broadcom.com` | nothing else |
+| `mcr.microsoft.com` | `*.data.mcr.microsoft.com` (a host near you, for example `eastus.data.mcr.microsoft.com`) |

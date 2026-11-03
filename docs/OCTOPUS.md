@@ -19,16 +19,16 @@ nginx that holds the certificate), and its gRPC port 8443 (`octopus-grpc`), whic
 own certificate and is used by Octopus agents such as the Argo CD gateway. Port 80 (plain HTTP) is
 on neither.
 
-Every password and key goes into a Kubernetes Secret through a pipe: none is shown, saved in a
-file you did not ask for, or put on a command line. Nothing secret goes into Helm. You keep one
+Every password and key goes into a Kubernetes Secret through a pipe: none is shown or put on a
+command line, and none is saved in a file you did not ask for (on Windows, the sign-in in steps 9
+and 10 uses a temporary file that the block deletes). Nothing secret goes into Helm. You keep one
 thing yourself: the master key, which Octopus needs to read its own database (step 8).
 
 Run the steps in order. Steps 11 to 14 are for later.
 
 ## Prerequisites
 
-- a VKS cluster for Octopus, made as below, with its kubeconfig saved as
-  `~/.kube/<cluster name>.kubeconfig` ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+- a VKS cluster for Octopus, made as below;
 - the [VCF CLI](VCF.md) with the context `supervisor` ([LOGIN.md](LOGIN.md)), for the cert-manager
   add-on (step 2);
 - [kubectl](KUBECTL.md), [Helm](HELM.md), and [jq, curl and openssl](PREREQS.md);
@@ -37,15 +37,34 @@ Run the steps in order. Steps 11 to 14 are for later.
   ([Octopus pricing](https://octopus.com/pricing): 10 projects, 10 deployment targets, 5 tasks at a
   time, 1 space) and save the licence key text (it starts with `<License`) as
   `octopus-license.xml` in your home folder;
-- for step 11 only: Nexus from [NEXUS.md](NEXUS.md) and its `nexus-ca.pem`.
+- for step 11 only: Nexus from [NEXUS.md](NEXUS.md) and its `nexus-ca.pem`
+  ([NEXUS.md step 7](NEXUS.md#7-save-nexuss-ca-and-check-its-address)).
 
 Sizing. Octopus recommends, for a trial, 2 cores and 4 GB of memory for Octopus Server and 2 cores
 and 4 GB for SQL Server Express
 ([Performance](https://octopus.com/docs/administration/managing-infrastructure/performance)). This
 guide's manifests ask for 0.5 CPU and 2 GiB for Octopus (at most 4 GiB), 0.5 CPU and 2 GiB for SQL
-Server (at most 3 GiB, of which SQL Server uses 2 GB) and a little for nginx: a worker of the VM
-class `best-effort-medium` (2 CPUs, 8 GB) holds them. The images are for amd64 nodes only.
-<!-- TODO-MEASURE: VKS lab numbers (kubectl top, worker allocatable, esxi host memory) -->
+Server (at most 3 GiB, of which SQL Server uses 2 GB) and a little for nginx: by those requests,
+the smallest worker they fit on is the VM class `best-effort-medium` (2 CPUs, 8 GB). The images are
+for amd64 nodes only, and need about 8 GiB of the worker's image disk.
+<!-- TODO-MEASURE: VKS lab numbers (kubectl top, worker allocatable, image disk used, esxi host memory) -->
+
+The cluster for Octopus:
+
+1. Its vSphere Namespace offers the VM class `best-effort-medium` or larger
+   ([NAMESPACE.md step 8](NAMESPACE.md#8-check-the-namespace) lists them under `VM classes:`; a
+   vCenter administrator adds one with [NAMESPACE.md step 6](NAMESPACE.md#6-add-the-vm-classes)).
+2. Create the cluster with
+   [CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), with that
+   `vmClass`, one control-plane node and one worker (`replicas: 1` for both). Octopus's volumes take
+   about 15 GB (SQL Server 10 GiB, and Octopus's `package-repository-claim`, `artifacts-claim`,
+   `task-log-claim` and `audit-log-claim` of 1 GiB each and its server log of 200 MiB) on top of
+   the nodes ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)). A worker's image disk
+   is about 15 GiB; when other applications share the worker, give it its own disk for container
+   images with the `workers:` part in [CICD.md's Prerequisites](CICD.md#prerequisites).
+   <!-- TODO-MEASURE: namespace storage used by the cluster plus volumes -->
+3. Save its kubeconfig as `~/.kube/<cluster name>.kubeconfig`
+   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
 
 SQL Server. Octopus supports SQL Server versions that have at least two years of support left
 ([SQL Server database](https://octopus.com/docs/installation/sql-database)), and the free Express
@@ -64,13 +83,15 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 | the cluster's nodes | `mcr.microsoft.com` | 443 | the SQL Server image (step 6) |
 | the cluster's nodes | `docker.io` | 443 | the Octopus and nginx images (step 7) |
 | your machine and your browser | `octopus-web`'s address (step 4) | 443 | Octopus's web page and REST API (steps 8 to 11) |
-| Octopus agents (the Argo CD gateway) | `octopus-grpc`'s address (step 4) | 8443 | gRPC to Octopus |
-| the Octopus pod | Nexus's address | 443 | the Docker feed (step 11) |
+| Octopus agents (the Argo CD gateway) | `octopus-web`'s address and `octopus-grpc`'s address (step 4) | 443 and 8443 | Octopus's REST API and gRPC |
+| the cluster's nodes | Nexus's address | 443 | the Docker feed (step 11) |
+| the cluster's nodes | the hosts in [Octopus's outbound requests](https://octopus.com/docs/security/outbound-requests) | 443 | updates, step templates, telemetry (optional) |
 
 ## 1. Check the cluster
 
-This checks that the nodes are ready, that the cluster has a default storage class, and how much
-memory the workers can give pods. Octopus, SQL Server and nginx ask for about 4.1 GiB of it.
+This checks that the nodes are ready, the free memory and image disk on each worker, that the
+cluster has a default storage class, and that no `octopus` namespace exists yet. Octopus, SQL Server
+and nginx ask for about 4.1 GiB of memory.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -83,10 +104,20 @@ if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md
 elif ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
 elif ! command -v helm >/dev/null 2>&1; then echo "MISSING: helm (HELM.md)"
 elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (LOGIN.md)"
-elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
+elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide \
+     && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory')" \
+     && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory')" \
+     && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
+  { printf '%s\n' "$P" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
+    function b(v) { if (v ~ /Ki$/) return v * 1024; if (v ~ /Mi$/) return v * 1048576; if (v ~ /Gi$/) return v * 1073741824
+      if (v ~ /k$/) return v * 1000; if (v ~ /M$/) return v * 1000000; if (v ~ /G$/) return v * 1000000000; return v + 0 }
+    $1 == "P" { n = split($3, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") r[$2] += b(a[i]) }
+    $1 == "N" && NF == 3 { printf "%s %.1f\n", $2, (b($3) - r[$2]) / 1073741824 }' \
+  | while read -r W M; do
+      D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "/api/v1/nodes/$W/proxy/stats/summary" </dev/null | jq '.node.runtime.imageFs.availableBytes / 1073741824 | floor')"
+      echo "worker $W: $M GiB memory free, ${D:-?} GiB image disk free"
+    done
   echo "default storage class: $(printf '%s' "$J" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | .metadata.name] | if length == 0 then "NONE" else join(" ") end')"
-  kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' \
-    -o custom-columns='WORKER:.metadata.name,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory'
   kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace octopus 2>/dev/null && echo "NOTE: namespace octopus exists already"
 else
   echo "FAILED: cannot read the cluster (see the error above)"
@@ -107,11 +138,22 @@ if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubect
 elseif (-not (Get-Command helm -ErrorAction SilentlyContinue)) { "MISSING: helm (HELM.md)"; $global:LASTEXITCODE = 1 }
 elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (LOGIN.md)"; $global:LASTEXITCODE = 1 }
 else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
+if ($LASTEXITCODE -eq 0) { $N = @(kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory') }
+if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory') }
 if ($LASTEXITCODE -eq 0) { $J = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) {
+  function B($v) { if ($v -cmatch '^([\d.]+)(Ki|Mi|Gi|k|M|G)?$') { [double]$Matches[1] * @{ '' = 1; 'Ki' = 1KB; 'Mi' = 1MB; 'Gi' = 1GB; 'k' = 1e3; 'M' = 1e6; 'G' = 1e9 }[[string]$Matches[2]] } else { 0 } }
+  $R = @{}
+  foreach ($l in $P) { $f = -split $l; foreach ($c in ($f[1] -split ',')) { if ($c -and $c -ne '<none>') { $R[$f[0]] += (B $c) } } }
+  foreach ($l in $N) {
+    $f = -split $l
+    $S = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "/api/v1/nodes/$($f[0])/proxy/stats/summary" | Out-String | ConvertFrom-Json
+    $A = if ($S) { $S.node.runtime.imageFs.availableBytes }
+    $DISK = if ($null -ne $A) { [math]::Floor($A / 1GB) } else { '?' }
+    "worker $($f[0]): $([math]::Round(((B $f[1]) - $R[$f[0]]) / 1GB, 1)) GiB memory free, $DISK GiB image disk free"
+  }
   $D = @((ConvertFrom-Json $J).items | Where-Object { $_.metadata.annotations.'storageclass.kubernetes.io/is-default-class' -eq 'true' } | ForEach-Object { $_.metadata.name })
   "default storage class: $(if ($D.Count) { $D -join ' ' } else { 'NONE' })"
-  kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' -o 'custom-columns=WORKER:.metadata.name,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory'
   kubectl --kubeconfig $VKS_KUBECONFIG get namespace octopus 2>$null
   if ($LASTEXITCODE -eq 0) { "NOTE: namespace octopus exists already" }
 } else {
@@ -121,13 +163,18 @@ if ($LASTEXITCODE -eq 0) {
 
 </details>
 
-**Expect:** each node `Ready`, `default storage class:` and a class name, and a worker with
-`MEMORY` of about `6197436Ki` for `best-effort-medium`.
+**Expect:** each node `Ready`, a `worker …: … GiB memory free, … GiB image disk free` line per
+worker, and `default storage class:` and a class name. Octopus, SQL Server and nginx need a worker
+with at least 4.1 GiB memory and 8 GiB image disk free.
+<!-- TODO-MEASURE: the image disk Octopus and SQL Server use on a VKS worker -->
 
-**If not:** `default storage class: NONE`: give the cluster a default class as in
-[CLUSTER.md](CLUSTER.md), step 9's `defaultStorageClass`. `NOTE: namespace octopus exists already`:
-Octopus may be installed; steps 3 to 7 keep what exists.
-<!-- TODO-MEASURE: the worker memory threshold Octopus, SQL Server and nginx need on VKS -->
+**If not:**
+- No worker with that much free: add a node pool with a larger VM class, or a worker with its own
+  image disk (see "The cluster for Octopus" above).
+- `? GiB image disk free`: your kubeconfig cannot read the node's statistics; ask the cluster's
+  administrator whether a worker has 8 GiB free.
+- `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
+- `NOTE: namespace octopus exists already`: Octopus may be installed; steps 3 to 7 keep what exists.
 
 ## 2. Install cert-manager
 
@@ -254,6 +301,7 @@ else {
       mk octopus-connectionstring secret "Server=sql;Initial Catalog=OctopusDeploy;Persist Security Info=False;User ID=octopus;Password=$P;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
       $P = $null
     } else { "FAILED: no secret sql-octopus (see the error above)" }
+    $B = $null
   }
 }
 Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_ADMIN_PASSWORD
@@ -261,8 +309,8 @@ Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_ADMIN_PASSWORD
 
 </details>
 
-**Expect:** `namespace/octopus labeled`, then seven `secret …: created` lines (`exists, kept` when
-run again).
+**Expect:** `namespace/octopus labeled`, then seven `secret …: created` lines
+(`namespace/octopus not labeled` and `exists, kept` when run again).
 
 **If not:**
 - `STOPPED: type the admin password first`: run the one-line block above, then this one, in the
@@ -774,13 +822,15 @@ else {
   "SET NOCOUNT ON;`nIF DB_ID('OctopusDeploy') IS NULL CREATE DATABASE OctopusDeploy;`nIF SUSER_ID('octopus') IS NULL CREATE LOGIN octopus WITH PASSWORD = '$P';`nALTER AUTHORIZATION ON DATABASE::OctopusDeploy TO octopus;`nSELECT 'database owner: ' + SUSER_SNAME(owner_sid) FROM sys.databases WHERE name = 'OctopusDeploy';`nGO`n" | sq
   $P = $null
 }
+$B = $null
 ```
 
 </details>
 
 **Expect:** `service/sql created`, `statefulset.apps/sql created`, `partitioned roll out complete`,
 then `SQL Server: Express Edition (64-bit) 17.0.…` and `database owner: octopus`. A second run
-prints `unchanged` and the same two lines.
+prints `service/sql unchanged`, `statefulset.apps/sql configured` (nothing changes; the pod keeps
+running) and the same two lines.
 
 **If not:**
 - `CrashLoopBackOff` with `sqlservr: Operation not permitted` in `kubectl -n octopus logs sql-0`:
@@ -871,17 +921,13 @@ h() { helm upgrade --install octopus oci://ghcr.io/octopusdeploy/octopusdeploy-h
         --kubeconfig "$VKS_KUBECONFIG" -n octopus -f "$OCTOPUS_DIR/values.yaml" "$@" >/dev/null; }
 R=""
 if [ -s "$OCTOPUS_DIR/values-ca.yaml" ]; then h -f "$OCTOPUS_DIR/values-ca.yaml"; else h; fi
-if [ $? -eq 0 ]; then
-  for i in $(seq 180); do
-    R="$(kc get pod octopus-octopus-deploy-0 -o jsonpath='{.status.containerStatuses[0].ready}' 2>/dev/null)"
-    [ "$R" = true ] && break
-    sleep 5
-  done
-fi
+if [ $? -eq 0 ] && kc rollout status statefulset/octopus-octopus-deploy --timeout=15m; then R=true; fi
 if [ "$R" != true ]; then
   echo "FAILED: Octopus is not ready (see kubectl -n octopus describe pod octopus-octopus-deploy-0)"
+elif ! M="$(helm get manifest octopus --kubeconfig "$VKS_KUBECONFIG" -n octopus)"; then
+  echo "FAILED: cannot read the Helm release (see the error above)"
 else
-  echo "Octopus is ready; Secrets in the Helm release: $(helm get manifest octopus --kubeconfig "$VKS_KUBECONFIG" -n octopus | grep -c '^kind: Secret')"
+  echo "Octopus is ready; Secrets in the Helm release: $(printf '%s\n' "$M" | grep -c '^kind: Secret') of $(printf '%s\n' "$M" | grep -c '^kind: ') objects"
   C="$(cat <<'EOF' | kc apply -f -
 apiVersion: v1
 kind: ConfigMap
@@ -1051,15 +1097,14 @@ if (Test-Path "$OCTOPUS_DIR\values-ca.yaml") { $F += @('-f', "$OCTOPUS_DIR\value
 $R = ''
 helm upgrade --install octopus oci://ghcr.io/octopusdeploy/octopusdeploy-helm --version $CHART_VERSION --kubeconfig $VKS_KUBECONFIG -n octopus @F | Out-Null
 if ($LASTEXITCODE -eq 0) {
-  foreach ($i in 1..180) {
-    $R = kc get pod octopus-octopus-deploy-0 -o 'jsonpath={.status.containerStatuses[0].ready}' 2>$null
-    if ($R -eq 'true') { break }
-    Start-Sleep 5
-  }
+  kc rollout status statefulset/octopus-octopus-deploy --timeout=15m
+  if ($LASTEXITCODE -eq 0) { $R = 'true' }
 }
-if ($R -ne 'true') { "FAILED: Octopus is not ready (see kubectl -n octopus describe pod octopus-octopus-deploy-0)" }
+if ($R -eq 'true') { $M = helm get manifest octopus --kubeconfig $VKS_KUBECONFIG -n octopus; if ($LASTEXITCODE -ne 0) { $R = 'manifest' } }
+if ($R -eq 'manifest') { "FAILED: cannot read the Helm release (see the error above)" }
+elseif ($R -ne 'true') { "FAILED: Octopus is not ready (see kubectl -n octopus describe pod octopus-octopus-deploy-0)" }
 else {
-  "Octopus is ready; Secrets in the Helm release: $(@(helm get manifest octopus --kubeconfig $VKS_KUBECONFIG -n octopus | Select-String '^kind: Secret').Count)"
+  "Octopus is ready; Secrets in the Helm release: $(@($M | Select-String '^kind: Secret').Count) of $(@($M | Select-String '^kind: ').Count) objects"
   $C = @'
 apiVersion: v1
 kind: ConfigMap
@@ -1155,8 +1200,9 @@ spec:
 
 </details>
 
-**Expect:** `Octopus is ready; Secrets in the Helm release: 0`, then `configmap/octopus-proxy
-created`, `deployment.apps/octopus-proxy created` and `successfully rolled out`. Run again, it
+**Expect:** `partitioned roll out complete`, `Octopus is ready; Secrets in the Helm release: 0 of 6
+objects`, then `configmap/octopus-proxy created`, `deployment.apps/octopus-proxy created` and
+`successfully rolled out`. Run again, it
 prints `unchanged` for nginx and keeps Octopus's data and keys.
 
 **If not:**
@@ -1175,7 +1221,8 @@ holds no secret; your browser and agents trust Octopus's web page with it), chec
 answers on its web address, and saves Octopus's master key as `octopus-masterkey.txt` in your home
 folder, readable only by you. The key is not shown. Keep it somewhere safe and apart from the
 backups (step 12): with a backup of the database it opens every secret Octopus holds, and without it
-a backup cannot be used. Step 14 refuses to remove Octopus while this file is missing.
+a backup cannot be used. Step 14 refuses to remove Octopus while this file is missing or holds
+another install's key.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1193,11 +1240,16 @@ if kc get secret octopus-tls -o go-template='{{index .data "ca.crt" | base64deco
   mv "$OCTOPUS_CA.new" "$OCTOPUS_CA" && echo "saved $OCTOPUS_CA"
   curl -fsS --connect-timeout 20 --cacert "$OCTOPUS_CA" "https://${IP}/api" | grep -o '"Version": *"[^"]*"' \
     && echo "Octopus answers at https://${IP}"
+  G="$(kc get service octopus-grpc -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+  openssl s_client -connect "${G}:8443" -alpn h2 </dev/null 2>/dev/null | sed -n 's/^subject=/gRPC certificate: /p; /^ALPN protocol/p'
 else
   rm -f "$OCTOPUS_CA.new"; echo "FAILED: no CA read (see the error above)"
 fi
 if ( umask 077 && rm -f "$OCTOPUS_KEY.new" && kc get secret octopus-masterkey -o jsonpath='{.data.secret}' | base64 -d > "$OCTOPUS_KEY.new" ) \
    && [ -s "$OCTOPUS_KEY.new" ]; then
+  if [ -s "$OCTOPUS_KEY" ] && ! cmp -s "$OCTOPUS_KEY.new" "$OCTOPUS_KEY"; then
+    O="$OCTOPUS_KEY.$(date +%Y%m%d-%H%M%S)"; mv "$OCTOPUS_KEY" "$O" && echo "kept the older key as $O"
+  fi
   mv "$OCTOPUS_KEY.new" "$OCTOPUS_KEY" && ls -l "$OCTOPUS_KEY"
 else
   rm -f "$OCTOPUS_KEY.new"; echo "FAILED: the master key is not saved (see the error above)"
@@ -1228,30 +1280,45 @@ if ($LASTEXITCODE -eq 0 -and $B) {
   "saved $OCTOPUS_CA"
   $A = curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $OCTOPUS_CA "https://$IP/api"
   if ($LASTEXITCODE -eq 0) { "Version: $((($A | Out-String) | ConvertFrom-Json).Version)"; "Octopus answers at https://$IP" }
+  $G = kc get service octopus-grpc -o 'jsonpath={.status.loadBalancer.ingress[0].ip}'
+  try {
+    $T = New-Object Net.Sockets.TcpClient($G, 8443)
+    $S = New-Object Net.Security.SslStream($T.GetStream(), $false, { $true })
+    $S.AuthenticateAsClient($G)
+    "gRPC certificate: $($S.RemoteCertificate.Subject)"
+    $T.Close()
+  } catch { "FAILED: no TLS answer on ${G}:8443" }
 } else { "FAILED: no CA read (see the error above)" }
 $K = kc get secret octopus-masterkey -o 'jsonpath={.data.secret}'
 if ($LASTEXITCODE -eq 0 -and $K) {
-  Remove-Item -Force -ErrorAction SilentlyContinue $OCTOPUS_KEY
+  $N = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($K)); $K = $null
+  if ((Test-Path $OCTOPUS_KEY) -and ([IO.File]::ReadAllText($OCTOPUS_KEY) -ne $N)) {
+    $O = "$OCTOPUS_KEY.$(Get-Date -Format yyyyMMdd-HHmmss)"; Move-Item $OCTOPUS_KEY $O; "kept the older key as $O"
+  } else { Remove-Item -Force -ErrorAction SilentlyContinue $OCTOPUS_KEY }
   New-Item -ItemType File -Path $OCTOPUS_KEY | Out-Null
-  icacls $OCTOPUS_KEY /inheritance:r /grant:r "${env:USERNAME}:(R,W)" | Out-Null
-  [IO.File]::WriteAllText($OCTOPUS_KEY, [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($K)))
-  $K = $null
-  Get-Item $OCTOPUS_KEY | Select-Object Name, Length
+  $SID = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+  icacls $OCTOPUS_KEY /inheritance:r /grant:r "*${SID}:F" | Out-Null
+  if ($LASTEXITCODE -ne 0) { Remove-Item -Force $OCTOPUS_KEY; "FAILED: cannot make $OCTOPUS_KEY readable only by you" }
+  else { [IO.File]::WriteAllText($OCTOPUS_KEY, $N); Get-Item $OCTOPUS_KEY | Select-Object Name, Length }
+  $N = $null
 } else { "FAILED: the master key is not saved (see the error above)" }
 ```
 
 </details>
 
 **Expect:** a `subject=` line with `Octopus CA`, a `sha256 Fingerprint=…` line, `saved
-…/octopus-ca.pem`, a `"Version"` line with `2026.3.16049`, `Octopus
-answers at https://<address>`, then a line for `octopus-masterkey.txt` with `-rw-------` (Windows:
-its name and a length of 24).
+…/octopus-ca.pem`, a `"Version"` line with `2026.3.16049`, `Octopus answers at https://<address>`,
+`gRPC certificate: CN=Octopus gRPC` and `ALPN protocol: h2` (Windows: no ALPN line), then a line
+for `octopus-masterkey.txt` with `-rw-------` (Windows: its name and a length of 24). The gRPC port
+keeps Octopus's own certificate; the Argo CD gateway trusts it by itself, when Argo CD is connected.
+When the file held another install's key, `kept the older key as …` names where it went.
 
 **If not:**
 - `Connection refused` or a timeout: this machine cannot reach the web address on port 443, or nginx
   is not ready yet (step 7).
 - `SSL certificate problem`: step 5 ran with another address; run steps 5 and 8 again.
 - `FAILED: the master key is not saved`: step 3 did not finish.
+- No `gRPC certificate:` line: this machine cannot reach `octopus-grpc`'s address on port 8443.
 
 ## 9. Sign in
 
@@ -1337,7 +1404,7 @@ else {
     $B = kc get secret octopus-adminpassword -o 'jsonpath={.data.secret}'
     $P = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B))
     [IO.File]::WriteAllText("$T\login.json", (@{ Username = 'admin'; Password = $P; RememberMe = $false } | ConvertTo-Json -Compress))
-    $P = $null
+    $P = $null; $B = $null
     curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $OCTOPUS_CA -c "$T\jar" -o NUL -H 'Content-Type: application/json' --data-binary "@$T\login.json" "$U/users/login"
     if ($LASTEXITCODE -eq 0) {
       $X = (Select-String -Path "$T\jar" -Pattern 'Octopus-Csrf-Token\S*\s+(\S+)$').Matches[0].Groups[1].Value
@@ -1463,7 +1530,7 @@ else {
     $B = kc get secret octopus-adminpassword -o 'jsonpath={.data.secret}'
     $P = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B))
     [IO.File]::WriteAllText("$T\login.json", (@{ Username = 'admin'; Password = $P } | ConvertTo-Json -Compress))
-    $P = $null
+    $P = $null; $B = $null
     curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $OCTOPUS_CA -c "$T\jar" -o NUL -H 'Content-Type: application/json' --data-binary "@$T\login.json" "$U/users/login"
     if ($LASTEXITCODE -ne 0) { "FAILED: sign-in refused (see the error above)" }
     else {
@@ -1496,8 +1563,8 @@ dev-test-prod: created, phases dev,test,prod` (`exists` when run again).
 
 ## 11. Trust Nexus and add it as a Docker feed (optional)
 
-(not run with Nexus on VKS yet) Octopus checks Nexus's certificate when it lists image tags. This
-gives Octopus Nexus's CA: it saves `nexus-ca.pem` from [NEXUS.md step 7](NEXUS.md) as a ConfigMap
+Octopus checks Nexus's certificate when it lists image tags. This gives Octopus Nexus's CA: it
+saves `nexus-ca.pem` from [NEXUS.md step 7](NEXUS.md#7-save-nexuss-ca-and-check-its-address) as a ConfigMap
 (the certificate only, no key), writes a second values file that builds a CA bundle for Octopus
 when it starts, and runs step 7 again, which uses both files. Octopus restarts once.
 
@@ -1630,11 +1697,11 @@ octopus:
 step 7, `Octopus is ready`, and `kubectl -n octopus logs octopus-octopus-deploy-0 -c ca-bundle`
 prints the number of CAs in the bundle (about 150).
 
-Then add Nexus in the web page: **Deploy** → **External Feeds** (under **Manage**) → **Add Feed**,
-type **Docker Container Registry**, URL `https://<NEXUS_REGISTRY>`, and the pull user's name and
-password from NEXUS.md step 9. With Nexus's path-based routing, the feed's search lists nothing:
-type the package ID as `<repository>/<image>`, for example `apps/busybox`, and Octopus lists its
-tags. Octopus reads tags as versions, so tag images with versions such as `1.0.0`.
+Then add Nexus in the web page as a Docker feed (**External Feeds**), with the URL
+`https://<NEXUS_REGISTRY>` and the pull user's name and password from
+[NEXUS.md step 9](NEXUS.md#9-create-the-docker-repository-a-push-user-and-a-pull-user). Octopus reads image tags as versions, so tag images with versions such
+as `1.0.0`.
+<!-- TODO-MEASURE: the Add Feed page in the web UI, and the feed's search and versions against NEXUS.md's path-based routing -->
 
 **If not:**
 - `The remote certificate is invalid because of errors in the certificate chain: PartialChain`
@@ -1687,8 +1754,10 @@ kc exec sql-0 -- mkdir -p /var/opt/mssql/backup
 if ($LASTEXITCODE -eq 0) { "SET NOCOUNT ON;`nBACKUP DATABASE OctopusDeploy TO DISK = N'/var/opt/mssql/backup/OctopusDeploy.bak' WITH COPY_ONLY, INIT, CHECKSUM;`nRESTORE VERIFYONLY FROM DISK = N'/var/opt/mssql/backup/OctopusDeploy.bak' WITH CHECKSUM;`nGO`n" | sq }
 if ($LASTEXITCODE -eq 0) {
   New-Item -ItemType Directory -Path $D | Out-Null
-  icacls $D /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)F" | Out-Null
-  Push-Location $D; kc cp sql-0:/var/opt/mssql/backup/OctopusDeploy.bak OctopusDeploy.bak; Pop-Location
+  $SID = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+  icacls $D /inheritance:r /grant:r "*${SID}:(OI)(CI)F" | Out-Null
+  if ($LASTEXITCODE -eq 0) { Push-Location $D; kc cp sql-0:/var/opt/mssql/backup/OctopusDeploy.bak OctopusDeploy.bak; Pop-Location }
+  else { Remove-Item -Recurse -Force $D; "FAILED: cannot make $D readable only by you" }
 }
 if ($LASTEXITCODE -eq 0 -and (Test-Path "$D\OctopusDeploy.bak") -and (Get-Item "$D\OctopusDeploy.bak").Length -gt 0) {
   Get-Item "$D\OctopusDeploy.bak" | Select-Object Name, Length; "backed up to $D"
@@ -1700,15 +1769,12 @@ kc exec sql-0 -- rm -f /var/opt/mssql/backup/OctopusDeploy.bak
 
 **Expect:** `BACKUP DATABASE successfully processed … pages`, `The backup set on file 1 is valid.`,
 a `tar: Removing leading` line from kubectl (harmless), then the file `OctopusDeploy.bak` (tens of
-MB, `-rw-------`) and `backed up to …`.
+MB, `-rw-------`) and `backed up to …`. Move `octopus-masterkey.txt` off this machine (for example
+into a password manager), apart from the backups: a copy of both opens every secret Octopus holds.
 
 **If not:** `FAILED: no backup …`: run the block again; a folder from a failed run is not a backup.
 
-To restore (measured on a test cluster, not on VKS): into a new namespace, create step 3's Secrets
-with new SQL passwords but the saved master key (`octopus-masterkey` from `octopus-masterkey.txt`),
-run steps 4 to 6, copy the `.bak` into `sql-0` and run `RESTORE DATABASE OctopusDeploy FROM DISK =
-… WITH CHECKSUM, RECOVERY` followed by step 6's `CREATE LOGIN` and `ALTER AUTHORIZATION` lines,
-then step 7. Octopus then starts with the restored environments, lifecycles and users.
+A restore needs the backup and the master key; this guide does not cover it.
 
 ## 13. Change the admin password
 
@@ -1740,8 +1806,8 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus "$@"; }
 if [ -z "${OCTOPUS_ADMIN_PASSWORD:-}" ]; then
   echo "STOPPED: type the new password first (the line above)"
-elif kc delete secret octopus-adminpassword --ignore-not-found \
-     && printf '%s' "$OCTOPUS_ADMIN_PASSWORD" | kc create secret generic octopus-adminpassword --from-file=secret=/dev/stdin \
+elif printf '%s' "$OCTOPUS_ADMIN_PASSWORD" | kc create secret generic octopus-adminpassword --from-file=secret=/dev/stdin --dry-run=client -o yaml \
+       | kc replace -f - \
      && kc delete pod octopus-octopus-deploy-0 && sleep 10 \
      && kc wait --for=condition=Ready pod/octopus-octopus-deploy-0 --timeout=10m; then
   echo "admin password: changed"
@@ -1765,8 +1831,7 @@ $global:LASTEXITCODE = $null
 if (-not $OCTOPUS_ADMIN_PASSWORD -or $OCTOPUS_ADMIN_PASSWORD.Length -eq 0) { "STOPPED: type the new password first (the line above)" }
 else {
   $B = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([Net.NetworkCredential]::new('', $OCTOPUS_ADMIN_PASSWORD).Password))
-  kc delete secret octopus-adminpassword --ignore-not-found
-  if ($LASTEXITCODE -eq 0) { @('apiVersion: v1', 'kind: Secret', 'metadata:', '  name: octopus-adminpassword', 'data:', "  secret: $B") | kc create -f - }
+  @('apiVersion: v1', 'kind: Secret', 'metadata:', '  name: octopus-adminpassword', 'data:', "  secret: $B") | kc replace -f -
   $B = $null
   if ($LASTEXITCODE -eq 0) { kc delete pod octopus-octopus-deploy-0; Start-Sleep 10 }
   if ($LASTEXITCODE -eq 0) { kc wait --for=condition=Ready pod/octopus-octopus-deploy-0 --timeout=10m }
@@ -1777,18 +1842,22 @@ Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_ADMIN_PASSWORD
 
 </details>
 
-**Expect:** `secret "octopus-adminpassword" deleted`, `secret/octopus-adminpassword created`, `pod
-"octopus-octopus-deploy-0" deleted`, `condition met`, then `admin password: changed`. Sign in with
-the new password.
+**Expect:** `secret/octopus-adminpassword replaced`, `pod "octopus-octopus-deploy-0" deleted`,
+`condition met`, then `admin password: changed`. Sign in with the new password.
 
-**If not:** `STOPPED: type the new password first`: run the one-line block above, then this one, in
-the same terminal.
+**If not:**
+- `STOPPED: type the new password first`: run the one-line block above, then this one, in the same
+  terminal.
+- `NotFound`: the Secret is not there; run step 3.
+- `502 Bad Gateway` from the web page right after: Octopus is still starting; wait a few seconds.
 
 ## 14. Remove Octopus (optional)
 
 This removes Octopus and SQL Server and deletes the namespace `octopus` with every Secret, the CA
-and the database, then waits until the volumes are gone. It refuses while
-`octopus-masterkey.txt` (step 8) is missing, because without it no backup can be used again.
+and the database, then waits until the volumes are gone (SQL Server's, and Octopus's
+`package-repository-claim`, `artifacts-claim`, `task-log-claim`, `audit-log-claim` and server log).
+It refuses while `octopus-masterkey.txt` (step 8) is missing or holds another install's key,
+because without the key no backup can be used again.
 cert-manager stays; so do `octopus-ca.pem`, the master key file, the backups, the values files in
 `~/.config/vks-guides/octopus` and the CA you trusted in step 9.
 
@@ -1803,7 +1872,12 @@ OCTOPUS_KEY="$HOME/octopus-masterkey.txt"
 V="(not checked)"
 if [ ! -s "$OCTOPUS_KEY" ]; then
   echo "STOPPED: $OCTOPUS_KEY is missing; save the master key first (step 8)"
+elif ! S="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus get secret octopus-masterkey -o jsonpath='{.data.secret}' 2>/dev/null | base64 -d)"; then
+  echo "STOPPED: cannot read the master key Secret"
+elif [ -n "$S" ] && [ "$S" != "$(cat "$OCTOPUS_KEY")" ]; then
+  unset S; echo "STOPPED: $OCTOPUS_KEY holds another install's key; run step 8 first"
 else
+  unset S
   helm uninstall octopus --kubeconfig "$VKS_KUBECONFIG" -n octopus
   kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace octopus --wait --timeout=10m
   for i in $(seq 60); do
@@ -1828,8 +1902,11 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $OCTOPUS_KEY = "$HOME\octopus-masterkey.txt"
 
 $V = "(not checked)"
+$S = $null
 if (-not (Test-Path $OCTOPUS_KEY) -or (Get-Item $OCTOPUS_KEY).Length -eq 0) { "STOPPED: $OCTOPUS_KEY is missing; save the master key first (step 8)" }
+elseif (($S = kubectl --kubeconfig $VKS_KUBECONFIG -n octopus get secret octopus-masterkey -o 'jsonpath={.data.secret}' 2>$null) -and ([Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($S)) -ne [IO.File]::ReadAllText($OCTOPUS_KEY))) { $S = $null; "STOPPED: $OCTOPUS_KEY holds another install's key; run step 8 first" }
 else {
+  $S = $null
   helm uninstall octopus --kubeconfig $VKS_KUBECONFIG -n octopus
   kubectl --kubeconfig $VKS_KUBECONFIG delete namespace octopus --wait --timeout=10m
   foreach ($i in 1..60) {
@@ -1848,7 +1925,10 @@ else {
 **Expect:** `release "octopus" uninstalled`, `namespace "octopus" deleted`, then `Octopus's volumes
 are gone`. Run again, it prints `release: not found` and `namespaces "octopus" not found` first.
 
-**If not:** `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not
-delete the cluster until it is gone.
+**If not:**
+- `STOPPED: … holds another install's key`: run step 8 for this install (it keeps the older key
+  under another name), then this step.
+- `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not delete the
+  cluster until it is gone.
 
 Back to [README](../README.md).
