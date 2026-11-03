@@ -92,7 +92,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 
 This checks that the nodes are ready, the free memory and image disk on each worker, that the
 cluster has a default storage class, and that no `octopus` namespace exists yet. Octopus, SQL Server,
-nginx and the cert-manager add-on of step 2 ask for about 4.3 GiB of memory.
+nginx and the cert-manager add-on of step 2 ask for about 4.3 GiB of memory; pods already in the `octopus` and
+`cert-manager` namespaces are not counted as using any.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -107,14 +108,16 @@ elif ! command -v helm >/dev/null 2>&1; then echo "MISSING: helm (HELM.md)"
 elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (LOGIN.md)"
 elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide \
      && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu')" \
-     && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu')" \
+     && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu')" \
      && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
+  [ -n "$N" ] || echo "NO WORKER: this cluster has no worker node"
   { printf '%s\n' "$P" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
     function b(v) { if (v ~ /Ki$/) return v * 1024; if (v ~ /Mi$/) return v * 1048576; if (v ~ /Gi$/) return v * 1073741824
       if (v ~ /k$/) return v * 1000; if (v ~ /M$/) return v * 1000000; if (v ~ /G$/) return v * 1000000000; return v + 0 }
     function c(v) { if (v ~ /m$/) return v / 1000; return v + 0 }
-    $1 == "P" { n = split($3, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") r[$2] += b(a[i])
-                n = split($4, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") q[$2] += c(a[i]) }
+    $1 == "P" && $2 != "octopus" && $2 != "cert-manager" {
+                n = split($4, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") r[$3] += b(a[i])
+                n = split($5, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") q[$3] += c(a[i]) }
     $1 == "N" && NF == 4 { printf "%s %.1f %.2f\n", $2, (b($3) - r[$2]) / 1073741824, c($4) - q[$2] }' \
   | while read -r W M C; do
       D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "/api/v1/nodes/$W/proxy/stats/summary" </dev/null | jq '.node.runtime.imageFs.availableBytes / 1073741824 | floor')"
@@ -142,16 +145,18 @@ elseif (-not (Get-Command helm -ErrorAction SilentlyContinue)) { "MISSING: helm 
 elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (LOGIN.md)"; $global:LASTEXITCODE = 1 }
 else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
 if ($LASTEXITCODE -eq 0) { $N = @(kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu') }
-if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu') }
+if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A '--field-selector=status.phase!=Succeeded,status.phase!=Failed' --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu') }
 if ($LASTEXITCODE -eq 0) { $J = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) {
   function B($v) { if ($v -cmatch '^([\d.]+)(Ki|Mi|Gi|k|M|G)?$') { [double]$Matches[1] * @{ '' = 1; 'Ki' = 1KB; 'Mi' = 1MB; 'Gi' = 1GB; 'k' = 1e3; 'M' = 1e6; 'G' = 1e9 }[[string]$Matches[2]] } else { 0 } }
   function C($v) { if ($v -cmatch '^([\d.]+)m$') { [double]$Matches[1] / 1000 } elseif ($v -cmatch '^[\d.]+$') { [double]$v } else { 0 } }
+  if (-not $N) { "NO WORKER: this cluster has no worker node" }
   $R = @{}; $Q = @{}
   foreach ($l in $P) {
     $f = -split $l
-    foreach ($c in ($f[1] -split ',')) { if ($c -and $c -ne '<none>') { $R[$f[0]] += (B $c) } }
-    foreach ($c in ($f[2] -split ',')) { if ($c -and $c -ne '<none>') { $Q[$f[0]] += (C $c) } }
+    if ($f[0] -eq 'octopus' -or $f[0] -eq 'cert-manager') { continue }
+    foreach ($c in ($f[2] -split ',')) { if ($c -and $c -ne '<none>') { $R[$f[1]] += (B $c) } }
+    foreach ($c in ($f[3] -split ',')) { if ($c -and $c -ne '<none>') { $Q[$f[1]] += (C $c) } }
   }
   foreach ($l in $N) {
     $f = -split $l
@@ -179,8 +184,10 @@ disk free.
 **If not:**
 - No worker with that much free: add a node pool with a larger VM class, or a worker with its own
   image disk (see "The cluster for Octopus" above).
-- `? GiB image disk free`: your kubeconfig cannot read the node's statistics; ask the cluster's
-  administrator whether a worker has 8 GiB free.
+- `? GiB image disk free`: the node's statistics could not be read (the error above says why; after
+  `Forbidden`, your kubeconfig may not read them); ask the cluster's administrator whether a worker
+  has 8 GiB free.
+- `NO WORKER`: add a node pool with one worker ([CLUSTER.md](CLUSTER.md) step 10).
 - `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
 - `NOTE: namespace octopus exists already`: Octopus may be installed; steps 3 to 7 keep what exists.
 
