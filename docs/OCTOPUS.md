@@ -36,8 +36,9 @@ Run the steps in order. Steps 11 to 13 are for later.
   ([Octopus pricing](https://octopus.com/pricing): 10 projects, 10 deployment targets, 5 tasks at a
   time, 1 space) and save the licence key text (it starts with `<License`) as
   `octopus-license.xml` in your home folder;
-- for step 11 only: Nexus from [NEXUS.md](NEXUS.md) and its `nexus-ca.pem`
-  ([NEXUS.md step 7](NEXUS.md#7-save-nexuss-ca-and-check-its-address)).
+- for step 11 only: Nexus from [NEXUS.md](NEXUS.md), its `nexus-ca.pem`
+  ([NEXUS.md step 7](NEXUS.md#7-save-nexuss-ca-and-check-its-address)) and the image it pushes
+  ([NEXUS.md step 10](NEXUS.md#10-trust-nexus-and-push-an-image)).
 
 Sizing. Octopus recommends, for a trial, 2 cores and 4 GB of memory for Octopus Server and 2 cores
 and 4 GB for SQL Server Express
@@ -1725,29 +1726,31 @@ step 7, `Octopus is ready`, and `kubectl --kubeconfig <file> -n octopus logs oct
 prints the number of CAs in the bundle (about 150).
 
 Then add Nexus in the web page: **External Feeds** (under **Manage**) → **Add Feed** → **Feed
-type** **Docker Container Registry**, **Feed name** `nexus`, **Feed url** `https://<NEXUS_REGISTRY>`,
-**Registry path** empty, **Credentials** **Username and Password** with the pull user's name and
-password from
+type** **Docker Container Registry**, **Feed name** `nexus`, **Feed url** `https://<NEXUS_REGISTRY>`
+(it starts as `https://index.docker.io`: replace it), **Registry path** empty, **Credentials**
+**Username and Password** with the pull user's name and password from
 [NEXUS.md step 9](NEXUS.md#9-create-the-docker-repository-a-push-user-and-a-pull-user), then
-**Save and test** (**Feed url** starts as `https://index.docker.io`: replace it):
+**Save and test**:
 
 ![Create Feed: Feed type Docker Container Registry, Feed name, Feed url, Registry path](img/octopus/08-create-feed-docker.jpg)
 
-**Save and test** opens **Test nexus**: type `apps/busybox` in **Package name** and click **Search**:
+**Save and test** opens **Test nexus**: type `apps/busybox` (the image
+[NEXUS.md step 10](NEXUS.md#10-trust-nexus-and-push-an-image) pushed; `apps` is its `NEXUS_REPO`)
+in **Package name** and click **Search**:
 
 ![Test nexus: Package name apps/busybox, Matching packages lists apps/busybox](img/octopus/09-test-feed.jpg)
 
 **Expect:** **Matching packages** lists `apps/busybox`.
 
 Octopus reads image tags as versions, so tag images with versions such as `1.0.0`. Name a package
-by its full path in Nexus, `apps/<image>` (for example `apps/busybox`).
+by its full path in Nexus, `<NEXUS_REPO>/<image>` (for example `apps/busybox`).
 
 **If not:**
 - `The SSL connection could not be established, see inner exception. The remote certificate is
   invalid because of errors in the certificate chain: PartialChain`: Octopus does not trust
   Nexus's CA yet; run this step and step 7.
 - `Error performing request to https://<NEXUS_REGISTRY>/v2/_catalog?n=100. The endpoint returned
-  Not Found`: you searched a bare image name; search `apps/<image>`.
+  Not Found`: you searched a bare image name; search `<NEXUS_REPO>/<image>`.
 - `MISSING: …nexus-ca.pem`: run NEXUS.md step 7 on this machine first.
 
 ## 12. Change the admin password
