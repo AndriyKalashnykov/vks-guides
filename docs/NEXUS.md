@@ -1964,7 +1964,7 @@ if ($LASTEXITCODE -eq 0) { kc cp -c nexus nexus-0:/nexus-data/blobs blobs }
 if ($LASTEXITCODE -eq 0) { kc cp -c nexus nexus-0:/nexus-data/keystores keystores }
 $N = '?'; $L = '?'
 if ($LASTEXITCODE -eq 0) { $N = @(kc exec nexus-0 -c nexus -- find /nexus-data/blobs -type f).Count }
-if ($LASTEXITCODE -eq 0) { $L = @(Get-ChildItem -Recurse -File blobs -ErrorAction SilentlyContinue).Count }
+if ($LASTEXITCODE -eq 0) { $L = @(Get-ChildItem -Recurse -File -Force blobs -ErrorAction SilentlyContinue).Count }
 if ($LASTEXITCODE -eq 0 -and (Test-Path nexus-db.dump) -and (Get-Item nexus-db.dump).Length -gt 0 -and (Test-Path keystores\node) -and (Test-Path images.txt) -and $L -ge $N) {
   Get-ChildItem | ForEach-Object { "{0} {1:N0} MB" -f $_.Name, ((Get-ChildItem -Recurse -File $_.FullName | Measure-Object Length -Sum).Sum / 1MB) }
   "backed up to $D ($L of $N blob files)"
@@ -1989,12 +1989,13 @@ This puts a backup from the block above back into Nexus: its database, images, u
 CA. Nexus must run the same images as when the backup was made (`images.txt`; the block checks).
 
 - **Nexus's namespace still exists on its cluster** (its data is lost or damaged): run only the
-  restore block below. Nexus keeps its address and CA; nothing changes for those who push or pull.
+  restore block below. Nexus keeps its address and CA; nothing changes for those who push or pull,
+  besides images pushed and passwords changed after the backup.
 - **A new cluster, or the namespace is gone**: run steps 1 to 3, then the first block below (it puts
   the CA back), then steps 4 to 7 with the images from `images.txt`, then the restore block. Skip
   steps 8 and 9. Nexus gets a new address from step 4. If `NEXUS_REGISTRY` is a DNS name, point it
-  at the new address; nothing else changes. If it is an IP address, do what step 7's **If not:**
-  says for a changed address.
+  at the new address; nothing else changes. If it is an IP address, run steps 10 and 11 with the new
+  address after the restore (step 10's push then says the tag exists).
 
 Put the CA back (new cluster only; after step 3, before step 5):
 
@@ -2076,12 +2077,13 @@ spec:
     runAsUser: 200
     runAsGroup: 200
     fsGroup: 200
+    fsGroupChangePolicy: OnRootMismatch
     seccompProfile:
       type: RuntimeDefault
   containers:
     - name: restore
       image: ${P}
-      command: ["sleep", "3600"]
+      command: ["sleep", "86400"]
       securityContext:
         allowPrivilegeEscalation: false
         capabilities:
@@ -2094,20 +2096,23 @@ spec:
       persistentVolumeClaim:
         claimName: data-nexus-0
 EOF
-  E="$(cd "$B" && find blobs keystores -type f | LC_ALL=C sort)"
+  E="$(cd "$B" >/dev/null && find blobs keystores -type f | LC_ALL=C sort)"
   if kc wait --for=condition=Ready pod/nexus-restore --timeout=5m \
      && kc exec nexus-restore -- rm -rf /nexus-data/blobs /nexus-data/keystores /nexus-data/admin.password \
-     && (cd "$B" && kc cp blobs nexus-restore:/nexus-data/blobs && kc cp keystores nexus-restore:/nexus-data/keystores) \
+     && (cd "$B" >/dev/null && kc cp blobs nexus-restore:/nexus-data/blobs && kc cp keystores nexus-restore:/nexus-data/keystores) \
      && G="$(kc exec nexus-restore -- sh -c 'cd /nexus-data && find blobs keystores -type f | LC_ALL=C sort')" \
      && [ "$G" = "$E" ]; then
     kc delete pod nexus-restore --wait >/dev/null
-    kc scale statefulset nexus --replicas=1 && kc rollout status statefulset/nexus --timeout=15m
-    if [ "$(kc get secret nexus-ca -o jsonpath='{.data.tls\.crt}')" = "$(jq -r '.data["tls.crt"]' "$B/nexus-ca.json")" ]; then
-      echo "CA: the backup's"
+    if ! { kc scale statefulset nexus --replicas=1 && kc rollout status statefulset/nexus --timeout=15m; }; then
+      echo "FAILED: Nexus did not start after the restore (see If not)"
     else
-      echo "CA: not the backup's"
+      if [ "$(kc get secret nexus-ca -o jsonpath='{.data.tls\.crt}')" = "$(jq -r '.data["tls.crt"]' "$B/nexus-ca.json")" ]; then
+        echo "CA: the backup's"
+      else
+        echo "CA: not the backup's"
+      fi
+      echo "restored from $B ($(printf '%s\n' "$E" | grep -c .) files)"
     fi
-    echo "restored from $B ($(printf '%s\n' "$E" | grep -c .) files)"
   else
     kc delete pod nexus-restore --ignore-not-found >/dev/null
     echo "FAILED: the files were not restored (see the error above); Nexus stays stopped"
@@ -2161,12 +2166,13 @@ spec:
     runAsUser: 200
     runAsGroup: 200
     fsGroup: 200
+    fsGroupChangePolicy: OnRootMismatch
     seccompProfile:
       type: RuntimeDefault
   containers:
     - name: restore
       image: $P
-      command: ["sleep", "3600"]
+      command: ["sleep", "86400"]
       securityContext:
         allowPrivilegeEscalation: false
         capabilities:
@@ -2179,7 +2185,7 @@ spec:
       persistentVolumeClaim:
         claimName: data-nexus-0
 "@ | kc apply -f -
-    $E = @(Get-ChildItem -Recurse -File -Path blobs, keystores | Resolve-Path -Relative | ForEach-Object { ($_ -replace '^\.\\', '') -replace '\\', '/' } | Sort-Object) -join "`n"
+    $E = @(Get-ChildItem -Recurse -File -Force -Path blobs, keystores | Resolve-Path -Relative | ForEach-Object { ($_ -replace '^\.\\', '') -replace '\\', '/' } | Sort-Object) -join "`n"
     if ($LASTEXITCODE -eq 0) { kc wait --for=condition=Ready pod/nexus-restore --timeout=5m }
     if ($LASTEXITCODE -eq 0) { kc exec nexus-restore -- rm -rf /nexus-data/blobs /nexus-data/keystores /nexus-data/admin.password }
     if ($LASTEXITCODE -eq 0) { kc cp blobs nexus-restore:/nexus-data/blobs }
@@ -2190,9 +2196,12 @@ spec:
       kc delete pod nexus-restore --wait | Out-Null
       kc scale statefulset nexus --replicas=1
       if ($LASTEXITCODE -eq 0) { kc rollout status statefulset/nexus --timeout=15m }
-      $C = kc get secret nexus-ca -o 'jsonpath={.data.tls\.crt}'
-      if ($C -eq (Get-Content -Raw nexus-ca.json | ConvertFrom-Json).data.'tls.crt') { "CA: the backup's" } else { "CA: not the backup's" }
-      "restored from $NEXUS_BACKUP ($(@($E -split "`n").Count) files)"
+      if ($LASTEXITCODE -ne 0) { "FAILED: Nexus did not start after the restore (see If not)" }
+      else {
+        $C = kc get secret nexus-ca -o 'jsonpath={.data.tls\.crt}'
+        if ($C -eq (Get-Content -Raw nexus-ca.json | ConvertFrom-Json).data.'tls.crt') { "CA: the backup's" } else { "CA: not the backup's" }
+        "restored from $NEXUS_BACKUP ($(@($E -split "`n").Count) files)"
+      }
     } else {
       kc delete pod nexus-restore --ignore-not-found | Out-Null
       "FAILED: the files were not restored (see the error above); Nexus stays stopped"
@@ -2204,8 +2213,9 @@ spec:
 
 </details>
 
-**Expect:** `pod/nexus-0 condition met`, `DROP DATABASE`, `CREATE DATABASE`, `pod/nexus-restore
-created`, `partitioned roll out complete`, `CA: the backup's`, then `restored from … (… files)`.
+**Expect:** `pod/nexus-0 condition met` (nothing when Nexus was stopped already), `DROP DATABASE`,
+`CREATE DATABASE`, `pod/nexus-restore created`, `partitioned roll out complete`, `CA: the backup's`,
+then `restored from … (… files)`.
 Sign in to Nexus with the admin password it had when the backup was made; step 10's image is there.
 
 **If not:**
@@ -2213,7 +2223,9 @@ Sign in to Nexus with the admin password it had when the backup was made; step 1
   `images.txt`, then this block again.
 - `FAILED: …`: Nexus stays stopped; fix the error shown and run the block again (it replaces
   everything again).
-- `CA: not the backup's`: step 5 made a new CA (the first block above did not run before it). Those
+- `FAILED: Nexus did not start after the restore`: run
+  `kubectl --kubeconfig <file> -n nexus logs nexus-0 -c nexus --tail=50` and fix the error shown.
+- `CA: not the backup's`: the cluster has another CA than the backup (step 5 made a new one). Those
   who push and pull no longer trust Nexus: run steps 7, 10 and 11 again, or remove the CA (the
   first block's **If not:**) and run steps 5 to 7 and this block again.
 
