@@ -1958,7 +1958,7 @@ kc exec postgres-0 -- rm -f /tmp/nexus-db.dump
 <!-- TODO-MEASURE: a restore into a fresh namespace before the guide states one -->
 
 **Expect:** a size line for `blobs`, `keystores` and `nexus-db.dump`, then `backed up to …` with
-the same number twice in `(… of … blob files)`. Three `tar: Removing leading` lines from kubectl are
+the same number twice in `(… of … blob files)`. `tar: Removing leading` lines from kubectl are
 harmless.
 
 **If not:** `FAILED: …`: run the block again; a folder from a failed run is not a backup (kubectl
