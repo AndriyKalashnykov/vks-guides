@@ -60,12 +60,11 @@ The cluster for Nexus:
 2. Create the cluster with
    [CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), with that
    `vmClass`, one control-plane node and one worker (`replicas: 1` for both). Nexus's volumes take
-   25 GB (20 GB for images, 5 GB for PostgreSQL) on top of the nodes
+   25 GiB (20 GiB for images, 5 GiB for PostgreSQL) on top of the nodes
    ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)).
-   <!-- TODO-MEASURE: namespace storage used by the cluster plus volumes, and during an update -->
    To change its size later, see [CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional).
 3. Save its kubeconfig as `~/.kube/<cluster name>.kubeconfig`
-   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)); it is `<file>` in the **If not:** lines.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 [its other hosts](PREREQS.md#registry-hosts-for-a-firewall)):
@@ -452,11 +451,11 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n nexus wait --
   and run this block again.
 - `STOPPED: NEXUS_REGISTRY is …`: set `NEXUS_REGISTRY` to the address step 4 printed, or to a DNS
   name.
-- `timed out`: `kubectl -n nexus describe certificate nexus-tls` shows why.
+- `timed out`: `kubectl --kubeconfig <file> -n nexus describe certificate nexus-tls` shows why.
 
 ## 6. Run PostgreSQL and Nexus
 
-This runs PostgreSQL with a 5 GB volume, waits until it is ready, then runs Nexus with a 20 GB
+This runs PostgreSQL with a 5 GiB volume, waits until it is ready, then runs Nexus with a 20 GiB
 volume for its images and files, and next to it a small nginx web server that takes HTTPS on
 Nexus's address and passes it on to Nexus. Nexus takes a few minutes to start the first time.
 
@@ -940,14 +939,18 @@ start). A second run prints `unchanged` or `statefulset.apps/… configured` wit
 restarts.
 
 **If not:**
-- `FAILED: PostgreSQL did not start` or a timeout: `kubectl -n nexus describe pod -l app=postgres`
-  (or `-l app=nexus`) shows the reason. `ImagePullBackOff`: the nodes cannot reach `docker.io`
+- `FAILED: PostgreSQL did not start` or a timeout:
+  `kubectl --kubeconfig <file> -n nexus describe pod -l app=postgres` (or `-l app=nexus`) shows the
+  reason. `ImagePullBackOff`: the nodes cannot reach `docker.io`
   (see the table above). `Pending` with `Insufficient memory`: the worker is too small (see the
   Prerequisites).
 - `secret "nexus-tls" not found` in `describe pod -l app=nexus`: step 5 did not finish; run it,
   then this block again.
-- Nexus restarts with `too many clients already` in `kubectl -n nexus logs postgres-0`: PostgreSQL
-  runs without `max_connections=200`; run this block again.
+- Nexus restarts with `too many clients already` in `kubectl --kubeconfig <file> -n nexus logs
+  postgres-0`: PostgreSQL runs without `max_connections=200`; run this block again.
+- A pod still in `CrashLoopBackOff` or `ImagePullBackOff` after this block ran with the fix: running
+  it again does not replace that pod; run `kubectl --kubeconfig <file> -n nexus delete pod nexus-0`
+  (or `postgres-0`), then this block again.
 - `pg_trgm:` with nothing after it: Nexus has not finished its first start; run the last line again
   in a minute.
 
@@ -1006,7 +1009,7 @@ if ($LASTEXITCODE -eq 0 -and $B) {
 
 </details>
 
-**Expect:** a `subject=` line with `Nexus CA`, a `sha256 Fingerprint=…` line, `saved …/nexus-ca.pem`,
+**Expect:** a `subject=` line with `Nexus CA`, a `… Fingerprint=…` line, `saved …/nexus-ca.pem`,
 then `Nexus answers at https://<NEXUS_REGISTRY>`.
 
 **If not:**
@@ -1016,6 +1019,8 @@ then `Nexus answers at https://<NEXUS_REGISTRY>`.
   `NEXUS_REGISTRY` is not the value step 5 was run with.
 - `The requested URL returned error: 503`: Nexus is still starting; run the block again in a
   minute.
+- `curl: (35)` right after step 6: Nexus's address is not passing traffic to Nexus yet; wait a
+  minute and run this block again.
 - `Connection refused` or a timeout: this machine cannot reach Nexus's address on port 443.
 - `Connection refused` or SSL errors after it worked: the address changed; run step 4, then steps
   5, 7, 10 and 11 with the new address.
@@ -1065,8 +1070,9 @@ elif [ -z "${NEXUS_ADMIN_PASSWORD:-}" ]; then
   echo "STOPPED: type the new admin password first (the line above)"
 elif [ ! -s "$NEXUS_CA" ]; then
   echo "MISSING: $NEXUS_CA (step 7)"
+elif ! P0="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n nexus exec nexus-0 -c nexus -- sh -c 'cat /nexus-data/admin.password 2>/dev/null; true')"; then
+  echo "FAILED: cannot read nexus-0 (see the kubectl error above)"
 elif T="$(umask 077 && mktemp -d)"; then
-  P0="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n nexus exec nexus-0 -c nexus -- cat /nexus-data/admin.password 2>/dev/null)"
   if [ -n "$P0" ]; then
     cfg "$P0"
     printf '%s' "$NEXUS_ADMIN_PASSWORD" | nx -X PUT -H 'Content-Type: text/plain' --data-binary @- \
@@ -1107,11 +1113,11 @@ function cfg($p) { [IO.File]::WriteAllText("$T\admin.cfg", "user = `"admin:$($p.
 function nx { $input | curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $NEXUS_CA -K "$T\admin.cfg" @args }
 if (-not $NEXUS_ADMIN_PASSWORD -or $NEXUS_ADMIN_PASSWORD.Length -eq 0) { "STOPPED: type the new admin password first (the line above)" }
 elseif (-not (Test-Path $NEXUS_CA)) { "MISSING: $NEXUS_CA (step 7)" }
+elseif (-not $($P0 = kubectl --kubeconfig $VKS_KUBECONFIG -n nexus exec nexus-0 -c nexus -- sh -c 'cat /nexus-data/admin.password 2>/dev/null; true'; $LASTEXITCODE -eq 0)) { "FAILED: cannot read nexus-0 (see the kubectl error above)" }
 else {
   New-Item -ItemType Directory -Path $T | Out-Null
   try {
     $NEW = [Net.NetworkCredential]::new('', $NEXUS_ADMIN_PASSWORD).Password
-    $P0 = kubectl --kubeconfig $VKS_KUBECONFIG -n nexus exec nexus-0 -c nexus -- cat /nexus-data/admin.password 2>$null
     if ($P0) {
       cfg "$P0"
       $NEW | nx -X PUT -H 'Content-Type: text/plain' -d '@-' "$U/security/users/admin/change-password"
@@ -1142,6 +1148,8 @@ Remove-Variable -ErrorAction SilentlyContinue NEXUS_ADMIN_PASSWORD
 **If not:**
 - `STOPPED: type the new admin password first`: run the one-line block above, then this one, in
   the same terminal.
+- `FAILED: cannot read nexus-0` under a kubectl error: the kubeconfig or the cluster is not Nexus's,
+  or Nexus is not running; run step 6.
 - `The requested URL returned error: 401` after `changed before`: the password you typed is not
   `admin`'s current password. When run again, type the password you set the first time.
 - `The requested URL returned error: 400` at the password change: Nexus refused the password; type
@@ -1516,8 +1524,9 @@ else {
 **Add a key to the Secret, or change the CA later.** VKS does not watch the Secret. To add Nexus's
 CA to an existing Secret, or to change the CA later (a new Nexus, or step 5's CA renewed), keep the
 Secret's name: add the CA under a new key (`nexus-ca-2`, then `nexus-ca-3`, …) and point the
-cluster's `secretRef.key` at it with `kubectl edit cluster`; that changes the Cluster and starts the
-node update (below).
+cluster's `secretRef.key` at it with
+`kubectl --kubeconfig ~/.kube/supervisor.kubeconfig -n <vSphere Namespace> edit cluster <cluster name>`;
+that changes the Cluster and starts the node update (below).
 <!-- TODO-MEASURE: on VKS 3.8, that a new key in the same Secret plus a secretRef.key change rolls the nodes with the new CA -->
 
 <details>
@@ -1609,7 +1618,7 @@ if ! command -v jq >/dev/null 2>&1; then
 elif ! J="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get cluster "$VKS_CLUSTER" -o json)"; then
   echo "FAILED: cannot read the cluster (see the error above)"
 elif printf '%s' "$J" | jq -e '[.spec.topology.variables[]? | select(.name == "osConfiguration")] | length > 0' >/dev/null; then
-  echo "STOPPED: the cluster has an osConfiguration setting already; add the caCert to it by hand (kubectl edit cluster)"
+  echo "STOPPED: the cluster has an osConfiguration setting already; add the caCert to it by hand (kubectl --kubeconfig '$SUPERVISOR_KUBECONFIG' -n $VKS_NAMESPACE edit cluster $VKS_CLUSTER)"
 else
   kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" patch cluster "$VKS_CLUSTER" --type json -p "$P" --dry-run=server >/dev/null \
     && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" patch cluster "$VKS_CLUSTER" --type json -p "$P"
@@ -1633,7 +1642,7 @@ $global:LASTEXITCODE = $null
 $J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get cluster $VKS_CLUSTER -o json | Out-String
 if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the cluster (see the error above)" }
 elseif (@((ConvertFrom-Json $J).spec.topology.variables | Where-Object { $_.name -eq 'osConfiguration' }).Count) {
-  "STOPPED: the cluster has an osConfiguration setting already; add the caCert to it by hand (kubectl edit cluster)"
+  "STOPPED: the cluster has an osConfiguration setting already; add the caCert to it by hand (kubectl --kubeconfig '$SUPERVISOR_KUBECONFIG' -n $VKS_NAMESPACE edit cluster $VKS_CLUSTER)"
 } else {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE patch cluster $VKS_CLUSTER --type json --patch-file $T --dry-run=server | Out-Null
   if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE patch cluster $VKS_CLUSTER --type json --patch-file $T }
@@ -1649,8 +1658,8 @@ Remove-Item -Force -ErrorAction SilentlyContinue $T
 
 **If not:**
 - `STOPPED: … osConfiguration setting already`: the cluster trusts another CA already; add a
-  second `- caCert:` entry under its `additionalTrustedCAs` with `kubectl edit cluster`, with this
-  Secret's name and Nexus's key (`nexus-ca`, or the key you added above).
+  second `- caCert:` entry under its `additionalTrustedCAs` with the `kubectl … edit cluster` command
+  the line prints, with this Secret's name and Nexus's key (`nexus-ca`, or the key you added above).
 - `admission webhook … denied`: the cluster class refuses the variable; send the error to the
   vSphere administrator.
 
@@ -1826,8 +1835,10 @@ this block with `-n default` changed.
 - `DNS: …`: the DNS server the nodes use does not have the record for `NEXUS_REGISTRY`.
 - `LOGIN: …`: the pull user's name or password is wrong, or the Secret's key is not exactly
   `NEXUS_REGISTRY`.
-- `OTHER: …` with `i/o timeout` or `connection refused`: the nodes cannot reach Nexus's address on
-  port 443: a network or firewall matter.
+- `OTHER: …` on Nexus's own cluster while its nodes are replaced: Nexus is moving to the new worker;
+  wait until CLUSTER.md step 10's check says `True` and run this block again.
+- `OTHER: …` with `i/o timeout` or `connection refused` at other times: the nodes cannot reach
+  Nexus's address on port 443: a network or firewall matter.
 
 ## 12. Back up Nexus
 
@@ -1835,7 +1846,7 @@ Sonatype backs up the database with PostgreSQL's own tools and the files at abou
 ([Backup and restore](https://help.sonatype.com/en/backup-and-restore.html)). This copies, to a
 new folder in your home: a dump of the database, Nexus's images and files (`blobs`), and Nexus's
 node identity (`keystores`), then checks the copy. Make sure your machine has room for the `blobs`
-folder; step 9's repository can hold up to 20 GB. Run it when nobody pushes and no cleanup or
+folder; step 9's repository can hold up to 20 GiB. Run it when nobody pushes and no cleanup or
 compact task runs.
 
 <details>
@@ -1912,7 +1923,8 @@ backups somewhere other than this machine as well. Restoring is not covered here
 
 This deletes the namespace `nexus` with Nexus, PostgreSQL, every image and user, and the CA, then
 waits until the volumes are gone. VKS clusters that pull from Nexus can no longer do so; a new CA
-made by step 5 is a different CA. cert-manager stays, and so do the Secrets and `osConfiguration`
+made by step 5 is a different CA: after a new install, give each pulling cluster the new CA under a
+new key (step 11, "Add a key to the Secret, or change the CA later"). cert-manager stays, and so do the Secrets and `osConfiguration`
 settings of step 11 (removing them updates the nodes again). To delete Nexus's cluster too, run
 this first and [CLUSTER.md step 8](CLUSTER.md#8-delete-the-cluster-optional) after it: a volume
 still in use when the cluster goes is left behind in the vSphere Namespace and stops its removal.
