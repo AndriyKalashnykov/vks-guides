@@ -1563,18 +1563,18 @@ else {
     else {
       $X = (Select-String -Path "$T\jar" -Pattern 'Octopus-Csrf-Token\S*\s+(\S+)$').Matches[0].Groups[1].Value
       foreach ($E in 'dev', 'test', 'prod') {
-        if (@(api 'Spaces-1/environments/all') | Where-Object { $_.Name -eq $E }) { "environment ${E}: exists" }
-        else { $R = api 'Spaces-1/environments' (@{ Name = $E } | ConvertTo-Json -Compress); "environment $($R.Name): created" }
+        if ((api 'Spaces-1/environments/all').Name -contains $E) { "environment ${E}: exists" }
+        else { $R = api 'Spaces-1/environments' (@{ Name = $E } | ConvertTo-Json -Compress); if ($R.Name) { "environment $($R.Name): created" } else { "FAILED: environment $E not created (see the error above)" } }
       }
-      if (@(api 'Spaces-1/lifecycles/all') | Where-Object { $_.Name -eq 'dev-test-prod' }) { "lifecycle dev-test-prod: exists" }
+      if ((api 'Spaces-1/lifecycles/all').Name -contains 'dev-test-prod') { "lifecycle dev-test-prod: exists" }
       else {
-        $ID = @{}; api 'Spaces-1/environments/all' | ForEach-Object { $ID[$_.Name] = $_.Id }
+        $ID = @{}; foreach ($N in (api 'Spaces-1/environments/all')) { $ID[$N.Name] = $N.Id }
         $L = @{ Name = 'dev-test-prod'; Phases = @(
           @{ Name = 'dev'; AutomaticDeploymentTargets = @($ID['dev']); OptionalDeploymentTargets = @(); MinimumEnvironmentsBeforePromotion = 0 },
           @{ Name = 'test'; AutomaticDeploymentTargets = @(); OptionalDeploymentTargets = @($ID['test']); MinimumEnvironmentsBeforePromotion = 0 },
           @{ Name = 'prod'; AutomaticDeploymentTargets = @(); OptionalDeploymentTargets = @($ID['prod']); MinimumEnvironmentsBeforePromotion = 0 }) }
         $R = api 'Spaces-1/lifecycles' ($L | ConvertTo-Json -Depth 5 -Compress)
-        "lifecycle $($R.Name): created, phases $(($R.Phases | ForEach-Object { $_.Name }) -join ',')"
+        if ($R.Name) { "lifecycle $($R.Name): created, phases $(($R.Phases | ForEach-Object { $_.Name }) -join ',')" } else { "FAILED: lifecycle not created (see the error above)" }
       }
     }
   } finally { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $T }
