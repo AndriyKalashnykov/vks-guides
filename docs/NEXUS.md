@@ -82,8 +82,10 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 
 ## 1. Check the cluster
 
-This checks that the nodes are ready, that the cluster has a default storage class, and how much
-memory the workers can give pods. Nexus, PostgreSQL and the TLS proxy ask for about 3.5 GiB of it.
+This checks that the nodes are ready, the free memory, CPU and image disk on each worker, that the
+cluster has a default storage class, and that no `nexus` namespace exists yet. Nexus, PostgreSQL,
+the TLS proxy and the cert-manager add-on of step 2 ask for about 0.73 CPU and 3.7 GiB of memory;
+pods already in the `nexus` and `cert-manager` namespaces are not counted as using any.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -95,10 +97,23 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
 elif ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
 elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (LOGIN.md)"
-elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
+elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide \
+     && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu')" \
+     && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu')" \
+     && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
+  { printf '%s\n' "$P" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
+    function b(v) { if (v ~ /Ki$/) return v * 1024; if (v ~ /Mi$/) return v * 1048576; if (v ~ /Gi$/) return v * 1073741824
+      if (v ~ /k$/) return v * 1000; if (v ~ /M$/) return v * 1000000; if (v ~ /G$/) return v * 1000000000; return v + 0 }
+    function c(v) { if (v ~ /m$/) return v / 1000; return v + 0 }
+    $1 == "P" && $2 != "nexus" && $2 != "cert-manager" {
+                n = split($4, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") r[$3] += b(a[i])
+                n = split($5, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") q[$3] += c(a[i]) }
+    $1 == "N" && NF == 4 { printf "%s %.1f %.2f\n", $2, (b($3) - r[$2]) / 1073741824, c($4) - q[$2] }' \
+  | while read -r W M C; do
+      D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "/api/v1/nodes/$W/proxy/stats/summary" </dev/null | jq '.node.runtime.imageFs.availableBytes / 1073741824 | floor')"
+      echo "worker $W: $M GiB memory free, $C CPU free, ${D:-?} GiB image disk free"
+    done
   echo "default storage class: $(printf '%s' "$J" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | .metadata.name] | if length == 0 then "NONE" else join(" ") end')"
-  kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' \
-    -o custom-columns='WORKER:.metadata.name,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory'
   kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace nexus 2>/dev/null && echo "NOTE: namespace nexus exists already"
 else
   echo "FAILED: cannot read the cluster (see the error above)"
@@ -118,11 +133,28 @@ $global:LASTEXITCODE = $null
 if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $global:LASTEXITCODE = 1 }
 elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (LOGIN.md)"; $global:LASTEXITCODE = 1 }
 else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
+if ($LASTEXITCODE -eq 0) { $N = @(kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu') }
+if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu') }
 if ($LASTEXITCODE -eq 0) { $J = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) {
+  function B($v) { if ($v -cmatch '^([\d.]+)(Ki|Mi|Gi|k|M|G)?$') { [double]$Matches[1] * @{ '' = 1; 'Ki' = 1KB; 'Mi' = 1MB; 'Gi' = 1GB; 'k' = 1e3; 'M' = 1e6; 'G' = 1e9 }[[string]$Matches[2]] } else { 0 } }
+  function C($v) { if ($v -cmatch '^([\d.]+)m$') { [double]$Matches[1] / 1000 } elseif ($v -cmatch '^[\d.]+$') { [double]$v } else { 0 } }
+  $R = @{}; $Q = @{}
+  foreach ($l in $P) {
+    $f = -split $l
+    if ($f[0] -eq 'nexus' -or $f[0] -eq 'cert-manager') { continue }
+    foreach ($c in ($f[2] -split ',')) { if ($c -and $c -ne '<none>') { $R[$f[1]] += (B $c) } }
+    foreach ($c in ($f[3] -split ',')) { if ($c -and $c -ne '<none>') { $Q[$f[1]] += (C $c) } }
+  }
+  foreach ($l in $N) {
+    $f = -split $l
+    $S = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "/api/v1/nodes/$($f[0])/proxy/stats/summary" | Out-String | ConvertFrom-Json
+    $A = if ($S) { $S.node.runtime.imageFs.availableBytes }
+    $DISK = if ($null -ne $A) { [math]::Floor($A / 1GB) } else { '?' }
+    "worker $($f[0]): $([math]::Round(((B $f[1]) - $R[$f[0]]) / 1GB, 1)) GiB memory free, $([math]::Round((C $f[2]) - $Q[$f[0]], 2)) CPU free, $DISK GiB image disk free"
+  }
   $D = @((ConvertFrom-Json $J).items | Where-Object { $_.metadata.annotations.'storageclass.kubernetes.io/is-default-class' -eq 'true' } | ForEach-Object { $_.metadata.name })
   "default storage class: $(if ($D.Count) { $D -join ' ' } else { 'NONE' })"
-  kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' -o 'custom-columns=WORKER:.metadata.name,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory'
   kubectl --kubeconfig $VKS_KUBECONFIG get namespace nexus 2>$null
   if ($LASTEXITCODE -eq 0) { "NOTE: namespace nexus exists already" }
 } else {
@@ -132,14 +164,18 @@ if ($LASTEXITCODE -eq 0) {
 
 </details>
 
-**Expect:** each node `Ready`, `default storage class:` and a class name, and a worker with
-`MEMORY` of about `6197436Ki` for `best-effort-medium`.
+**Expect:** each node `Ready`, a `worker …: … GiB memory free, … CPU free, … GiB image disk free`
+line per worker, and `default storage class:` and a class name. Nexus needs a worker with at least
+0.8 CPU, 3.8 GiB memory and 4 GiB image disk free.
 
-**If not:** `default storage class: NONE`: give the cluster a default class as in
-[CLUSTER.md](CLUSTER.md), step 9's `defaultStorageClass`. A worker with less than about
-`4500000Ki`: Nexus does not fit; use a larger VM class.
-<!-- TODO-MEASURE: the threshold itself (passed once on best-effort-medium; not measured at its edge); free CPU (Nexus asks for 0.7 CPU) --> `NOTE: namespace nexus exists already`:
-Nexus may be installed; steps 3 to 6 keep what exists.
+**If not:**
+- No worker with that much free: use a larger VM class, or give the worker its own disk for
+  container images with the `workers:` part in [CICD.md's Prerequisites](CICD.md#prerequisites).
+- `? GiB image disk free` after `Error from server (Forbidden)`: your kubeconfig cannot read the
+  node's statistics; ask the cluster's administrator whether a worker has 4 GiB free.
+- `default storage class: NONE`: give the cluster a default class as in [CLUSTER.md](CLUSTER.md),
+  step 9's `defaultStorageClass`.
+- `NOTE: namespace nexus exists already`: Nexus may be installed; steps 3 to 6 keep what exists.
 
 ## 2. Install cert-manager
 
