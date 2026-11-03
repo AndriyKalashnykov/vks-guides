@@ -1482,11 +1482,11 @@ Remove-Variable -ErrorAction SilentlyContinue NEXUS_PUSH_PASSWORD
 
 </details>
 
-<!-- TODO-MEASURE: docker (daemon) login + push from a walkbox to the LB IP; WWW-Authenticate realm = https://<LB IP>/repository/apps/v2/token -->
-<!-- TODO-MEASURE: docker push of the multi-arch busybox pulled with the platform option linux/amd64 has not been run -->
 
 **Expect:** the pull, `Login Succeeded`, the push, `pushed: <NEXUS_REGISTRY>/apps/busybox:1.37.0`,
-then `Removed login credentials for …` (docker: `Removing login credentials for …`).
+then `Removed login credentials for …` (docker: `Removing login credentials for …`; docker also
+prints a warning that credentials are stored unencrypted, which the logout removes, and `Not all
+multiplatform-content is present and only the available single-platform image was pushed`).
 
 **If not:**
 - `x509: certificate signed by unknown authority`: trust the CA for your OS and engine (above).
