@@ -44,14 +44,15 @@ Sizing. Octopus recommends, for a trial, 2 cores and 4 GB of memory for Octopus 
 and 4 GB for SQL Server Express
 ([Performance](https://octopus.com/docs/administration/managing-infrastructure/performance)). This
 guide's manifests ask for 0.5 CPU and 2 GiB for Octopus (at most 4 GiB), 0.5 CPU and 2 GiB for SQL
-Server (at most 3 GiB, of which SQL Server uses 2 GB) and a little for nginx: by those requests,
-the smallest worker they fit on is the VM class `best-effort-medium` (2 CPUs, 8 GB). The images are
+Server (at most 3 GiB, of which SQL Server uses 2 GB) and a little for nginx, 1.05 CPU in all. A
+`best-effort-medium` worker (2 CPUs) has about 0.9 CPU left after the cluster's own pods, so the
+smallest worker they fit on is the VM class `best-effort-large` (4 CPUs, 16 GB). The images are
 for amd64 nodes only, and need about 8 GiB of the worker's image disk.
 <!-- TODO-MEASURE: VKS lab numbers (kubectl top, worker allocatable, image disk used, esxi host memory) -->
 
 The cluster for Octopus:
 
-1. Its vSphere Namespace offers the VM class `best-effort-medium` or larger
+1. Its vSphere Namespace offers the VM class `best-effort-large` or larger
    ([NAMESPACE.md step 8](NAMESPACE.md#8-check-the-namespace) lists them under `VM classes:`; a
    vCenter administrator adds one with [NAMESPACE.md step 6](NAMESPACE.md#6-add-the-vm-classes)).
 2. Create the cluster with
@@ -105,17 +106,19 @@ elif ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
 elif ! command -v helm >/dev/null 2>&1; then echo "MISSING: helm (HELM.md)"
 elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (LOGIN.md)"
 elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide \
-     && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory')" \
-     && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory')" \
+     && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu')" \
+     && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu')" \
      && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
   { printf '%s\n' "$P" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
     function b(v) { if (v ~ /Ki$/) return v * 1024; if (v ~ /Mi$/) return v * 1048576; if (v ~ /Gi$/) return v * 1073741824
       if (v ~ /k$/) return v * 1000; if (v ~ /M$/) return v * 1000000; if (v ~ /G$/) return v * 1000000000; return v + 0 }
-    $1 == "P" { n = split($3, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") r[$2] += b(a[i]) }
-    $1 == "N" && NF == 3 { printf "%s %.1f\n", $2, (b($3) - r[$2]) / 1073741824 }' \
-  | while read -r W M; do
+    function c(v) { if (v ~ /m$/) return v / 1000; return v + 0 }
+    $1 == "P" { n = split($3, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") r[$2] += b(a[i])
+                n = split($4, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") q[$2] += c(a[i]) }
+    $1 == "N" && NF == 4 { printf "%s %.1f %.2f\n", $2, (b($3) - r[$2]) / 1073741824, c($4) - q[$2] }' \
+  | while read -r W M C; do
       D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "/api/v1/nodes/$W/proxy/stats/summary" </dev/null | jq '.node.runtime.imageFs.availableBytes / 1073741824 | floor')"
-      echo "worker $W: $M GiB memory free, ${D:-?} GiB image disk free"
+      echo "worker $W: $M GiB memory free, $C CPU free, ${D:-?} GiB image disk free"
     done
   echo "default storage class: $(printf '%s' "$J" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | .metadata.name] | if length == 0 then "NONE" else join(" ") end')"
   kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace octopus 2>/dev/null && echo "NOTE: namespace octopus exists already"
@@ -138,19 +141,24 @@ if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubect
 elseif (-not (Get-Command helm -ErrorAction SilentlyContinue)) { "MISSING: helm (HELM.md)"; $global:LASTEXITCODE = 1 }
 elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (LOGIN.md)"; $global:LASTEXITCODE = 1 }
 else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
-if ($LASTEXITCODE -eq 0) { $N = @(kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory') }
-if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory') }
+if ($LASTEXITCODE -eq 0) { $N = @(kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu') }
+if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu') }
 if ($LASTEXITCODE -eq 0) { $J = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) {
   function B($v) { if ($v -cmatch '^([\d.]+)(Ki|Mi|Gi|k|M|G)?$') { [double]$Matches[1] * @{ '' = 1; 'Ki' = 1KB; 'Mi' = 1MB; 'Gi' = 1GB; 'k' = 1e3; 'M' = 1e6; 'G' = 1e9 }[[string]$Matches[2]] } else { 0 } }
-  $R = @{}
-  foreach ($l in $P) { $f = -split $l; foreach ($c in ($f[1] -split ',')) { if ($c -and $c -ne '<none>') { $R[$f[0]] += (B $c) } } }
+  function C($v) { if ($v -cmatch '^([\d.]+)m$') { [double]$Matches[1] / 1000 } elseif ($v -cmatch '^[\d.]+$') { [double]$v } else { 0 } }
+  $R = @{}; $Q = @{}
+  foreach ($l in $P) {
+    $f = -split $l
+    foreach ($c in ($f[1] -split ',')) { if ($c -and $c -ne '<none>') { $R[$f[0]] += (B $c) } }
+    foreach ($c in ($f[2] -split ',')) { if ($c -and $c -ne '<none>') { $Q[$f[0]] += (C $c) } }
+  }
   foreach ($l in $N) {
     $f = -split $l
     $S = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "/api/v1/nodes/$($f[0])/proxy/stats/summary" | Out-String | ConvertFrom-Json
     $A = if ($S) { $S.node.runtime.imageFs.availableBytes }
     $DISK = if ($null -ne $A) { [math]::Floor($A / 1GB) } else { '?' }
-    "worker $($f[0]): $([math]::Round(((B $f[1]) - $R[$f[0]]) / 1GB, 1)) GiB memory free, $DISK GiB image disk free"
+    "worker $($f[0]): $([math]::Round(((B $f[1]) - $R[$f[0]]) / 1GB, 1)) GiB memory free, $([math]::Round((C $f[2]) - $Q[$f[0]], 2)) CPU free, $DISK GiB image disk free"
   }
   $D = @((ConvertFrom-Json $J).items | Where-Object { $_.metadata.annotations.'storageclass.kubernetes.io/is-default-class' -eq 'true' } | ForEach-Object { $_.metadata.name })
   "default storage class: $(if ($D.Count) { $D -join ' ' } else { 'NONE' })"
@@ -163,9 +171,9 @@ if ($LASTEXITCODE -eq 0) {
 
 </details>
 
-**Expect:** each node `Ready`, a `worker …: … GiB memory free, … GiB image disk free` line per
-worker, and `default storage class:` and a class name. Octopus, SQL Server and nginx need a worker
-with at least 4.1 GiB memory and 8 GiB image disk free.
+**Expect:** each node `Ready`, a `worker …: … GiB memory free, … CPU free, … GiB image disk free`
+line per worker, and `default storage class:` and a class name. Octopus, SQL Server and nginx need
+a worker with at least 1.1 CPU, 4.1 GiB memory and 8 GiB image disk free.
 <!-- TODO-MEASURE: the image disk Octopus and SQL Server use on a VKS worker -->
 
 **If not:**
