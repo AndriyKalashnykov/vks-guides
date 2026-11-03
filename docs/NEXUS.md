@@ -101,6 +101,7 @@ elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide \
      && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu')" \
      && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu')" \
      && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
+  [ -n "$N" ] || echo "NO WORKER: this cluster has no worker node"
   { printf '%s\n' "$P" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
     function b(v) { if (v ~ /Ki$/) return v * 1024; if (v ~ /Mi$/) return v * 1048576; if (v ~ /Gi$/) return v * 1073741824
       if (v ~ /k$/) return v * 1000; if (v ~ /M$/) return v * 1000000; if (v ~ /G$/) return v * 1000000000; return v + 0 }
@@ -134,11 +135,12 @@ if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubect
 elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (LOGIN.md)"; $global:LASTEXITCODE = 1 }
 else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
 if ($LASTEXITCODE -eq 0) { $N = @(kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu') }
-if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu') }
+if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A '--field-selector=status.phase!=Succeeded,status.phase!=Failed' --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu') }
 if ($LASTEXITCODE -eq 0) { $J = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) {
   function B($v) { if ($v -cmatch '^([\d.]+)(Ki|Mi|Gi|k|M|G)?$') { [double]$Matches[1] * @{ '' = 1; 'Ki' = 1KB; 'Mi' = 1MB; 'Gi' = 1GB; 'k' = 1e3; 'M' = 1e6; 'G' = 1e9 }[[string]$Matches[2]] } else { 0 } }
   function C($v) { if ($v -cmatch '^([\d.]+)m$') { [double]$Matches[1] / 1000 } elseif ($v -cmatch '^[\d.]+$') { [double]$v } else { 0 } }
+  if (-not $N) { "NO WORKER: this cluster has no worker node" }
   $R = @{}; $Q = @{}
   foreach ($l in $P) {
     $f = -split $l
@@ -166,13 +168,16 @@ if ($LASTEXITCODE -eq 0) {
 
 **Expect:** each node `Ready`, a `worker …: … GiB memory free, … CPU free, … GiB image disk free`
 line per worker, and `default storage class:` and a class name. Nexus needs a worker with at least
-0.8 CPU, 3.8 GiB memory and 4 GiB image disk free.
+0.8 CPU, 3.8 GiB memory and 4 GiB image disk free (on a worker with its own, larger image disk:
+1.3 GiB plus 15% of that disk).
 
 **If not:**
 - No worker with that much free: use a larger VM class, or give the worker its own disk for
   container images with the `workers:` part in [CICD.md's Prerequisites](CICD.md#prerequisites).
-- `? GiB image disk free` after `Error from server (Forbidden)`: your kubeconfig cannot read the
-  node's statistics; ask the cluster's administrator whether a worker has 4 GiB free.
+- `? GiB image disk free`: the node's statistics could not be read (the error above says why; after
+  `Forbidden`, your kubeconfig may not read them); ask the cluster's administrator whether a worker
+  has 4 GiB free.
+- `NO WORKER`: add a node pool with one worker ([CLUSTER.md](CLUSTER.md) step 10).
 - `default storage class: NONE`: give the cluster a default class as in [CLUSTER.md](CLUSTER.md),
   step 9's `defaultStorageClass`.
 - `NOTE: namespace nexus exists already`: Nexus may be installed; steps 3 to 6 keep what exists.
