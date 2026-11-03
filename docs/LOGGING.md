@@ -124,7 +124,7 @@ if (-not (Test-Path $CA)) {
     $F = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($X.RawData))
     "subject=$($X.Subject)"
     "sha256 Fingerprint=$($F.Replace('-', ':'))"
-    $H = curl.exe -s --ssl-no-revoke --cacert $CA --connect-timeout 20 --max-time 30 -o NUL -w '%{http_code}' "https://${LOGS_FQDN}:9543/api/v2/events"
+    $H = if ((curl.exe -s --ssl-no-revoke --cacert $CA --connect-timeout 20 --max-time 30 -o NUL -D - "https://${LOGS_FQDN}:9543/api/v2/events" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
     "Log Management at https://${LOGS_FQDN}:9543 with this CA: http=$H"
   } catch {
     "FAILED: $CA is not a PEM certificate"
@@ -139,8 +139,8 @@ if (-not (Test-Path $CA)) {
 
 **If not:** `http=000`: this machine cannot reach the name on port 9543, or Log Management's
 certificate was not signed by this CA or not issued for this name. Run
-`curl -v --cacert <the CA file> https://<the name>:9543/api/v2/events` and read the error; ask
-your administrator for the right CA, or a certificate issued for the name.
+`curl -v --cacert <the CA file> https://<the name>:9543/api/v2/events` (Windows: `curl.exe`) and
+read the error; ask your administrator for the right CA, or a certificate issued for the name.
 
 ## 3. Write the values
 
