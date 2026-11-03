@@ -47,8 +47,8 @@ Sizing. Sonatype recommends, for its smallest profile (XS, up to 100 requests a 
 the VM class `best-effort-large` (4 CPUs, 16 GB). This guide's manifests ask for 0.5 CPU and
 3 GiB for Nexus (at most 4 GiB), 0.1 CPU and 512 MiB for PostgreSQL (at most 1 GiB) and a little
 for nginx, so by those requests the smallest worker they fit on is `best-effort-medium` (2 CPUs,
-8 GB).
-<!-- TODO-MEASURE: VKS lab numbers (kubectl top, worker allocatable, esxi host memory) on best-effort-medium -->
+8 GB). On such a worker Nexus used about 1.2 GiB and under 0.1 CPU at rest, and up to 1.9 GiB and
+0.9 CPU while images were pushed and pulled.
 The Community Edition stops adding new components above 40,000 components or 100,000 requests a
 day ([3.87.0 release notes](https://help.sonatype.com/en/sonatype-nexus-repository-3-87-0-release-notes.html)).
 
@@ -84,10 +84,10 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 ## 1. Check the cluster
 
 This checks that the nodes are ready, that the cluster has a default storage class, and how much
-memory the workers can give pods. Nexus, PostgreSQL and the TLS proxy ask for about 3.6 GiB of it.
+memory the workers can give pods. Nexus, PostgreSQL and the TLS proxy ask for about 3.5 GiB of it.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-nexus-cluster"
@@ -140,7 +140,6 @@ if ($LASTEXITCODE -eq 0) {
 [CLUSTER.md](CLUSTER.md), step 9's `defaultStorageClass`. A worker with less than about
 `4500000Ki`: Nexus does not fit; use a larger VM class. `NOTE: namespace nexus exists already`:
 Nexus may be installed; steps 3 to 6 keep what exists.
-<!-- TODO-MEASURE: the worker memory threshold (about 4500000Ki) Nexus, PostgreSQL and nginx need on VKS -->
 
 ## 2. Install cert-manager
 
@@ -160,7 +159,7 @@ Security Standard, and a Secret with a random password for PostgreSQL. Nothing p
 A Secret that exists is kept: PostgreSQL keeps the password it was first given.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-nexus-cluster"
@@ -222,7 +221,7 @@ deleting the Service gives its address back, and a new Service can get another o
 step 7 and every image name, login and VKS cluster that uses the old address must change.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-nexus-cluster"
@@ -302,7 +301,7 @@ proxy picks the new one up within about 6 minutes, without restarting Nexus. The
 with a new key after about 6.5 years: then hand out the new CA (steps 7, 10 and 11) again.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-nexus-cluster"
@@ -461,7 +460,7 @@ volume for its images and files, and next to it a small nginx web server that ta
 Nexus's address and passes it on to Nexus. Nexus takes a few minutes to start the first time.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-nexus-cluster"
@@ -657,7 +656,7 @@ spec:
             - containerPort: 8443
           resources:
             requests:
-              cpu: 50m
+              cpu: 100m
               memory: 32Mi
             limits:
               memory: 128Mi
@@ -895,7 +894,7 @@ spec:
             - containerPort: 8443
           resources:
             requests:
-              cpu: 50m
+              cpu: 100m
               memory: 32Mi
             limits:
               memory: 128Mi
@@ -958,7 +957,7 @@ checks that Nexus answers on `NEXUS_REGISTRY` with a certificate from that CA. E
 needs this file (step 10), and so does each VKS cluster that pulls (step 11). It holds no secret.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-nexus-cluster"
@@ -1033,7 +1032,7 @@ read, which is deleted at the end; it is never shown or saved.
 
 Type the new password for `admin`, on its own (it is not shown):
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'New admin password: '; IFS= read -rs NEXUS_ADMIN_PASSWORD; echo
@@ -1048,7 +1047,7 @@ $NEXUS_ADMIN_PASSWORD = Read-Host 'New admin password' -AsSecureString
 Then:
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-nexus-cluster"
@@ -1160,7 +1159,7 @@ the VKS clusters, step 11). It skips what exists.
 
 Type `admin`'s password, then the push user's and the pull user's (none is shown):
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'admin password: '; IFS= read -rs NEXUS_ADMIN_PASSWORD; echo; printf 'Push user password: '; IFS= read -rs NEXUS_PUSH_PASSWORD; echo; printf 'Pull user password: '; IFS= read -rs NEXUS_PULL_PASSWORD; echo
@@ -1175,7 +1174,7 @@ $NEXUS_ADMIN_PASSWORD = Read-Host 'admin password' -AsSecureString; $NEXUS_PUSH_
 Then:
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 NEXUS_REGISTRY="192.168.10.50"
@@ -1362,7 +1361,7 @@ This copies a small public image, `busybox`, into your repository as
 so the login is not left on this machine. Set `CONTAINER_ENGINE` to `podman` or `docker`. Type the
 push user's password first (it is not shown):
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'Push user password: '; IFS= read -rs NEXUS_PUSH_PASSWORD; echo
@@ -1377,7 +1376,7 @@ $NEXUS_PUSH_PASSWORD = Read-Host 'Push user password' -AsSecureString
 Then:
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 CONTAINER_ENGINE="podman"
@@ -1459,7 +1458,7 @@ twice in the Secret, and not the server's own certificate:
 It needs the **Edit** role on the vSphere Namespace.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -1521,7 +1520,7 @@ node update (below).
 <!-- TODO-MEASURE: on VKS 3.8, that a new key in the same Secret plus a secretRef.key change rolls the nodes with the new CA -->
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -1595,7 +1594,7 @@ setting and updates the nodes again; do not sync that Application afterwards.
 <!-- TODO-MEASURE: on VKS 3.8, how the nodes roll after the edit (control plane replaced, workers in place?) and how long -->
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
@@ -1661,7 +1660,7 @@ This stores the pull user's login (step 9; it may only read) in the namespace `d
 cluster as the Secret `nexus-pull`, keyed by exactly `NEXUS_REGISTRY` (as in the image names), and
 runs a test pod with the image from step 10. Type the pull user's password first (it is not shown):
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'Pull user password: '; IFS= read -rs NEXUS_PULL_PASSWORD; echo
@@ -1676,7 +1675,7 @@ $NEXUS_PULL_PASSWORD = Read-Host 'Pull user password' -AsSecureString
 Then:
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -1840,7 +1839,7 @@ folder; step 9's repository can hold up to 20 GB. Run it when nobody pushes and 
 compact task runs.
 
 <details>
-<summary><b>Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh)</b></summary>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-nexus-cluster"
@@ -1849,7 +1848,7 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 D="$HOME/nexus-backup-$(date +%Y%m%d-%H%M%S)"
 kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n nexus "$@"; }
 N="?"; L="?"
-if mkdir -p "$D" \
+if mkdir -m 700 "$D" \
    && kc exec postgres-0 -- sh -c 'pg_dump -U "$POSTGRES_USER" -d nexus -Fc -f /tmp/nexus-db.dump' \
    && kc cp postgres-0:/tmp/nexus-db.dump "$D/nexus-db.dump" \
    && kc cp -c nexus nexus-0:/nexus-data/blobs "$D/blobs" \
@@ -1876,9 +1875,10 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $D = "$HOME\nexus-backup-$(Get-Date -Format yyyyMMdd-HHmmss)"
 function kc { kubectl --kubeconfig $VKS_KUBECONFIG -n nexus @args }
 New-Item -ItemType Directory -Force -Path $D | Out-Null
+$SID = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+icacls $D /inheritance:r /grant:r "*${SID}:(OI)(CI)F" | Out-Null
 Push-Location $D
-$global:LASTEXITCODE = $null
-kc exec postgres-0 -- sh -c 'pg_dump -U "$POSTGRES_USER" -d nexus -Fc -f /tmp/nexus-db.dump'
+if ($LASTEXITCODE -eq 0) { kc exec postgres-0 -- sh -c 'pg_dump -U "$POSTGRES_USER" -d nexus -Fc -f /tmp/nexus-db.dump' }
 if ($LASTEXITCODE -eq 0) { kc cp postgres-0:/tmp/nexus-db.dump nexus-db.dump }
 if ($LASTEXITCODE -eq 0) { kc cp -c nexus nexus-0:/nexus-data/blobs blobs }
 if ($LASTEXITCODE -eq 0) { kc cp -c nexus nexus-0:/nexus-data/keystores keystores }
@@ -1895,7 +1895,7 @@ kc exec postgres-0 -- rm -f /tmp/nexus-db.dump
 
 </details>
 
-<!-- TODO-MEASURE: backup on VKS (kubectl cp of blobs with tar in the alpine image, size/time), and a restore into a fresh namespace before the guide states one -->
+<!-- TODO-MEASURE: a restore into a fresh namespace before the guide states one -->
 
 **Expect:** a size line for `blobs`, `keystores` and `nexus-db.dump`, then `backed up to …` with
 the same number twice in `(… of … blob files)`. Three `tar: Removing leading` lines from kubectl are
@@ -1917,7 +1917,7 @@ still in use when the cluster goes is left behind in the vSphere Namespace and s
 Also left: `nexus-ca.pem`, the backups, the CA you trusted in step 10, and the Secret `nexus-pull`
 in each cluster from step 11.
 
-**Linux (Ubuntu, AlmaLinux, Photon OS), macOS, WSL (bash or zsh):**
+**Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 VKS_CLUSTER="my-nexus-cluster"
