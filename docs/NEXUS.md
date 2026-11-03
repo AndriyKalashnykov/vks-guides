@@ -138,7 +138,8 @@ if ($LASTEXITCODE -eq 0) {
 
 **If not:** `default storage class: NONE`: give the cluster a default class as in
 [CLUSTER.md](CLUSTER.md), step 9's `defaultStorageClass`. A worker with less than about
-`4500000Ki`: Nexus does not fit; use a larger VM class. `NOTE: namespace nexus exists already`:
+`4500000Ki`: Nexus does not fit; use a larger VM class.
+<!-- TODO-MEASURE: the threshold itself (passed once on best-effort-medium; not measured at its edge); free CPU (Nexus asks for 0.7 CPU) --> `NOTE: namespace nexus exists already`:
 Nexus may be installed; steps 3 to 6 keep what exists.
 
 ## 2. Install cert-manager
@@ -1586,8 +1587,8 @@ cluster's name in `name:`, and create the cluster as that step says:
                     key: nexus-ca
 ```
 
-**An existing cluster:** this adds the same setting. VKS replaces every node of the cluster, one at
-a time (about 5 minutes for one control-plane node and one worker), so pods move. On Nexus's own
+**An existing cluster:** this adds the same setting. VKS replaces the cluster's nodes (a cluster with
+one control-plane node and one worker had both replaced in about 5 minutes), so pods move. On Nexus's own
 cluster, Nexus is unavailable for a few minutes while its pod moves to the new worker: do that
 cluster last. A cluster made by [ARGOCD.md](ARGOCD.md): its chart has no setting for this. The
 patch below works, but ArgoCD then shows the cluster OutOfSync, and a later SYNC removes the
@@ -1642,11 +1643,9 @@ Remove-Item -Force -ErrorAction SilentlyContinue $T
 
 </details>
 
-**Expect:** `cluster.cluster.x-k8s.io/my-vks-cluster patched`. Then wait until every machine has
-the new configuration: `kubectl --kubeconfig ~/.kube/supervisor.kubeconfig -n my-namespace get
-cluster my-vks-cluster -o jsonpath='{range .status.conditions[*]}{.type}={.status}{"\n"}{end}'`
-shows `ControlPlaneMachinesUpToDate=True`, `WorkerMachinesUpToDate=True` and `RollingOut=False`
-(while nodes are replaced, the first two are `False` with `KubeadmConfig is not up-to-date`).
+**Expect:** `cluster.cluster.x-k8s.io/my-vks-cluster patched`. Then run
+[CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)'s check until both lines say `True`
+(while nodes are replaced they say `False`).
 
 **If not:**
 - `STOPPED: … osConfiguration setting already`: the cluster trusts another CA already; add a
@@ -1821,8 +1820,8 @@ login with `imagePullSecrets: [{name: nexus-pull}]` in its pod spec; for another
 this block with `-n default` changed.
 
 **If not:**
-- `CA: …`: the nodes are still being replaced (wait until `ControlPlaneMachinesUpToDate=True` and
-  `WorkerMachinesUpToDate=True`, above), or the cluster does not point at the Secret (above).
+- `CA: …`: the nodes are still being replaced (wait until CLUSTER.md step 10's check says `True`
+  twice, above), or the cluster does not point at the Secret (above).
 - `NAME: …`: `NEXUS_REGISTRY` is not the value step 5 was run with.
 - `DNS: …`: the DNS server the nodes use does not have the record for `NEXUS_REGISTRY`.
 - `LOGIN: …`: the pull user's name or password is wrong, or the Secret's key is not exactly
@@ -1875,9 +1874,11 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $D = "$HOME\nexus-backup-$(Get-Date -Format yyyyMMdd-HHmmss)"
 function kc { kubectl --kubeconfig $VKS_KUBECONFIG -n nexus @args }
-New-Item -ItemType Directory -Force -Path $D | Out-Null
-$SID = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-icacls $D /inheritance:r /grant:r "*${SID}:(OI)(CI)F" | Out-Null
+$global:LASTEXITCODE = 1
+if (New-Item -ItemType Directory -Path $D -ErrorAction SilentlyContinue) {
+  $SID = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+  icacls $D /inheritance:r /grant:r "*${SID}:(OI)(CI)F"
+}
 Push-Location $D
 if ($LASTEXITCODE -eq 0) { kc exec postgres-0 -- sh -c 'pg_dump -U "$POSTGRES_USER" -d nexus -Fc -f /tmp/nexus-db.dump' }
 if ($LASTEXITCODE -eq 0) { kc cp postgres-0:/tmp/nexus-db.dump nexus-db.dump }
