@@ -90,10 +90,10 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 
 ## 1. Check the cluster
 
-This checks that the nodes are ready, the free memory and image disk on each worker, that the
+This checks that the nodes are ready, the free memory, CPU and image disk on each worker, that the
 cluster has a default storage class, and that no `octopus` namespace exists yet. Octopus, SQL Server,
-nginx and the cert-manager add-on of step 2 ask for about 4.3 GiB of memory; pods already in the `octopus` and
-`cert-manager` namespaces are not counted as using any.
+nginx and the cert-manager add-on of step 2 ask for about 0.7 CPU and 4.3 GiB of memory; pods
+already in the `octopus` and `cert-manager` namespaces are not counted as using any.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -187,7 +187,7 @@ disk free.
 - `? GiB image disk free`: the node's statistics could not be read (the error above says why; after
   `Forbidden`, your kubeconfig may not read them); ask the cluster's administrator whether a worker
   has 8 GiB free.
-- `NO WORKER`: add a node pool with one worker ([CLUSTER.md](CLUSTER.md) step 10).
+- `NO WORKER`: set the node pool's `replicas` to 1 ([CLUSTER.md](CLUSTER.md) step 10).
 - `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
 - `NOTE: namespace octopus exists already`: Octopus may be installed; steps 3 to 7 keep what exists.
 
