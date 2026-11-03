@@ -1586,12 +1586,12 @@ cluster's name in `name:`, and create the cluster as that step says:
                     key: nexus-ca
 ```
 
-**An existing cluster:** this adds the same setting. VKS replaces some nodes and updates others in
-place, so pods move. On Nexus's own cluster, Nexus is unavailable until its node is back: do that
+**An existing cluster:** this adds the same setting. VKS replaces every node of the cluster, one at
+a time (about 5 minutes for one control-plane node and one worker), so pods move. On Nexus's own
+cluster, Nexus is unavailable for a few minutes while its pod moves to the new worker: do that
 cluster last. A cluster made by [ARGOCD.md](ARGOCD.md): its chart has no setting for this. The
 patch below works, but ArgoCD then shows the cluster OutOfSync, and a later SYNC removes the
 setting and updates the nodes again; do not sync that Application afterwards.
-<!-- TODO-MEASURE: on VKS 3.8, how the nodes roll after the edit (control plane replaced, workers in place?) and how long -->
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1642,10 +1642,11 @@ Remove-Item -Force -ErrorAction SilentlyContinue $T
 
 </details>
 
-**Expect:** `cluster.cluster.x-k8s.io/my-vks-cluster patched`. Then wait until the cluster is
-`Ready` again ([CLUSTER.md step 6](CLUSTER.md#6-wait-for-the-cluster)) and every machine of the
-cluster shows the new configuration.
-<!-- TODO-MEASURE: the check that every machine has the new configuration; candidate: the Cluster's ControlPlaneMachinesUpToDate and WorkerMachinesUpToDate conditions (not run) -->
+**Expect:** `cluster.cluster.x-k8s.io/my-vks-cluster patched`. Then wait until every machine has
+the new configuration: `kubectl --kubeconfig ~/.kube/supervisor.kubeconfig -n my-namespace get
+cluster my-vks-cluster -o jsonpath='{range .status.conditions[*]}{.type}={.status}{"\n"}{end}'`
+shows `ControlPlaneMachinesUpToDate=True`, `WorkerMachinesUpToDate=True` and `RollingOut=False`
+(while nodes are replaced, the first two are `False` with `KubeadmConfig is not up-to-date`).
 
 **If not:**
 - `STOPPED: … osConfiguration setting already`: the cluster trusts another CA already; add a
@@ -1820,8 +1821,8 @@ login with `imagePullSecrets: [{name: nexus-pull}]` in its pod spec; for another
 this block with `-n default` changed.
 
 **If not:**
-- `CA: …`: the nodes are still being updated (wait until every machine has the new configuration,
-  above), or the cluster does not point at the Secret (above).
+- `CA: …`: the nodes are still being replaced (wait until `ControlPlaneMachinesUpToDate=True` and
+  `WorkerMachinesUpToDate=True`, above), or the cluster does not point at the Secret (above).
 - `NAME: …`: `NEXUS_REGISTRY` is not the value step 5 was run with.
 - `DNS: …`: the DNS server the nodes use does not have the record for `NEXUS_REGISTRY`.
 - `LOGIN: …`: the pull user's name or password is wrong, or the Secret's key is not exactly
