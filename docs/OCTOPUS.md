@@ -42,10 +42,10 @@ Run the steps in order. Steps 11 to 13 are for later.
 Sizing. Octopus recommends, for a trial, 2 cores and 4 GB of memory for Octopus Server and 2 cores
 and 4 GB for SQL Server Express
 ([Performance](https://octopus.com/docs/administration/managing-infrastructure/performance)). This
-guide's manifests ask for 0.4 CPU and 2 GiB for Octopus (at most 4 GiB), 0.2 CPU and 2 GiB for SQL
+guide's manifests ask for 0.4 CPU and 2 GiB for Octopus (at most 3 GiB), 0.2 CPU and 2 GiB for SQL
 Server (at most 3 GiB, of which SQL Server uses 2 GB) and a little for nginx, 0.65 CPU in all, from
-what they used on a VKS cluster (Octopus 0.4 to 0.5 CPU and 1.1 GiB at most while it deployed
-releases, SQL Server 0.1 CPU and 0.9 GiB; more CPU for a minute at the first start). By those
+what they used on a VKS cluster: Octopus typically 0.4 to 0.5 CPU, up to 1.4 while it deployed many
+releases and 1.8 at its first start, and 1.1 GiB at most; SQL Server about 0.1 CPU and 0.9 GiB. By those
 requests the smallest worker they fit on is the VM class `best-effort-medium` (2 CPUs, 8 GB),
 which has about 0.9 CPU left after the cluster's own pods. The images are
 for amd64 nodes only, and need about 8 GiB of the worker's image disk.
@@ -889,7 +889,7 @@ octopus:
       cpu: 400m
       memory: 2Gi
     limits:
-      memory: 4Gi
+      memory: 3Gi
   podSecurityContext:
     runAsNonRoot: true
     runAsUser: 999
@@ -1064,7 +1064,7 @@ octopus:
       cpu: 400m
       memory: 2Gi
     limits:
-      memory: 4Gi
+      memory: 3Gi
   podSecurityContext:
     runAsNonRoot: true
     runAsUser: 999
