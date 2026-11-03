@@ -42,16 +42,18 @@ Run the steps in order. Steps 11 to 13 are for later.
 Sizing. Octopus recommends, for a trial, 2 cores and 4 GB of memory for Octopus Server and 2 cores
 and 4 GB for SQL Server Express
 ([Performance](https://octopus.com/docs/administration/managing-infrastructure/performance)). This
-guide's manifests ask for 0.5 CPU and 2 GiB for Octopus (at most 4 GiB), 0.5 CPU and 2 GiB for SQL
-Server (at most 3 GiB, of which SQL Server uses 2 GB) and a little for nginx, 1.05 CPU in all. A
-`best-effort-medium` worker (2 CPUs) has about 0.9 CPU left after the cluster's own pods, so the
-smallest worker they fit on is the VM class `best-effort-large` (4 CPUs, 16 GB). The images are
+guide's manifests ask for 0.4 CPU and 2 GiB for Octopus (at most 4 GiB), 0.2 CPU and 2 GiB for SQL
+Server (at most 3 GiB, of which SQL Server uses 2 GB) and a little for nginx, 0.65 CPU in all, from
+what they used on a VKS cluster (Octopus 0.4 to 0.5 CPU and 1.1 GiB at most while it deployed
+releases, SQL Server 0.1 CPU and 0.9 GiB; more CPU for a minute at the first start). By those
+requests the smallest worker they fit on is the VM class `best-effort-medium` (2 CPUs, 8 GB),
+which has about 0.9 CPU left after the cluster's own pods. The images are
 for amd64 nodes only, and need about 8 GiB of the worker's image disk.
-<!-- TODO-MEASURE: VKS lab numbers (kubectl top, worker allocatable, image disk used, esxi host memory) -->
+<!-- TODO-MEASURE: a run on a best-effort-medium worker with these requests (measured so far on best-effort-large) -->
 
 The cluster for Octopus:
 
-1. Its vSphere Namespace offers the VM class `best-effort-large` or larger
+1. Its vSphere Namespace offers the VM class `best-effort-medium` or larger
    ([NAMESPACE.md step 8](NAMESPACE.md#8-check-the-namespace) lists them under `VM classes:`; a
    vCenter administrator adds one with [NAMESPACE.md step 6](NAMESPACE.md#6-add-the-vm-classes)).
 2. Create the cluster with
@@ -172,7 +174,7 @@ if ($LASTEXITCODE -eq 0) {
 
 **Expect:** each node `Ready`, a `worker …: … GiB memory free, … CPU free, … GiB image disk free`
 line per worker, and `default storage class:` and a class name. Octopus, SQL Server and nginx need
-a worker with at least 1.1 CPU, 4.1 GiB memory and 8 GiB image disk free.
+a worker with at least 0.7 CPU, 4.1 GiB memory and 8 GiB image disk free.
 <!-- TODO-MEASURE: the image disk Octopus and SQL Server use on a VKS worker -->
 
 **If not:**
@@ -664,7 +666,7 @@ spec:
             periodSeconds: 10
           resources:
             requests:
-              cpu: 500m
+              cpu: 200m
               memory: 2Gi
             limits:
               memory: 3Gi
@@ -783,7 +785,7 @@ spec:
             periodSeconds: 10
           resources:
             requests:
-              cpu: 500m
+              cpu: 200m
               memory: 2Gi
             limits:
               memory: 3Gi
@@ -884,7 +886,7 @@ octopus:
     type: ClusterIP
   resources:
     requests:
-      cpu: 500m
+      cpu: 400m
       memory: 2Gi
     limits:
       memory: 4Gi
@@ -1059,7 +1061,7 @@ octopus:
     type: ClusterIP
   resources:
     requests:
-      cpu: 500m
+      cpu: 400m
       memory: 2Gi
     limits:
       memory: 4Gi
