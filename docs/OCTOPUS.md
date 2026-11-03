@@ -63,7 +63,6 @@ The cluster for Octopus:
    the nodes ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)). A worker's image disk
    is about 15 GiB; when other applications share the worker, give it its own disk for container
    images with the `workers:` part in [CICD.md's Prerequisites](CICD.md#prerequisites).
-   <!-- TODO-MEASURE: namespace storage used by the cluster plus volumes -->
 3. Save its kubeconfig as `~/.kube/<cluster name>.kubeconfig`
    ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)); it is `<file>` in the **If not:** lines.
 
@@ -175,7 +174,6 @@ if ($LASTEXITCODE -eq 0) {
 line per worker, and `default storage class:` and a class name. Octopus, SQL Server, nginx and the
 cert-manager add-on of step 2 need a worker with at least 0.7 CPU, 4.3 GiB memory and 8 GiB image
 disk free.
-<!-- TODO-MEASURE: the image disk Octopus and SQL Server use on a VKS worker -->
 
 **If not:**
 - No worker with that much free: add a node pool with a larger VM class, or a worker with its own
@@ -1332,7 +1330,7 @@ connected.
 **If not:**
 - `Connection refused` or a timeout: this machine cannot reach the web address on port 443, or nginx
   is not ready yet (step 7).
-- `curl: (35)` (Linux: `unexpected eof while reading`) right after step 7: Octopus's web address is not
+- `curl: (35)` right after step 7: Octopus's web address is not
   passing traffic to nginx yet; wait a minute and run step 8 again.
 - `SSL certificate problem`: step 5 ran with another address; run steps 5 and 8 again.
 - No `gRPC certificate:` line: this machine cannot reach `octopus-grpc`'s address on port 8443.

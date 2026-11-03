@@ -28,7 +28,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines:
 | [Run GitLab](GITLAB.md) | part | ✅ | part | — | part | — |
 | [CI/CD with Gitea and Tekton](CICD.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | [CI/CD with GitLab](CICD.md) | part | ✅ | — | — | — | — |
-| [Run Octopus Deploy](OCTOPUS.md) | — | — | — | — | — | — |
+| [Run Octopus Deploy](OCTOPUS.md) | part | — | — | — | — | — |
 
 Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
 
