@@ -446,7 +446,8 @@ addresses; ask your vSphere administrator.
 ## 5. Make the web page's certificate
 
 This makes a CA (certificate authority) of your own with cert-manager, valid for 10 years, and from
-it a certificate for Octopus's web address from step 4. cert-manager renews the certificate before
+it a certificate for Octopus's web address from step 4 and its in-cluster name
+`octopus-web.octopus.svc`. cert-manager renews the certificate before
 it ends; nginx picks the new one up within about 6 minutes. The gRPC port keeps Octopus's own
 certificate.
 
@@ -582,7 +583,7 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n octopus wait 
 
 </details>
 
-**Expect:** four `created` lines (`unchanged` when run again), then
+**Expect:** four `created` lines (`unchanged` or `configured` when run again), then
 `certificate.cert-manager.io/octopus-ca condition met` and `…/octopus-tls condition met`.
 
 **If not:**
@@ -1336,8 +1337,9 @@ connected.
   is not ready yet (step 7).
 - `curl: (35)` right after step 7: Octopus's web address is not
   passing traffic to nginx yet; wait a minute and run step 8 again.
-- `SSL certificate problem` (Windows: `CertGetNameString() failed to match`): step 5 ran with another
-  address; run steps 5 and 8 again.
+- `SSL certificate problem`: step 5 ran with another address; run steps 5 and 8 again.
+- `CertGetNameString() failed to match` (Windows): the certificate is older than step 5's
+  `octopus-web.octopus.svc` name; run step 5, wait 6 minutes for nginx to load it, then run step 8 again.
 - No `gRPC certificate:` line: this machine cannot reach `octopus-grpc`'s address on port 8443.
 
 ## 9. Sign in
@@ -1415,7 +1417,7 @@ $OCTOPUS_CA = "$HOME\octopus-ca.pem"
 
 function kc { kubectl --kubeconfig $VKS_KUBECONFIG -n octopus @args }
 $IP = kc get service octopus-web -o 'jsonpath={.status.loadBalancer.ingress[0].ip}'
-$U = 'https://octopus-web.octopus.svc/api'; $R = '--resolve', "octopus-web.octopus.svc:443:$IP"
+$U = 'https://octopus-web.octopus.svc/api'; $RV = '--resolve', "octopus-web.octopus.svc:443:$IP"
 $T = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName())
 if (-not (Test-Path $OCTOPUS_CA)) { "MISSING: $OCTOPUS_CA (step 8)" }
 else {
@@ -1425,11 +1427,11 @@ else {
     $P = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B))
     [IO.File]::WriteAllText("$T\login.json", (@{ Username = 'admin'; Password = $P; RememberMe = $false } | ConvertTo-Json -Compress))
     $P = $null; $B = $null
-    curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $OCTOPUS_CA @R -c "$T\jar" -o NUL -H 'Content-Type: application/json' --data-binary "@$T\login.json" "$U/users/login"
+    curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $OCTOPUS_CA @RV -c "$T\jar" -o NUL -H 'Content-Type: application/json' --data-binary "@$T\login.json" "$U/users/login"
     if ($LASTEXITCODE -eq 0) {
       $X = (Select-String -Path "$T\jar" -Pattern 'Octopus-Csrf-Token\S*\s+(\S+)$').Matches[0].Groups[1].Value
-      "version: $(((curl.exe -fsS --ssl-no-revoke --cacert $OCTOPUS_CA @R $U) | Out-String | ConvertFrom-Json).Version)"
-      $L = (curl.exe -fsS --ssl-no-revoke --cacert $OCTOPUS_CA @R -b "$T\jar" -H "X-Octopus-Csrf-Token: $X" "$U/licenses/licenses-current-status") | Out-String | ConvertFrom-Json
+      "version: $(((curl.exe -fsS --ssl-no-revoke --cacert $OCTOPUS_CA @RV $U) | Out-String | ConvertFrom-Json).Version)"
+      $L = (curl.exe -fsS --ssl-no-revoke --cacert $OCTOPUS_CA @RV -b "$T\jar" -H "X-Octopus-Csrf-Token: $X" "$U/licenses/licenses-current-status") | Out-String | ConvertFrom-Json
       "licence compliant: $($L.IsCompliant)"
       "limits: " + (($L.Limits | ForEach-Object { "$($_.Name) $($_.EffectiveLimit)" }) -join ', ')
     } else { "FAILED: sign-in refused (see the error above)" }
@@ -1541,10 +1543,10 @@ $OCTOPUS_CA = "$HOME\octopus-ca.pem"
 
 function kc { kubectl --kubeconfig $VKS_KUBECONFIG -n octopus @args }
 $IP = kc get service octopus-web -o 'jsonpath={.status.loadBalancer.ingress[0].ip}'
-$U = 'https://octopus-web.octopus.svc/api'; $R = '--resolve', "octopus-web.octopus.svc:443:$IP"
+$U = 'https://octopus-web.octopus.svc/api'; $RV = '--resolve', "octopus-web.octopus.svc:443:$IP"
 $T = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName())
 function api($path, $body) {
-  $a = @('-fsS', '--connect-timeout', '20', '--ssl-no-revoke', '--cacert', $OCTOPUS_CA) + $R + @('-b', "$T\jar", '-H', "X-Octopus-Csrf-Token: $X", '-H', 'Content-Type: application/json')
+  $a = @('-fsS', '--connect-timeout', '20', '--ssl-no-revoke', '--cacert', $OCTOPUS_CA) + $RV + @('-b', "$T\jar", '-H', "X-Octopus-Csrf-Token: $X", '-H', 'Content-Type: application/json')
   if ($body) { [IO.File]::WriteAllText("$T\body.json", $body); $a += @('--data-binary', "@$T\body.json") }
   (curl.exe @a "$U/$path") | Out-String | ConvertFrom-Json
 }
@@ -1556,7 +1558,7 @@ else {
     $P = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B))
     [IO.File]::WriteAllText("$T\login.json", (@{ Username = 'admin'; Password = $P } | ConvertTo-Json -Compress))
     $P = $null; $B = $null
-    curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $OCTOPUS_CA @R -c "$T\jar" -o NUL -H 'Content-Type: application/json' --data-binary "@$T\login.json" "$U/users/login"
+    curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $OCTOPUS_CA @RV -c "$T\jar" -o NUL -H 'Content-Type: application/json' --data-binary "@$T\login.json" "$U/users/login"
     if ($LASTEXITCODE -ne 0) { "FAILED: sign-in refused (see the error above)" }
     else {
       $X = (Select-String -Path "$T\jar" -Pattern 'Octopus-Csrf-Token\S*\s+(\S+)$').Matches[0].Groups[1].Value
