@@ -734,7 +734,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $SQL_IMAGE = "mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-22.04@sha256:6972fb831759433def6a34e107fa32a85230bff5af8014c6263fe4633ea9cc0f"
 
 function kc { $input | kubectl --kubeconfig $VKS_KUBECONFIG -n octopus @args }
-function sq { $input | kc exec -i sql-0 -- sh -c 'SQLCMDPASSWORD="$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -h -1 -W' }
+function sq { $input | kc exec -i sql-0 '--' sh -c 'SQLCMDPASSWORD="$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -h -1 -W' }
 $global:LASTEXITCODE = $null
 @"
 apiVersion: v1
