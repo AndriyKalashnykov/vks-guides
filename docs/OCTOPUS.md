@@ -1729,18 +1729,25 @@ type** **Docker Container Registry**, **Feed name** `nexus`, **Feed url** `https
 **Registry path** empty, **Credentials** **Username and Password** with the pull user's name and
 password from
 [NEXUS.md step 9](NEXUS.md#9-create-the-docker-repository-a-push-user-and-a-pull-user), then
-**Save and test**:
+**Save and test** (**Feed url** starts as `https://index.docker.io`: replace it):
 
 ![Create Feed: Feed type Docker Container Registry, Feed name, Feed url, Registry path](img/octopus/08-create-feed-docker.jpg)
 
+**Save and test** opens **Test nexus**: type `apps/busybox` in **Package name** and click **Search**:
+
+![Test nexus: Package name apps/busybox, Matching packages lists apps/busybox](img/octopus/09-test-feed.jpg)
+
+**Expect:** **Matching packages** lists `apps/busybox`.
+
 Octopus reads image tags as versions, so tag images with versions such as `1.0.0`. Name a package
-by its full path in Nexus, `apps/<image>` (for example `apps/busybox`): with Nexus's path-based
-routing, a search for the bare image name finds nothing.
-<!-- TODO-MEASURE: the UI's Save and test result -->
+by its full path in Nexus, `apps/<image>` (for example `apps/busybox`).
 
 **If not:**
-- `The remote certificate is invalid because of errors in the certificate chain: PartialChain`
-  when Octopus lists tags: Octopus does not trust Nexus's CA yet; run this step and step 7.
+- `The SSL connection could not be established, see inner exception. The remote certificate is
+  invalid because of errors in the certificate chain: PartialChain`: Octopus does not trust
+  Nexus's CA yet; run this step and step 7.
+- `Error performing request to https://<NEXUS_REGISTRY>/v2/_catalog?n=100. The endpoint returned
+  Not Found`: you searched a bare image name; search `apps/<image>`.
 - `MISSING: …nexus-ca.pem`: run NEXUS.md step 7 on this machine first.
 
 ## 12. Change the admin password
