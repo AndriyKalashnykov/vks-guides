@@ -1696,8 +1696,10 @@ password from
 
 ![Create Feed: Feed type Docker Container Registry, Feed name, Feed url, Registry path](img/octopus/08-create-feed-docker.jpg)
 
-Octopus reads image tags as versions, so tag images with versions such as `1.0.0`.
-<!-- TODO-MEASURE: Save and test, the feed's search and versions against NEXUS.md's path-based routing -->
+Octopus reads image tags as versions, so tag images with versions such as `1.0.0`. Name a package
+by its full path in Nexus, `apps/<image>` (for example `apps/busybox`): with Nexus's path-based
+routing, a search for the bare image name finds nothing.
+<!-- TODO-MEASURE: the UI's Save and test result -->
 
 **If not:**
 - `The remote certificate is invalid because of errors in the certificate chain: PartialChain`
