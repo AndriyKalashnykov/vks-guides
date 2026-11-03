@@ -68,6 +68,7 @@ for that reason.
 | guide | add-on | what it is for |
 |---|---|---|
 | [Run Tekton in a VKS cluster](TEKTON.md), option A | Tekton Operator | a CI/CD engine |
+| [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md), step 2 | cert-manager | Keycloak's HTTPS certificate |
 | [Send a VKS cluster's logs to VCF Operations](LOGGING.md) | Fluent Bit | send the cluster's logs out |
 | [See a VKS cluster's logs and traces in Grafana](OBSERVABILITY.md) | Fluent Bit | send the logs to Loki |
 | [Headlamp: a web console for a VKS cluster](HEADLAMP.md) | Headlamp, cert-manager; Contour and Prometheus if you choose | a web page for the cluster, its plugins, access by name |

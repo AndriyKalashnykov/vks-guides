@@ -661,8 +661,8 @@ kubectl --kubeconfig $ADMIN_KUBECONFIG -n $TEAM_NAMESPACE create rolebinding $B 
 ```
 
 **Expect:** `rolebinding.rbac.authorization.k8s.io/sso-alice-vsphere.local-edit created`. The
-person then gets `yes` from `kubectl --kubeconfig ~/.kube/<cluster>-sso.kubeconfig -n team-a auth
-can-i create deployments`.
+person then gets `yes` from `kubectl --kubeconfig "$HOME/.kube/<cluster>-sso.kubeconfig" -n team-a
+auth can-i create deployments`.
 
 **If not:** `already exists`: a binding of that name is there, perhaps for the name in other letter
 case. `kubectl --kubeconfig <admin file> -n team-a get rolebinding <name> -o

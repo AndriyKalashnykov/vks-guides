@@ -638,7 +638,8 @@ lines, `deployment "test-web-apps" successfully rolled out`, then
 `pods running your image: 5 of 5`.
 
 **If not:** the wait ends with `exceeded its progress deadline` or times out: run
-`kubectl --kubeconfig ~/.kube/<cluster>.kubeconfig -n harbor-demo get events --sort-by=.lastTimestamp | tail`.
+`kubectl --kubeconfig "$HOME/.kube/<cluster>.kubeconfig" -n harbor-demo get events --sort-by=.lastTimestamp`
+(the last lines).
 - `x509: certificate signed by unknown authority`: the nodes do not trust Harbor; run HARBOR.md
   step 11.
 - `401 Unauthorized`, `no basic auth credentials` or `insufficient_scope`: the project is private
