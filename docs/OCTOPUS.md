@@ -1447,15 +1447,18 @@ Type the name, then **Save**:
 
 ![Add Environment: the name qa typed, Cancel and Save](img/octopus/04-add-environment.jpg)
 
-Then **Lifecycles** (under **Manage**) → **Add Lifecycle**: name it `dev-test-prod`, add a phase
-`dev` with the environment dev deployed automatically, then phases `test` and `prod` with their
-environments, and **Save**. The lists then show:
+Then **Lifecycles** (under **Manage**) → **Add Lifecycle**: **Lifecycle name** `dev-test-prod`.
+Under **Phases**, **Add Phase**, **Phase name** `dev`, **Add Environment**: pick `dev` and **Deploy
+automatically to this environment as soon as the release enters this phase**, then **Ok**:
+
+![Add Environment in a phase: Environment dev, deploy automatically or manually, Cancel and Ok](img/octopus/07-lifecycle-add-environment.jpg)
+
+Add the phases `test` and `prod` the same way, leaving **Users will need to manually queue the
+deployment to this environment**, then **Save**: `Lifecycle created`. The lists then show:
 
 ![Environments: dev, test and prod, each with 0 deployment targets](img/octopus/05-environments.jpg)
 
 ![Lifecycles: Default Lifecycle and dev-test-prod, with the phases dev, test and prod](img/octopus/06-lifecycles.jpg)
-
-<!-- TODO-MEASURE: the Add Lifecycle page in the web UI (the screenshots above were made after the REST block) -->
 
 To do the same from a terminal (it skips what exists):
 
@@ -1697,11 +1700,17 @@ octopus:
 step 7, `Octopus is ready`, and `kubectl -n octopus logs octopus-octopus-deploy-0 -c ca-bundle`
 prints the number of CAs in the bundle (about 150).
 
-Then add Nexus in the web page as a Docker feed (**External Feeds**), with the URL
-`https://<NEXUS_REGISTRY>` and the pull user's name and password from
-[NEXUS.md step 9](NEXUS.md#9-create-the-docker-repository-a-push-user-and-a-pull-user). Octopus reads image tags as versions, so tag images with versions such
-as `1.0.0`.
-<!-- TODO-MEASURE: the Add Feed page in the web UI, and the feed's search and versions against NEXUS.md's path-based routing -->
+Then add Nexus in the web page: **External Feeds** (under **Manage**) → **Add Feed** → **Feed
+type** **Docker Container Registry**, **Feed name** `nexus`, **Feed url** `https://<NEXUS_REGISTRY>`,
+**Registry path** empty, **Credentials** **Username and Password** with the pull user's name and
+password from
+[NEXUS.md step 9](NEXUS.md#9-create-the-docker-repository-a-push-user-and-a-pull-user), then
+**Save and test**:
+
+![Create Feed: Feed type Docker Container Registry, Feed name, Feed url, Registry path](img/octopus/08-create-feed-docker.jpg)
+
+Octopus reads image tags as versions, so tag images with versions such as `1.0.0`.
+<!-- TODO-MEASURE: Save and test, the feed's search and versions against NEXUS.md's path-based routing -->
 
 **If not:**
 - `The remote certificate is invalid because of errors in the certificate chain: PartialChain`
