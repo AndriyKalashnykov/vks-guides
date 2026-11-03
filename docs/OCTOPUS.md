@@ -1225,8 +1225,8 @@ prints `unchanged` for nginx and keeps Octopus's data and keys.
 
 ## 8. Save the CA
 
-This saves step 5's CA as `octopus-ca.pem` in your home folder and prints its fingerprint (it
-holds no secret; your browser and agents trust Octopus's web page with it), checks that Octopus
+This saves step 5's CA as `octopus-ca.pem` in your home folder, prints its fingerprint (it holds
+no secret; your browser and agents trust Octopus's web page with it), and checks that Octopus
 answers on its web address and on its gRPC port.
 
 <details>
@@ -1296,7 +1296,8 @@ if ($LASTEXITCODE -eq 0 -and $B) {
 
 **Expect:** a `subject=` line with `Octopus CA`, a `sha256 Fingerprint=…` line, `saved
 …/octopus-ca.pem`, a `"Version"` line with `2026.3.16049`, `Octopus answers at https://<address>`,
-`ALPN protocol: h2` and a `gRPC certificate:` line naming `Octopus gRPC` (Windows: no ALPN line). The
+`ALPN protocol: h2` and a `gRPC certificate:` line naming `Octopus gRPC` (Windows: `Version:
+2026.3.16049` and no ALPN line). The
 gRPC port keeps Octopus's own certificate; the Argo CD gateway trusts it by itself, when Argo CD is
 connected.
 
@@ -1793,7 +1794,6 @@ cert-manager stays; so do `octopus-ca.pem`, the values files in
 VKS_CLUSTER="my-octopus-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-V="(not checked)"
 helm uninstall octopus --kubeconfig "$VKS_KUBECONFIG" -n octopus
 kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace octopus --wait --timeout=10m
 for i in $(seq 60); do
@@ -1815,7 +1815,6 @@ if [ -z "$V" ]; then echo "Octopus's volumes are gone"; else echo "STILL THERE: 
 $VKS_CLUSTER = "my-octopus-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
-$V = "(not checked)"
 helm uninstall octopus --kubeconfig $VKS_KUBECONFIG -n octopus
 kubectl --kubeconfig $VKS_KUBECONFIG delete namespace octopus --wait --timeout=10m
 foreach ($i in 1..60) {
