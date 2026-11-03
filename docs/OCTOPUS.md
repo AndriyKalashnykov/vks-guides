@@ -58,8 +58,8 @@ The cluster for Octopus:
 2. Create the cluster with
    [CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), with that
    `vmClass`, one control-plane node and one worker (`replicas: 1` for both). Octopus's volumes take
-   about 15 GB (SQL Server 10 GiB, and Octopus's `package-repository-claim`, `artifacts-claim`,
-   `task-log-claim` and `audit-log-claim` of 1 GiB each and its server log of 200 MiB) on top of
+   about 15 GiB (SQL Server 10 GiB, and Octopus's `package-repository-claim`, `artifacts-claim`,
+   `task-log-claim`, `audit-log-claim` and its server log, 1 GiB each) on top of
    the nodes ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)). A worker's image disk
    is about 15 GiB; when other applications share the worker, give it its own disk for container
    images with the `workers:` part in [CICD.md's Prerequisites](CICD.md#prerequisites).
@@ -904,6 +904,8 @@ octopus:
       drop:
         - ALL
   serverConfigurationDirectory: /home/octopus/.octopus
+  serverLogVolume:
+    size: 1Gi
   extraVolumes:
     tmp:
       type: emptyDir
@@ -1087,6 +1089,8 @@ octopus:
       drop:
         - ALL
   serverConfigurationDirectory: /home/octopus/.octopus
+  serverLogVolume:
+    size: 1Gi
   extraVolumes:
     tmp:
       type: emptyDir
@@ -1235,7 +1239,9 @@ prints `unchanged` for nginx and keeps Octopus's data and keys.
 **If not:**
 - `FAILED: Octopus is not ready`: `kubectl --kubeconfig <file> -n octopus describe pod octopus-octopus-deploy-0` and
   `kubectl --kubeconfig <file> -n octopus logs octopus-octopus-deploy-0` show why. `ImagePullBackOff`: the nodes cannot
-  reach `docker.io`. `CreateContainerConfigError`: a Secret of step 3 is missing; run step 3.
+  reach `docker.io`. `CreateContainerConfigError`: a Secret of step 3 is missing; run step 3 (for `ca-bundle`:
+  the ConfigMap of step 11; run step 11, or delete `~/.config/vks-guides/octopus/values-ca.yaml` if
+  you no longer use Nexus, then run step 7 again).
   A log line about the database: step 6 did not finish. The pod `Running` but `0/1` with only
   `Startup probe failed` events: Octopus is still starting; run step 7 again.
 - The pod still in `CrashLoopBackOff` after step 7 ran with the fix: running step 7 again does not
@@ -1326,6 +1332,8 @@ connected.
 **If not:**
 - `Connection refused` or a timeout: this machine cannot reach the web address on port 443, or nginx
   is not ready yet (step 7).
+- `curl: (35)` (Linux: `unexpected eof while reading`) right after step 7: Octopus's web address is not
+  passing traffic to nginx yet; wait a minute and run step 8 again.
 - `SSL certificate problem`: step 5 ran with another address; run steps 5 and 8 again.
 - No `gRPC certificate:` line: this machine cannot reach `octopus-grpc`'s address on port 8443.
 
@@ -1440,6 +1448,8 @@ and `Users 1/10`; from the terminal, `version: 2026.3.16049`, `licence compliant
 - `Invalid username or password` (browser) or `FAILED: sign-in refused`: the password is the one in
   step 3's Secret; a password changed in Octopus's web page goes back to it when the pod restarts.
   Change it with step 12.
+- `curl: (35)` above `FAILED: sign-in refused`: the web address is not passing traffic yet (step 8);
+  run step 9 again in a minute.
 
 ## 10. Create the environments and a lifecycle
 
@@ -1808,8 +1818,8 @@ Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_ADMIN_PASSWORD
 This removes Octopus and SQL Server and deletes the namespace `octopus` with every Secret, the CA
 and the database, then waits until the volumes are gone (SQL Server's, and Octopus's
 `package-repository-claim`, `artifacts-claim`, `task-log-claim`, `audit-log-claim` and server log).
-cert-manager stays; so do `octopus-ca.pem`, the values files in
-`~/.config/vks-guides/octopus` and the CA you trusted in step 9.
+Once the volumes are gone it also deletes step 11's `~/.config/vks-guides/octopus/values-ca.yaml`,
+whose ConfigMap goes with the namespace. cert-manager stays; so do `octopus-ca.pem`, `values.yaml` and the CA you trusted in step 9.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1827,7 +1837,7 @@ for i in $(seq 60); do
   [ -z "$V" ] && break
   sleep 5
 done
-if [ -z "$V" ]; then echo "Octopus's volumes are gone"; else echo "STILL THERE: $V"; fi
+if [ -z "$V" ]; then rm -f "$HOME/.config/vks-guides/octopus/values-ca.yaml"; echo "Octopus's volumes are gone"; else echo "STILL THERE: $V"; fi
 ```
 
 </details>
@@ -1848,7 +1858,7 @@ foreach ($i in 1..60) {
   if (-not $V) { break }
   Start-Sleep 5
 }
-if (-not $V) { "Octopus's volumes are gone" } else { "STILL THERE: $V" }
+if (-not $V) { Remove-Item -Force -ErrorAction SilentlyContinue "$HOME\.config\vks-guides\octopus\values-ca.yaml"; "Octopus's volumes are gone" } else { "STILL THERE: $V" }
 ```
 
 </details>
