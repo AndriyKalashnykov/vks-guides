@@ -1957,20 +1957,22 @@ if ($LASTEXITCODE -eq 0) {
     $S | ConvertTo-Json -Depth 10 | Set-Content -Encoding ascii nexus-ca.json
   } else { $global:LASTEXITCODE = 1 }
 }
-if ($LASTEXITCODE -eq 0) { kc get statefulset nexus postgres -o 'jsonpath={range .items[*]}{.metadata.name}={.spec.template.spec.containers[0].image}{"\n"}{end}' | Set-Content -Encoding ascii images.txt }
-if ($LASTEXITCODE -eq 0) { kc exec postgres-0 -- sh -c 'pg_dump -U "$POSTGRES_USER" -d nexus -Fc -f /tmp/nexus-db.dump' }
+if ($LASTEXITCODE -eq 0) { $NI = kc get statefulset nexus -o 'jsonpath={.spec.template.spec.containers[0].image}' }
+if ($LASTEXITCODE -eq 0) { $PI = kc get statefulset postgres -o 'jsonpath={.spec.template.spec.containers[0].image}' }
+if ($LASTEXITCODE -eq 0) { "nexus=$NI", "postgres=$PI" | Set-Content -Encoding ascii images.txt }
+if ($LASTEXITCODE -eq 0) { kc exec postgres-0 '--' sh -c 'pg_dump -U \"$POSTGRES_USER\" -d nexus -Fc -f /tmp/nexus-db.dump' }
 if ($LASTEXITCODE -eq 0) { kc cp postgres-0:/tmp/nexus-db.dump nexus-db.dump }
 if ($LASTEXITCODE -eq 0) { kc cp -c nexus nexus-0:/nexus-data/blobs blobs }
 if ($LASTEXITCODE -eq 0) { kc cp -c nexus nexus-0:/nexus-data/keystores keystores }
 $N = '?'; $L = '?'
-if ($LASTEXITCODE -eq 0) { $N = @(kc exec nexus-0 -c nexus -- find /nexus-data/blobs -type f).Count }
+if ($LASTEXITCODE -eq 0) { $N = @(kc exec nexus-0 -c nexus '--' find /nexus-data/blobs -type f).Count }
 if ($LASTEXITCODE -eq 0) { $L = @(Get-ChildItem -Recurse -File -Force blobs -ErrorAction SilentlyContinue).Count }
 if ($LASTEXITCODE -eq 0 -and (Test-Path nexus-db.dump) -and (Get-Item nexus-db.dump).Length -gt 0 -and (Test-Path keystores\node) -and (Test-Path images.txt) -and $L -ge $N) {
   Get-ChildItem | ForEach-Object { "{0} {1:N0} MB" -f $_.Name, ((Get-ChildItem -Recurse -File $_.FullName | Measure-Object Length -Sum).Sum / 1MB) }
   "backed up to $D ($L of $N blob files)"
 } else { "FAILED: the backup in $D is not complete ($L of $N blob files; see the error above)" }
 Pop-Location
-kc exec postgres-0 -- rm -f /tmp/nexus-db.dump
+kc exec postgres-0 '--' rm -f /tmp/nexus-db.dump
 ```
 
 </details>
@@ -2132,7 +2134,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 function kc { $input | kubectl --kubeconfig $VKS_KUBECONFIG -n nexus @args }
 $global:LASTEXITCODE = $null
-$I = @(kc get statefulset nexus postgres -o 'jsonpath={range .items[*]}{.metadata.name}={.spec.template.spec.containers[0].image}{"\n"}{end}' | Where-Object { $_ }) -join "`n"
+$I = "nexus=$(kc get statefulset nexus -o 'jsonpath={.spec.template.spec.containers[0].image}')`npostgres=$(kc get statefulset postgres -o 'jsonpath={.spec.template.spec.containers[0].image}')"
 $BI = if (Test-Path "$NEXUS_BACKUP\images.txt") { @(Get-Content "$NEXUS_BACKUP\images.txt" | Where-Object { $_ }) -join "`n" }
 if (-not ((Test-Path "$NEXUS_BACKUP\nexus-db.dump") -and (Test-Path "$NEXUS_BACKUP\keystores\node") -and (Test-Path "$NEXUS_BACKUP\blobs") -and $BI)) {
   "MISSING: a complete backup in $NEXUS_BACKUP (step 12)"
@@ -2145,10 +2147,10 @@ if (-not ((Test-Path "$NEXUS_BACKUP\nexus-db.dump") -and (Test-Path "$NEXUS_BACK
   $UP = $LASTEXITCODE
   if ($UP -eq 0) { kc cp nexus-db.dump postgres-0:/tmp/nexus-db.dump }
   if ($UP -eq 0 -and $LASTEXITCODE -eq 0) {
-    kc exec postgres-0 -- sh -c 'psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE nexus WITH (FORCE)" -c "CREATE DATABASE nexus OWNER $POSTGRES_USER" && pg_restore -U "$POSTGRES_USER" -d nexus --no-owner --no-acl --exit-on-error --single-transaction /tmp/nexus-db.dump'
+    kc exec postgres-0 '--' sh -c 'psql -U \"$POSTGRES_USER\" -d postgres -v ON_ERROR_STOP=1 -c \"DROP DATABASE nexus WITH (FORCE)\" -c \"CREATE DATABASE nexus OWNER $POSTGRES_USER\" && pg_restore -U \"$POSTGRES_USER\" -d nexus --no-owner --no-acl --exit-on-error --single-transaction /tmp/nexus-db.dump'
   }
   $DB = $LASTEXITCODE
-  if ($UP -eq 0) { kc exec postgres-0 -- rm -f /tmp/nexus-db.dump }
+  if ($UP -eq 0) { kc exec postgres-0 '--' rm -f /tmp/nexus-db.dump }
   if ($UP -ne 0) { "FAILED: Nexus did not stop (see the error above)" }
   elseif ($DB -ne 0) { "FAILED: the database was not restored (see the error above); Nexus stays stopped" }
   else {
@@ -2187,11 +2189,11 @@ spec:
 "@ | kc apply -f -
     $E = @(Get-ChildItem -Recurse -File -Force -Path blobs, keystores | Resolve-Path -Relative | ForEach-Object { ($_ -replace '^\.\\', '') -replace '\\', '/' } | Sort-Object) -join "`n"
     if ($LASTEXITCODE -eq 0) { kc wait --for=condition=Ready pod/nexus-restore --timeout=5m }
-    if ($LASTEXITCODE -eq 0) { kc exec nexus-restore -- rm -rf /nexus-data/blobs /nexus-data/keystores /nexus-data/admin.password }
+    if ($LASTEXITCODE -eq 0) { kc exec nexus-restore '--' rm -rf /nexus-data/blobs /nexus-data/keystores /nexus-data/admin.password }
     if ($LASTEXITCODE -eq 0) { kc cp blobs nexus-restore:/nexus-data/blobs }
     if ($LASTEXITCODE -eq 0) { kc cp keystores nexus-restore:/nexus-data/keystores }
     $G = ''
-    if ($LASTEXITCODE -eq 0) { $G = @(kc exec nexus-restore -- sh -c 'cd /nexus-data && find blobs keystores -type f' | Sort-Object) -join "`n" }
+    if ($LASTEXITCODE -eq 0) { $G = @(kc exec nexus-restore '--' sh -c 'cd /nexus-data && find blobs keystores -type f' | Sort-Object) -join "`n" }
     if ($LASTEXITCODE -eq 0 -and $G -eq $E) {
       kc delete pod nexus-restore --wait | Out-Null
       kc scale statefulset nexus --replicas=1
