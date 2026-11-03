@@ -5,7 +5,7 @@
 >
 > - Broadcom: [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html) (cert-manager)
 > - Octopus: [Octopus Deploy Helm chart](https://github.com/OctopusDeploy/helm-charts/blob/main/charts/octopus-deploy/README.md), [SQL Server database](https://octopus.com/docs/installation/sql-database), [Performance](https://octopus.com/docs/administration/managing-infrastructure/performance) (sizing), [Master key](https://octopus.com/docs/security/data-encryption), [Environments](https://octopus.com/docs/infrastructure/environments), [Lifecycles](https://octopus.com/docs/releases/lifecycles), [Docker feeds](https://octopus.com/docs/packaging-applications/package-repositories/docker-registries)
-> - Microsoft: [SQL Server on Linux containers](https://learn.microsoft.com/en-us/sql/linux/sql-server-linux-docker-container-deployment), [Editions of SQL Server 2025](https://learn.microsoft.com/en-us/sql/sql-server/editions-and-components-of-sql-server-2025), [BACKUP](https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-transact-sql)
+> - Microsoft: [SQL Server on Linux containers](https://learn.microsoft.com/en-us/sql/linux/sql-server-linux-docker-container-deployment), [Editions of SQL Server 2025](https://learn.microsoft.com/en-us/sql/sql-server/editions-and-components-of-sql-server-2025)
 > - cert-manager: [CA issuer](https://cert-manager.io/docs/configuration/ca/), [SelfSigned issuer](https://cert-manager.io/docs/configuration/selfsigned/)
 > - Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) (`restricted`)
 
@@ -21,10 +21,9 @@ on neither.
 
 Every password and key goes into a Kubernetes Secret through a pipe: none is shown or put on a
 command line, and none is saved in a file you did not ask for (on Windows, the sign-in in steps 9
-and 10 uses a temporary file that the block deletes). Nothing secret goes into Helm. You keep one
-thing yourself: the master key, which Octopus needs to read its own database (step 8).
+and 10 uses a temporary file that the block deletes). Nothing secret goes into Helm.
 
-Run the steps in order. Steps 11 to 14 are for later.
+Run the steps in order. Steps 11 to 13 are for later.
 
 ## Prerequisites
 
@@ -326,7 +325,7 @@ Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_ADMIN_PASSWORD
 - `FAILED: … is not an Octopus licence`: save the licence key text from Octopus (it starts with
   `<License`) as that file.
 - `Error from server (Forbidden)`: the kubeconfig is not the cluster's administrator file.
-- To change the admin password later, use step 13; this step keeps the Secret that exists.
+- To change the admin password later, use step 12; this step keeps the Secret that exists.
 
 ## 4. Create the Services and get Octopus's addresses
 
@@ -1224,15 +1223,11 @@ prints `unchanged` for nginx and keeps Octopus's data and keys.
 - `secret "octopus-tls" not found` in `kubectl -n octopus describe pod -l app=octopus-proxy`:
   step 5 did not finish.
 
-## 8. Save the CA and the master key
+## 8. Save the CA
 
 This saves step 5's CA as `octopus-ca.pem` in your home folder and prints its fingerprint (it
 holds no secret; your browser and agents trust Octopus's web page with it), checks that Octopus
-answers on its web address, and saves Octopus's master key as `octopus-masterkey.txt` in your home
-folder, readable only by you. The key is not shown. Keep it somewhere safe and apart from the
-backups (step 12): with a backup of the database it opens every secret Octopus holds, and without it
-a backup cannot be used. Step 14 refuses to remove Octopus while this file is missing or holds
-another install's key.
+answers on its web address and on its gRPC port.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1241,7 +1236,6 @@ another install's key.
 VKS_CLUSTER="my-octopus-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 OCTOPUS_CA="$HOME/octopus-ca.pem"
-OCTOPUS_KEY="$HOME/octopus-masterkey.txt"
 
 kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus "$@"; }
 IP="$(kc get service octopus-web -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
@@ -1260,20 +1254,6 @@ if kc get secret octopus-tls -o go-template='{{index .data "ca.crt" | base64deco
 else
   rm -f "$OCTOPUS_CA.new"; echo "FAILED: no CA read (see the error above)"
 fi
-if ( umask 077 && rm -f "$OCTOPUS_KEY.new" && kc get secret octopus-masterkey -o jsonpath='{.data.secret}' | base64 -d > "$OCTOPUS_KEY.new" ) \
-   && [ -s "$OCTOPUS_KEY.new" ]; then
-  if [ -s "$OCTOPUS_KEY" ] && ! cmp -s "$OCTOPUS_KEY.new" "$OCTOPUS_KEY"; then
-    O="$OCTOPUS_KEY.$(date +%Y%m%d-%H%M%S)"
-    if mv "$OCTOPUS_KEY" "$O"; then echo "kept the older key as $O"; fi
-  fi
-  if [ -s "$OCTOPUS_KEY" ] && ! cmp -s "$OCTOPUS_KEY.new" "$OCTOPUS_KEY"; then
-    rm -f "$OCTOPUS_KEY.new"; echo "FAILED: cannot keep the older key; nothing changed"
-  else
-    mv "$OCTOPUS_KEY.new" "$OCTOPUS_KEY" && ls -l "$OCTOPUS_KEY"
-  fi
-else
-  rm -f "$OCTOPUS_KEY.new"; echo "FAILED: the master key is not saved (see the error above)"
-fi
 ```
 
 </details>
@@ -1285,7 +1265,6 @@ fi
 $VKS_CLUSTER = "my-octopus-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $OCTOPUS_CA = "$HOME\octopus-ca.pem"
-$OCTOPUS_KEY = "$HOME\octopus-masterkey.txt"
 
 function kc { kubectl --kubeconfig $VKS_KUBECONFIG -n octopus @args }
 $global:LASTEXITCODE = $null
@@ -1311,39 +1290,20 @@ if ($LASTEXITCODE -eq 0 -and $B) {
     $T.Close()
   } catch { "FAILED: no TLS answer on ${G}:8443" } }
 } else { "FAILED: no CA read (see the error above)" }
-$K = kc get secret octopus-masterkey -o 'jsonpath={.data.secret}'
-if ($LASTEXITCODE -eq 0 -and $K) {
-  $N = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($K)); $K = $null
-  if ((Test-Path $OCTOPUS_KEY) -and ([IO.File]::ReadAllText($OCTOPUS_KEY) -cne $N)) {
-    $O = "$OCTOPUS_KEY.$(Get-Date -Format yyyyMMdd-HHmmss)"
-    try { Move-Item -ErrorAction Stop $OCTOPUS_KEY $O; "kept the older key as $O" } catch { $_.Exception.Message }
-  } else { Remove-Item -Force -ErrorAction SilentlyContinue $OCTOPUS_KEY }
-  if (Test-Path $OCTOPUS_KEY) { "FAILED: cannot keep the older key; nothing changed" }
-  else {
-    New-Item -ItemType File -Path $OCTOPUS_KEY | Out-Null
-    $SID = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-    icacls $OCTOPUS_KEY /inheritance:r /grant:r "*${SID}:F" | Out-Null
-    if ($LASTEXITCODE -ne 0) { Remove-Item -Force $OCTOPUS_KEY; "FAILED: cannot make $OCTOPUS_KEY readable only by you" }
-    else { [IO.File]::WriteAllText($OCTOPUS_KEY, $N); Get-Item $OCTOPUS_KEY | Select-Object Name, Length }
-  }
-  $N = $null
-} else { "FAILED: the master key is not saved (see the error above)" }
 ```
 
 </details>
 
 **Expect:** a `subject=` line with `Octopus CA`, a `sha256 Fingerprint=…` line, `saved
 …/octopus-ca.pem`, a `"Version"` line with `2026.3.16049`, `Octopus answers at https://<address>`,
-`ALPN protocol: h2` and a `gRPC certificate:` line naming `Octopus gRPC` (Windows: no ALPN line), then a line
-for `octopus-masterkey.txt` with `-rw-------` (Windows: its name and a length of 24). The gRPC port
-keeps Octopus's own certificate; the Argo CD gateway trusts it by itself, when Argo CD is connected.
-When the file held another install's key, `kept the older key as …` names where it went.
+`ALPN protocol: h2` and a `gRPC certificate:` line naming `Octopus gRPC` (Windows: no ALPN line). The
+gRPC port keeps Octopus's own certificate; the Argo CD gateway trusts it by itself, when Argo CD is
+connected.
 
 **If not:**
 - `Connection refused` or a timeout: this machine cannot reach the web address on port 443, or nginx
   is not ready yet (step 7).
 - `SSL certificate problem`: step 5 ran with another address; run steps 5 and 8 again.
-- `FAILED: the master key is not saved`: step 3 did not finish.
 - No `gRPC certificate:` line: this machine cannot reach `octopus-grpc`'s address on port 8443.
 
 ## 9. Sign in
@@ -1456,7 +1416,7 @@ and `Users 1/10`; from the terminal, `version: 2026.3.16049`, `licence compliant
   octopus-octopus-deploy-0`.
 - `Invalid username or password` (browser) or `FAILED: sign-in refused`: the password is the one in
   step 3's Secret; a password changed in Octopus's web page goes back to it when the pod restarts.
-  Change it with step 13.
+  Change it with step 12.
 
 ## 10. Create the environments and a lifecycle
 
@@ -1743,75 +1703,7 @@ Octopus reads image tags as versions, so tag images with versions such as `1.0.0
   when Octopus lists tags: Octopus does not trust Nexus's CA yet; run this step and step 7.
 - `MISSING: …nexus-ca.pem`: run NEXUS.md step 7 on this machine first.
 
-## 12. Back up Octopus
-
-Octopus keeps its data in its SQL database; its master key (step 8) is needed to read the secrets
-in it. This backs up the database inside SQL Server, checks the backup, and copies it to a new
-folder in your home that only you can read. Keep the backups and `octopus-masterkey.txt` in
-different places. Octopus's task logs, artifacts and uploaded packages are in its own volumes and
-are not in this backup.
-
-<details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
-
-```sh
-VKS_CLUSTER="my-octopus-cluster"
-VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-
-D="$HOME/octopus-backup-$(date +%Y%m%d-%H%M%S)"
-kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus "$@"; }
-sq() { kc exec -i sql-0 -- sh -c 'SQLCMDPASSWORD="$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -h -1 -W'; }
-if kc exec sql-0 -- mkdir -p /var/opt/mssql/backup \
-   && printf "SET NOCOUNT ON;\nBACKUP DATABASE OctopusDeploy TO DISK = N'/var/opt/mssql/backup/OctopusDeploy.bak' WITH COPY_ONLY, INIT, CHECKSUM;\nRESTORE VERIFYONLY FROM DISK = N'/var/opt/mssql/backup/OctopusDeploy.bak' WITH CHECKSUM;\nGO\n" | sq \
-   && ( umask 077 && mkdir -p "$D" && kc cp sql-0:/var/opt/mssql/backup/OctopusDeploy.bak "$D/OctopusDeploy.bak" ) \
-   && [ -s "$D/OctopusDeploy.bak" ]; then
-  ls -l "$D/OctopusDeploy.bak" && echo "backed up to $D"
-else
-  echo "FAILED: no backup in $D (see the error above)"
-fi
-kc exec sql-0 -- rm -f /var/opt/mssql/backup/OctopusDeploy.bak
-```
-
-</details>
-
-<details>
-<summary><b>Windows (PowerShell)</b></summary>
-
-```powershell
-$VKS_CLUSTER = "my-octopus-cluster"
-$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-
-$D = "$HOME\octopus-backup-$(Get-Date -Format yyyyMMdd-HHmmss)"
-function kc { $input | kubectl --kubeconfig $VKS_KUBECONFIG -n octopus @args }
-function sq { $input | kc exec -i sql-0 -- sh -c 'SQLCMDPASSWORD="$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -h -1 -W' }
-$global:LASTEXITCODE = $null
-kc exec sql-0 -- mkdir -p /var/opt/mssql/backup
-if ($LASTEXITCODE -eq 0) { "SET NOCOUNT ON;`nBACKUP DATABASE OctopusDeploy TO DISK = N'/var/opt/mssql/backup/OctopusDeploy.bak' WITH COPY_ONLY, INIT, CHECKSUM;`nRESTORE VERIFYONLY FROM DISK = N'/var/opt/mssql/backup/OctopusDeploy.bak' WITH CHECKSUM;`nGO`n" | sq }
-if ($LASTEXITCODE -eq 0) {
-  New-Item -ItemType Directory -Path $D | Out-Null
-  $SID = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-  icacls $D /inheritance:r /grant:r "*${SID}:(OI)(CI)F" | Out-Null
-  if ($LASTEXITCODE -eq 0) { Push-Location $D; kc cp sql-0:/var/opt/mssql/backup/OctopusDeploy.bak OctopusDeploy.bak; Pop-Location }
-  else { Remove-Item -Recurse -Force $D; "FAILED: cannot make $D readable only by you" }
-}
-if ($LASTEXITCODE -eq 0 -and (Test-Path "$D\OctopusDeploy.bak") -and (Get-Item "$D\OctopusDeploy.bak").Length -gt 0) {
-  Get-Item "$D\OctopusDeploy.bak" | Select-Object Name, Length; "backed up to $D"
-} else { "FAILED: no backup in $D (see the error above)" }
-kc exec sql-0 -- rm -f /var/opt/mssql/backup/OctopusDeploy.bak
-```
-
-</details>
-
-**Expect:** `BACKUP DATABASE successfully processed … pages`, `The backup set on file 1 is valid.`,
-a `tar: Removing leading` line from kubectl (harmless), then the file `OctopusDeploy.bak` (tens of
-MB, `-rw-------`) and `backed up to …`. Move `octopus-masterkey.txt` off this machine (for example
-into a password manager), apart from the backups: a copy of both opens every secret Octopus holds.
-
-**If not:** `FAILED: no backup …`: run the block again; a folder from a failed run is not a backup.
-
-A restore needs the backup and the master key; this guide does not cover it.
-
-## 13. Change the admin password
+## 12. Change the admin password
 
 Octopus sets `admin`'s password from step 3's Secret each time it starts, so a password changed in
 the web page goes back at the next restart. This replaces the Secret with the password you type and
@@ -1886,14 +1778,12 @@ Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_ADMIN_PASSWORD
 - `NotFound`: the Secret is not there; run step 3.
 - `502 Bad Gateway` from the web page right after: Octopus is still starting; wait a few seconds.
 
-## 14. Remove Octopus (optional)
+## 13. Remove Octopus (optional)
 
 This removes Octopus and SQL Server and deletes the namespace `octopus` with every Secret, the CA
 and the database, then waits until the volumes are gone (SQL Server's, and Octopus's
 `package-repository-claim`, `artifacts-claim`, `task-log-claim`, `audit-log-claim` and server log).
-It refuses while `octopus-masterkey.txt` (step 8) is missing or holds another install's key,
-because without the key no backup can be used again.
-cert-manager stays; so do `octopus-ca.pem`, the master key file, the backups, the values files in
+cert-manager stays; so do `octopus-ca.pem`, the values files in
 `~/.config/vks-guides/octopus` and the CA you trusted in step 9.
 
 <details>
@@ -1902,28 +1792,18 @@ cert-manager stays; so do `octopus-ca.pem`, the master key file, the backups, th
 ```sh
 VKS_CLUSTER="my-octopus-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-OCTOPUS_KEY="$HOME/octopus-masterkey.txt"
 
 V="(not checked)"
-if [ ! -s "$OCTOPUS_KEY" ]; then
-  echo "STOPPED: $OCTOPUS_KEY is missing; save the master key first (step 8)"
-elif ! S="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus get secret octopus-masterkey --ignore-not-found -o jsonpath='{.data.secret}')"; then
-  echo "STOPPED: cannot read the master key Secret (see the error above)"
-elif [ -n "$S" ] && [ "$(printf '%s' "$S" | base64 -d)" != "$(cat "$OCTOPUS_KEY")" ]; then
-  unset S; echo "STOPPED: $OCTOPUS_KEY holds another install's key; run step 8 first"
-else
-  unset S
-  helm uninstall octopus --kubeconfig "$VKS_KUBECONFIG" -n octopus
-  kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace octopus --wait --timeout=10m
-  for i in $(seq 60); do
-    if ! V="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o jsonpath='{range .items[?(@.spec.claimRef.namespace=="octopus")]}{.metadata.name}{" "}{end}')"; then
-      V="(the check failed, see the error above)"; break
-    fi
-    [ -z "$V" ] && break
-    sleep 5
-  done
-  if [ -z "$V" ]; then echo "Octopus's volumes are gone"; else echo "STILL THERE: $V"; fi
-fi
+helm uninstall octopus --kubeconfig "$VKS_KUBECONFIG" -n octopus
+kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace octopus --wait --timeout=10m
+for i in $(seq 60); do
+  if ! V="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pv -o jsonpath='{range .items[?(@.spec.claimRef.namespace=="octopus")]}{.metadata.name}{" "}{end}')"; then
+    V="(the check failed, see the error above)"; break
+  fi
+  [ -z "$V" ] && break
+  sleep 5
+done
+if [ -z "$V" ]; then echo "Octopus's volumes are gone"; else echo "STILL THERE: $V"; fi
 ```
 
 </details>
@@ -1934,27 +1814,18 @@ fi
 ```powershell
 $VKS_CLUSTER = "my-octopus-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-$OCTOPUS_KEY = "$HOME\octopus-masterkey.txt"
 
 $V = "(not checked)"
-$S = $null; $RC = 0; $global:LASTEXITCODE = $null
-if ((Test-Path $OCTOPUS_KEY) -and (Get-Item $OCTOPUS_KEY).Length -gt 0) { $S = kubectl --kubeconfig $VKS_KUBECONFIG -n octopus get secret octopus-masterkey --ignore-not-found -o 'jsonpath={.data.secret}'; $RC = $LASTEXITCODE }
-if (-not (Test-Path $OCTOPUS_KEY) -or (Get-Item $OCTOPUS_KEY).Length -eq 0) { "STOPPED: $OCTOPUS_KEY is missing; save the master key first (step 8)" }
-elseif ($RC -ne 0) { $S = $null; "STOPPED: cannot read the master key Secret (see the error above)" }
-elseif ($S -and ([Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($S)) -cne [IO.File]::ReadAllText($OCTOPUS_KEY))) { $S = $null; "STOPPED: $OCTOPUS_KEY holds another install's key; run step 8 first" }
-else {
-  $S = $null
-  helm uninstall octopus --kubeconfig $VKS_KUBECONFIG -n octopus
-  kubectl --kubeconfig $VKS_KUBECONFIG delete namespace octopus --wait --timeout=10m
-  foreach ($i in 1..60) {
-    $global:LASTEXITCODE = $null
-    $V = kubectl --kubeconfig $VKS_KUBECONFIG get pv -o jsonpath='{range .items[?(@.spec.claimRef.namespace==''octopus'')]}{.metadata.name}{'' ''}{end}'
-    if ($LASTEXITCODE -ne 0) { $V = "(the check failed, see the error above)"; break }
-    if (-not $V) { break }
-    Start-Sleep 5
-  }
-  if (-not $V) { "Octopus's volumes are gone" } else { "STILL THERE: $V" }
+helm uninstall octopus --kubeconfig $VKS_KUBECONFIG -n octopus
+kubectl --kubeconfig $VKS_KUBECONFIG delete namespace octopus --wait --timeout=10m
+foreach ($i in 1..60) {
+  $global:LASTEXITCODE = $null
+  $V = kubectl --kubeconfig $VKS_KUBECONFIG get pv -o jsonpath='{range .items[?(@.spec.claimRef.namespace==''octopus'')]}{.metadata.name}{'' ''}{end}'
+  if ($LASTEXITCODE -ne 0) { $V = "(the check failed, see the error above)"; break }
+  if (-not $V) { break }
+  Start-Sleep 5
 }
+if (-not $V) { "Octopus's volumes are gone" } else { "STILL THERE: $V" }
 ```
 
 </details>
@@ -1963,8 +1834,6 @@ else {
 are gone`. Run again, it prints `release: not found` and `namespaces "octopus" not found` first.
 
 **If not:**
-- `STOPPED: … holds another install's key`: run step 8 for this install (it keeps the older key
-  under another name), then this step.
 - `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not delete the
   cluster until it is gone.
 
