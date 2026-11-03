@@ -1245,7 +1245,7 @@ if kc get secret octopus-tls -o go-template='{{index .data "ca.crt" | base64deco
     echo "FAILED: octopus-grpc has no address yet (step 4)"
   else
     curl -sSv -k --connect-timeout 20 --max-time 20 --http2 -o /dev/null "https://${G}:8443/" 2>&1 \
-      | sed -n 's/^\* ALPN: server accepted /ALPN protocol: /p; s/^\*  *subject: /gRPC certificate: /p'
+      | sed -n 's/^\* ALPN: server accepted /ALPN protocol: /p; s/^\*  *subject: /gRPC certificate: /p; s/^\*  *Server certificate: /gRPC certificate: /p'
   fi
 else
   rm -f "$OCTOPUS_CA.new"; echo "FAILED: no CA read (see the error above)"
@@ -1256,7 +1256,7 @@ if ( umask 077 && rm -f "$OCTOPUS_KEY.new" && kc get secret octopus-masterkey -o
     O="$OCTOPUS_KEY.$(date +%Y%m%d-%H%M%S)"
     if mv "$OCTOPUS_KEY" "$O"; then echo "kept the older key as $O"; fi
   fi
-  if [ -e "$OCTOPUS_KEY" ] && ! cmp -s "$OCTOPUS_KEY.new" "$OCTOPUS_KEY"; then
+  if [ -s "$OCTOPUS_KEY" ] && ! cmp -s "$OCTOPUS_KEY.new" "$OCTOPUS_KEY"; then
     rm -f "$OCTOPUS_KEY.new"; echo "FAILED: cannot keep the older key; nothing changed"
   else
     mv "$OCTOPUS_KEY.new" "$OCTOPUS_KEY" && ls -l "$OCTOPUS_KEY"
@@ -1291,20 +1291,22 @@ if ($LASTEXITCODE -eq 0 -and $B) {
   $A = curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $OCTOPUS_CA "https://$IP/api"
   if ($LASTEXITCODE -eq 0) { "Version: $((($A | Out-String) | ConvertFrom-Json).Version)"; "Octopus answers at https://$IP" }
   $G = kc get service octopus-grpc -o 'jsonpath={.status.loadBalancer.ingress[0].ip}'
-  try {
+  if (-not $G) { "FAILED: octopus-grpc has no address yet (step 4)" }
+  else { try {
     $T = New-Object Net.Sockets.TcpClient($G, 8443)
+    $T.ReceiveTimeout = 20000; $T.SendTimeout = 20000
     $S = New-Object Net.Security.SslStream($T.GetStream(), $false, { $true })
     $S.AuthenticateAsClient($G)
     "gRPC certificate: $($S.RemoteCertificate.Subject)"
     $T.Close()
-  } catch { "FAILED: no TLS answer on ${G}:8443" }
+  } catch { "FAILED: no TLS answer on ${G}:8443" } }
 } else { "FAILED: no CA read (see the error above)" }
 $K = kc get secret octopus-masterkey -o 'jsonpath={.data.secret}'
 if ($LASTEXITCODE -eq 0 -and $K) {
   $N = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($K)); $K = $null
   if ((Test-Path $OCTOPUS_KEY) -and ([IO.File]::ReadAllText($OCTOPUS_KEY) -cne $N)) {
     $O = "$OCTOPUS_KEY.$(Get-Date -Format yyyyMMdd-HHmmss)"
-    try { Move-Item -ErrorAction Stop $OCTOPUS_KEY $O; "kept the older key as $O" } catch { }
+    try { Move-Item -ErrorAction Stop $OCTOPUS_KEY $O; "kept the older key as $O" } catch { $_.Exception.Message }
   } else { Remove-Item -Force -ErrorAction SilentlyContinue $OCTOPUS_KEY }
   if (Test-Path $OCTOPUS_KEY) { "FAILED: cannot keep the older key; nothing changed" }
   else {
@@ -1322,7 +1324,7 @@ if ($LASTEXITCODE -eq 0 -and $K) {
 
 **Expect:** a `subject=` line with `Octopus CA`, a `sha256 Fingerprint=…` line, `saved
 …/octopus-ca.pem`, a `"Version"` line with `2026.3.16049`, `Octopus answers at https://<address>`,
-`ALPN protocol: h2` and `gRPC certificate: CN=Octopus gRPC` (Windows: no ALPN line), then a line
+`ALPN protocol: h2` and a `gRPC certificate:` line naming `Octopus gRPC` (Windows: no ALPN line), then a line
 for `octopus-masterkey.txt` with `-rw-------` (Windows: its name and a length of 24). The gRPC port
 keeps Octopus's own certificate; the Argo CD gateway trusts it by itself, when Argo CD is connected.
 When the file held another install's key, `kept the older key as …` names where it went.
@@ -1925,7 +1927,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $OCTOPUS_KEY = "$HOME\octopus-masterkey.txt"
 
 $V = "(not checked)"
-$S = $null; $RC = 0
+$S = $null; $RC = 0; $global:LASTEXITCODE = $null
 if ((Test-Path $OCTOPUS_KEY) -and (Get-Item $OCTOPUS_KEY).Length -gt 0) { $S = kubectl --kubeconfig $VKS_KUBECONFIG -n octopus get secret octopus-masterkey --ignore-not-found -o 'jsonpath={.data.secret}'; $RC = $LASTEXITCODE }
 if (-not (Test-Path $OCTOPUS_KEY) -or (Get-Item $OCTOPUS_KEY).Length -eq 0) { "STOPPED: $OCTOPUS_KEY is missing; save the master key first (step 8)" }
 elseif ($RC -ne 0) { $S = $null; "STOPPED: cannot read the master key Secret (see the error above)" }
