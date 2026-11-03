@@ -1891,10 +1891,14 @@ this block with `-n default` changed.
 
 Sonatype backs up the database with PostgreSQL's own tools and the files at about the same time
 ([Backup and restore](https://help.sonatype.com/en/backup-and-restore.html)). This copies, to a
-new folder in your home: a dump of the database, Nexus's images and files (`blobs`), and Nexus's
-node identity (`keystores`), then checks the copy. Make sure your machine has room for the `blobs`
-folder; step 9's repository can hold up to 20 GiB. Run it when nobody pushes and no cleanup or
-compact task runs.
+new folder in your home: a dump of the database, Nexus's images and files (`blobs`), Nexus's node
+identity (`keystores`), Nexus's CA (`nexus-ca.json`) and the image names of Nexus and PostgreSQL
+(`images.txt`), then checks the copy. Make sure your machine has room for the `blobs` folder; step
+9's repository can hold up to 20 GiB. Run it when nobody pushes and no cleanup or compact task runs.
+
+`nexus-ca.json` holds the private key of Nexus's CA. Every cluster that pulls from Nexus trusts that
+CA (step 11), so whoever has the file can make certificates those clusters trust: keep the backup
+as safe as an administrator's password.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1906,14 +1910,21 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 D="$HOME/nexus-backup-$(date +%Y%m%d-%H%M%S)"
 kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n nexus "$@"; }
 N="?"; L="?"
-if mkdir -m 700 "$D" \
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif mkdir -m 700 "$D" \
+   && kc get secret nexus-ca -o json | jq 'del(.metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp,
+        .metadata.managedFields, .metadata.ownerReferences,
+        .metadata.annotations["kubectl.kubernetes.io/last-applied-configuration"])' > "$D/nexus-ca.json" \
+   && jq -e '.data["tls.key"] and .metadata.annotations["cert-manager.io/certificate-name"]' "$D/nexus-ca.json" >/dev/null \
+   && kc get statefulset nexus postgres -o jsonpath='{range .items[*]}{.metadata.name}={.spec.template.spec.containers[0].image}{"\n"}{end}' > "$D/images.txt" \
    && kc exec postgres-0 -- sh -c 'pg_dump -U "$POSTGRES_USER" -d nexus -Fc -f /tmp/nexus-db.dump' \
    && kc cp postgres-0:/tmp/nexus-db.dump "$D/nexus-db.dump" \
    && kc cp -c nexus nexus-0:/nexus-data/blobs "$D/blobs" \
    && kc cp -c nexus nexus-0:/nexus-data/keystores "$D/keystores" \
    && F="$(kc exec nexus-0 -c nexus -- find /nexus-data/blobs -type f)" \
    && N="$(printf '%s\n' "$F" | grep -c .)" && L="$(find "$D/blobs" -type f | grep -c .)" \
-   && [ -s "$D/nexus-db.dump" ] && [ -e "$D/keystores/node" ] && [ "$L" -ge "$N" ]; then
+   && [ -s "$D/nexus-db.dump" ] && [ -e "$D/keystores/node" ] && [ -s "$D/images.txt" ] && [ "$L" -ge "$N" ]; then
   du -sh "$D"/* && echo "backed up to $D ($L of $N blob files)"
 else
   echo "FAILED: the backup in $D is not complete ($L of $N blob files; see the error above)"
@@ -1938,6 +1949,15 @@ if (New-Item -ItemType Directory -Path $D -ErrorAction SilentlyContinue) {
   icacls $D /inheritance:r /grant:r "*${SID}:(OI)(CI)F"
 }
 Push-Location $D
+if ($LASTEXITCODE -eq 0) {
+  $S = kc get secret nexus-ca -o json | Out-String | ConvertFrom-Json
+  if ($LASTEXITCODE -eq 0 -and $S.data.'tls.key' -and $S.metadata.annotations.'cert-manager.io/certificate-name') {
+    foreach ($p in 'uid', 'resourceVersion', 'creationTimestamp', 'managedFields', 'ownerReferences') { $S.metadata.PSObject.Properties.Remove($p) }
+    $S.metadata.annotations.PSObject.Properties.Remove('kubectl.kubernetes.io/last-applied-configuration')
+    $S | ConvertTo-Json -Depth 10 | Set-Content -Encoding ascii nexus-ca.json
+  } else { $global:LASTEXITCODE = 1 }
+}
+if ($LASTEXITCODE -eq 0) { kc get statefulset nexus postgres -o 'jsonpath={range .items[*]}{.metadata.name}={.spec.template.spec.containers[0].image}{"\n"}{end}' | Set-Content -Encoding ascii images.txt }
 if ($LASTEXITCODE -eq 0) { kc exec postgres-0 -- sh -c 'pg_dump -U "$POSTGRES_USER" -d nexus -Fc -f /tmp/nexus-db.dump' }
 if ($LASTEXITCODE -eq 0) { kc cp postgres-0:/tmp/nexus-db.dump nexus-db.dump }
 if ($LASTEXITCODE -eq 0) { kc cp -c nexus nexus-0:/nexus-data/blobs blobs }
@@ -1945,7 +1965,7 @@ if ($LASTEXITCODE -eq 0) { kc cp -c nexus nexus-0:/nexus-data/keystores keystore
 $N = '?'; $L = '?'
 if ($LASTEXITCODE -eq 0) { $N = @(kc exec nexus-0 -c nexus -- find /nexus-data/blobs -type f).Count }
 if ($LASTEXITCODE -eq 0) { $L = @(Get-ChildItem -Recurse -File blobs -ErrorAction SilentlyContinue).Count }
-if ($LASTEXITCODE -eq 0 -and (Test-Path nexus-db.dump) -and (Get-Item nexus-db.dump).Length -gt 0 -and (Test-Path keystores\node) -and $L -ge $N) {
+if ($LASTEXITCODE -eq 0 -and (Test-Path nexus-db.dump) -and (Get-Item nexus-db.dump).Length -gt 0 -and (Test-Path keystores\node) -and (Test-Path images.txt) -and $L -ge $N) {
   Get-ChildItem | ForEach-Object { "{0} {1:N0} MB" -f $_.Name, ((Get-ChildItem -Recurse -File $_.FullName | Measure-Object Length -Sum).Sum / 1MB) }
   "backed up to $D ($L of $N blob files)"
 } else { "FAILED: the backup in $D is not complete ($L of $N blob files; see the error above)" }
@@ -1955,23 +1975,255 @@ kc exec postgres-0 -- rm -f /tmp/nexus-db.dump
 
 </details>
 
-<!-- TODO-MEASURE: a restore into a fresh namespace before the guide states one -->
-
-**Expect:** a size line for `blobs`, `keystores` and `nexus-db.dump`, then `backed up to …` with
-the same number twice in `(… of … blob files)`. `tar: Removing leading` lines from kubectl are
-harmless.
+**Expect:** a size line for `blobs`, `images.txt`, `keystores`, `nexus-ca.json` and `nexus-db.dump`,
+then `backed up to …` with the same number twice in `(… of … blob files)`. `tar: Removing leading`
+lines from kubectl are harmless.
 
 **If not:** `FAILED: …`: run the block again; a folder from a failed run is not a backup (kubectl
 copies nothing and still succeeds when a path in the pod is missing, so the block counts the
-files). Keep
-backups somewhere other than this machine as well. Restoring is not covered here yet.
+files). Keep backups somewhere other than this machine as well, as safe as the folder here.
+
+### Restore Nexus
+
+This puts a backup from the block above back into Nexus: its database, images, users, settings and
+CA. Nexus must run the same images as when the backup was made (`images.txt`; the block checks).
+
+- **Nexus's namespace still exists on its cluster** (its data is lost or damaged): run only the
+  restore block below. Nexus keeps its address and CA; nothing changes for those who push or pull.
+- **A new cluster, or the namespace is gone**: run steps 1 to 3, then the first block below (it puts
+  the CA back), then steps 4 to 7 with the images from `images.txt`, then the restore block. Skip
+  steps 8 and 9. Nexus gets a new address from step 4. If `NEXUS_REGISTRY` is a DNS name, point it
+  at the new address; nothing else changes. If it is an IP address, do what step 7's **If not:**
+  says for a changed address.
+
+Put the CA back (new cluster only; after step 3, before step 5):
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_CLUSTER="my-nexus-cluster"
+NEXUS_BACKUP="$HOME/nexus-backup-20260101-120000"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+if [ ! -s "$NEXUS_BACKUP/nexus-ca.json" ]; then
+  echo "MISSING: $NEXUS_BACKUP/nexus-ca.json (step 12)"
+elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n nexus get secret nexus-ca >/dev/null 2>&1; then
+  echo "STOPPED: namespace nexus has a CA already (see If not)"
+else
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n nexus create -f "$NEXUS_BACKUP/nexus-ca.json"
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_CLUSTER = "my-nexus-cluster"
+$NEXUS_BACKUP = "$HOME\nexus-backup-20260101-120000"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+if (-not (Test-Path "$NEXUS_BACKUP\nexus-ca.json")) { "MISSING: $NEXUS_BACKUP\nexus-ca.json (step 12)" }
+else {
+  kubectl --kubeconfig $VKS_KUBECONFIG -n nexus get secret nexus-ca 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) { "STOPPED: namespace nexus has a CA already (see If not)" }
+  else { kubectl --kubeconfig $VKS_KUBECONFIG -n nexus create -f "$NEXUS_BACKUP\nexus-ca.json" }
+}
+```
+
+**Expect:** `secret/nexus-ca created`. After steps 5 to 7, step 7 saves the same CA as before.
+
+**If not:** `STOPPED: …`: step 5 ran before this block and made a new CA. Remove it with
+`kubectl --kubeconfig <file> -n nexus delete certificate nexus-ca nexus-tls`, then the same with
+`secret nexus-ca nexus-tls`, run this block again, then step 5 again.
+
+Then restore (both cases). Set `NEXUS_BACKUP` to the backup's folder:
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_CLUSTER="my-nexus-cluster"
+NEXUS_BACKUP="$HOME/nexus-backup-20260101-120000"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+B="$NEXUS_BACKUP"
+kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n nexus "$@"; }
+I="$(kc get statefulset nexus postgres -o jsonpath='{range .items[*]}{.metadata.name}={.spec.template.spec.containers[0].image}{"\n"}{end}')"
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ ! -s "$B/nexus-db.dump" ] || [ ! -e "$B/keystores/node" ] || [ ! -d "$B/blobs" ] || [ ! -s "$B/images.txt" ]; then
+  echo "MISSING: a complete backup in $B (step 12)"
+elif [ -z "$I" ] || [ "$I" != "$(tr -d '\r' < "$B/images.txt")" ]; then
+  echo "STOPPED: Nexus runs other images than the backup:"; printf '%s\n' "$I"; echo "backup:"; tr -d '\r' < "$B/images.txt"
+elif ! { kc scale statefulset nexus --replicas=0 && kc wait --for=delete pod/nexus-0 --timeout=5m; }; then
+  echo "FAILED: Nexus did not stop (see the error above)"
+elif ! { kc cp "$B/nexus-db.dump" postgres-0:/tmp/nexus-db.dump && kc exec postgres-0 -- sh -c \
+    'psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE nexus WITH (FORCE)" -c "CREATE DATABASE nexus OWNER $POSTGRES_USER" && pg_restore -U "$POSTGRES_USER" -d nexus --no-owner --no-acl --exit-on-error --single-transaction /tmp/nexus-db.dump'; }; then
+  kc exec postgres-0 -- rm -f /tmp/nexus-db.dump
+  echo "FAILED: the database was not restored (see the error above); Nexus stays stopped"
+else
+  kc exec postgres-0 -- rm -f /tmp/nexus-db.dump
+  P="$(kc get statefulset postgres -o jsonpath='{.spec.template.spec.containers[0].image}')"
+  kc apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nexus-restore
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 200
+    runAsGroup: 200
+    fsGroup: 200
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: restore
+      image: ${P}
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: data
+          mountPath: /nexus-data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: data-nexus-0
+EOF
+  E="$(cd "$B" && find blobs keystores -type f | LC_ALL=C sort)"
+  if kc wait --for=condition=Ready pod/nexus-restore --timeout=5m \
+     && kc exec nexus-restore -- rm -rf /nexus-data/blobs /nexus-data/keystores /nexus-data/admin.password \
+     && (cd "$B" && kc cp blobs nexus-restore:/nexus-data/blobs && kc cp keystores nexus-restore:/nexus-data/keystores) \
+     && G="$(kc exec nexus-restore -- sh -c 'cd /nexus-data && find blobs keystores -type f | LC_ALL=C sort')" \
+     && [ "$G" = "$E" ]; then
+    kc delete pod nexus-restore --wait >/dev/null
+    kc scale statefulset nexus --replicas=1 && kc rollout status statefulset/nexus --timeout=15m
+    if [ "$(kc get secret nexus-ca -o jsonpath='{.data.tls\.crt}')" = "$(jq -r '.data["tls.crt"]' "$B/nexus-ca.json")" ]; then
+      echo "CA: the backup's"
+    else
+      echo "CA: not the backup's"
+    fi
+    echo "restored from $B ($(printf '%s\n' "$E" | grep -c .) files)"
+  else
+    kc delete pod nexus-restore --ignore-not-found >/dev/null
+    echo "FAILED: the files were not restored (see the error above); Nexus stays stopped"
+  fi
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-nexus-cluster"
+$NEXUS_BACKUP = "$HOME\nexus-backup-20260101-120000"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+function kc { $input | kubectl --kubeconfig $VKS_KUBECONFIG -n nexus @args }
+$global:LASTEXITCODE = $null
+$I = @(kc get statefulset nexus postgres -o 'jsonpath={range .items[*]}{.metadata.name}={.spec.template.spec.containers[0].image}{"\n"}{end}' | Where-Object { $_ }) -join "`n"
+$BI = if (Test-Path "$NEXUS_BACKUP\images.txt") { @(Get-Content "$NEXUS_BACKUP\images.txt" | Where-Object { $_ }) -join "`n" }
+if (-not ((Test-Path "$NEXUS_BACKUP\nexus-db.dump") -and (Test-Path "$NEXUS_BACKUP\keystores\node") -and (Test-Path "$NEXUS_BACKUP\blobs") -and $BI)) {
+  "MISSING: a complete backup in $NEXUS_BACKUP (step 12)"
+} elseif (-not $I -or $I -ne $BI) {
+  "STOPPED: Nexus runs other images than the backup:"; $I; "backup:"; $BI
+} else {
+  Push-Location $NEXUS_BACKUP
+  kc scale statefulset nexus --replicas=0
+  if ($LASTEXITCODE -eq 0) { kc wait --for=delete pod/nexus-0 --timeout=5m }
+  $UP = $LASTEXITCODE
+  if ($UP -eq 0) { kc cp nexus-db.dump postgres-0:/tmp/nexus-db.dump }
+  if ($UP -eq 0 -and $LASTEXITCODE -eq 0) {
+    kc exec postgres-0 -- sh -c 'psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE nexus WITH (FORCE)" -c "CREATE DATABASE nexus OWNER $POSTGRES_USER" && pg_restore -U "$POSTGRES_USER" -d nexus --no-owner --no-acl --exit-on-error --single-transaction /tmp/nexus-db.dump'
+  }
+  $DB = $LASTEXITCODE
+  if ($UP -eq 0) { kc exec postgres-0 -- rm -f /tmp/nexus-db.dump }
+  if ($UP -ne 0) { "FAILED: Nexus did not stop (see the error above)" }
+  elseif ($DB -ne 0) { "FAILED: the database was not restored (see the error above); Nexus stays stopped" }
+  else {
+    $P = kc get statefulset postgres -o 'jsonpath={.spec.template.spec.containers[0].image}'
+    @"
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nexus-restore
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 200
+    runAsGroup: 200
+    fsGroup: 200
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: restore
+      image: $P
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: data
+          mountPath: /nexus-data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: data-nexus-0
+"@ | kc apply -f -
+    $E = @(Get-ChildItem -Recurse -File -Path blobs, keystores | Resolve-Path -Relative | ForEach-Object { ($_ -replace '^\.\\', '') -replace '\\', '/' } | Sort-Object) -join "`n"
+    if ($LASTEXITCODE -eq 0) { kc wait --for=condition=Ready pod/nexus-restore --timeout=5m }
+    if ($LASTEXITCODE -eq 0) { kc exec nexus-restore -- rm -rf /nexus-data/blobs /nexus-data/keystores /nexus-data/admin.password }
+    if ($LASTEXITCODE -eq 0) { kc cp blobs nexus-restore:/nexus-data/blobs }
+    if ($LASTEXITCODE -eq 0) { kc cp keystores nexus-restore:/nexus-data/keystores }
+    $G = ''
+    if ($LASTEXITCODE -eq 0) { $G = @(kc exec nexus-restore -- sh -c 'cd /nexus-data && find blobs keystores -type f' | Sort-Object) -join "`n" }
+    if ($LASTEXITCODE -eq 0 -and $G -eq $E) {
+      kc delete pod nexus-restore --wait | Out-Null
+      kc scale statefulset nexus --replicas=1
+      if ($LASTEXITCODE -eq 0) { kc rollout status statefulset/nexus --timeout=15m }
+      $C = kc get secret nexus-ca -o 'jsonpath={.data.tls\.crt}'
+      if ($C -eq (Get-Content -Raw nexus-ca.json | ConvertFrom-Json).data.'tls.crt') { "CA: the backup's" } else { "CA: not the backup's" }
+      "restored from $NEXUS_BACKUP ($(@($E -split "`n").Count) files)"
+    } else {
+      kc delete pod nexus-restore --ignore-not-found | Out-Null
+      "FAILED: the files were not restored (see the error above); Nexus stays stopped"
+    }
+  }
+  Pop-Location
+}
+```
+
+</details>
+
+**Expect:** `pod/nexus-0 condition met`, `DROP DATABASE`, `CREATE DATABASE`, `pod/nexus-restore
+created`, `partitioned roll out complete`, `CA: the backup's`, then `restored from … (… files)`.
+Sign in to Nexus with the admin password it had when the backup was made; step 10's image is there.
+
+**If not:**
+- `STOPPED: Nexus runs other images than the backup`: run step 6 with the image names in
+  `images.txt`, then this block again.
+- `FAILED: …`: Nexus stays stopped; fix the error shown and run the block again (it replaces
+  everything again).
+- `CA: not the backup's`: step 5 made a new CA (the first block above did not run before it). Those
+  who push and pull no longer trust Nexus: run steps 7, 10 and 11 again, or remove the CA (the
+  first block's **If not:**) and run steps 5 to 7 and this block again.
 
 ## 13. Remove Nexus (optional)
 
 This deletes the namespace `nexus` with Nexus, PostgreSQL, every image and user, and the CA, then
 waits until the volumes are gone. VKS clusters that pull from Nexus can no longer do so; a new CA
 made by step 5 is a different CA: after a new install, give each pulling cluster the new CA under a
-new key (step 11, "Add a key to the Secret, or change the CA later"). cert-manager stays, and so do the Secrets and `osConfiguration`
+new key (step 11, "Add a key to the Secret, or change the CA later"), or put the old CA back from a
+backup (step 12, Restore Nexus). cert-manager stays, and so do the Secrets and `osConfiguration`
 settings of step 11 (removing them updates the nodes again). To delete Nexus's cluster too, run
 this first and [CLUSTER.md step 8](CLUSTER.md#8-delete-the-cluster-optional) after it: a volume
 still in use when the cluster goes is left behind in the vSphere Namespace and stops its removal.
