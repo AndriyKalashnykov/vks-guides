@@ -259,8 +259,8 @@ every half minute until it shows `Ready` and an address: one to two minutes.
 This prints what you need to log in to ArgoCD's web page:
 
 - its address;
-- the fingerprint of its certificate. ArgoCD made the certificate itself, so your browser cannot
-  check it and warns. Comparing the fingerprint shows that you reached your ArgoCD;
+- the fingerprint of its certificate. Unless you gave ArgoCD one in `argocd-server-tls`, ArgoCD
+  made the certificate itself, so your browser cannot check it and warns. Comparing the fingerprint shows that you reached your ArgoCD;
 - the first password of the user `admin`.
 
 Set `ARGOCD_INSTANCE` to the instance's name from step 1, or `argocd-1` if you created it in step
@@ -275,7 +275,8 @@ ARGOCD_NAMESPACE="my-namespace"
 ARGOCD_INSTANCE="argocd-1"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get argocd "$ARGOCD_INSTANCE" -o jsonpath='https://{.status.externalIP}{"\n"}'
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get secret argocd-secret -o go-template='{{index .data "tls.crt" | base64decode}}' | openssl x509 -noout -fingerprint -sha256
+{ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get secret argocd-server-tls -o go-template='{{index .data "tls.crt" | base64decode}}' 2>/dev/null \
+  || kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get secret argocd-secret -o go-template='{{index .data "tls.crt" | base64decode}}'; } | openssl x509 -noout -fingerprint -sha256
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get secret argocd-initial-admin-secret -o go-template='{{.data.password | base64decode}}{{"\n"}}'
 ```
 
@@ -288,7 +289,8 @@ $ARGOCD_INSTANCE = "argocd-1"
 
 $global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get argocd $ARGOCD_INSTANCE -o jsonpath='https://{.status.externalIP}{''\n''}'
-$CRT = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get secret argocd-secret -o jsonpath='{.data.tls\.crt}'
+$CRT = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get secret argocd-server-tls -o jsonpath='{.data.tls\.crt}' 2>$null
+if (-not $CRT) { $CRT = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get secret argocd-secret -o jsonpath='{.data.tls\.crt}' }
 if ($LASTEXITCODE -eq 0 -and $CRT) {
   $X = [Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String($CRT))
   $H = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($X.RawData))
@@ -311,7 +313,9 @@ password on a line of its own.
 
 **If not:**
 - Different fingerprints: something between you and ArgoCD replaces certificates (a company
-  proxy), or the address is another server. Do not type the password.
+  proxy), or the address is another server. Do not type the password. If `argocd-server-tls`
+  exists, check first that its `tls.crt` and `tls.key` belong together: otherwise ArgoCD serves
+  `argocd-secret`'s certificate.
 - `secrets "argocd-initial-admin-secret" not found`: someone changed the admin password and
   removed the first one. Ask them for it.
 
