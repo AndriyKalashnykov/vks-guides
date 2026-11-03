@@ -146,7 +146,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
   if ($LASTEXITCODE -ne 0) {
     "FAILED: cannot read the cluster (see the error above)"
   } else {
-    $H = if ((curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -o NUL -D - "https://$HARBOR_FQDN/api/v2.0/ping" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
+    $H = if ((curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -o NUL -D - --suppress-connect-headers "https://$HARBOR_FQDN/api/v2.0/ping" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
     "Harbor ${HARBOR_FQDN}: $H"
     foreach ($N in 'gitea', 'gitlab', 'gitlab-runner', 'cicd-demo') {
       "namespace ${N}: $(@($NS | Where-Object { $_ -ceq "namespace/$N" }).Count)"
@@ -346,7 +346,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
   try {
     Set-Content -Encoding ascii -Path $CFG -Value "user = `"admin:$P`""
     Set-Content -Encoding ascii -Path $BODY -Value ('{"project_name":"' + $HARBOR_PROJECT + '","metadata":{"public":"false"}}')
-    $H = if ((curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG -o NUL -D - `
+    $H = if ((curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG -o NUL -D - --suppress-connect-headers `
       -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" "https://$HARBOR_FQDN/api/v2.0/projects" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
     "project: $H"
     foreach ($R in 'push', 'pull') {
@@ -2600,7 +2600,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
   try {
     Set-Content -Encoding ascii -Path $CFG -Value "user = `"admin:$P`""
     foreach ($U in "projects/$HARBOR_PROJECT/repositories/test-web-apps", "projects/$HARBOR_PROJECT") {
-      $H = if ((curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG -o NUL -D - -X DELETE "https://$HARBOR_FQDN/api/v2.0/$U" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
+      $H = if ((curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG -o NUL -D - --suppress-connect-headers -X DELETE "https://$HARBOR_FQDN/api/v2.0/$U" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
       "Harbor $($U -replace '^projects/', ''): $H"
     }
   } finally {

@@ -124,7 +124,7 @@ if (-not (Test-Path $CA)) {
     $F = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($X.RawData))
     "subject=$($X.Subject)"
     "sha256 Fingerprint=$($F.Replace('-', ':'))"
-    $H = if ((curl.exe -s --ssl-no-revoke --cacert $CA --connect-timeout 20 --max-time 30 -o NUL -D - "https://${LOGS_FQDN}:9543/api/v2/events" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
+    $H = if ((curl.exe -s --ssl-no-revoke --cacert $CA --connect-timeout 20 --max-time 30 -o NUL -D - --suppress-connect-headers "https://${LOGS_FQDN}:9543/api/v2/events" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
     "Log Management at https://${LOGS_FQDN}:9543 with this CA: http=$H"
   } catch {
     "FAILED: $CA is not a PEM certificate"

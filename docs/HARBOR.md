@@ -915,7 +915,7 @@ if (-not $HARBOR_FQDN) { "FAILED: no hostname in $VALUES (step 4)" } else {
       if ($n -gt 0) { Start-Sleep -Seconds 15 }
       $n++
       $IP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get service harbor-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>$null
-      if ($IP) { $H = if ((curl.exe -sk --connect-timeout 10 --max-time 20 --resolve "${HARBOR_FQDN}:443:$IP" -o NUL -D - "https://$HARBOR_FQDN/api/v2.0/health" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' } }
+      if ($IP) { $H = if ((curl.exe -sk --connect-timeout 10 --max-time 20 --resolve "${HARBOR_FQDN}:443:$IP" -o NUL -D - --suppress-connect-headers "https://$HARBOR_FQDN/api/v2.0/health" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' } }
     }
     "Harbor namespace: $NS"
     "Harbor address:   $(if ($IP) { $IP } else { 'none yet' })"
@@ -1183,7 +1183,7 @@ else {
       $F = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($X.RawData))
       "subject=$($X.Subject)"
       "sha256 Fingerprint=$($F.Replace('-', ':'))"
-      $H = if ((curl.exe -s --ssl-no-revoke --cacert "$CA.new" --connect-timeout 20 --max-time 30 -o NUL -D - "https://$HARBOR_FQDN" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
+      $H = if ((curl.exe -s --ssl-no-revoke --cacert "$CA.new" --connect-timeout 20 --max-time 30 -o NUL -D - --suppress-connect-headers "https://$HARBOR_FQDN" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
       "Harbor at https://$HARBOR_FQDN with this CA: http=$H"
       if ($H -eq '200') { Move-Item -Force "$CA.new" $CA; "kept $CA" } else { Remove-Item -Force "$CA.new" }
     } catch {
@@ -1394,7 +1394,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
     Set-Content -Encoding ascii -Path $BODY -Value ('{"project_name":"' + $HARBOR_PROJECT + '","metadata":{"public":"' + $HARBOR_PROJECT_PUBLIC + '"}}')
     $H = if ((curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG `
       -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" `
-      -o NUL -D - "https://$HARBOR_FQDN/api/v2.0/projects" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
+      -o NUL -D - --suppress-connect-headers "https://$HARBOR_FQDN/api/v2.0/projects" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
     "create project: http=$H"
     $R = curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG -H 'X-Is-Resource-Name: true' `
       "https://$HARBOR_FQDN/api/v2.0/projects/$HARBOR_PROJECT" | Out-String | ConvertFrom-Json

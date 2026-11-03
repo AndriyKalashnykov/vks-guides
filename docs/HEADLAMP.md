@@ -258,7 +258,7 @@ if ($LASTEXITCODE -ne 0) {
   "pod security of namespace headlamp: $(kubectl --kubeconfig $VKS_KUBECONFIG get namespace headlamp -o jsonpath='{.metadata.labels.pod-security\.kubernetes\.io/enforce}')"
   $B = kubectl --kubeconfig $VKS_KUBECONFIG get clusterrolebindings -o json | ConvertFrom-Json
   "Headlamp's own account has: $((@($B.items | Where-Object { @($_.subjects | Where-Object { $_.kind -eq 'ServiceAccount' -and $_.namespace -eq 'headlamp' -and $_.name -eq 'headlamp' }).Count -gt 0 } | ForEach-Object { $_.roleRef.name })) -join ', ')"
-  $H = if ((curl.exe -s -o NUL -D - --connect-timeout 10 --max-time 20 --cacert $CA --resolve "${NAME}:443:${IP}" "https://$NAME/clusters/$VKS_CLUSTER/api/v1/namespaces/kube-system/secrets" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
+  $H = if ((curl.exe -s -o NUL -D - --suppress-connect-headers --connect-timeout 10 --max-time 20 --cacert $CA --resolve "${NAME}:443:${IP}" "https://$NAME/clusters/$VKS_CLUSTER/api/v1/namespaces/kube-system/secrets" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
   "a request without a token: HTTP $H"
   Remove-Item -Force $CA
 }
@@ -966,7 +966,7 @@ foreach ($i in 1..24) {
 $CA = [IO.Path]::GetTempFileName()
 [IO.File]::WriteAllBytes($CA, [Convert]::FromBase64String((kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp get secret headlamp-tls-cert -o jsonpath='{.data.tls\.crt}')))
 foreach ($i in 1..12) {
-  $H = if ((curl.exe -s -o NUL -D - --connect-timeout 5 --max-time 10 --cacert $CA "https://$HEADLAMP_HOSTNAME/" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
+  $H = if ((curl.exe -s -o NUL -D - --suppress-connect-headers --connect-timeout 5 --max-time 10 --cacert $CA "https://$HEADLAMP_HOSTNAME/" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
   if ($H -eq '200') { break }
   Start-Sleep -Seconds 10
 }
