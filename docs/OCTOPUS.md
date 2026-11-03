@@ -701,7 +701,7 @@ if kc rollout status statefulset/sql --timeout=10m; then
   done
 fi
 if [ -z "$V" ]; then
-  echo "FAILED: SQL Server does not accept logins (see kubectl -n octopus logs sql-0)"
+  echo "FAILED: SQL Server does not accept logins (see kubectl -n octopus describe pod sql-0 and its logs)"
 elif ! P="$(kc get secret sql-octopus -o jsonpath='{.data.password}' | base64 -d)" || [ -z "$P" ]; then
   echo "FAILED: no secret sql-octopus (step 3)"
 else
@@ -822,7 +822,7 @@ if ($LASTEXITCODE -eq 0) {
   }
 }
 $B = kc get secret sql-octopus -o 'jsonpath={.data.password}'
-if (-not $V) { "FAILED: SQL Server does not accept logins (see kubectl -n octopus logs sql-0)" }
+if (-not $V) { "FAILED: SQL Server does not accept logins (see kubectl -n octopus describe pod sql-0 and its logs)" }
 elseif (-not $B) { "FAILED: no secret sql-octopus (step 3)" }
 else {
   "SQL Server: $V"
@@ -843,7 +843,9 @@ running) and the same two lines.
 **If not:**
 - `CrashLoopBackOff` with `sqlservr: Operation not permitted` in `kubectl -n octopus logs sql-0`:
   the container lacks `NET_BIND_SERVICE`; run this block as it is.
-- `ImagePullBackOff`: the nodes cannot reach `mcr.microsoft.com` (see the table above).
+- `ImagePullBackOff`: the nodes cannot reach or cannot download from `mcr.microsoft.com` (the
+  image is about 640 MB; `kubectl -n octopus describe pod sql-0` shows the error; see the table
+  above).
 - `Pending` with `Insufficient memory`: the worker is too small (see the Prerequisites).
 - `FAILED: SQL Server does not accept logins`: the log shows why; a `sa` password SQL Server
   refuses stops it at start (step 3 makes one it accepts).
