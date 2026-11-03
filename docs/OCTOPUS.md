@@ -43,17 +43,16 @@ Sizing. Octopus recommends, for a trial, 2 cores and 4 GB of memory for Octopus 
 and 4 GB for SQL Server Express
 ([Performance](https://octopus.com/docs/administration/managing-infrastructure/performance)). This
 guide's manifests ask for 0.4 CPU and 2 GiB for Octopus (at most 3 GiB), 0.2 CPU and 2 GiB for SQL
-Server (at most 3 GiB, of which SQL Server uses 2 GB) and a little for nginx, 0.65 CPU in all, from
-what they used on a VKS cluster: Octopus typically 0.4 to 0.5 CPU, up to 1.4 while it deployed many
-releases and 1.8 at its first start, and 1.1 GiB at most; SQL Server about 0.1 CPU and 0.9 GiB. By those
-requests the smallest worker they fit on is the VM class `best-effort-medium` (2 CPUs, 8 GB),
-which has about 0.9 CPU left after the cluster's own pods. The images are
-for amd64 nodes only, and need about 8 GiB of the worker's image disk.
-<!-- TODO-MEASURE: a run on a best-effort-medium worker with these requests (measured so far on best-effort-large) -->
+Server (at most 3 GiB, of which SQL Server uses at most 2 GB) and a little for nginx, 0.65 CPU in all,
+from what they used on VKS workers: Octopus typically 0.4 to 0.5 CPU, up to 1.4 while it deployed
+many releases and 1.8 at its first start, and 1.1 GiB at most; SQL Server about 0.1 CPU, 0.8 CPU at
+its first start, and 0.9 GiB. The smallest standard worker they fit on has 2 CPUs and 8 GB (for
+example the VM class `best-effort-medium` or `guaranteed-medium`). Step 1 shows what is left on each worker. The
+images are for amd64 nodes only, and need about 8 GiB of the worker's image disk.
 
 The cluster for Octopus:
 
-1. Its vSphere Namespace offers the VM class `best-effort-medium` or larger
+1. Its vSphere Namespace offers a VM class with at least 2 CPUs and 8 GB, such as `best-effort-medium`
    ([NAMESPACE.md step 8](NAMESPACE.md#8-check-the-namespace) lists them under `VM classes:`; a
    vCenter administrator adds one with [NAMESPACE.md step 6](NAMESPACE.md#6-add-the-vm-classes)).
 2. Create the cluster with
@@ -66,7 +65,7 @@ The cluster for Octopus:
    images with the `workers:` part in [CICD.md's Prerequisites](CICD.md#prerequisites).
    <!-- TODO-MEASURE: namespace storage used by the cluster plus volumes -->
 3. Save its kubeconfig as `~/.kube/<cluster name>.kubeconfig`
-   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)); it is `<file>` in the **If not:** lines.
 
 SQL Server. Octopus supports SQL Server versions that have at least two years of support left
 ([SQL Server database](https://octopus.com/docs/installation/sql-database)), and the free Express
@@ -92,8 +91,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 ## 1. Check the cluster
 
 This checks that the nodes are ready, the free memory and image disk on each worker, that the
-cluster has a default storage class, and that no `octopus` namespace exists yet. Octopus, SQL Server
-and nginx ask for about 4.1 GiB of memory.
+cluster has a default storage class, and that no `octopus` namespace exists yet. Octopus, SQL Server,
+nginx and the cert-manager add-on of step 2 ask for about 4.3 GiB of memory.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -173,8 +172,9 @@ if ($LASTEXITCODE -eq 0) {
 </details>
 
 **Expect:** each node `Ready`, a `worker …: … GiB memory free, … CPU free, … GiB image disk free`
-line per worker, and `default storage class:` and a class name. Octopus, SQL Server and nginx need
-a worker with at least 0.7 CPU, 4.1 GiB memory and 8 GiB image disk free.
+line per worker, and `default storage class:` and a class name. Octopus, SQL Server, nginx and the
+cert-manager add-on of step 2 need a worker with at least 0.7 CPU, 4.3 GiB memory and 8 GiB image
+disk free.
 <!-- TODO-MEASURE: the image disk Octopus and SQL Server use on a VKS worker -->
 
 **If not:**
@@ -587,7 +587,7 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n octopus wait 
 - `no matches for kind "Issuer"`: step 2 did not finish.
 - `failed calling webhook "webhook.cert-manager.io"`: cert-manager is still starting. Wait a minute
   and run this block again.
-- `timed out`: `kubectl -n octopus describe certificate octopus-tls` shows why.
+- `timed out`: `kubectl --kubeconfig <file> -n octopus describe certificate octopus-tls` shows why.
 
 ## 6. Run SQL Server and create Octopus's database
 
@@ -842,10 +842,10 @@ prints `service/sql unchanged`, `statefulset.apps/sql configured` (nothing chang
 running) and the same two lines.
 
 **If not:**
-- `CrashLoopBackOff` with `sqlservr: Operation not permitted` in `kubectl -n octopus logs sql-0`:
+- `CrashLoopBackOff` with `sqlservr: Operation not permitted` in `kubectl --kubeconfig <file> -n octopus logs sql-0`:
   the container lacks `NET_BIND_SERVICE`; run this block as it is.
 - `ImagePullBackOff`: the nodes cannot reach or cannot download from `mcr.microsoft.com` (the
-  image is about 640 MB; `kubectl -n octopus describe pod sql-0` shows the error; see the table
+  image is about 640 MB; `kubectl --kubeconfig <file> -n octopus describe pod sql-0` shows the error; see the table
   above).
 - `Pending` with `Insufficient memory`: the worker is too small (see the Prerequisites).
 - `FAILED: SQL Server does not accept logins`: the log shows why; a `sa` password SQL Server
@@ -903,7 +903,7 @@ octopus:
     capabilities:
       drop:
         - ALL
-  serverConfigurationDirectory: /etc/octopus
+  serverConfigurationDirectory: /home/octopus/.octopus
   extraVolumes:
     tmp:
       type: emptyDir
@@ -912,6 +912,14 @@ octopus:
     homeoctopus:
       type: emptyDir
       mountPath: /home/octopus
+      sizeLimit: 2Gi
+    octopushome:
+      type: emptyDir
+      mountPath: /home/octopus/.octopus
+      sizeLimit: 10Mi
+    octopusserver:
+      type: emptyDir
+      mountPath: /home/octopus/.octopus/OctopusServer/Server
       sizeLimit: 2Gi
     etcoctopus:
       type: emptyDir
@@ -1078,7 +1086,7 @@ octopus:
     capabilities:
       drop:
         - ALL
-  serverConfigurationDirectory: /etc/octopus
+  serverConfigurationDirectory: /home/octopus/.octopus
   extraVolumes:
     tmp:
       type: emptyDir
@@ -1087,6 +1095,14 @@ octopus:
     homeoctopus:
       type: emptyDir
       mountPath: /home/octopus
+      sizeLimit: 2Gi
+    octopushome:
+      type: emptyDir
+      mountPath: /home/octopus/.octopus
+      sizeLimit: 10Mi
+    octopusserver:
+      type: emptyDir
+      mountPath: /home/octopus/.octopus/OctopusServer/Server
       sizeLimit: 2Gi
     etcoctopus:
       type: emptyDir
@@ -1217,12 +1233,16 @@ objects`, then `configmap/octopus-proxy created`, `deployment.apps/octopus-proxy
 prints `unchanged` for nginx and keeps Octopus's data and keys.
 
 **If not:**
-- `FAILED: Octopus is not ready`: `kubectl -n octopus describe pod octopus-octopus-deploy-0` and
-  `kubectl -n octopus logs octopus-octopus-deploy-0` show why. `ImagePullBackOff`: the nodes cannot
+- `FAILED: Octopus is not ready`: `kubectl --kubeconfig <file> -n octopus describe pod octopus-octopus-deploy-0` and
+  `kubectl --kubeconfig <file> -n octopus logs octopus-octopus-deploy-0` show why. `ImagePullBackOff`: the nodes cannot
   reach `docker.io`. `CreateContainerConfigError`: a Secret of step 3 is missing; run step 3.
-  A log line about the database: step 6 did not finish.
+  A log line about the database: step 6 did not finish. The pod `Running` but `0/1` with only
+  `Startup probe failed` events: Octopus is still starting; run step 7 again.
+- The pod still in `CrashLoopBackOff` after step 7 ran with the fix: running step 7 again does not
+  replace it; run `kubectl --kubeconfig <file> -n octopus delete pod octopus-octopus-deploy-0`, then
+  step 7 again.
 - `Error: … oci://ghcr.io/…`: this machine cannot reach `ghcr.io`.
-- `secret "octopus-tls" not found` in `kubectl -n octopus describe pod -l app=octopus-proxy`:
+- `secret "octopus-tls" not found` in `kubectl --kubeconfig <file> -n octopus describe pod -l app=octopus-proxy`:
   step 5 did not finish.
 
 ## 8. Save the CA
@@ -1414,8 +1434,8 @@ and `Users 1/10`; from the terminal, `version: 2026.3.16049`, `licence compliant
 
 **If not:**
 - `Projects 0` (or `Projects 0/0`): Octopus started without a licence; check
-  `octopus-license.xml`, delete the Secret with `kubectl -n octopus delete secret
-  octopus-licensekey`, run step 3 again, then restart Octopus with `kubectl -n octopus delete pod
+  `octopus-license.xml`, delete the Secret with `kubectl --kubeconfig <file> -n octopus delete secret
+  octopus-licensekey`, run step 3 again, then restart Octopus with `kubectl --kubeconfig <file> -n octopus delete pod
   octopus-octopus-deploy-0`.
 - `Invalid username or password` (browser) or `FAILED: sign-in refused`: the password is the one in
   step 3's Secret; a password changed in Octopus's web page goes back to it when the pod restarts.
@@ -1686,7 +1706,7 @@ octopus:
 </details>
 
 **Expect:** `configmap/nexus-ca created` and `wrote …/values-ca.yaml: now run step 7 again`; after
-step 7, `Octopus is ready`, and `kubectl -n octopus logs octopus-octopus-deploy-0 -c ca-bundle`
+step 7, `Octopus is ready`, and `kubectl --kubeconfig <file> -n octopus logs octopus-octopus-deploy-0 -c ca-bundle`
 prints the number of CAs in the bundle (about 150).
 
 Then add Nexus in the web page: **External Feeds** (under **Manage**) → **Add Feed** → **Feed
