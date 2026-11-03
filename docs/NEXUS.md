@@ -991,6 +991,8 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $NEXUS_REGISTRY = "192.168.10.50"
 $NEXUS_CA = "$HOME\nexus-ca.pem"
 
+$H = $NEXUS_REGISTRY; $RV = @()
+if ($NEXUS_REGISTRY -match '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$') { $H = 'nexus.nexus.svc'; $RV = '--resolve', "${H}:443:$NEXUS_REGISTRY" }
 $global:LASTEXITCODE = $null
 $B = kubectl --kubeconfig $VKS_KUBECONFIG -n nexus get secret nexus-tls -o 'jsonpath={.data.ca\.crt}'
 if ($LASTEXITCODE -eq 0 -and $B) {
@@ -1000,7 +1002,7 @@ if ($LASTEXITCODE -eq 0 -and $B) {
   "sha256 Fingerprint=$([BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($C.RawData)).Replace('-', ':'))"
   Set-Content -Encoding ascii -NoNewline -Path $NEXUS_CA -Value $PEM
   "saved $NEXUS_CA"
-  curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $NEXUS_CA "https://$NEXUS_REGISTRY/service/rest/v1/status/writable"
+  curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $NEXUS_CA @RV "https://$H/service/rest/v1/status/writable"
   if ($LASTEXITCODE -eq 0) { "Nexus answers at https://$NEXUS_REGISTRY" }
 } else {
   "FAILED: no CA read (see the error above)"
@@ -1106,11 +1108,13 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $NEXUS_REGISTRY = "192.168.10.50"
 $NEXUS_CA = "$HOME\nexus-ca.pem"
 
-$U = "https://$NEXUS_REGISTRY/service/rest/v1"
+$H = $NEXUS_REGISTRY; $RV = @()
+if ($NEXUS_REGISTRY -match '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$') { $H = 'nexus.nexus.svc'; $RV = '--resolve', "${H}:443:$NEXUS_REGISTRY" }
+$U = "https://$H/service/rest/v1"
 $T = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName())
 $OutputEncoding = New-Object Text.UTF8Encoding $false
 function cfg($p) { [IO.File]::WriteAllText("$T\admin.cfg", "user = `"admin:$($p.Replace('\', '\\').Replace('"', '\"'))`"`n") }
-function nx { $input | curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $NEXUS_CA -K "$T\admin.cfg" @args }
+function nx { $input | curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $NEXUS_CA -K "$T\admin.cfg" @RV @args }
 if (-not $NEXUS_ADMIN_PASSWORD -or $NEXUS_ADMIN_PASSWORD.Length -eq 0) { "STOPPED: type the new admin password first (the line above)" }
 elseif (-not (Test-Path $NEXUS_CA)) { "MISSING: $NEXUS_CA (step 7)" }
 elseif (-not $($P0 = kubectl --kubeconfig $VKS_KUBECONFIG -n nexus exec nexus-0 -c nexus -- sh -c 'cat /nexus-data/admin.password 2>/dev/null; true'; $LASTEXITCODE -eq 0)) { "FAILED: cannot read nexus-0 (see the kubectl error above)" }
@@ -1142,8 +1146,8 @@ Remove-Variable -ErrorAction SilentlyContinue NEXUS_ADMIN_PASSWORD
 </details>
 
 **Expect:** `admin password: changed` (or `changed before` when run again), then
-`EULA accepted: true`, `realms: ["NexusAuthenticatingRealm","DockerToken"]` (PowerShell:
-`NexusAuthenticatingRealm,DockerToken`) and `anonymous access: false`.
+`EULA accepted: true`, `realms: ["NexusAuthenticatingRealm","DockerToken"]` and
+`anonymous access: false` (PowerShell: `True`, `NexusAuthenticatingRealm,DockerToken` and `False`).
 
 **If not:**
 - `STOPPED: type the new admin password first`: run the one-line block above, then this one, in
@@ -1250,11 +1254,13 @@ $NEXUS_REPO = "apps"
 $NEXUS_PUSH_USER = "apps-push"
 $NEXUS_PULL_USER = "apps-pull"
 
-$U = "https://$NEXUS_REGISTRY/service/rest/v1"
+$H = $NEXUS_REGISTRY; $RV = @()
+if ($NEXUS_REGISTRY -match '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$') { $H = 'nexus.nexus.svc'; $RV = '--resolve', "${H}:443:$NEXUS_REGISTRY" }
+$U = "https://$H/service/rest/v1"
 $V = "nx-repository-view-docker-$NEXUS_REPO"
 $T = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName())
 $OutputEncoding = New-Object Text.UTF8Encoding $false
-function nx { $input | curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $NEXUS_CA -K "$T\admin.cfg" @args }
+function nx { $input | curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $NEXUS_CA -K "$T\admin.cfg" @RV @args }
 if (-not $NEXUS_ADMIN_PASSWORD -or -not $NEXUS_PUSH_PASSWORD -or -not $NEXUS_PULL_PASSWORD -or $NEXUS_PUSH_PASSWORD.Length -eq 0 -or $NEXUS_PULL_PASSWORD.Length -eq 0) { "STOPPED: type the three passwords first (the line above)" }
 else {
   New-Item -ItemType Directory -Path $T | Out-Null
