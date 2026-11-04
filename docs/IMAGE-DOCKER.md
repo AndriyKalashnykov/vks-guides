@@ -20,12 +20,17 @@ others use. If you open a new terminal, run the first block again.
 
 - docker 29.5 or newer ([PREREQS.md](PREREQS.md#podman-and-docker-optional)), `curl`,
   `openssl` and [kubectl](KUBECTL.md);
-- a Harbor project and a robot account that may push to it ([HARBOR.md](HARBOR.md) step 10);
+- a Harbor project and a robot account that may push to it
+  ([HARBOR.md step 10](HARBOR.md#10-create-a-project-and-a-robot-account)), and
+  [HARBOR.md step 11](HARBOR.md#11-check-that-a-vks-cluster-can-pull-from-harbor) passed on this
+  cluster;
 - for a private project, also a robot that may only pull: in Harbor's web page, as in HARBOR.md
   step 10, *In Harbor's web page*, with only **Repository** → **Pull** ticked. Its name is
   `robot$` and the name you type;
-- `kubectl` pointed at your VKS cluster in this terminal: [LOGIN.md](LOGIN.md),
-  *Get the VKS cluster's kubeconfig*, then *Make it the default in this terminal*;
+- `kubectl` pointed at your VKS cluster in this terminal: download its kubeconfig in the vSphere
+  Client ([LOGIN.md](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)) or
+  with the VCF CLI ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), then
+  [make it the default in this terminal](LOGIN.md#make-it-the-default-in-this-terminal);
 - one free load-balancer address, for the app (step 6).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
@@ -42,7 +47,9 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 0. Set your values
 
-Change these to your own. The two robot accounts:
+Run this first: it sets the values the other blocks use, creates the folder `~/image-simple`
+for the downloaded files, and moves this terminal into it. Change the values to your own. The two
+robot accounts:
 
 - `HARBOR_ROBOT` (push): used on your machine in step 4 to upload the image. It may push and pull.
 - `HARBOR_PULL_ROBOT` (pull): used only for a private project, in step 5. Its login becomes the
@@ -96,6 +103,10 @@ it. It asks for your password (`sudo`); run it as a block of its own.
 sudo install -D -m 0644 harbor-ca.crt "/etc/docker/certs.d/$HARBOR_FQDN/ca.crt"
 ```
 
+**Expect:** no output.
+
+**If not:** `cannot stat 'harbor-ca.crt'`: run step 1 in `~/image-simple`.
+
 ## 3. Build the image
 
 This downloads the app's two files, changes its page so that you can tell your image from the
@@ -119,7 +130,8 @@ Enter (nothing is shown). Run this line on its own.
 docker login -u "$HARBOR_ROBOT" "$HARBOR_FQDN"
 ```
 
-**Expect:** `Login Succeeded`.
+**Expect:** `Login Succeeded` (docker on Linux first warns that the login is stored unencrypted;
+the logout below removes it).
 
 Then upload the image to your project and log out, so the robot's login does not stay on this
 machine:
@@ -132,10 +144,11 @@ docker logout "$HARBOR_FQDN"
 **Expect:** the image's layers, `v1: digest: sha256:…`, then `Removing login credentials for …`.
 In Harbor's web page, your project now lists `test-web-apps`.
 
-## 5. Only for a private Harbor project: let the cluster log in - create pull secret
+## 5. Only for a private Harbor project: store a pull login in the cluster
 
 Skip this for a public project: anyone may pull from it, so the cluster needs no login. A private
-project needs a robot that may pull, and the cluster must keep its login as a Secret.
+project needs a robot that may pull, and the cluster must keep its login as a Secret, the
+cluster's way to store a password.
 
 First log in as the pull robot. docker asks for that robot's secret. `--config` makes docker save
 this login in a new file, `~/image-simple/pull/config.json`, instead of your usual
@@ -151,7 +164,7 @@ docker --config "$HOME/image-simple/pull" login -u "$HARBOR_PULL_ROBOT" "$HARBOR
 
 **If not:** no such warning: a docker credential helper keeps the secret elsewhere, and
 `config.json` holds no login for the cluster. Create the Secret as
-[IMAGE.md step 5](IMAGE.md#5-let-the-cluster-pull-from-a-private-project) does instead.
+[IMAGE.md step 5](IMAGE.md#5-only-for-a-private-project-let-the-cluster-pull-from-it) does instead.
 
 Then create the app's namespace, copy `config.json` into it as the Secret `harbor-pull`, and
 delete the file, which holds the robot's secret unencrypted:
@@ -168,8 +181,11 @@ rm -r "$HOME/image-simple/pull"
 
 ## 6. Deploy the app
 
-This downloads the app's three Kubernetes files and puts your values into them: the namespace's
-name and your image from Harbor. The last line shows the lines that changed.
+To run the app, the cluster needs its three Kubernetes files. This downloads them:
+`namespace.yaml` (a separate area in the cluster for the app), `deployment.yaml` (the app: five
+copies, called pods, of your image) and `service.yaml` (the app's network address). It puts your
+values into them: the namespace's name and your image from Harbor. The last line shows the lines
+that changed.
 
 ```sh
 curl -sSO "$SRC/namespace.yaml"
@@ -195,7 +211,9 @@ grep -A1 imagePullSecrets deployment.yaml
 
 **Expect:** `imagePullSecrets:` and `- name: harbor-pull`.
 
-Now send the three files to the cluster and wait until the app's five pods run:
+Now send the three files to the cluster and wait until the app's five pods run. This creates the
+app's namespace, starts five pods from your Harbor image, and asks the load balancer for an
+address:
 
 ```sh
 kubectl apply -f namespace.yaml -f deployment.yaml -f service.yaml
@@ -226,7 +244,8 @@ curl -s "http://$APP_IP/" | grep h1
 the same page.
 
 **If not:** `timed out waiting for the condition`: the Supervisor has given the app no address yet;
-run the block again in a minute.
+run the block again in a minute. Still no address: the Supervisor's load balancer has no address
+left; see [IMAGE.md step 7](IMAGE.md#7-open-the-app), **If not**.
 
 ## 8. Remove it (optional)
 
@@ -247,4 +266,4 @@ sudo rm -r "/etc/docker/certs.d/$HARBOR_FQDN"
 ```
 
 The image stays in Harbor: delete it in Harbor's web page (**Projects** → your project →
-`test-web-apps` → **DELETE**).
+**Repositories**, tick `test-web-apps` → **DELETE**).

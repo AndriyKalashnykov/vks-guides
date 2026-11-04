@@ -22,14 +22,18 @@ listed under Supervisor Management → Namespaces): [ARGOCD.md](ARGOCD.md) keeps
 
 ## Prerequisites
 
-- Harbor with a project and a robot account that may push to it
-  ([HARBOR.md](HARBOR.md), steps 1 to 10), and Harbor's CA: step 1 below copies it from
+- Harbor with a project and a robot account (a Harbor login for tools rather than people) that
+  may push to it ([HARBOR.md](HARBOR.md), steps 1 to 11; step 11 checks that your VKS cluster can
+  pull from it), and Harbor's CA: step 1 below copies it from
   [HARBOR.md step 9](HARBOR.md#save-the-ca)
   (`~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>/harbor-ca.crt`) or downloads it, and saves it
   as `~/.config/vks-guides/image/<HARBOR_FQDN>-ca.crt`;
 - [podman or docker](PREREQS.md#podman-and-docker-optional), [curl, jq and openssl](PREREQS.md),
   and [kubectl](KUBECTL.md);
-- the VKS cluster's kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+- the VKS cluster's kubeconfig, saved as `~/.kube/<cluster>.kubeconfig`: download it in the
+  vSphere Client ([LOGIN.md](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client))
+  or with the VCF CLI ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)); steps 5 to 8 set
+  `VKS_CLUSTER` to that cluster's name;
 - one free load-balancer address, for the app (step 6).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
@@ -132,7 +136,7 @@ the CA below. `FAILED: nothing copied`: the error above it says why.
 This downloads Harbor's CA from Harbor, saves it as `<HARBOR_FQDN>-ca.crt.new` in
 `~/.config/vks-guides/image` and prints its fingerprint, a short code that identifies it. Harbor
 is not trusted yet, so the file could be a fake: keep it (next block) only if the fingerprint is
-the same as the one HARBOR.md step 9 printed for your Harbor administrator. In Harbor's web page,
+the same as the fingerprint your Harbor administrator got in HARBOR.md step 9. In Harbor's web page,
 **Projects** → your project → **REGISTRY CERTIFICATE** downloads the same file as `ca.crt`.
 
 <details>
@@ -178,8 +182,15 @@ if ($LASTEXITCODE -eq 0 -and (Test-Path $NEW)) {
 </details>
 
 **Expect:** `subject=CN = Harbor CA` (newer OpenSSL and PowerShell: `subject=CN=Harbor CA`; or
-your organization's CA, HARBOR.md step 13) and a `sha256 Fingerprint=` line. When it is the same
-as your administrator's, keep the file:
+your organization's CA, HARBOR.md step 13) and a `sha256 Fingerprint=` line.
+
+**If not:** the fingerprints differ: delete `<HARBOR_FQDN>-ca.crt.new` and stop; this is not your
+Harbor's CA. `FAILED: …`: check the name (HARBOR.md step 7, *Check the DNS record*); if the name
+is right, this Harbor publishes no CA (your organization's certificate, HARBOR.md step 13): get
+`harbor-ca.crt` from your Harbor administrator and save it as
+`~/.config/vks-guides/image/<HARBOR_FQDN>-ca.crt`.
+
+When the fingerprints are the same, keep the file:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -198,12 +209,6 @@ $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 
 Move-Item -Force "$IMAGE_DIR\${HARBOR_FQDN}-ca.crt.new" "$IMAGE_DIR\${HARBOR_FQDN}-ca.crt"
 ```
-
-**If not:** the fingerprints differ: delete `<HARBOR_FQDN>-ca.crt.new` and stop; this is not your
-Harbor's CA. `FAILED: …`: check the name (HARBOR.md step 7, *Check the DNS record*); if the name
-is right, this Harbor publishes no CA (your organization's certificate, HARBOR.md step 13): get
-`harbor-ca.crt` from your Harbor administrator and save it as
-`~/.config/vks-guides/image/<HARBOR_FQDN>-ca.crt`.
 
 ## 2. Trust Harbor's CA
 
@@ -253,7 +258,8 @@ sudo install -D -m 0644 "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt" "/etc/docker/certs.d/
 ### macOS
 
 podman and Docker Desktop read the CA from your login keychain. Add it there first (macOS asks
-for your password):
+for your password). This makes every app you run on this Mac trust Harbor's CA (it adds it to your
+login keychain):
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
@@ -286,8 +292,11 @@ Let the podman machine import the keychain's CAs: `podman machine stop`, then
 
 ### Windows
 
-podman and Docker Desktop read the CA from your user's trusted root CAs. Add it there first
-(Windows asks you to confirm with **Yes**):
+podman and Docker Desktop read the CA from your user's trusted root CAs. Add it there first:
+double-click `<your Harbor name>-ca.crt` in `%USERPROFILE%\.config\vks-guides\image` →
+**Install Certificate** → **Current User** → **Place all certificates in the following store** →
+**Trusted Root Certification Authorities** → **Finish** → **Yes**. Or run this (Windows asks you
+to confirm with **Yes**):
 
 ```powershell
 $HARBOR_FQDN = "harbor.example.test"
@@ -317,8 +326,10 @@ the new CA.
 
 ## 3. Build the image
 
-This downloads the app's files from this repository, marks its page with the engine's name, and
-builds the image.
+Build the image on this machine first; Harbor and the cluster do not change yet. This downloads
+the app (`Dockerfile`, `index.html`) and its three Kubernetes files (for steps 5 and 6) into
+`~/.config/vks-guides/image`, replacing an earlier copy, marks the app's page with the engine's
+name, and builds the image.
 
 `IMAGE_PLATFORM="linux/amd64"` builds the image for the VKS cluster's nodes, which are x86-64
 machines. Keep it, also on a Mac with Apple silicon: without it, such a Mac builds an `arm64` image,
@@ -326,8 +337,8 @@ and the cluster's pods then fail with `exec format error`.
 
 The first line picks the engine: `CONTAINER_ENGINE="podman"` builds with podman; change it to
 `CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) to build with docker. To
-build with both, run the block twice, once with each; the images get the tags `v1-podman` and
-`v1-docker`.
+build with both, run the block twice, once with each; the images get the tags (version labels)
+`v1-podman` and `v1-docker`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -520,7 +531,8 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_ROBOT_SECRET
 
 </details>
 
-**Expect:** `Login Succeeded`, the push, `Removed login credentials for …` (docker: `Removing`), then
+**Expect:** `Login Succeeded` (docker on Linux first warns that the login is stored unencrypted),
+the push, `Removed login credentials for …` (docker: `Removing`), then
 `pushed: <your Harbor name>/<your project>/test-web-apps@sha256:…`. In Harbor's web page the
 project now lists the repository `test-web-apps`.
 
@@ -533,12 +545,12 @@ project now lists the repository `test-web-apps`.
 - `denied: requested access to the resource is denied` (podman) or `insufficient_scope` (docker):
   the robot may not push to this project.
 
-## 5. Let the cluster pull from a private project
+## 5. Only for a private project: let the cluster pull from it
 
 Needed unless you made the project public (HARBOR.md step 10 makes it private by default). For a
 private one, the cluster needs a robot's login: this stores it in the cluster as the Secret
 `harbor-pull`, and step 6 makes the app use it. Use a robot that may only pull: in Harbor's web
-page, a robot with only **Pull Repository** on this project ([HARBOR.md step
+page, a robot with only **Repository** → **Pull** on this project ([HARBOR.md step
 10](HARBOR.md#create-a-robot-account), *In Harbor's web page*); the push robot also works, but it
 can also push. Set `HARBOR_PULL_ROBOT` to the name Harbor showed for it (`robot$` and the name you
 typed). Anyone who may read Secrets in the namespace can read it.
@@ -647,7 +659,7 @@ This starts the app in your VKS cluster from the image you pushed to Harbor in s
 shows that the cluster can pull your own images from Harbor. It creates:
 
 - the namespace `harbor-demo`, to keep the app apart from everything else;
-- the app itself: five pods, each running your image;
+- the app itself: five pods (copies of the app, each a running container of your image);
 - a Service, which gives the app an address you can open from your machine (step 7).
 
 If you did step 5, the pods log in to Harbor with the Secret `harbor-pull`. The block waits until
@@ -817,7 +829,7 @@ else {
   Foundation Load Balancer, the vSphere Client shows its range (not which addresses are free):
   **Supervisor Management** → **Supervisors** → your Supervisor → **Configure** → **Supervisor** →
   **Network** → **Load Balancer** → **Virtual Server Network** → **VIEW DETAILS** → **Virtual IP
-  Address Range(s)**. With NSX or Avi, the range is in that load balancer's own settings.
+  Address Range(s)**. With NSX or Avi, ask whoever runs the Supervisor's network for the range.
 - No `page:` line: the address does not answer from this machine (a firewall between your network
   and the Supervisor's load balancer network), or the pods are not running (step 6).
 
@@ -849,8 +861,12 @@ if ($LASTEXITCODE -eq 0) { Remove-Item -Recurse -Force -ErrorAction SilentlyCont
 
 **Expect:** `namespace "harbor-demo" deleted`, then `deleted harbor-demo and …`.
 
+The image built in step 3 stays on this machine: remove it with
+`podman rmi <your Harbor name>/<your project>/test-web-apps:v1-podman` (docker:
+`docker rmi <your Harbor name>/<your project>/test-web-apps:v1-docker`).
+
 The image stays in Harbor: delete it in Harbor's web page (**Projects** → your project →
-**Repositories** → `test-web-apps` → **DELETE**). To stop trusting Harbor's CA:
+**Repositories**, tick `test-web-apps` → **DELETE**). To stop trusting Harbor's CA:
 - Linux:
   - podman: `rm -rf ~/.config/containers/certs.d/<your Harbor name>`;
   - docker, as a block of its own: `sudo rm -rf /etc/docker/certs.d/<your Harbor name>`;
