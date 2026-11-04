@@ -1572,7 +1572,7 @@ else {
 CA to an existing Secret, or to change the CA later (a new Nexus, or step 5's CA renewed), keep the
 Secret's name: add the CA under a new key (`nexus-ca-2`, then `nexus-ca-3`, …) and point the
 cluster's `secretRef.key` at it with
-`kubectl --kubeconfig ~/.kube/supervisor.kubeconfig -n <vSphere Namespace> edit cluster <cluster name>`;
+`kubectl --kubeconfig "$HOME/.kube/supervisor.kubeconfig" -n <vSphere Namespace> edit cluster <cluster name>`;
 that changes the Cluster and starts the node update (below).
 <!-- TODO-MEASURE: on VKS 3.8, that a new key in the same Secret plus a secretRef.key change rolls the nodes with the new CA -->
 
