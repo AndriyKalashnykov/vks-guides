@@ -402,14 +402,15 @@ address.
 
 ## 5. Open Headlamp in the browser (each person)
 
-Open the address from step 4 in the browser. It warns that the connection is not private:
+Open the address from step 4 in the browser. Headlamp's certificate is self-signed (step 4), and no
+browser trusts it until you accept it, so the first visit warns that the connection is not private:
 
-![Chrome warns: Your connection is not private, NET::ERR_CERT_AUTHORITY_INVALID](img/headlamp/01-cert-warning.png)
+<img src="img/headlamp/01-cert-warning.png" width="600" alt="Chrome warns: Your connection is not private, NET::ERR_CERT_AUTHORITY_INVALID">
 
 Check the fingerprint: click **Not secure** left of the address, then the certificate details; the
 SHA-256 fingerprint must be the one from step 4. Then click **Advanced** and **Proceed to … (unsafe)**:
 
-![Advanced shows: Proceed to 192.168.101.148 (unsafe)](img/headlamp/02-cert-warning-advanced.png)
+<img src="img/headlamp/02-cert-warning-advanced.png" width="600" alt="Advanced shows: Proceed to 192.168.101.148 (unsafe)">
 
 The browser may ask again later, and does when the certificate changes (step 9).
 
