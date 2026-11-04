@@ -36,6 +36,10 @@ blocks; there is nothing to build.
   `| from | to | port | for |` with every connection its blocks open or make another component
   open (the nodes, ArgoCD); registries by name, with a link to PREREQS.md's Registry hosts.
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
+- The Supervisor is named by `SUPERVISOR_CONTEXT="supervisor"` (one name per Supervisor: a-z,
+  0-9 and `-`, not ending in `-sso`) and its file by
+  `SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"`; no block writes either
+  name out.
 - Passwords are typed (`IFS= read -rs` / `Read-Host -AsSecureString`) and passed only as the
   `VCF_CLI_VSPHERE_PASSWORD` env var for one command; never on argv, never saved.
 - A block whose create, update, delete, request body, wait or reported cause depends on jq
@@ -61,12 +65,15 @@ blocks; there is nothing to build.
   (interactive zsh history-expands it). `[^…]` is not a fix: dash reads it differently.
 - Where the terminal does not bracket the paste, a pasted block's later lines wait in the terminal,
   and sudo 1.9.14 or later (`use_pty` by default: Ubuntu, Debian) reads them: nothing may follow a
-  line that runs `sudo`, so clean-up goes on that line (`fi; rm -rf "$TMP"`).
-  `vcf context use` reads the password from stdin when the login token has expired, so the
-  next pasted line becomes a failed login: write it `vcf context use supervisor </dev/null`
-  (PowerShell: `$null | vcf context use supervisor`), which stops with `Unable to read password
-  from terminal` instead, on every shell, also where the paste is bracketed and the password could
-  have been typed (the reader renews the login and runs the block again).
+  line that runs `sudo`, so clean-up goes on that line (`fi; rm -rf "$TMP"`). `vcf context use`
+  reads the password from stdin when the login token has expired, so the next pasted line becomes a
+  failed login: write it `vcf context use "$SUPERVISOR_CONTEXT" </dev/null` (PowerShell: `$null |
+  vcf context use $SUPERVISOR_CONTEXT`), which stops with `Unable to read password from terminal`
+  instead (Windows: `… The handle is invalid`), on every shell, also where the paste is bracketed
+  and the password could have been typed (the reader renews the login and runs the block again). Its
+  exit code says nothing (it exits 1 after a switch when plugin discovery fails): capture its output
+  and go on only when it holds `Successfully activated context '<name>'`, else print the output and
+  `FAILED: the VCF CLI is not on context …`.
   A program that queries the terminal (`vcf cluster …` from plugin 3.7.1 on: termenv sends OSC 11
   and reads the answer from the terminal, not stdin) swallows the pasted lines still waiting, so
   nothing may follow the compound command that runs it; the check of its result goes inside that
