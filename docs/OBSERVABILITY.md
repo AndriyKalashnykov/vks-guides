@@ -112,8 +112,9 @@ nothing after it, or `daemonset.apps/fluent-bit` if you did [LOGGING.md](LOGGING
 
 ## 2. Create the namespaces
 
-This creates two namespaces: `observability` for Loki and Jaeger, and `podinfo` for the sample
-app. Both keep the cluster's strictest default security for pods (`restricted`).
+This creates two namespaces (inside the VKS cluster, not vSphere Namespaces; they are not listed
+under Supervisor Management → Namespaces): `observability` for Loki and Jaeger, and `podinfo` for
+the sample app. Both keep the cluster's strictest default security for pods (`restricted`).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1430,7 +1431,9 @@ Services. An error naming the YAML: you chose the wrong file.
 
    ![The Validate step: Compatibility Check Pass and Signature Verification Pass](img/observability/15-ma-validate.jpg)
 
-4. **Review:** leave **YAML Service Config (optional)** empty. Click **FINISH**.
+4. **Review:** leave **YAML Service Config (optional)** empty. **Once FINISH installs the
+   service, the Supervisor labels every new VKS cluster `enabled`, and Broadcom's Telegraf and
+   Prometheus add-ons run in it, unless the cluster's label is `disabled`.** Click **FINISH**.
 
    ![The Review step with the empty YAML Service Config box](img/observability/16-ma-review.jpg)
 

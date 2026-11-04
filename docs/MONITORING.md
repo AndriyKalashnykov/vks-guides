@@ -107,9 +107,11 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 2. Create the namespace
 
-This creates the namespace `monitoring`, which holds everything this guide installs. One part,
-node-exporter, reads each node's own CPU, memory and disk figures; that needs extra rights, so
-this namespace allows them.
+This creates the namespace `monitoring` (a namespace inside the VKS cluster, not a vSphere
+Namespace; it is not listed under Supervisor Management → Namespaces), which holds everything this
+guide installs. One part, node-exporter, reads each node's own CPU, memory and disk figures; that
+needs extra rights, so this namespace is `privileged`: Kubernetes' pod security checks are off for
+every pod in it.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -572,11 +574,12 @@ graphs for the cluster.
 
 ## 8. Uninstall with Helm (optional)
 
-This removes what step 5 installed. **It deletes Prometheus's data and the Grafana password.**
-For an install with ArgoCD, use step 10. First run the first block of step 5 again, so the
-permissions VCF Operations' monitoring uses are not deleted too. This block removes the Helm
-install, one item it leaves in `kube-system`, and the namespace `monitoring`. The new object
-types the chart added stay; the next block removes them.
+This removes what step 5 installed. **It deletes Prometheus's data and the Grafana password.** For
+an install with ArgoCD, use step 10. First run the first block of step 5 again, so the permissions
+VCF Operations' monitoring uses are not deleted too. This block removes the Helm install, one item
+it leaves in `kube-system`, and the namespace `monitoring`. The new object types the chart added
+stay; the next block removes them. If you did [OBSERVABILITY.md](OBSERVABILITY.md), do its step 12
+first: it restarts Grafana in `monitoring`, and Loki, Jaeger and the sample app stay otherwise.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -963,9 +966,11 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 10. Uninstall with ArgoCD (optional)
 
-**This deletes Prometheus's data and the Grafana password.** It deletes the Application (and
-with it what ArgoCD installed) and the project, then a Service the Prometheus Operator left in
-`kube-system`, and the namespace. The chart's CRDs stay; to delete them, see step 8.
+**This deletes Prometheus's data and the Grafana password.** It deletes the Application (and with it
+what ArgoCD installed) and the project, then a Service the Prometheus Operator left in
+`kube-system`, and the namespace. The chart's CRDs stay; to delete them, see step 8. If you did
+[OBSERVABILITY.md](OBSERVABILITY.md), do its step 12 first: it restarts Grafana in `monitoring`, and
+Loki, Jaeger and the sample app stay otherwise.
 
 **Linux, macOS, WSL (bash or zsh):**
 

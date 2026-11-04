@@ -191,11 +191,11 @@ a new one.
 This deletes the ServiceAccount: every copy of the file answers `Unauthorized` within about 15
 seconds, and making a ServiceAccount of the same name again does not bring the copies back.
 
-It also deletes the token Secrets in `TEAM_NAMESPACE`: with `edit`, the team could have made lasting
-tokens for the ServiceAccounts there. Tokens it made that way with `kubectl create token`, and
-workloads it started, keep working: delete the team's workloads, and delete and re-create any
-ServiceAccount in `TEAM_NAMESPACE` that has rights. So never give `edit` on a namespace that holds
-software with wider rights.
+**It also deletes every ServiceAccount token Secret in `TEAM_NAMESPACE`, also those the team did not
+make**: with `edit`, the team could have made lasting tokens for the ServiceAccounts there. Tokens
+it made that way with `kubectl create token`, and workloads it started, keep working: delete the
+team's workloads, and delete and re-create any ServiceAccount in `TEAM_NAMESPACE` that has rights.
+So never give `edit` on a namespace that holds software with wider rights.
 
 **Linux, macOS, WSL (bash or zsh):**
 

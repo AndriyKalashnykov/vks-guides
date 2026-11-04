@@ -197,9 +197,10 @@ changes nothing.
 
 ## 3. Create the namespace and the database password
 
-This creates the namespace `nexus`, which allows only pods that follow the `restricted` Pod
-Security Standard, and a Secret with a random password for PostgreSQL. Nothing prints the password.
-A Secret that exists is kept: PostgreSQL keeps the password it was first given.
+This creates the namespace `nexus` (a namespace inside the VKS cluster, not a vSphere Namespace; it
+is not listed under Supervisor Management → Namespaces), which allows only pods that follow the
+`restricted` Pod Security Standard, and a Secret with a random password for PostgreSQL. Nothing
+prints the password. A Secret that exists is kept: PostgreSQL keeps the password it was first given.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -332,8 +333,12 @@ address. Use it as `NEXUS_REGISTRY` from here on, or create a DNS record (type A
 this address, in the DNS that your machine, the pushers' machines and the VKS cluster nodes use,
 and use the name.
 
-**If not:** `FAILED: no load balancer address`: the cluster has no free load balancer address; ask
-your vSphere administrator.
+**If not:** `FAILED: no load balancer address`: the cluster has no free load balancer address. With
+the Foundation Load Balancer, the vSphere Client shows the Supervisor's range (not which addresses
+are free): **Supervisor Management** → **Supervisors** → your Supervisor → **Configure** →
+**Supervisor** → **Network** → **Load Balancer** → **Virtual Server Network** → **VIEW DETAILS** →
+**Virtual IP Address Range(s)**. With NSX or Avi, the range is in that load balancer's own
+settings.
 
 ## 5. Make Nexus's certificate
 

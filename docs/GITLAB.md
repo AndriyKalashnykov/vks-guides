@@ -143,9 +143,10 @@ one CI job need a worker with at least 6 GiB memory and 8 GiB image disk free; a
 
 ## 2. Create the namespace
 
-This creates the namespace `gitlab`, a separate area of the cluster for GitLab. GitLab's image runs
-as root, so the namespace allows that (the `baseline` level), and warns about anything that would
-fail the stricter `restricted` level.
+This creates the namespace `gitlab`, a separate area of the cluster for GitLab (a namespace inside
+the VKS cluster, not a vSphere Namespace; it is not listed under Supervisor Management →
+Namespaces). GitLab's image runs as root, so the namespace allows that (the `baseline` level), and
+warns about anything that would fail the stricter `restricted` level.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -655,7 +656,11 @@ ending in `HEAD` and `refs/heads/main`.
 **If not:**
 - `FAILED: no load-balancer address`: if an error is printed above it, fix that first. Otherwise
   `kubectl --kubeconfig <the VKS kubeconfig> -n gitlab describe service gitlab-public` says why;
-  often the Supervisor has no free load-balancer address (ask your vCenter administrator).
+  often the Supervisor has no free load-balancer address. With the Foundation Load Balancer, the
+  vSphere Client shows its range (not which addresses are free): **Supervisor Management** →
+  **Supervisors** → your Supervisor → **Configure** → **Supervisor** → **Network** → **Load
+  Balancer** → **Virtual Server Network** → **VIEW DETAILS** → **Virtual IP Address Range(s)**. With
+  NSX or Avi, the range is in that load balancer's own settings.
 - `Failed to connect` or `timed out` after the clone address: the address is new; wait a minute
   and run this again.
 - `terminal prompts disabled` or `Authentication failed`: the project is still private; do 1.

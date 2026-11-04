@@ -222,8 +222,11 @@ installed in the cluster …`, `deployment.apps/headlamp condition met`, then th
   cert-manager was not ready yet; the add-on retries by itself within minutes.
 - `FAILED: … add-on` with `Forbidden`: you need the edit or owner role on the vSphere Namespace.
 - `FAILED: the VCF CLI`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
-- `EXTERNAL-IP` stays `<pending>`: the Supervisor has no free load balancer address; ask your
-  vCenter administrator.
+- `EXTERNAL-IP` stays `<pending>`: the Supervisor has no free load balancer address. With the
+  Foundation Load Balancer, the vSphere Client shows its range (not which addresses are free):
+  **Supervisor Management** → **Supervisors** → your Supervisor → **Configure** → **Supervisor** →
+  **Network** → **Load Balancer** → **Virtual Server Network** → **VIEW DETAILS** → **Virtual IP
+  Address Range(s)**. With NSX or Avi, the range is in that load balancer's own settings.
 
 ## 3. Check what the add-on set up
 
@@ -315,7 +318,14 @@ names (role `headlamp-namespace-lister`), so that Headlamp's namespace list work
 inside the other namespaces. Give no one `admin` or `cluster-admin` through Headlamp.
 
 `ACCOUNT`: the person's or team's name (a-z, 0-9, -). `ROLE`: `view` or `edit`. `ACCESS_NAMESPACE`:
-empty for every namespace (view only).
+a namespace inside the VKS cluster, not a vSphere Namespace (it is not listed under Supervisor
+Management → Namespaces), created if it is missing; empty for every namespace (view only).
+
+The block makes the ServiceAccount `ACCOUNT` in the namespace `headlamp`. With `ACCESS_NAMESPACE`
+empty it adds the cluster-wide ClusterRoleBinding `headlamp-<ACCOUNT>`. Otherwise it creates
+`ACCESS_NAMESPACE` if it is missing, the cluster-wide ClusterRole `headlamp-namespace-lister` and
+ClusterRoleBinding `headlamp-<ACCOUNT>-namespaces`, and the RoleBinding `headlamp-<ACCOUNT>` in
+`ACCESS_NAMESPACE`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1169,8 +1179,10 @@ needs `headlamp-prometheus-query` (the last block of this step, with `PROMETHEUS
 
 Kubescape scans the cluster for weak settings and its images for known vulnerabilities. It is
 upstream (the Kubescape project), not a Broadcom add-on, and Broadcom does not support it, nor its
-plugin. This installs it with Helm ([HELM.md](HELM.md)) into the namespace `kubescape`. Its node
-agent needs access to each worker (pod security `privileged`). It asks for about 450m CPU and 2 GiB
+plugin. This installs it with Helm ([HELM.md](HELM.md)) into the namespace `kubescape`, and adds
+cluster-wide object types (CRDs); six of them stay after a Helm uninstall (step 12).
+Its node agent runs on every worker and needs access to it, so the namespace's pod security is
+`privileged`. It asks for about 450m CPU and 2 GiB
 of memory with the requests below, lowered from the chart's own (about 800m), and keeps its results
 on a 5Gi volume.
 
