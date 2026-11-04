@@ -142,9 +142,9 @@ else {
 **If not:**
 - `FAILED: … exists; nothing moved`: if `harbor-<SUPERVISOR_CONTEXT>` holds only `supervisor-uid`
   (and maybe a `none-before-…` file), step 1 made it: rename it (`mv` it to
-  `harbor-<SUPERVISOR_CONTEXT>.old`; PowerShell `Rename-Item`) and run this block again.
-  Otherwise compare the `hostname:` line of each folder's `harbor-data-values.yml` with the Harbor
-  in the vSphere Client, and keep the matching one.
+  `harbor-<SUPERVISOR_CONTEXT>.old-<date>`, a name that does not exist yet; PowerShell
+  `Rename-Item`) and run this block again. Otherwise compare the `hostname:` line of each folder's
+  `harbor-data-values.yml` with the Harbor in the vSphere Client, and keep the matching one.
 - `FAILED: nothing moved (see the error above)`: the error names the cause (often no permission);
   fix it and run the block again.
 - `moved to …; bind it: …` (no single note from step 1, or several): run
@@ -155,8 +155,9 @@ else {
 ### Bind the moved files to this Supervisor
 
 Run this only for files that belong to the Supervisor this login reaches. The first run prints the
-Harbor hostname in the files and writes nothing. If that is the Harbor of this Supervisor, set
-`BIND_HOSTNAME` to it and run the block again: it records the Supervisor's ID in `supervisor-uid`.
+Harbor hostname in the files and writes nothing. If that is the Harbor of this Supervisor, put
+that name in the block's first line (`BIND_HOSTNAME`) and run the block again: it records the
+Supervisor's ID in `supervisor-uid`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -167,13 +168,13 @@ SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
-N="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
+N="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null | tr -d '\r')"
 if [ ! -d "$HARBOR_DIR" ]; then
   echo "FAILED: $HARBOR_DIR does not exist; nothing to bind"
 elif [ -n "$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null | tr -d '\r')" ]; then
   echo "FAILED: $HARBOR_DIR already has a supervisor-uid; nothing changed"
 elif [ -z "$BIND_HOSTNAME" ] || [ "$BIND_HOSTNAME" != "${N:-none}" ]; then
-  echo "hostname in these files: ${N:-none}; if that is the Harbor of the Supervisor this login reaches, set BIND_HOSTNAME=\"${N:-none}\" and run this again"
+  echo "hostname in these files: ${N:-none}; if that is the Harbor of the Supervisor this login reaches, put BIND_HOSTNAME=\"${N:-none}\" in this block's first line and run the block again"
 elif ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
   echo "FAILED: cannot read the Supervisor (see the error above)"
 elif ! printf '%s\n' "$SUP" > "$HARBOR_DIR/supervisor-uid"; then
@@ -196,12 +197,12 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
-$N = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$N = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 if (-not $N) { $N = "none" }
 if (-not (Test-Path -LiteralPath $HARBOR_DIR -PathType Container)) { "FAILED: $HARBOR_DIR does not exist; nothing to bind" }
 elseif ("$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()) { "FAILED: $HARBOR_DIR already has a supervisor-uid; nothing changed" }
 elseif (-not $BIND_HOSTNAME -or $BIND_HOSTNAME -cne $N) {
-  "hostname in these files: ${N}; if that is the Harbor of the Supervisor this login reaches, set BIND_HOSTNAME=`"${N}`" and run this again"
+  "hostname in these files: ${N}; if that is the Harbor of the Supervisor this login reaches, put $BIND_HOSTNAME = `"${N}`" in this block's first line and run the block again"
 } else {
   $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
   if ($LASTEXITCODE -ne 0 -or -not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
@@ -225,8 +226,8 @@ elseif (-not $BIND_HOSTNAME -or $BIND_HOSTNAME -cne $N) {
 **If not:**
 - The hostname is not this Supervisor's Harbor: the folder belongs to another Supervisor. Log in
   to that one under its own `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)),
-  or move the folder aside (`mv ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT> ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>.old`;
-  PowerShell: `Rename-Item $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT> harbor-<SUPERVISOR_CONTEXT>.old`).
+  or move the folder aside (`mv ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT> ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>.old-<date>`;
+  PowerShell: `Rename-Item $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT> harbor-<SUPERVISOR_CONTEXT>.old-<date>`).
 - `FAILED: … already has a supervisor-uid`: the folder is bound already; run step 1, and see its
   **If not** if it says the folder belongs to another Supervisor.
 - `FAILED: cannot read the Supervisor`: as in step 1's **If not**.
@@ -248,7 +249,7 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null | tr -d '\r')"
-N="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
+N="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null | tr -d '\r')"
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
   echo "FAILED: cannot read the Supervisor (see the error above)"
 elif [ -n "$REC" ] && [ "$REC" != "$SUP" ]; then
@@ -287,7 +288,7 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
-$N = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$N = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 if ($LASTEXITCODE -ne 0 -or -not $SUP) {
   "FAILED: cannot read the Supervisor (see the error above)"
@@ -344,9 +345,9 @@ on at the step you need.
   you did not install. Use it, and do not install a second one.
 - `FAILED: … belongs to another Supervisor (…)`:
   - If you disabled and enabled this Supervisor again, the folder belongs to the old one. Move it
-    aside (`mv ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT> ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>.old`;
-    PowerShell: `Rename-Item $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT> harbor-<SUPERVISOR_CONTEXT>.old`)
-    and run this block again. Delete the `.old` folder later, only once you know its Harbor is gone.
+    aside (`mv ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT> ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>.old-<date>`;
+    PowerShell: `Rename-Item $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT> harbor-<SUPERVISOR_CONTEXT>.old-<date>`)
+    and run this block again. Delete the `.old-<date>` folder later, only once you know its Harbor is gone.
   - Otherwise this folder holds the files of the Supervisor that this context name was used for
     before. Log in to this Supervisor under another name
     ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)) and set `SUPERVISOR_CONTEXT` to it in
@@ -720,7 +721,7 @@ if ($HARBOR_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $HARBOR_FQDN -eq 'harbor.example
   }
   [IO.File]::WriteAllText($VALUES, (($OUT -join "`n") + "`n"))
   $TXT = [IO.File]::ReadAllLines($VALUES)
-  $NAME = "$(($TXT | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+  $NAME = "$(($TXT | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
   $LEFT = @($TXT | Where-Object { $_ -cmatch 'yourdomain\.com|insert-storage-class-name-here' }).Count
   $SEC = @($TXT | Where-Object { $_ -cmatch '^(harborAdminPassword|secretKey|  password|  secret|  xsrfKey): "[A-Za-z0-9-]+"$' }).Count
   $SC = @($TXT | Where-Object { $_.Contains("storageClass: `"$HARBOR_STORAGE_CLASS`"") }).Count
@@ -1343,7 +1344,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
-$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
@@ -1527,7 +1528,7 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
-$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 $CA = "$HARBOR_DIR\harbor-ca.crt"
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
 if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
@@ -1617,7 +1618,7 @@ fi
 $SUPERVISOR_CONTEXT = "supervisor"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
-$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 $S = @{}
 foreach ($l in Get-Content "$HARBOR_DIR\secrets.env" -ErrorAction SilentlyContinue) { if ($l -cmatch "^(HARBOR_[A-Z_]+)='(.*)'$") { $S[$Matches[1]] = $Matches[2] } }
 if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not $S['HARBOR_ADMIN_PASSWORD']) {
@@ -1752,7 +1753,7 @@ $HARBOR_PROJECT_PUBLIC = "false"
 $SUPERVISOR_CONTEXT = "supervisor"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
-$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 $S = @{}
 foreach ($l in Get-Content "$HARBOR_DIR\secrets.env" -ErrorAction SilentlyContinue) { if ($l -cmatch "^(HARBOR_[A-Z_]+)='(.*)'$") { $S[$Matches[1]] = $Matches[2] } }
 if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not $S['HARBOR_ADMIN_PASSWORD']) {
@@ -1834,7 +1835,7 @@ $HARBOR_PROJECT = "my-project"
 $SUPERVISOR_CONTEXT = "supervisor"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
-$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 $S = @{}
 foreach ($l in Get-Content "$HARBOR_DIR\secrets.env" -ErrorAction SilentlyContinue) { if ($l -cmatch "^(HARBOR_[A-Z_]+)='(.*)'$") { $S[$Matches[1]] = $Matches[2] } }
 if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not $S['HARBOR_ADMIN_PASSWORD']) {
@@ -1920,7 +1921,7 @@ $CONTAINER_ENGINE = "podman"
 $SUPERVISOR_CONTEXT = "supervisor"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
-$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 $S = @{}
 foreach ($l in Get-Content "$HARBOR_DIR\secrets.env" -ErrorAction SilentlyContinue) { if ($l -cmatch "^(HARBOR_[A-Z_]+)='(.*)'$") { $S[$Matches[1]] = $Matches[2] } }
 if (-not $HARBOR_FQDN -or -not $S['HARBOR_ADMIN_PASSWORD']) { "FAILED: harbor-data-values.yml or secrets.env is missing in $HARBOR_DIR" }
@@ -1974,7 +1975,7 @@ $HARBOR_ROBOT = 'robot$my-project+push'
 $SUPERVISOR_CONTEXT = "supervisor"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
-$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 if (-not $HARBOR_FQDN -or -not $HARBOR_ROBOT_SECRET -or $HARBOR_ROBOT_SECRET.Length -eq 0) { "FAILED: no $HARBOR_DIR\harbor-data-values.yml, or no robot secret in this terminal (run the line above)" }
 else {
   $B = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($HARBOR_ROBOT_SECRET)
@@ -2078,7 +2079,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 if (-not $HARBOR_FQDN -or -not (Test-Path $VKS_KUBECONFIG)) {
   "FAILED: $HARBOR_DIR\harbor-data-values.yml or $VKS_KUBECONFIG is missing"
 } else {
@@ -2314,7 +2315,7 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
-$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
 if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
 elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
@@ -2404,7 +2405,7 @@ certificate team may take days.
      share your screen. Then step 6 *Empty the clipboard*.
   4. *Restart Harbor's web server* below.
   5. Steps 8, 9 and 11, then [IMAGE.md steps 1 and 2](IMAGE.md#1-get-harbors-ca) on every
-     machine that pushes.
+     machine that pushes or pulls.
 
 To go back to Harbor's own certificate, set the three variables `HARBOR_TLS_CRT`,
 `HARBOR_TLS_KEY` and `HARBOR_CA_CRT` to `""` and do the same. Harbor
@@ -2430,7 +2431,7 @@ HARBOR_CSR="$HOME/harbor.csr"
 SUPERVISOR_CONTEXT="supervisor"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
-HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
+HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null | tr -d '\r')"
 TMP="$(mktemp -d)"
 if [ -z "$HARBOR_FQDN" ]; then
   echo "FAILED: no hostname in $HARBOR_DIR/harbor-data-values.yml (step 4)"
@@ -2999,9 +3000,9 @@ else {
 - `Nothing deleted: … belongs to another Supervisor (…)`: the folder belongs to the Supervisor
   that this context name was used for before, or to this Supervisor before it was deployed again
   (a new UID). To free the name, move it aside
-  (`mv ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT> ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>.old`;
-  PowerShell: `Rename-Item $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT> harbor-<SUPERVISOR_CONTEXT>.old`).
-  Delete the `.old` folder only once you know its Harbor is gone.
+  (`mv ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT> ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>.old-<date>`;
+  PowerShell: `Rename-Item $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT> harbor-<SUPERVISOR_CONTEXT>.old-<date>`).
+  Delete the `.old-<date>` folder only once you know its Harbor is gone.
 - `Nothing deleted: … has no supervisor-uid`: step 1 was not run with this `SUPERVISOR_CONTEXT`;
   move the folder aside the same way.
 

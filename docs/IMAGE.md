@@ -66,7 +66,7 @@ HARBOR_FQDN="harbor.example.test"
 IMAGE_DIR="$HOME/.config/vks-guides/image"
 
 SRC="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}/harbor-ca.crt"
-N="$(sed -n 's/^hostname: //p' "$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}/harbor-data-values.yml" 2>/dev/null)"
+N="$(sed -n 's/^hostname: //p' "$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}/harbor-data-values.yml" 2>/dev/null | tr -d '\r')"
 if [ ! -s "$SRC" ]; then
   echo "FAILED: no $SRC (HARBOR.md step 9); download the CA below"
 elif [ "$HARBOR_FQDN" != "$N" ]; then
@@ -91,7 +91,7 @@ $HARBOR_FQDN = "harbor.example.test"
 $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 
 $SRC = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}\harbor-ca.crt"
-$N = "$((Get-Content "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+$N = "$((Get-Content "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 if (-not ((Get-Item -LiteralPath $SRC -ErrorAction SilentlyContinue).Length -gt 0)) { "FAILED: no $SRC (HARBOR.md step 9); download the CA below" }
 elseif ($HARBOR_FQDN -cne $N) { "FAILED: HARBOR_FQDN ($HARBOR_FQDN) is not this folder's Harbor ($(if ($N) { $N } else { 'none' })); nothing copied" }
 else {
