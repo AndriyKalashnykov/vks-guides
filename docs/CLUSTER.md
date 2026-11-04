@@ -20,9 +20,9 @@
 
 You create the cluster in the vSphere Client, on your vSphere Namespace's **Resources** tab (the
 Local Consumption Interface). Steps 3 to 5 are clicks; the other steps use a terminal and need
-[kubectl](KUBECTL.md), [jq](PREREQS.md) and a [Supervisor login](LOGIN.md). The names are those
-of the vSphere Client for VCF 9.1.1 with VKS 3.7. The screenshots show example names; yours
-differ. Steps 3 to 5 were tested as a vCenter administrator; the terminal steps also as a user
+[kubectl](KUBECTL.md), [jq](PREREQS.md) and a [Supervisor login](LOGIN.md). The names and
+screenshots of steps 3 to 5 are from the vSphere Client for VCF 9.1.1 with VKS 3.7; the rest ran on
+VKS 3.8. The screenshots show example names; yours differ. Steps 3 to 5 were tested as a vCenter administrator; the terminal steps also as a user
 with only **Namespaces Edit**.
 
 To create the cluster from a YAML file with kubectl instead of clicks, see
@@ -31,10 +31,12 @@ To create the cluster from a YAML file with kubectl instead of clicks, see
 ## Prerequisites
 
 - a vSphere Namespace that passes [Check the namespace](NAMESPACE.md#8-check-the-namespace), and
-  the **Edit** role on it;
+  the **Namespaces Edit** role on it;
 - a [Supervisor login](LOGIN.md) with the [VCF CLI](VCF.md), [kubectl](KUBECTL.md) and
   [jq](PREREQS.md);
-- one free load-balancer address, for the cluster's API.
+- one free load-balancer address, for the address kubectl uses to reach the cluster;
+- if you will install Harbor on this Supervisor, install it first ([HARBOR.md](HARBOR.md) steps 1
+  to 10): installing it updates every node of every VKS cluster.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):
 
@@ -54,22 +56,32 @@ the Kubernetes releases and the cluster classes.
 
 ## 2. Choose a name and the values
 
+### Choose the values
+
+A cluster has control-plane nodes (they run Kubernetes itself) and worker nodes (they run your
+apps), grouped in node pools of the same size. A Kubernetes release is the Kubernetes version and
+the node images (OS) built for it; a cluster class is Broadcom's template for the cluster.
+
 | value | what to choose |
 |---|---|
 | name | lower-case letters, digits and `-`, a name no cluster in this namespace ever had |
 | Kubernetes release | the newest the create page offers |
-| VM class | `best-effort-small` (2 CPUs, 4 GB) ran this guide's clusters; Broadcom recommends `best-effort-medium` or larger (KB 446139). If the Supervisor runs the Metrics Aggregator ([OBSERVABILITY.md](OBSERVABILITY.md) step 11), each new cluster also runs Broadcom's monitoring add-ons, about 100 MiB per node |
+| VM class | `best-effort-small` (2 CPUs, 4 GB) ran this guide's clusters; Broadcom recommends `best-effort-medium` or larger, and never a small or xsmall class for workers that run apps (KB 446139). If the Supervisor runs the Metrics Aggregator ([OBSERVABILITY.md](OBSERVABILITY.md) step 11), each new cluster also runs Broadcom's monitoring add-ons, about 100 MiB per node |
 | storage class | one from step 1 |
 | control-plane nodes | `1`, or `3` for a cluster that must stay up when a node fails |
 | worker nodes | `1` or more |
-| storage | room in the namespace's storage limit for each node: about 20 GB of disk plus the memory its VM class does not reserve (its swap file), and room for one more node per node pool and for the control plane during updates and resizes (see below) |
+| storage | room in the namespace's storage limit for each node: about 20 GB of disk plus the memory its VM class does not reserve (its swap file), and room for the extra nodes of an update or a resize (see below) |
+
+### Check the namespace's storage limit
 
 Each node of a cluster takes about 20 GB of disk plus its memory from the namespace's storage
-(`best-effort-*` classes reserve no memory, so all of it). A change of VM class or Kubernetes
-version first adds one new node for the control plane and one for each node pool, at the same
-time (more workers add only those workers). So a cluster of 1
-control-plane node and 1 worker of `best-effort-small` needs about (20 + 4) × 4 = 96 GB; with
-`best-effort-medium`, (20 + 8) × 4 = 112 GB.
+(`best-effort-*` classes reserve no memory, so all of it). A Kubernetes version change replaced
+one node at a time (measured on VKS 3.7). A change of VM class first adds one node of the new class
+for the control plane and one per node pool, next to the old ones. Plan for that: a cluster of 1
+control-plane node and 1 worker of `best-effort-small` needs about 2 × (20 + 4) = 48 GB, and while it
+changes to `best-effort-medium`, 2 × (20 + 4) + 2 × (20 + 8) = 104 GB. Each extra worker adds its
+own 20 GB plus memory.
+
 In the vSphere Client, open the namespace: its **Summary** tab shows, under **Capacity and Usage**,
 **Storage**, how much is used and the limit. The limit minus what is used must leave that room.
 
@@ -81,11 +93,10 @@ quota set for the namespace*.
 
 ![The Resource Limits window: CPU and Memory with no limit, Storage 200 GB](img/cluster/21-edit-limits.jpg)
 
+### Check that the name is free
+
 Never reuse a cluster's name in the same namespace: a new cluster under an old name can get the
 old cluster's address and never become available. After `dev-1`, take `dev-2`.
-
-If you will install Harbor on this Supervisor, install it before you create clusters: installing
-it updates every node of every VKS cluster.
 
 This checks that nothing in the namespace holds the name.
 
@@ -128,7 +139,7 @@ used before and deleted; such a name is still not safe.
 **If not:**
 - `in use:`: choose another name.
 - `unknown`: your user may not read clusters or their addresses in this namespace. Ask for the
-  **Edit** role.
+  **Namespaces Edit** role.
 - `FAILED: cannot read the namespace`: see **If not** under
   [Check the namespace](NAMESPACE.md#8-check-the-namespace).
 
@@ -172,7 +183,8 @@ right.
 
    ![The Storage section open: Persistent Volume Storage with Default Storage Class wcp-vmfs, then Network and NEXT](img/cluster/07-create-storage.png)
 
-4. **3. Control plane:** set **Replicas** (`1` or `3`). Click **NEXT**.
+4. **3. Control plane:** set **Replicas** (`1` or `3`) and leave **OS Image** as it is. Click
+   **NEXT**.
 
    ![Step 3 Control plane: Replicas 1, OS Image Photon 5, the Overrides switch and NEXT](img/cluster/08-create-control-plane.png)
 
@@ -266,12 +278,12 @@ if ($LASTEXITCODE -eq 0) { $A = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $
 if ($LASTEXITCODE -eq 0) { "cluster address: $(if ($E) { $E } else { 'none' }), load balancer address: $(if ($A) { $A } else { 'none' })" }
 ```
 
-**Expect:** the same address twice. `none`, or `NotFound` for the virtual machine service: wait,
-the address comes first. Two different addresses: the cluster kept an old address; delete it
+**Expect:** the same address twice. `none`, or `NotFound` for the virtual machine service (the
+load-balancer entry that gives the cluster its address): wait, the address comes first. Two different addresses: the cluster kept an old address; delete it
 (step 8) and create it again under a new name.
 
-If the addresses match, this shows why the cluster waits: read the `Conditions` and the `Events`
-at the end.
+If the addresses match, this shows why the cluster waits: read the `Conditions` (the cluster's
+state checks) and the `Events` (what happened to it) at the end.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -329,7 +341,7 @@ if ($LASTEXITCODE -eq 0) {
 **If not:**
 - `False` and a message that ends in `insufficient storage quota`: the vSphere Namespace's storage
   limit is full. A cluster of one control-plane node and two best-effort-small workers in one node
-  pool needs about 72 GB, and about 120 GB while it updates (step 2). Free storage in the namespace,
+  pool needs about 72 GB, and about 128 GB while it changes to `best-effort-medium` (step 2). Free storage in the namespace,
   or ask your vCenter administrator to raise its limit.
 - Nothing printed: check `VKS_NAMESPACE` and `VKS_CLUSTER`, or wait until the first block of this
   step lists machines.
@@ -339,9 +351,11 @@ Never switch the cluster's virtual machines on or off in the vSphere Client: VKS
 
 ## 7. Get the kubeconfig and check the cluster
 
-Run [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) and
-[Match kubectl to the cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional). Then
-this checks the nodes and the default storage class.
+Get the cluster's kubeconfig (the file that lets kubectl reach the cluster), in the vSphere
+Client ([Download the VKS cluster's kubeconfig from the vSphere Client](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client))
+or with the VCF CLI ([Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig)),
+and run [Match kubectl to the cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
+Then this checks the nodes and the default storage class.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -381,8 +395,7 @@ if ($LASTEXITCODE -eq 0) {
 - `default storage class: NONE`: **Default Storage Class** was left empty in step 4. Name the
   storage class in each disk request, or create a new cluster with it set.
 - `FAILED: cannot read the cluster`, under `no such file or directory` (Windows: `cannot find
-  the file specified`): run
-  [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
+  the file specified`): get the kubeconfig first (the start of this step).
 
 ## 8. Delete the cluster (optional)
 
@@ -395,7 +408,7 @@ ArgoCD manages comes back after you delete it here; delete it in ArgoCD instead.
 First run the block in [step 2](#2-choose-a-name-and-the-values) with your cluster's name.
 
 **Expect:** `in use:`, then `cluster.cluster.x-k8s.io/<name>` and
-`virtualmachineservice.vmoperator.vmware.com/<name>`. If it says `none now` or `unknown`, stop:
+`virtualmachineservice.vmoperator.vmware.com/<name>` (the cluster and its address entry). If it says `none now` or `unknown`, stop:
 the name is wrong, or you may not read it.
 
 Then this lists the disks of the cluster's apps: first as the cluster sees them, then as they
@@ -427,9 +440,8 @@ kubectl --kubeconfig $VKS_KUBECONFIG get persistentvolumeclaims -A
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get persistentvolumeclaims -l "$VKS_CLUSTER/TKGService"
 ```
 
-**Expect:** `No resources found` twice. Each disk listed stays after the delete. In the cluster,
-delete the apps you do not need and then their disk claims (a claim still in use waits for its
-app), and run the block again.
+**Expect:** `No resources found` twice, or the disks listed. Each disk listed stays after the
+delete and keeps its storage; the optional last block of this step deletes them all.
 
 Then this deletes the cluster.
 
@@ -461,8 +473,8 @@ namespace> namespace`). Then run the block in
 above: its first command now fails (the cluster is gone); its second list shows the disks the
 cluster left behind.
 
-**If not:** `Forbidden`: your role on the namespace cannot delete clusters; ask for the **Edit**
-role.
+**If not:** `Forbidden`: your role on the namespace cannot delete clusters; ask for the
+**Namespaces Edit** role.
 
 Optional: the deleted cluster's disks still use the vSphere Namespace's storage. **This deletes
 them (the second list of the disk block above) and what they hold, for good.** It deletes nothing
@@ -634,7 +646,7 @@ spec:
 | 5 | `controlPlane.replicas` | `1`, or `3` for a cluster that must stay up when a node fails |
 | 6 | `machineDeployments` `replicas` | the number of worker nodes |
 | 7 | `vmClass`, `storageClass`, `defaultStorageClass` | a VM class and a storage class from the block (see the table in step 2). `defaultStorageClass` is the class apps get when they do not name one |
-| 8 | `cidrBlocks` | the vSphere Client's create page uses these same values. Change them only if they overlap your Supervisor's workload networks or load balancer addresses; ask a vCenter administrator |
+| 8 | `cidrBlocks` | the cluster's internal address ranges for apps (pods) and services; the vSphere Client's create page uses these same values. Change them only if they overlap your Supervisor's workload networks or load balancer addresses; ask a vCenter administrator |
 
 Leave `class: node-pool` (the node pool type the cluster class defines), `serviceDomain` and
 `classRef.namespace` as they are.
@@ -678,7 +690,8 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 - `MachineDeploymentClass with name … does not exist`: put back `class: node-pool`.
 - `does not match the namespace`: `metadata.namespace` and `VKS_NAMESPACE` differ.
 - `the path "…" does not exist`: the file is not where `CLUSTER_YAML` says.
-- `Forbidden` with none of these messages: your user needs the **Edit** role on the namespace.
+- `Forbidden` with none of these messages: your user needs the **Namespaces Edit** role on the
+  namespace.
 
 Then go on with [step 6](#6-wait-for-the-cluster). Step 8 deletes a cluster made this way too.
 
@@ -765,9 +778,8 @@ plane and for each node pool next to the old ones; at the end, every node of the
 and `control plane up to date: True`, `workers up to date: True`.
 
 **If not:**
-- After 20 minutes still a node of the old class, or a node that never powers on:
-  `kubectl --kubeconfig <supervisor file> -n <namespace> describe cluster <cluster>` names the
-  reason. A namespace storage limit without room for the new nodes
+- After 20 minutes still a node of the old class, or a node that never powers on: the `describe`
+  block in [step 6](#6-wait-for-the-cluster)'s **If not** names the reason. A namespace storage limit without room for the new nodes
   ([step 2](#2-choose-a-name-and-the-values)) stops the change. Fix the cause, or set the value
   back, and save again.
 - Nodes of the old class after the change finished: the cluster has a `vmClass` under `overrides`

@@ -6,6 +6,7 @@
 > - [Create and Configure a vSphere Namespace on the Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/configuring-and-managing-vsphere-namespaces/create-and-configure-a-vsphere-namespace.html)
 > - [Configure a vSphere Namespace for VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/configure-a-vsphere-namespace-for-hosting-tkg-service-clusters.html) (storage, VM classes)
 > - [Configure vSphere Namespace Permissions for vCenter Single Sign-On Users and Groups](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/configure-vsphere-namespace-persmissions-for-vcenter-sso-users-and-groups.html)
+> - [Guest cluster deployment via the Local Consumption Interface (LCI) fails with 'best-effort-xsmall' VM Class](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html) (Broadcom KB 446139: VM class size)
 > - [Using VM Classes with VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/using-vm-classes-with-tkg-service-clusters.html)
 > - [Using Storage Classes for Persistent Volumes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/deploying-workloads-on-tkg-service-clusters/storage-concepts-for-tkg-service-clusters/using-storage-classes-for-persistent-volumes.html) (the `-latebinding` class)
 > - [Verify vSphere Namespace Readiness for Hosting VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/verify-vsphere-namespace-readiness-for-hosting-tkg-service-clusters.html)
@@ -20,9 +21,9 @@ VCF 9.1.1, on a Supervisor with vSphere Distributed Switch networking. The scree
 names; yours differ.
 
 If you only use a namespace someone else made, go to
-[Check the namespace](#8-check-the-namespace). If the Supervisor's Namespace Service is on, you
-can instead create the namespace from a YAML file with kubectl:
-[step 10](#10-create-a-namespace-with-kubectl-and-a-yaml-file).
+[Check the namespace](#8-check-the-namespace). If the Supervisor's Namespace Service is on (it
+lets users create namespaces from a template), you can instead create the namespace from a YAML
+file with kubectl: [step 10](#10-create-a-namespace-with-kubectl-and-a-yaml-file).
 
 ## Prerequisites
 
@@ -55,8 +56,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
    ![vCenter's start page: the grey box on the right, with Download trusted root CA certificates as the last link under For Developers](img/namespace/02-vcenter-ca.jpg)
 
 The file holds vCenter's CAs (certificate authorities). LOGIN.md uses them to check that a login
-reaches your real Supervisor. This prints each CA's fingerprint, a short code that identifies it.
-Give them to your users: LOGIN.md's
+reaches your real Supervisor. This prints each CA's fingerprint, a short code that identifies it;
+it changes nothing on your machine. Give them to your users: LOGIN.md's
 [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca) asks them to
 compare their download with them. Trust them only if your browser showed no certificate warning
 for vCenter.
@@ -126,8 +127,10 @@ A namespace needs one storage policy and at least one VM class (a node size).
 
 2. From the menu (☰) choose **Supervisor Management**, then the **Services** tab. On the **VM
    Service** card click **MANAGE**, then **VM Classes**. Each card shows a class's name, CPUs
-   and memory. Note the classes your VKS clusters' nodes will use. `best-effort-small` (2 CPUs,
-   4 GB) is the smallest that runs a VKS cluster's control plane.
+   and memory. Note the classes your VKS clusters' nodes will use. Broadcom recommends
+   `best-effort-medium` or larger, and never a small or xsmall class for workers that run apps (KB
+   446139). `best-effort-small` (2 CPUs, 4 GB) is the smallest that runs a VKS cluster's control
+   plane (the nodes that run Kubernetes itself).
 
    ![The VM Service page, VM Classes: one card per class with its name, CPUs, memory, reservation, and how many namespaces and VMs use it](img/namespace/04-vm-classes.jpg)
 
@@ -204,8 +207,9 @@ lists your user. Do this to let another SSO user work in the namespace.
    ![The Select Storage Policies window: the columns Storage Policy, Total Capacity and Available Capacity, with one policy ticked](img/namespace/09-add-storage.jpg)
 
 **Expect:** after a few seconds, the **Storage** card shows *Storage Policies 1* and the policy's name, and its link
-reads **EDIT STORAGE**. The namespace now offers a storage class named after the policy, and a
-second one ending in `-latebinding`.
+reads **EDIT STORAGE**. The namespace now offers a storage class (Kubernetes' name for a storage
+policy offered in the namespace) named after the policy, and a second one ending in `-latebinding`
+(it places a disk only once the app that uses it has a node).
 
 ## 6. Add the VM classes
 
@@ -221,11 +225,12 @@ Classes*, for example), and its link reads **MANAGE VM CLASSES**.
 
 A VKS cluster needs no content library in the namespace: do not click **ADD CONTENT LIBRARY**.
 
-## 7. Check the status
+## 7. Set a storage limit (optional) and check the status
 
-Leave **Capacity and Usage** at *No limit*, or click **EDIT LIMITS**, expand **Storage**, and set
-a limit on your storage policy that leaves room for every node of the VKS clusters you will
-create.
+Leave **Capacity and Usage** at *No limit*, or, to cap the storage the namespace may use, click
+**EDIT LIMITS**, expand **Storage**, and set a limit on your storage policy that leaves room for
+every node of the VKS clusters you will create
+([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values) gives the sizes).
 
 ![The Summary page of the finished namespace: Config Status Running, Kubernetes Status Active, the Storage card with one policy, the VM Service card with 2 Associated VM Classes](img/namespace/11-summary-running.jpg)
 
@@ -274,8 +279,9 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
   **Namespaces Edit** role on the namespace (step 4).
 - `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
-This lists what the namespace offers a VKS cluster: VM classes, storage classes, Kubernetes
-releases and cluster classes.
+Before you create a VKS cluster, this lists what the namespace offers it: VM classes, storage
+classes, Kubernetes releases (the Kubernetes versions a cluster can run) and cluster classes
+(Broadcom's templates for a cluster).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -374,7 +380,8 @@ one name under `Storage classes:`, then `Kubernetes releases ready to use:` and
 Broadcom asks you to delete its VKS clusters, VMs and vSphere Pods first; the window that asks
 you to confirm says the same.
 
-This lists the VKS clusters, VMs, volumes and pods left in it:
+Before you remove it, this lists the VKS clusters, VMs, volumes and pods (running containers)
+left in it:
 
 **Linux, macOS, WSL (bash or zsh):**
 
