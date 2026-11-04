@@ -23,14 +23,14 @@ networking and the Foundation Load Balancer (not NSX). Upgrading Harbor is not c
 Supervisor**: VKS replaces some nodes and updates others in place, restarting their container
 runtimes. Do it before you create VKS clusters, or in a maintenance window.
 
-The blocks keep their files in `~/.config/vks-guides/harbor` (PowerShell:
-`$HOME\.config\vks-guides\harbor`). Run them all on the same machine.
+The blocks keep their files in `~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>` (PowerShell:
+`$HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT>`). Run them all on the same machine. Each
+Supervisor gets its own folder, named after `SUPERVISOR_CONTEXT`.
 
 ## Prerequisites
 
 - a vCenter administrator's SSO user (it may manage Supervisor Services and read Secrets on the
-  Supervisor), with a [Supervisor login](LOGIN.md) ([VCF CLI](VCF.md)); this guide keeps one
-  Harbor's files per machine and user;
+  Supervisor), with a [Supervisor login](LOGIN.md) ([VCF CLI](VCF.md));
 - a Broadcom support account that can download **vSphere Supervisor Services**;
 - [kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md); for step 13 on Windows, `openssl.exe`
   from [Git for Windows](https://git-scm.com/install/);
@@ -54,6 +54,76 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 | your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (step 11) |
 | the VKS cluster's nodes | Harbor's address | 443 | pulling images from Harbor (step 11) |
 
+## Files from an earlier version of this guide (optional)
+
+An earlier version kept the files in `~/.config/vks-guides/harbor` (PowerShell:
+`$HOME\.config\vks-guides\harbor`). This moves that folder to the Supervisor's own folder. Set
+`SUPERVISOR_CONTEXT` to your login's name for the Supervisor that Harbor runs on.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+OLD="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+NEW="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
+
+if [ ! -d "$OLD" ]; then
+  echo "nothing to move"
+elif [ -e "$NEW" ]; then
+  echo "FAILED: $NEW exists; nothing moved"
+elif ! mv "$OLD" "$NEW"; then
+  echo "FAILED: nothing moved (see the error above)"
+else
+  M="$(ls "$NEW" | grep '^none-before-')"
+  if [ -n "$M" ] && [ "$(printf '%s\n' "$M" | grep -c .)" = 1 ]; then
+    printf '%s\n' "${M#none-before-}" > "$NEW/supervisor-uid"
+    echo "moved to $NEW, recorded Supervisor ${M#none-before-}"
+  else
+    echo "moved to $NEW; log in to the Supervisor these files belong to and run step 1"
+  fi
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$OLD = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$NEW = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
+
+if (-not (Test-Path -LiteralPath $OLD -PathType Container)) { "nothing to move" }
+elseif (Test-Path -LiteralPath $NEW) { "FAILED: $NEW exists; nothing moved" }
+else {
+  try {
+    Move-Item -LiteralPath $OLD -Destination $NEW -ErrorAction Stop
+    $M = @(Get-ChildItem -Name -LiteralPath $NEW | Where-Object { $_ -clike 'none-before-*' })
+    if ($M.Count -eq 1) {
+      $U = $M[0].Substring(12)
+      Set-Content -Encoding ascii -Path "$NEW\supervisor-uid" -Value $U
+      "moved to $NEW, recorded Supervisor $U"
+    } else {
+      "moved to $NEW; log in to the Supervisor these files belong to and run step 1"
+    }
+  } catch {
+    "FAILED: nothing moved ($($_.Exception.Message))"
+  }
+}
+```
+
+</details>
+
+**Expect:** `nothing to move`, or `moved to …, recorded Supervisor <uid>`.
+
+**If not:**
+- `FAILED: … exists; nothing moved`: the Supervisor's folder is already there. Compare the two
+  folders and keep the one whose `secrets.env` the installed Harbor uses.
+- `moved to …; log in to the Supervisor …`: no single note from step 1 says which Supervisor the
+  files belong to. Log in to that Supervisor and run step 1.
+
 ## 1. Check the Supervisor
 
 This checks whether the Supervisor already runs a Harbor. If it does not, the block leaves a small
@@ -66,13 +136,19 @@ that someone else installed.
 ```sh
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null)"
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
   echo "FAILED: cannot read the Supervisor (see the error above)"
+elif [ -n "$REC" ] && [ "$REC" != "$SUP" ]; then
+  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
 elif ! H="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o name)"; then
   echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
 else
+  if [ -z "$REC" ]; then
+    mkdir -p "$HARBOR_DIR" && printf '%s\n' "$SUP" > "$HARBOR_DIR/supervisor-uid"
+  fi
   MARK="$HARBOR_DIR/none-before-$SUP"
   echo "Harbor on this Supervisor: ${H:-none}"
   if [ -z "$H" ] && [ ! -e "$MARK" ]; then
@@ -94,17 +170,24 @@ fi
 ```powershell
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
+$REC = "$(Get-Content "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)"
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 if ($LASTEXITCODE -ne 0 -or -not $SUP) {
   "FAILED: cannot read the Supervisor (see the error above)"
+} elseif ($REC -and $REC -cne $SUP) {
+  "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
 } else {
   $H = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name
   if ($LASTEXITCODE -ne 0) {
     "FAILED: cannot list the Supervisor's namespaces (see the error above)"
   } else {
+    if (-not $REC) {
+      New-Item -ItemType Directory -Force -Path $HARBOR_DIR | Out-Null
+      Set-Content -Encoding ascii -Path "$HARBOR_DIR\supervisor-uid" -Value $SUP
+    }
     $MARK = "$HARBOR_DIR\none-before-$SUP"
     "Harbor on this Supervisor: $(if ($H) { $H -join ' ' } else { 'none' })"
     if (-not $H -and -not (Test-Path $MARK)) {
@@ -130,6 +213,10 @@ if ($LASTEXITCODE -ne 0 -or -not $SUP) {
   Above `Forbidden`: log in as a vCenter administrator.
 - `namespace/svc-harbor-…` and `recorded: nothing …`: this Supervisor already runs a Harbor that
   you did not install. Use it, and do not install a second one.
+- `FAILED: … belongs to another Supervisor (…)`: this folder holds the files of the Supervisor
+  that this context name was used for before. Log in to this Supervisor under another name
+  ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)) and set `SUPERVISOR_CONTEXT` to it in
+  every block.
 
 ## 2. Download the Harbor files
 
@@ -197,9 +284,7 @@ foreach ($f in $HARBOR_MANIFEST, $HARBOR_VALUES_TEMPLATE) {
 Harbor is installed with seven passwords and keys. This block makes seven random ones and saves them
 in `secrets.env` (on Linux, macOS and WSL, readable only by you). A file that exists is kept.
 Nothing secret is printed. To use your own admin password instead, put it in the file using only
-letters, digits and `-`: step 4 refuses any other character. This folder,
-`~/.config/vks-guides/harbor`, holds one Harbor: for a second Supervisor's Harbor, use another
-machine or user.
+letters, digits and `-`: step 4 refuses any other character.
 
 Skip this step to install Harbor with Broadcom's default values instead (step 4's table lists
 them). Step 4 then saves them in `secrets.env`, so the later steps work the same. The defaults are
@@ -211,26 +296,30 @@ run step 4 again.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 SECRETS="$HARBOR_DIR/secrets.env"
-mkdir -p "$HARBOR_DIR"
-if grep -q "^HARBOR_SECRET_KEY='0123456789ABCDEF'\$" "$SECRETS" 2>/dev/null; then
-  echo "kept the existing $SECRETS (Broadcom's default values; for random ones, before step 6 delete it, run this block again, then step 4)"
-elif [ -e "$SECRETS" ]; then
-  echo "kept the existing $SECRETS"
+if [ ! -s "$HARBOR_DIR/supervisor-uid" ]; then
+  echo "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
 else
-  ( umask 077
-    { printf "HARBOR_ADMIN_PASSWORD='A%sz'\n" "$(openssl rand -hex 12)"
-      printf "HARBOR_SECRET_KEY='%s'\n" "$(openssl rand -hex 8)"
-      printf "HARBOR_DB_PASSWORD='%s'\n" "$(openssl rand -hex 16)"
-      printf "HARBOR_CORE_SECRET='%s'\n" "$(openssl rand -hex 16)"
-      printf "HARBOR_XSRF_KEY='%s'\n" "$(openssl rand -hex 16)"
-      printf "HARBOR_JOBSERVICE_SECRET='%s'\n" "$(openssl rand -hex 16)"
-      printf "HARBOR_REGISTRY_SECRET='%s'\n" "$(openssl rand -hex 16)"
-    } > "$SECRETS" )
+  if grep -q "^HARBOR_SECRET_KEY='0123456789ABCDEF'\$" "$SECRETS" 2>/dev/null; then
+    echo "kept the existing $SECRETS (Broadcom's default values; for random ones, before step 6 delete it, run this block again, then step 4)"
+  elif [ -e "$SECRETS" ]; then
+    echo "kept the existing $SECRETS"
+  else
+    ( umask 077
+      { printf "HARBOR_ADMIN_PASSWORD='A%sz'\n" "$(openssl rand -hex 12)"
+        printf "HARBOR_SECRET_KEY='%s'\n" "$(openssl rand -hex 8)"
+        printf "HARBOR_DB_PASSWORD='%s'\n" "$(openssl rand -hex 16)"
+        printf "HARBOR_CORE_SECRET='%s'\n" "$(openssl rand -hex 16)"
+        printf "HARBOR_XSRF_KEY='%s'\n" "$(openssl rand -hex 16)"
+        printf "HARBOR_JOBSERVICE_SECRET='%s'\n" "$(openssl rand -hex 16)"
+        printf "HARBOR_REGISTRY_SECRET='%s'\n" "$(openssl rand -hex 16)"
+      } > "$SECRETS" )
+  fi
+  awk -F "'" '/^HARBOR_/ { n++; if ($2 !~ /^[A-Za-z0-9-]+$/) bad++ } /^HARBOR_SECRET_KEY=/ { k = length($2) } /^HARBOR_XSRF_KEY=/ { x = length($2) } END { printf "secrets file: %d values, %d not letters, digits or -, secretKey %d characters, xsrfKey %d characters\n", n, bad, k, x }' "$SECRETS"
 fi
-awk -F "'" '/^HARBOR_/ { n++; if ($2 !~ /^[A-Za-z0-9-]+$/) bad++ } /^HARBOR_SECRET_KEY=/ { k = length($2) } /^HARBOR_XSRF_KEY=/ { x = length($2) } END { printf "secrets file: %d values, %d not letters, digits or -, secretKey %d characters, xsrfKey %d characters\n", n, bad, k, x }' "$SECRETS"
 ```
 
 </details>
@@ -239,7 +328,8 @@ awk -F "'" '/^HARBOR_/ { n++; if ($2 !~ /^[A-Za-z0-9-]+$/) bad++ } /^HARBOR_SECR
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $SECRETS = "$HARBOR_DIR\secrets.env"
 function New-Hex($n) {
@@ -247,32 +337,35 @@ function New-Hex($n) {
   [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
   ($b | ForEach-Object { $_.ToString('x2') }) -join ''
 }
-New-Item -ItemType Directory -Force -Path $HARBOR_DIR | Out-Null
-if (Test-Path $SECRETS) {
-  if (@(Get-Content $SECRETS) -ccontains "HARBOR_SECRET_KEY='0123456789ABCDEF'") {
-    "kept the existing $SECRETS (Broadcom's default values; for random ones, before step 6 delete it, run this block again, then step 4)"
-  } else {
-    "kept the existing $SECRETS"
-  }
+if (-not (Test-Path "$HARBOR_DIR\supervisor-uid")) {
+  "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
 } else {
-  Set-Content -Encoding ascii -Path $SECRETS -Value @(
-    "HARBOR_ADMIN_PASSWORD='A$(New-Hex 12)z'"
-    "HARBOR_SECRET_KEY='$(New-Hex 8)'"
-    "HARBOR_DB_PASSWORD='$(New-Hex 16)'"
-    "HARBOR_CORE_SECRET='$(New-Hex 16)'"
-    "HARBOR_XSRF_KEY='$(New-Hex 16)'"
-    "HARBOR_JOBSERVICE_SECRET='$(New-Hex 16)'"
-    "HARBOR_REGISTRY_SECRET='$(New-Hex 16)'"
-  )
-}
-$S = @{}; $BAD = 0
-foreach ($l in Get-Content $SECRETS) {
-  if ($l -cmatch "^(HARBOR_[A-Z_]+)='(.*)'$") {
-    $k = $Matches[1]; $v = $Matches[2]; $S[$k] = $v
-    if ($v -cnotmatch '^[A-Za-z0-9-]+$') { $BAD++ }
+  if (Test-Path $SECRETS) {
+    if (@(Get-Content $SECRETS) -ccontains "HARBOR_SECRET_KEY='0123456789ABCDEF'") {
+      "kept the existing $SECRETS (Broadcom's default values; for random ones, before step 6 delete it, run this block again, then step 4)"
+    } else {
+      "kept the existing $SECRETS"
+    }
+  } else {
+    Set-Content -Encoding ascii -Path $SECRETS -Value @(
+      "HARBOR_ADMIN_PASSWORD='A$(New-Hex 12)z'"
+      "HARBOR_SECRET_KEY='$(New-Hex 8)'"
+      "HARBOR_DB_PASSWORD='$(New-Hex 16)'"
+      "HARBOR_CORE_SECRET='$(New-Hex 16)'"
+      "HARBOR_XSRF_KEY='$(New-Hex 16)'"
+      "HARBOR_JOBSERVICE_SECRET='$(New-Hex 16)'"
+      "HARBOR_REGISTRY_SECRET='$(New-Hex 16)'"
+    )
   }
+  $S = @{}; $BAD = 0
+  foreach ($l in Get-Content $SECRETS) {
+    if ($l -cmatch "^(HARBOR_[A-Z_]+)='(.*)'$") {
+      $k = $Matches[1]; $v = $Matches[2]; $S[$k] = $v
+      if ($v -cnotmatch '^[A-Za-z0-9-]+$') { $BAD++ }
+    }
+  }
+  "secrets file: $($S.Count) values, $BAD not letters, digits or -, secretKey $("$($S['HARBOR_SECRET_KEY'])".Length) characters, xsrfKey $("$($S['HARBOR_XSRF_KEY'])".Length) characters"
 }
-"secrets file: $($S.Count) values, $BAD not letters, digits or -, secretKey $("$($S['HARBOR_SECRET_KEY'])".Length) characters, xsrfKey $("$($S['HARBOR_XSRF_KEY'])".Length) characters"
 ```
 
 </details>
@@ -280,8 +373,10 @@ foreach ($l in Get-Content $SECRETS) {
 **Expect:** `secrets file: 7 values, 0 not letters, digits or -, secretKey 16 characters, xsrfKey 32 characters`,
 after `kept the existing …` when the file was there.
 
-**If not:** other numbers: the file was edited or cut short. If no Harbor was installed with it
-yet, delete it, run the block again, then step 4.
+**If not:**
+- `FAILED: … has no supervisor-uid`: run step 1 first, with the same `SUPERVISOR_CONTEXT`.
+- Other numbers: the file was edited or cut short. If no Harbor was installed with it yet, delete
+  it, run the block again, then step 4.
 
 **Keep this file, and a copy where you keep passwords, for as long as this Harbor exists**: any
 later change to its configuration must send the same seven values (with another
@@ -353,7 +448,8 @@ HARBOR_FQDN="harbor.example.test"
 HARBOR_STORAGE_CLASS="my-storage-class"
 HARBOR_REGISTRY_SIZE="50Gi"
 HARBOR_VALUES_TEMPLATE="$HOME/Downloads/supervisor-service-harbor-data-values-v2.15.2.yml"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 SECRETS="$HARBOR_DIR/secrets.env"
 VALUES="$HARBOR_DIR/harbor-data-values.yml"
@@ -369,6 +465,8 @@ if [ -n "$BAD_NAME" ]; then
   echo "NOT WRITTEN: set HARBOR_FQDN to this Harbor's DNS name"
 elif [ -n "$BAD_SC" ] || [ -n "$BAD_SIZE" ]; then
   echo "NOT WRITTEN: set HARBOR_STORAGE_CLASS to a name from the list, and HARBOR_REGISTRY_SIZE"
+elif [ ! -s "$HARBOR_DIR/supervisor-uid" ]; then
+  echo "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
 elif [ -e "$SECRETS" ] && [ "$(grep -c -E "^HARBOR_[A-Z_]+='[A-Za-z0-9-]+'\$" "$SECRETS")" != 7 ]; then
   echo "NOT WRITTEN: $SECRETS is not as step 3 writes it"
 elif [ "$GOT" != "$WANT" ]; then
@@ -430,7 +528,8 @@ $HARBOR_FQDN = "harbor.example.test"
 $HARBOR_STORAGE_CLASS = "my-storage-class"
 $HARBOR_REGISTRY_SIZE = "50Gi"
 $HARBOR_VALUES_TEMPLATE = "$HOME\Downloads\supervisor-service-harbor-data-values-v2.15.2.yml"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $SECRETS = "$HARBOR_DIR\secrets.env"
 $VALUES = "$HARBOR_DIR\harbor-data-values.yml"
@@ -444,6 +543,8 @@ if ($HARBOR_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $HARBOR_FQDN -eq 'harbor.example
   "NOT WRITTEN: set HARBOR_FQDN to this Harbor's DNS name"
 } elseif ($HARBOR_STORAGE_CLASS -cnotmatch '^[a-z0-9.-]+$' -or $HARBOR_STORAGE_CLASS -eq 'my-storage-class' -or $HARBOR_REGISTRY_SIZE -cnotmatch '^[0-9A-Za-z]+$') {
   "NOT WRITTEN: set HARBOR_STORAGE_CLASS to a name from the list, and HARBOR_REGISTRY_SIZE"
+} elseif (-not (Test-Path "$HARBOR_DIR\supervisor-uid")) {
+  "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
 } elseif ((Test-Path $SECRETS) -and $S.Count -ne 7) {
   "NOT WRITTEN: $SECRETS is not as step 3 writes it"
 } elseif ($GOT -ne $WANT) {
@@ -518,8 +619,9 @@ If you skipped step 3, a `no secrets file: Broadcom's default values …` line c
 
 **If not:**
 - `NOT WRITTEN: …`: set the value it names, or do the step it names, then run the block again.
-- `FAILED: …`: the data values are laid out differently from the 2.15.2 file. Do not install
-  with a file this block refused.
+- `FAILED: … has no supervisor-uid`: run step 1 first, with the same `SUPERVISOR_CONTEXT`.
+- `FAILED: the file did not come out …`: the data values are laid out differently from the
+  2.15.2 file. Do not install with a file this block refused.
 
 The file holds the secrets in clear text: do not share or commit it.
 
@@ -545,7 +647,8 @@ HARBOR_REDIS_STORAGE_CLASS=""
 HARBOR_REDIS_SIZE=""
 HARBOR_TRIVY_STORAGE_CLASS=""
 HARBOR_TRIVY_SIZE=""
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 VALUES="$HARBOR_DIR/harbor-data-values.yml"
 BAD=""
@@ -611,7 +714,8 @@ $HARBOR_REDIS_STORAGE_CLASS = ""
 $HARBOR_REDIS_SIZE = ""
 $HARBOR_TRIVY_STORAGE_CLASS = ""
 $HARBOR_TRIVY_SIZE = ""
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $VALUES = "$HARBOR_DIR\harbor-data-values.yml"
 $C = @{ registry = $HARBOR_REGISTRY_STORAGE_CLASS; jobservice = $HARBOR_JOBSERVICE_STORAGE_CLASS
@@ -704,9 +808,16 @@ right before you install.
 VKS_NAMESPACE="my-namespace"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
-if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null)"
+if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif [ -z "$REC" ]; then
+  echo "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
+elif [ "$REC" != "$SUP" ]; then
+  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
+elif ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
   echo "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
 elif ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get machines.cluster.x-k8s.io -o jsonpath="{range .items[*]}{.metadata.name} {.status.conditions[?(@.type=='UpToDate')].status} {.status.conditions[?(@.type=='UpToDate')].lastTransitionTime}{'\n'}{end}")"; then
   echo "FAILED: cannot list the machines in $VKS_NAMESPACE (see the error above)"
@@ -728,11 +839,16 @@ fi
 $VKS_NAMESPACE = "my-namespace"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
+$REC = "$(Get-Content "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)"
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
-if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)" } else {
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
+elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
+elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
+elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)" } else {
   $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get machines.cluster.x-k8s.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.conditions[?(@.type==''UpToDate'')].status} {.status.conditions[?(@.type==''UpToDate'')].lastTransitionTime}{''\n''}{end}'
   if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the machines in $VKS_NAMESPACE (see the error above)" }
   elseif (-not ($M | Where-Object { $_ })) { "no machines in ${VKS_NAMESPACE}: nothing to record" } else {
@@ -747,8 +863,11 @@ if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (se
 
 **Expect:** `recorded <n> machines in <your namespace>`, one for each node of its VKS clusters.
 
-**If not:** `FAILED: …`: as in [NAMESPACE.md](NAMESPACE.md#8-check-the-namespace) (`NotFound`,
-`Forbidden`, `Unauthorized`).
+**If not:**
+- `FAILED: … has no supervisor-uid …`: run step 1 first. `FAILED: … belongs to another
+  Supervisor (…)`: see step 1's **If not**.
+- Other `FAILED: …` lines: as in [NAMESPACE.md](NAMESPACE.md#8-check-the-namespace) (`NotFound`,
+  `Forbidden`, `Unauthorized`).
 
 ### Copy the configuration
 
@@ -756,11 +875,14 @@ This copies `harbor-data-values.yml` to the clipboard, without showing it, so yo
 into the vSphere Client in *Install it*. The file holds Harbor's passwords: if your desktop keeps a
 clipboard history, switch it off for this step.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VALUES="$HOME/.config/vks-guides/harbor/harbor-data-values.yml"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
+VALUES="$HARBOR_DIR/harbor-data-values.yml"
 if [ ! -s "$VALUES" ]; then
   echo "Nothing copied: $VALUES is missing (step 4)"
 elif command -v pbcopy >/dev/null 2>&1; then
@@ -774,17 +896,24 @@ else
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VALUES = "$HOME\.config\vks-guides\harbor\harbor-data-values.yml"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
+$VALUES = "$HARBOR_DIR\harbor-data-values.yml"
 if (-not (Test-Path $VALUES)) {
   "Nothing copied: $VALUES is missing (step 4)"
 } else {
   try { Set-Clipboard -Value ([IO.File]::ReadAllText($VALUES)) -ErrorAction Stop; "copied to the clipboard" } catch { "FAILED: nothing copied (no desktop session here?)" }
 }
 ```
+
+</details>
 
 **Expect:** `copied to the clipboard`.
 
@@ -878,10 +1007,17 @@ ask for in the next step. No DNS record is needed yet.
 ```sh
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
-if [ -z "$HARBOR_FQDN" ]; then
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null)"
+if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif [ -z "$REC" ]; then
+  echo "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
+elif [ "$REC" != "$SUP" ]; then
+  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
+elif [ -z "$HARBOR_FQDN" ]; then
   echo "FAILED: no hostname in $HARBOR_DIR/harbor-data-values.yml (step 4)"
 elif ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
   echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
@@ -910,12 +1046,17 @@ fi
 ```powershell
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
+$REC = "$(Get-Content "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)"
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 $VALUES = "$HARBOR_DIR\harbor-data-values.yml"
 $HARBOR_FQDN = if (Test-Path $VALUES) { "$((Get-Content $VALUES | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')" } else { '' }
-if (-not $HARBOR_FQDN) { "FAILED: no hostname in $VALUES (step 4)" } else {
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
+elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
+elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
+elseif (-not $HARBOR_FQDN) { "FAILED: no hostname in $VALUES (step 4)" } else {
   $NS = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name
   if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
   elseif (@($NS).Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
@@ -948,6 +1089,8 @@ The vSphere Client shows the same address: **Supervisor Management** → **Names
 ![The svc-harbor namespace's Network tab, Services: harbor-nginx is the only LoadBalancer, with its address under External IPs](img/harbor/11-nginx-external-ip.png)
 
 **If not:**
+- `FAILED: … has no supervisor-uid …`: run step 1 first. `FAILED: … belongs to another
+  Supervisor (…)`: see step 1's **If not**.
 - `FAILED: Harbor namespaces …: ''`: the service is not installed (step 6).
 - `Harbor address:   none yet`: the Supervisor has no free load-balancer address, or Harbor's
   pods never started.
@@ -1000,10 +1143,17 @@ Once the record exists, this checks that Harbor's name leads to Harbor's address
 ```sh
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
-if ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null)"
+if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif [ -z "$REC" ]; then
+  echo "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
+elif [ "$REC" != "$SUP" ]; then
+  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
+elif ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
   echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
 elif [ -z "$NS" ] || [ "$NS" != "${NS#* }" ]; then
   echo "FAILED: Harbor namespaces on this Supervisor: '${NS}' (expected exactly one)"
@@ -1026,12 +1176,17 @@ fi
 ```powershell
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $global:LASTEXITCODE = $null
+$REC = "$(Get-Content "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)"
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
-if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
+elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
+elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
+elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
 elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" } else {
   $NS = $NS[0] -replace '^namespace/', ''
   $IP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get service harbor-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
@@ -1053,6 +1208,8 @@ can take some minutes. Another address: the record is wrong or old, or a company
 way. `Harbor is at 'unknown'`: Harbor has no load-balancer address (step 7).
 `FAILED: cannot list …` under `Unauthorized`: renew the Supervisor login. `FAILED: Harbor
 namespaces …: ''`: Harbor is not installed; two names: see *Fix common problems*.
+`FAILED: … has no supervisor-uid …`: run step 1 first. `FAILED: … belongs to another Supervisor
+(…)`: see step 1's **If not**.
 
 ## 8. Check that the VKS cluster nodes were updated
 
@@ -1067,10 +1224,17 @@ step 6's record. Run it for each vSphere Namespace you recorded, until all are u
 VKS_NAMESPACE="my-namespace"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 BEFORE="$HARBOR_DIR/machines-$VKS_NAMESPACE.before"
-if [ ! -s "$BEFORE" ]; then
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null)"
+if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif [ -z "$REC" ]; then
+  echo "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
+elif [ "$REC" != "$SUP" ]; then
+  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
+elif [ ! -s "$BEFORE" ]; then
   echo "FAILED: no record $BEFORE (Record the VKS cluster machines, step 6)"
 elif ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
   echo "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
@@ -1091,11 +1255,16 @@ fi
 $VKS_NAMESPACE = "my-namespace"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
+$REC = "$(Get-Content "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)"
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 $BEFORE = "$HARBOR_DIR\machines-$VKS_NAMESPACE.before"
-if (-not (Test-Path $BEFORE)) { "FAILED: no record $BEFORE (Record the VKS cluster machines, step 6)" } else {
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
+elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
+elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
+elseif (-not (Test-Path $BEFORE)) { "FAILED: no record $BEFORE (Record the VKS cluster machines, step 6)" } else {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
   if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)" } else {
     $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get machines.cluster.x-k8s.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.conditions[?(@.type==''UpToDate'')].status} {.status.conditions[?(@.type==''UpToDate'')].lastTransitionTime}{''\n''}{end}'
@@ -1117,6 +1286,8 @@ as you recorded, each `Running` with `READY` and `UP-TO-DATE` `True`. The total 
 the record if the cluster autoscaler added or removed a node.
 
 **If not:**
+- `FAILED: … has no supervisor-uid …`: run step 1 first. `FAILED: … belongs to another
+  Supervisor (…)`: see step 1's **If not**.
 - The first number stays below the second for more than 30 minutes after Harbor answers (step
   7): those nodes may not trust Harbor's CA. Step 11 shows whether they can pull.
 - A machine stays `Provisioning` or `Deleting`: the namespace has no room for one more node
@@ -1128,9 +1299,7 @@ the record if the cluster autoscaler added or removed a node.
 
 Harbor proves who it is with a certificate. Harbor signs that certificate itself, with its own
 certificate authority (CA), which no machine trusts yet. `curl`, podman, docker and browsers need
-the CA's file to trust Harbor; the next blocks and IMAGE.md use it. This folder,
-`~/.config/vks-guides/harbor`, holds one Harbor: for a second Supervisor's Harbor, use another
-machine or user.
+the CA's file to trust Harbor; the next blocks and IMAGE.md use it.
 
 This block:
 
@@ -1148,11 +1317,18 @@ It needs a user who may read Secrets in Harbor's namespace on the Supervisor.
 ```sh
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
 CA="$HARBOR_DIR/harbor-ca.crt"
-if [ -z "$HARBOR_FQDN" ]; then
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null)"
+if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif [ -z "$REC" ]; then
+  echo "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
+elif [ "$REC" != "$SUP" ]; then
+  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
+elif [ -z "$HARBOR_FQDN" ]; then
   echo "FAILED: no hostname in $HARBOR_DIR/harbor-data-values.yml (step 4)"
 elif ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
   echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
@@ -1181,13 +1357,18 @@ fi
 ```powershell
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
+$REC = "$(Get-Content "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)"
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $CA = "$HARBOR_DIR\harbor-ca.crt"
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
-if (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" }
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
+elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
+elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
+elseif (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" }
 elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
 elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
 else {
@@ -1221,6 +1402,8 @@ else {
 on macOS), `Harbor at https://<your Harbor name> with this CA: http=200`, then `kept …`.
 
 **If not:**
+- `FAILED: … has no supervisor-uid …`: run step 1 first. `FAILED: … belongs to another
+  Supervisor (…)`: see step 1's **If not**.
 - `FAILED: no CA certificate read`, under `Forbidden`: your user may not read Secrets in Harbor's
   namespace; a vCenter administrator must run this block. Under `Could not find certificate`
   (PowerShell: no error above it): the Secret has no `ca.crt`, and VKS clusters cannot trust
@@ -1243,7 +1426,8 @@ robot account.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
 if [ -z "$HARBOR_FQDN" ] || [ ! -s "$HARBOR_DIR/harbor-ca.crt" ] || [ ! -r "$HARBOR_DIR/secrets.env" ]; then
@@ -1265,7 +1449,8 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $S = @{}
@@ -1304,8 +1489,8 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 ### Log in with a browser (optional)
 
 Harbor's web page is `https://<your Harbor name>`. The browser warns about Harbor's certificate
-until Harbor's CA (`harbor-ca.crt` in `~/.config/vks-guides/harbor`, saved in *Save the CA*) is in
-its trust store:
+until Harbor's CA (`harbor-ca.crt` in `~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>`, saved
+in *Save the CA*) is in its trust store:
 - Linux: Firefox: **Settings** → **Privacy & Security** → **View Certificates** → **Authorities**
   → **Import**, tick **Trust this CA to identify websites**. Chrome: **Settings** → **Privacy and
   security** → **Security** → **Manage certificates**, import it as a trusted certificate.
@@ -1321,7 +1506,8 @@ the screen, then clear the terminal.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 ( . "$HARBOR_DIR/secrets.env" && printf '%s\n' "$HARBOR_ADMIN_PASSWORD" )
 ```
@@ -1329,7 +1515,8 @@ HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 **Windows (PowerShell):**
 
 ```powershell
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 (Get-Content "$HARBOR_DIR\secrets.env" | Where-Object { $_ -cmatch "^HARBOR_ADMIN_PASSWORD='" }) -creplace "^HARBOR_ADMIN_PASSWORD='(.*)'$", '$1'
 ```
@@ -1363,7 +1550,8 @@ under **Access Level**, then **OK**.
 ```sh
 HARBOR_PROJECT="my-project"
 HARBOR_PROJECT_PUBLIC="false"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
 if ! command -v jq >/dev/null 2>&1; then
@@ -1396,7 +1584,8 @@ fi
 ```powershell
 $HARBOR_PROJECT = "my-project"
 $HARBOR_PROJECT_PUBLIC = "false"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $S = @{}
@@ -1446,7 +1635,8 @@ once.
 
 ```sh
 HARBOR_PROJECT="my-project"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
 if ! command -v jq >/dev/null 2>&1; then
@@ -1476,7 +1666,8 @@ fi
 
 ```powershell
 $HARBOR_PROJECT = "my-project"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $S = @{}
@@ -1545,7 +1736,8 @@ As `admin`, with the password from the secrets file:
 
 ```sh
 CONTAINER_ENGINE="podman"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
 if [ -z "$HARBOR_FQDN" ] || [ ! -r "$HARBOR_DIR/secrets.env" ]; then
@@ -1559,7 +1751,8 @@ fi
 
 ```powershell
 $CONTAINER_ENGINE = "podman"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $S = @{}
@@ -1595,7 +1788,8 @@ single quotes: the `$` is part of the name.
 ```sh
 CONTAINER_ENGINE="podman"
 HARBOR_ROBOT='robot$my-project+push'
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
 if [ -z "$HARBOR_FQDN" ] || [ -z "$HARBOR_ROBOT_SECRET" ]; then
@@ -1611,7 +1805,8 @@ unset HARBOR_ROBOT_SECRET
 ```powershell
 $CONTAINER_ENGINE = "podman"
 $HARBOR_ROBOT = 'robot$my-project+push'
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 if (-not $HARBOR_FQDN -or -not $HARBOR_ROBOT_SECRET -or $HARBOR_ROBOT_SECRET.Length -eq 0) { "FAILED: no $HARBOR_DIR\harbor-data-values.yml, or no robot secret in this terminal (run the line above)" }
@@ -1655,7 +1850,8 @@ kubeconfig (the file that lets kubectl reach it) from
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 HARBOR_PROJECT="my-project"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
@@ -1712,7 +1908,8 @@ fi
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $HARBOR_PROJECT = "my-project"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
@@ -1814,7 +2011,8 @@ changes. The later blocks read Harbor's name from this file.
 
 ```sh
 HARBOR_NEW_FQDN="harbor2.example.test"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 VALUES="$HARBOR_DIR/harbor-data-values.yml"
 case "$HARBOR_NEW_FQDN" in ""|harbor2.example.test) BAD_NAME=1 ;; *) BAD_NAME="" ;; esac
@@ -1847,7 +2045,8 @@ fi
 
 ```powershell
 $HARBOR_NEW_FQDN = "harbor2.example.test"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $VALUES = "$HARBOR_DIR\harbor-data-values.yml"
 $TXT = if (Test-Path $VALUES) { [IO.File]::ReadAllLines($VALUES) } else { @() }
@@ -1894,10 +2093,17 @@ less), then deletes Harbor's web server pod, which starts again with that certif
 ```sh
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
-if [ -z "$HARBOR_FQDN" ]; then
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null)"
+if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif [ -z "$REC" ]; then
+  echo "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
+elif [ "$REC" != "$SUP" ]; then
+  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
+elif [ -z "$HARBOR_FQDN" ]; then
   echo "FAILED: no hostname in $HARBOR_DIR/harbor-data-values.yml (step 4)"
 elif ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
   echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
@@ -1933,12 +2139,17 @@ fi
 ```powershell
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
+$REC = "$(Get-Content "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)"
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
-if (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" }
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
+elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
+elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
+elseif (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" }
 elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
 elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
 else {
@@ -2044,7 +2255,8 @@ certificate team and ask for two PEM files back:
 ```sh
 HARBOR_TLS_KEY="$HOME/harbor.key"
 HARBOR_CSR="$HOME/harbor.csr"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
 TMP="$(mktemp -d)"
@@ -2080,7 +2292,8 @@ does.
 ```powershell
 $HARBOR_TLS_KEY = "$HOME\harbor.key"
 $HARBOR_CSR = "$HOME\harbor.csr"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 if (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { $env:Path += ';C:\Program Files\Git\usr\bin' }
 $VALUES = "$HARBOR_DIR\harbor-data-values.yml"
@@ -2135,7 +2348,8 @@ passes. It needs `openssl`.
 HARBOR_TLS_CRT="$HOME/harbor.crt"
 HARBOR_TLS_KEY="$HOME/harbor.key"
 HARBOR_CA_CRT="$HOME/harbor-root-ca.crt"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 VALUES="$HARBOR_DIR/harbor-data-values.yml"
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$VALUES" 2>/dev/null)"
@@ -2215,7 +2429,8 @@ Windows PowerShell 5.1 cannot read PEM keys: this block runs `openssl.exe`, whic
 $HARBOR_TLS_CRT = "$HOME\harbor.crt"
 $HARBOR_TLS_KEY = "$HOME\harbor.key"
 $HARBOR_CA_CRT = "$HOME\harbor-root-ca.crt"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $VALUES = "$HARBOR_DIR\harbor-data-values.yml"
 $HARBOR_FQDN = if (Test-Path $VALUES) { "$((Get-Content $VALUES | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')" } else { '' }
@@ -2298,12 +2513,19 @@ new one.
 ```sh
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 VALUES="$HARBOR_DIR/harbor-data-values.yml"
 WANT="$(awk '/^  tls\.crt: \|/ { f = 1; next } f && /^    / { sub(/^    /, ""); print; next } { f = 0 }' "$VALUES" 2>/dev/null \
   | openssl x509 -noout -fingerprint -sha256 2>/dev/null)"
-if [ ! -r "$VALUES" ]; then
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null)"
+if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif [ -z "$REC" ]; then
+  echo "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
+elif [ "$REC" != "$SUP" ]; then
+  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
+elif [ ! -r "$VALUES" ]; then
   echo "FAILED: no $VALUES (step 4)"
 elif ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
   echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
@@ -2345,9 +2567,11 @@ fi
 ```powershell
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
+$REC = "$(Get-Content "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)"
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 $VALUES = "$HARBOR_DIR\harbor-data-values.yml"
 $WANT = ''; $f = $false
 foreach ($l in $(if (Test-Path $VALUES) { [IO.File]::ReadAllLines($VALUES) })) {
@@ -2357,7 +2581,10 @@ foreach ($l in $(if (Test-Path $VALUES) { [IO.File]::ReadAllLines($VALUES) })) {
 function Body($t) { if ("$t" -cmatch '(?s)-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----') { $Matches[1] -replace '\s', '' } else { '' } }
 $WANT = Body $WANT
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
-if (-not (Test-Path $VALUES)) { "FAILED: no $VALUES (step 4)" }
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
+elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
+elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
+elseif (-not (Test-Path $VALUES)) { "FAILED: no $VALUES (step 4)" }
 elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
 elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
 else {
@@ -2412,15 +2639,21 @@ every VKS cluster on this Supervisor** again.
 **Only uninstall a Harbor you installed.** This looks for the note that step 1 left on this
 machine. It says `MAY UNINSTALL` only if this Supervisor had no Harbor when you began.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null)"
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
   echo "FAILED: cannot read the Supervisor (see the error above)"
+elif [ -z "$REC" ]; then
+  echo "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
+elif [ "$REC" != "$SUP" ]; then
+  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
 elif [ -e "$HARBOR_DIR/none-before-$SUP" ]; then
   echo "MAY UNINSTALL: this Supervisor had no Harbor when you began"
 else
@@ -2428,24 +2661,35 @@ else
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
+$REC = "$(Get-Content "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)"
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 if ($LASTEXITCODE -ne 0 -or -not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
+elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
+elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
 elseif (Test-Path "$HARBOR_DIR\none-before-$SUP") { "MAY UNINSTALL: this Supervisor had no Harbor when you began" }
 else { "DO NOT UNINSTALL: this machine has no record that this Supervisor had no Harbor before yours" }
 ```
 
+</details>
+
 **Expect:** `MAY UNINSTALL: this Supervisor had no Harbor when you began`.
 
-**If not:** `DO NOT UNINSTALL: …`: stop. A Harbor was there when you began, or you began on
-another machine.
+**If not:**
+- `DO NOT UNINSTALL: …`: stop. A Harbor was there when you began, or you began on another
+  machine.
+- `FAILED: … belongs to another Supervisor (…)` or `… has no supervisor-uid …`: stop; this
+  folder's notes are not this Supervisor's (see step 1's **If not**).
 
 The record proves only what step 1 saw, not who installed the Harbor there now: if you are not
 sure it is yours, ask before you click.
@@ -2523,42 +2767,69 @@ reloaded.
 ### Delete what this guide wrote
 
 This deletes the files this guide wrote, only when no Harbor is on the Supervisor. Ask for the DNS
-record to be removed too. This folder, `~/.config/vks-guides/harbor`, holds one Harbor's secrets:
-for a second Supervisor's Harbor, use another machine or user.
+record to be removed too.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
-if ! H="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o name)"; then
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null)"
+if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "Nothing deleted: cannot read the Supervisor (see the error above)"
+elif [ -z "$REC" ]; then
+  echo "Nothing deleted: $HARBOR_DIR has no supervisor-uid (step 1)"
+elif [ "$REC" != "$SUP" ]; then
+  echo "Nothing deleted: $HARBOR_DIR belongs to another Supervisor ($REC)"
+elif ! H="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o name)"; then
   echo "Nothing deleted: cannot list the Supervisor's namespaces (see the error above)"
 elif [ -n "$H" ]; then
-  echo "Nothing deleted: a Harbor is still on the Supervisor ($H)"
+  echo "Nothing deleted: a Harbor is still on the Supervisor $REC ($H)"
 else
   rm -rf "$HARBOR_DIR" && echo "deleted $HARBOR_DIR"
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
-$H = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name
-if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot list the Supervisor's namespaces (see the error above)" }
-elseif ($H) { "Nothing deleted: a Harbor is still on the Supervisor ($($H -join ' '))" }
-else { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $HARBOR_DIR; "deleted $HARBOR_DIR" }
+$REC = "$(Get-Content "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)"
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
+if ($LASTEXITCODE -ne 0 -or -not $SUP) { "Nothing deleted: cannot read the Supervisor (see the error above)" }
+elseif (-not $REC) { "Nothing deleted: $HARBOR_DIR has no supervisor-uid (step 1)" }
+elseif ($REC -cne $SUP) { "Nothing deleted: $HARBOR_DIR belongs to another Supervisor ($REC)" }
+else {
+  $H = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name
+  if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot list the Supervisor's namespaces (see the error above)" }
+  elseif ($H) { "Nothing deleted: a Harbor is still on the Supervisor $REC ($($H -join ' '))" }
+  else { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $HARBOR_DIR; "deleted $HARBOR_DIR" }
+}
 ```
+
+</details>
 
 **Expect:** `deleted …`.
 
-**If not:** `Nothing deleted: a Harbor is still …`: these files belong to it; keep them.
+**If not:**
+- `Nothing deleted: a Harbor is still …`: these files belong to it; keep them.
+- `Nothing deleted: … belongs to another Supervisor (…)`: the folder belongs to the Supervisor
+  that this context name was used for before, or to this Supervisor before it was deployed again
+  (a new UID). Keep it while that Harbor exists; once you know it is gone, delete the folder by
+  hand (`rm -rf ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>`; PowerShell:
+  `Remove-Item -Recurse -Force $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT>`).
+- `Nothing deleted: … has no supervisor-uid`: step 1 was not run with this `SUPERVISOR_CONTEXT`;
+  check that the folder is the one you mean, then delete it the same way.
 
 If you trusted Harbor's CA for podman or docker, [IMAGE.md step 8](IMAGE.md#8-remove-it-optional)
 says how to stop.

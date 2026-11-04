@@ -22,8 +22,9 @@ undo changes there.
 ## Prerequisites
 
 - Harbor with a project and a robot account that may push to it
-  ([HARBOR.md](HARBOR.md), steps 1 to 10), and Harbor's CA in
-  `~/.config/vks-guides/harbor/harbor-ca.crt` ([HARBOR.md step 9](HARBOR.md#save-the-ca), or step 1 below);
+  ([HARBOR.md](HARBOR.md), steps 1 to 10), and Harbor's CA from
+  [HARBOR.md step 9](HARBOR.md#save-the-ca) (`harbor-ca.crt` in the Harbor folder) or step 1 below,
+  saved as `~/.config/vks-guides/image/<HARBOR_FQDN>-ca.crt`;
 - [podman or docker](PREREQS.md#podman-and-docker-optional), [curl, jq and openssl](PREREQS.md),
   and [kubectl](KUBECTL.md);
 - the VKS cluster's kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
@@ -47,26 +48,25 @@ Harbor's certificate is signed by Harbor's own CA (certificate authority), not b
 machine already knows. podman and docker need that CA's file to trust Harbor (step 2); without it
 they refuse to connect (`x509: certificate signed by unknown authority`).
 
-Skip this if you ran [HARBOR.md step 9](HARBOR.md#save-the-ca) on this machine. Otherwise this
-downloads Harbor's CA from Harbor, saves it as `harbor-ca.crt.new` and prints its fingerprint, a
-short code that identifies it. Harbor is not trusted yet, so the file could be a fake: keep it
-(next block) only if the fingerprint is the same as the one step 9 printed for your Harbor
-administrator. In Harbor's web page, **Projects** → your project →
-**REGISTRY CERTIFICATE** downloads the same file as `ca.crt`.
+This downloads Harbor's CA from Harbor, saves it as `<HARBOR_FQDN>-ca.crt.new` in
+`~/.config/vks-guides/image` and prints its fingerprint, a short code that identifies it. Harbor
+is not trusted yet, so the file could be a fake: keep it (next block) only if the fingerprint is
+the same as the one HARBOR.md step 9 printed for your Harbor administrator. In Harbor's web page,
+**Projects** → your project → **REGISTRY CERTIFICATE** downloads the same file as `ca.crt`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+IMAGE_DIR="$HOME/.config/vks-guides/image"
 
-mkdir -p "$HARBOR_DIR" && rm -f "$HARBOR_DIR/harbor-ca.crt.new"
-if curl -fsSk --connect-timeout 20 --speed-time 60 -o "$HARBOR_DIR/harbor-ca.crt.new" "https://${HARBOR_FQDN}/api/v2.0/systeminfo/getcert" \
-   && openssl x509 -in "$HARBOR_DIR/harbor-ca.crt.new" -noout -subject -fingerprint -sha256; then
+mkdir -p "$IMAGE_DIR" && rm -f "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt.new"
+if curl -fsSk --connect-timeout 20 --speed-time 60 -o "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt.new" "https://${HARBOR_FQDN}/api/v2.0/systeminfo/getcert" \
+   && openssl x509 -in "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt.new" -noout -subject -fingerprint -sha256; then
   echo "compare the fingerprint above with your Harbor administrator's, then keep the file"
 else
-  rm -f "$HARBOR_DIR/harbor-ca.crt.new"
+  rm -f "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt.new"
   echo "FAILED: no CA certificate from https://${HARBOR_FQDN} (see the error above)"
 fi
 ```
@@ -78,10 +78,10 @@ fi
 
 ```powershell
 $HARBOR_FQDN = "harbor.example.test"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$IMAGE_DIR = "$HOME\.config\vks-guides\image"
 
-New-Item -ItemType Directory -Force -Path $HARBOR_DIR | Out-Null
-$NEW = "$HARBOR_DIR\harbor-ca.crt.new"; Remove-Item -Force -ErrorAction SilentlyContinue $NEW
+New-Item -ItemType Directory -Force -Path $IMAGE_DIR | Out-Null
+$NEW = "$IMAGE_DIR\${HARBOR_FQDN}-ca.crt.new"; Remove-Item -Force -ErrorAction SilentlyContinue $NEW
 curl.exe -fsSk --connect-timeout 20 --speed-time 60 -o $NEW "https://$HARBOR_FQDN/api/v2.0/systeminfo/getcert"
 if ($LASTEXITCODE -eq 0 -and (Test-Path $NEW)) {
   $X = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $NEW
@@ -103,19 +103,26 @@ as your administrator's, keep the file:
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-mv "$HOME/.config/vks-guides/harbor/harbor-ca.crt.new" "$HOME/.config/vks-guides/harbor/harbor-ca.crt"
+HARBOR_FQDN="harbor.example.test"
+IMAGE_DIR="$HOME/.config/vks-guides/image"
+
+mv "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt.new" "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt"
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-Move-Item -Force "$HOME\.config\vks-guides\harbor\harbor-ca.crt.new" "$HOME\.config\vks-guides\harbor\harbor-ca.crt"
+$HARBOR_FQDN = "harbor.example.test"
+$IMAGE_DIR = "$HOME\.config\vks-guides\image"
+
+Move-Item -Force "$IMAGE_DIR\${HARBOR_FQDN}-ca.crt.new" "$IMAGE_DIR\${HARBOR_FQDN}-ca.crt"
 ```
 
-**If not:** the fingerprints differ: delete `harbor-ca.crt.new` and stop; this is not your
+**If not:** the fingerprints differ: delete `<HARBOR_FQDN>-ca.crt.new` and stop; this is not your
 Harbor's CA. `FAILED: …`: check the name (HARBOR.md step 7, *Check the DNS record*); if the name
 is right, this Harbor publishes no CA (your organization's certificate, HARBOR.md step 13): get
-`harbor-ca.crt` from your Harbor administrator.
+`harbor-ca.crt` from your Harbor administrator and save it as
+`~/.config/vks-guides/image/<HARBOR_FQDN>-ca.crt`.
 
 ## 2. Trust Harbor's CA
 
@@ -135,13 +142,13 @@ Harbor. No `sudo` needed.
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+IMAGE_DIR="$HOME/.config/vks-guides/image"
 
-if [ ! -s "$HARBOR_DIR/harbor-ca.crt" ]; then
-  echo "FAILED: no $HARBOR_DIR/harbor-ca.crt (HARBOR.md step 9, or step 1 above)"
+if [ ! -s "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt" ]; then
+  echo "FAILED: no $IMAGE_DIR/${HARBOR_FQDN}-ca.crt (step 1 above)"
 else
   mkdir -p "$HOME/.config/containers/certs.d/$HARBOR_FQDN" \
-    && cp "$HARBOR_DIR/harbor-ca.crt" "$HOME/.config/containers/certs.d/$HARBOR_FQDN/ca.crt" \
+    && cp "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt" "$HOME/.config/containers/certs.d/$HARBOR_FQDN/ca.crt" \
     && echo "podman trusts $HARBOR_FQDN"
 fi
 ```
@@ -156,7 +163,8 @@ restart. podman reads this folder too.
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
-sudo install -D -m 0644 "$HOME/.config/vks-guides/harbor/harbor-ca.crt" "/etc/docker/certs.d/$HARBOR_FQDN/ca.crt" && echo "docker trusts $HARBOR_FQDN"
+IMAGE_DIR="$HOME/.config/vks-guides/image"
+sudo install -D -m 0644 "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt" "/etc/docker/certs.d/$HARBOR_FQDN/ca.crt" && echo "docker trusts $HARBOR_FQDN"
 ```
 
 **Expect:** `docker trusts <your Harbor name>`.
@@ -167,7 +175,9 @@ podman and Docker Desktop read the CA from your login keychain. Add it there fir
 for your password):
 
 ```sh
-security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychain-db" "$HOME/.config/vks-guides/harbor/harbor-ca.crt"
+HARBOR_FQDN="harbor.example.test"
+IMAGE_DIR="$HOME/.config/vks-guides/image"
+security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychain-db" "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt"
 ```
 
 #### podman
@@ -185,8 +195,9 @@ Let the podman machine import the keychain's CAs: `podman machine stop`, then
 
   ```sh
   HARBOR_FQDN="harbor.example.test"
+  IMAGE_DIR="$HOME/.config/vks-guides/image"
   colima ssh -- sudo mkdir -p "/etc/docker/certs.d/$HARBOR_FQDN" </dev/null
-  colima ssh -- sudo tee "/etc/docker/certs.d/$HARBOR_FQDN/ca.crt" < "$HOME/.config/vks-guides/harbor/harbor-ca.crt" >/dev/null && echo "docker (Colima) trusts $HARBOR_FQDN"
+  colima ssh -- sudo tee "/etc/docker/certs.d/$HARBOR_FQDN/ca.crt" < "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt" >/dev/null && echo "docker (Colima) trusts $HARBOR_FQDN"
   ```
 
   **Expect:** `docker (Colima) trusts <your Harbor name>`.
@@ -198,7 +209,9 @@ podman and Docker Desktop read the CA from your user's trusted root CAs. Add it 
 (Windows asks you to confirm with **Yes**):
 
 ```powershell
-Import-Certificate -FilePath "$HOME\.config\vks-guides\harbor\harbor-ca.crt" -CertStoreLocation Cert:\CurrentUser\Root
+$HARBOR_FQDN = "harbor.example.test"
+$IMAGE_DIR = "$HOME\.config\vks-guides\image"
+Import-Certificate -FilePath "$IMAGE_DIR\${HARBOR_FQDN}-ca.crt" -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
 **Expect:** a line with the CA's thumbprint and `CN=Harbor CA`.
