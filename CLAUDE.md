@@ -67,6 +67,14 @@ blocks; there is nothing to build.
   line (it ignores `$(` nesting: `N="$(kubectl … -l '!x')"`): put such a value in a variable on its
   own line (`WORKERS='!x'`) and use `"$WORKERS"`. A `!` before `=` or a space is safe everywhere.
   Test with `docker run --rm -i --network none bash:3.2 timeout -s KILL 60 bash -i < block.sh`.
+- Run the `/guide-block-check` skill's checker on every guide a change touches, whole guides,
+  all in one call (it runs its own self-test, about 15 minutes, once per call):
+  `bash "$(readlink -f ~/.claude/commands)/../scripts/guide-block-check.sh" "$PWD/docs/X.md" …`.
+  It pastes each sh block into bash and zsh, raw and bracketed, with tools stubbed. Read its rc
+  on its own line; it needs `self-check: N fixture verdicts match` and `FAIL 0`. ADVISORY for
+  `security` (macOS) and `wslpath` (WSL) is expected on Linux. It does not run PowerShell blocks
+  (parse those on the Windows walkbox). Measured 2026-11-04 on main acd023a: 328 blocks in 33
+  files, 0 FAIL, about 35 minutes as three parallel calls.
 - Where the terminal does not bracket the paste, a pasted block's later lines wait in the terminal,
   and sudo 1.9.14 or later (`use_pty` by default: Ubuntu, Debian) reads them: nothing may follow a
   line that runs `sudo`, so clean-up goes on that line (`fi; rm -rf "$TMP"`). `vcf context use`
