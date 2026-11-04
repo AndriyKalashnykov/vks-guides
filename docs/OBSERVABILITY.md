@@ -731,9 +731,9 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 </details>
 
-**Expect:** `Addon 'fluent-bit' is being
-installed in the cluster …` (on an update: `Addon 'fluent-bit' in the cluster … is being updated`
-and `daemonset.apps/fluent-bit restarted`), then `daemon set "fluent-bit" successfully rolled out`.
+**Expect:** `Addon 'fluent-bit' is being installed in the cluster …` (on an update:
+`Addon 'fluent-bit' in the cluster … is being updated` and `daemonset.apps/fluent-bit restarted`), then
+`daemon set "fluent-bit" successfully rolled out`.
 
 **If not:**
 - `not found` for the release: copy its name again from LOGGING.md step 1.
