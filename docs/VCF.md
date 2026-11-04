@@ -215,8 +215,8 @@ plugins have not been installed …` and `Failed to install plugin 'telemetry:v9
 online for a plugin version Broadcom has not published. The command still runs. Setting
 `VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION` to `v9.1.1` stops the lookup; Broadcom does not document
 this variable. This sets it for this terminal and for new ones: it adds one line to `~/.zshrc` or
-`~/.bashrc` (`~/.bash_profile` on macOS bash, and creates `~/.bash_profile` when bash has none of
-`~/.bash_profile`, `~/.bash_login` and `~/.profile`); on Windows it sets a user environment
+`~/.bashrc` (`~/.bash_profile` on macOS bash; on Linux bash it also creates `~/.bash_profile` when
+there is none of `~/.bash_profile`, `~/.bash_login` and `~/.profile`); on Windows it sets a user environment
 variable.
 
 **Linux, macOS, WSL (bash or zsh):**

@@ -14,7 +14,8 @@
 You log in to the Supervisor with the VCF CLI and your vCenter SSO user, then read your VKS
 cluster's kubeconfig from it.
 
-Run these in one terminal, in this order:
+Do these in this order; the commands run in one terminal (the vSphere Client way in item 3 needs no
+login on this machine):
 
 1. Log in to the Supervisor, one of
    [Create Supervisor context with CA](#create-supervisor-context-with-ca) or
@@ -779,7 +780,8 @@ kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" get nodes
 **Expect:** the cluster's nodes, each `Ready`.
 
 **If not:** `error: You must be logged in to the server (Unauthorized)`: the VKS cluster's file has
-expired ([how long it works](KUBECONFIG.md#the-files-the-guides-make)); run
+expired ([how long it works](KUBECONFIG.md#the-files-the-guides-make)); download it again from the
+[vSphere Client](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client), or run
 [Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig) again.
 
 ## Match kubectl to the cluster's version (optional)

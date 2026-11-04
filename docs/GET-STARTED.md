@@ -8,7 +8,8 @@ Do them in this order:
 
 1. [Prerequisites](PREREQS.md) for your OS, on each machine where you paste blocks: the guides'
    blocks use its tools.
-2. [Install kubectl](KUBECTL.md). Its *From the Supervisor* needs step 1 of
+2. [Install kubectl](KUBECTL.md). Its *From the Supervisor* needs
+   [NAMESPACE.md](NAMESPACE.md) step 1 (the Supervisor's address and vCenter's CA) and step 1 of
    [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca) first.
 3. [Install the VCF CLI](VCF.md), before or after kubectl.
 4. A vSphere Namespace with a role for your user: [NAMESPACE.md](NAMESPACE.md) steps 1 to 4.
