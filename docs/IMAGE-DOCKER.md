@@ -53,7 +53,7 @@ Change these to your own. The two robot accounts:
 HARBOR_FQDN="harbor.env1.lab.test"
 HARBOR_PROJECT="my-project"
 HARBOR_ROBOT='robot$my-project+push'
-HARBOR_PULL_ROBOT='robot$my-project+pull'
+HARBOR_PULL_ROBOT='robot$my-project-pull'
 APP_NAMESPACE="harbor-demo"
 IMAGE="$HARBOR_FQDN/$HARBOR_PROJECT/test-web-apps:v1"
 IMAGE_PLATFORM="linux/amd64"
@@ -151,7 +151,7 @@ docker --config "$HOME/image-simple/pull" login -u "$HARBOR_PULL_ROBOT" "$HARBOR
 
 **If not:** no such warning: a docker credential helper keeps the secret elsewhere, and
 `config.json` holds no login for the cluster. Create the Secret as
-[IMAGE.md step 5](IMAGE.md#5-let-the-cluster-pull-from-a-private-project-optional) does instead.
+[IMAGE.md step 5](IMAGE.md#5-let-the-cluster-pull-from-a-private-project) does instead.
 
 Then create the app's namespace, copy `config.json` into it as the Secret `harbor-pull`, and
 delete the file, which holds the robot's secret unencrypted:
