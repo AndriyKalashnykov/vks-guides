@@ -23,7 +23,7 @@ listed under Supervisor Management → Namespaces): [ARGOCD.md](ARGOCD.md) keeps
 ## Prerequisites
 
 - Harbor with a project and a robot account (a Harbor login for tools rather than people) that
-  may push to it ([HARBOR.md](HARBOR.md), steps 1 to 11; step 11 checks that your VKS cluster can
+  may push to it ([HARBOR.md](HARBOR.md) steps 1 to 11, done by you or your Harbor administrator; step 11 checks that your VKS cluster can
   pull from it), and Harbor's CA: step 1 below copies it from
   [HARBOR.md step 9](HARBOR.md#save-the-ca)
   (`~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>/harbor-ca.crt`) or downloads it, and saves it
@@ -210,6 +210,10 @@ $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 Move-Item -Force "$IMAGE_DIR\${HARBOR_FQDN}-ca.crt.new" "$IMAGE_DIR\${HARBOR_FQDN}-ca.crt"
 ```
 
+**Expect:** no output.
+
+**If not:** `No such file` (PowerShell: `Cannot find path`): run the download block above again.
+
 ## 2. Trust Harbor's CA
 
 podman and docker talk to Harbor over HTTPS and check its certificate first. Until they trust
@@ -258,8 +262,7 @@ sudo install -D -m 0644 "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt" "/etc/docker/certs.d/
 ### macOS
 
 podman and Docker Desktop read the CA from your login keychain. Add it there first (macOS asks
-for your password). This makes every app you run on this Mac trust Harbor's CA (it adds it to your
-login keychain):
+for your password):
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
@@ -304,7 +307,7 @@ $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 Import-Certificate -FilePath "$IMAGE_DIR\${HARBOR_FQDN}-ca.crt" -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
-**Expect:** a line with the CA's thumbprint and `CN=Harbor CA`.
+**Expect:** PowerShell: a line with the CA's thumbprint and `CN=Harbor CA`.
 
 **If not:** `UI is not allowed in this operation`: this PowerShell has no desktop to ask on (for
 example over SSH). Run the line in Windows PowerShell on the desktop, or in Windows PowerShell as
@@ -531,7 +534,7 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_ROBOT_SECRET
 
 </details>
 
-**Expect:** `Login Succeeded` (docker on Linux first warns that the login is stored unencrypted),
+**Expect:** `Login Succeeded` (docker without a credential helper first warns that the login is stored unencrypted),
 the push, `Removed login credentials for …` (docker: `Removing`), then
 `pushed: <your Harbor name>/<your project>/test-web-apps@sha256:…`. In Harbor's web page the
 project now lists the repository `test-web-apps`.

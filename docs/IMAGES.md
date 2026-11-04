@@ -4,8 +4,8 @@ A container image is a packaged app that a VKS cluster runs, a bit like a VM tem
 program. A registry stores the images, and the cluster downloads them from it. The guides use
 Harbor, Broadcom's supported registry, as the example; another OCI registry works the same way.
 
-Before either guide: [Install Harbor](HARBOR.md), steps 1 to 11 (step 11 checks that your VKS
-cluster can pull from it). Then pick one: the full guide (podman or docker, every OS) or the short
+Before either guide, Harbor must be installed and checked: [HARBOR.md](HARBOR.md) steps 1 to 11,
+done by you or your Harbor administrator (step 11 checks that your VKS cluster can pull from it). Then pick one: the full guide (podman or docker, every OS) or the short
 docker-on-Linux version.
 
 | guide | what it is |

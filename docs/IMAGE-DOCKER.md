@@ -23,7 +23,7 @@ others use. If you open a new terminal, run the first block again.
 - a Harbor project and a robot account that may push to it
   ([HARBOR.md step 10](HARBOR.md#10-create-a-project-and-a-robot-account)), and
   [HARBOR.md step 11](HARBOR.md#11-check-that-a-vks-cluster-can-pull-from-harbor) passed on this
-  cluster;
+  cluster (done by you or your Harbor administrator);
 - for a private project, also a robot that may only pull: in Harbor's web page, as in HARBOR.md
   step 10, *In Harbor's web page*, with only **Repository** → **Pull** ticked. Its name is
   `robot$` and the name you type;
@@ -130,7 +130,7 @@ Enter (nothing is shown). Run this line on its own.
 docker login -u "$HARBOR_ROBOT" "$HARBOR_FQDN"
 ```
 
-**Expect:** `Login Succeeded` (docker on Linux first warns that the login is stored unencrypted;
+**Expect:** `Login Succeeded` (docker without a credential helper first warns that the login is stored unencrypted;
 the logout below removes it).
 
 Then upload the image to your project and log out, so the robot's login does not stay on this
@@ -144,7 +144,7 @@ docker logout "$HARBOR_FQDN"
 **Expect:** the image's layers, `v1: digest: sha256:…`, then `Removing login credentials for …`.
 In Harbor's web page, your project now lists `test-web-apps`.
 
-## 5. Only for a private Harbor project: store a pull login in the cluster
+## 5. Only for a private project: let the cluster pull from it
 
 Skip this for a public project: anyone may pull from it, so the cluster needs no login. A private
 project needs a robot that may pull, and the cluster must keep its login as a Secret, the
@@ -201,7 +201,7 @@ grep -H "^  name:\|namespace:\|image:" namespace.yaml deployment.yaml service.ya
 and `image: <your Harbor name>/<your project>/test-web-apps:v1`. The `name: test-web-apps` lines
 are the app's own name and stay as they are.
 
-**Only for a private Harbor project:** this adds the Secret from step 5 to the app, so its pods log
+**Only for a private project:** this adds the Secret from step 5 to the app, so its pods log
 in to Harbor when they pull the image.
 
 ```sh
