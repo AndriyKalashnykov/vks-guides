@@ -865,7 +865,7 @@ elif KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf context delete "$SUPERVISOR_CONTEXT
   rm -rf "$HOME/.config/vcf/logs"
   vcf context list </dev/null
 else
-  echo "FAILED: context $SUPERVISOR_CONTEXT not deleted; $SUPERVISOR_KUBECONFIG is kept (see the vcf error above)"
+  echo "FAILED: context $SUPERVISOR_CONTEXT not deleted, so this block deleted no file (see the vcf error above)"
 fi
 ```
 
@@ -888,7 +888,7 @@ if ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPER
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$HOME\.config\vcf\logs"
     $null | vcf context list
   } else {
-    "FAILED: context $SUPERVISOR_CONTEXT not deleted; $SUPERVISOR_KUBECONFIG is kept (see the vcf error above)"
+    "FAILED: context $SUPERVISOR_CONTEXT not deleted, so this block deleted no file (see the vcf error above)"
   }
 }
 ```
