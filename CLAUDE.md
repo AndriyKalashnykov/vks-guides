@@ -67,6 +67,10 @@ blocks; there is nothing to build.
   (PowerShell: `$null | vcf context use supervisor`), which stops with `Unable to read password
   from terminal` instead, on every shell, also where the paste is bracketed and the password could
   have been typed (the reader renews the login and runs the block again).
+  A program that queries the terminal (`vcf cluster …` from plugin 3.7.1 on: termenv sends OSC 11
+  and reads the answer from the terminal, not stdin) swallows the pasted lines still waiting, so
+  nothing may follow the compound command that runs it; the check of its result goes inside that
+  compound (`if vcf cluster … && …; then`).
 - A behaviour change is run for real before README's "Tested on" table claims it. On the owner's
   nested-vsphere-lab the agent logs in itself, only through that checkout's make targets, which read
   the lab's own secrets, so it never handles the password and never asks the owner. On this host

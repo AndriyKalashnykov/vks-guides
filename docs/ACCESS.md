@@ -898,43 +898,88 @@ sent by email or chat. It needs your Supervisor login with the **Can edit** role
 Send the people the file, the namespace from step 3 and the cluster's address (the file's `server:`
 line), so that they can check the file before they use it.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
 KC_KUBECONFIG="$HOME/${VKS_CLUSTER}-keycloak-sv.kubeconfig"
 
-rm -f "$KC_KUBECONFIG"
+rm -f "$KC_KUBECONFIG.new"
 vcf context use supervisor </dev/null
-vcf cluster kubeconfig get "$VKS_CLUSTER" -n "$VKS_NAMESPACE" --export-file "$KC_KUBECONFIG" </dev/null && kubectl --kubeconfig "$KC_KUBECONFIG" config view -o jsonpath='runs: {.users[0].user.exec.command} {.users[0].user.exec.args[0]}{"\n"}'
+RUNS=""
+if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" -o name >/dev/null; then
+  echo "FAILED: cannot read the cluster $VKS_CLUSTER in $VKS_NAMESPACE (see the error above)"
+elif vcf cluster kubeconfig get "$VKS_CLUSTER" -n "$VKS_NAMESPACE" --export-file "$KC_KUBECONFIG.new" </dev/null \
+   && RUNS="$(kubectl --kubeconfig "$KC_KUBECONFIG.new" config view -o jsonpath='{.users[0].user.exec.command} {.users[0].user.exec.args[0]}')" \
+   && [ "$RUNS" = "vcf pinniped-auth" ]; then
+  if mv -f "$KC_KUBECONFIG.new" "$KC_KUBECONFIG"; then echo "runs: $RUNS"; echo "saved $KC_KUBECONFIG"
+  else echo "FAILED: $KC_KUBECONFIG is as it was (see the mv error above)"; fi
+else
+  rm -f "$KC_KUBECONFIG.new"
+  echo "FAILED: the new file runs '$RUNS'; $KC_KUBECONFIG is as it was (see the error above)"
+fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
 $KC_KUBECONFIG = "$HOME\${VKS_CLUSTER}-keycloak-sv.kubeconfig"
 
-Remove-Item -Force -ErrorAction SilentlyContinue $KC_KUBECONFIG
+Remove-Item -Force -ErrorAction SilentlyContinue "$KC_KUBECONFIG.new"
 $null | vcf context use supervisor
-$null | vcf cluster kubeconfig get $VKS_CLUSTER -n $VKS_NAMESPACE --export-file $KC_KUBECONFIG
-if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $KC_KUBECONFIG config view -o jsonpath='runs: {.users[0].user.exec.command} {.users[0].user.exec.args[0]}' }
+& {
+  $global:LASTEXITCODE = $null
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER -o name | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    "FAILED: cannot read the cluster $VKS_CLUSTER in $VKS_NAMESPACE (see the error above)"
+    return
+  }
+  $null | vcf cluster kubeconfig get $VKS_CLUSTER -n $VKS_NAMESPACE --export-file "$KC_KUBECONFIG.new"
+  $RUNS = kubectl --kubeconfig "$KC_KUBECONFIG.new" config view -o jsonpath='{.users[0].user.exec.command} {.users[0].user.exec.args[0]}'
+  if ($RUNS -ceq 'vcf pinniped-auth') {
+    Move-Item -Force "$KC_KUBECONFIG.new" $KC_KUBECONFIG
+    if ($?) { "runs: $RUNS"; "saved $KC_KUBECONFIG" } else { "FAILED: $KC_KUBECONFIG is as it was (see the error above)" }
+  } else {
+    Remove-Item -Force -ErrorAction SilentlyContinue "$KC_KUBECONFIG.new"
+    "FAILED: the new file runs '$RUNS'; $KC_KUBECONFIG is as it was (see the error above)"
+  }
+}
 ```
 
-**Expect:** `You can now access the cluster by specifying '--kubeconfig …' flag`, then
-`runs: vcf pinniped-auth`. A `failed to discover plugin sources …` line from `vcf context use` is
-harmless ([VCF.md](VCF.md)).
+</details>
+
+**Expect:** `You can now access the cluster by specifying '--kubeconfig ….new' flag` (the block
+renames that file), then `runs: vcf pinniped-auth` and `saved …`. A `failed to discover plugin
+sources …` line from `vcf context use` is harmless ([VCF.md](VCF.md)).
 
 **If not:**
-- `Unable to read password from terminal`, or `Unauthorized`: run
-  [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this block again.
-- `context "supervisor" not found`: log in to the Supervisor first
+- `FAILED: cannot read the cluster …` after `clusters.cluster.x-k8s.io "…" not found`: check
+  `VKS_CLUSTER`; after `namespaces "…" not found`: check `VKS_NAMESPACE`.
+- `FAILED: cannot read the cluster …` after `Forbidden`: check `VKS_NAMESPACE` (a user who is not
+  a vCenter administrator gets `Forbidden` for a name that does not exist); if it is right, ask
+  for the **Can edit** role on it.
+- `FAILED: cannot read the cluster …` after `Unauthorized`, or `Unable to read password from
+  terminal`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
+  block again.
+- `FAILED: cannot read the cluster …` after `… supervisor.kubeconfig: no such file or directory`
+  (Windows: `cannot find the file specified`),
+  or `context "supervisor" not found`: log in to the Supervisor first
   ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)).
-- `not found` for the cluster: check `VKS_CLUSTER` and `VKS_NAMESPACE`.
-- No answer for minutes: your role on the namespace cannot read the cluster's details; ask for
-  **Can edit**.
+- `FAILED: the new file runs '…'`: the fetch failed (the error is above) or made another kind of
+  file; the file you had is unchanged.
+- `FAILED: … is as it was`, under a `mv` or `Move-Item` error: the file could not be replaced (the
+  error says why); the new one stays as `….new`.
+- No answer for minutes: the cluster is not ready yet ([CLUSTER.md](CLUSTER.md)), or your role
+  cannot read the cluster's details; ask for **Can edit**.
 
 ### 5. Log in (the person)
 
