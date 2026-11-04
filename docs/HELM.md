@@ -7,11 +7,8 @@
 > - [Helm releases](https://github.com/helm/helm/releases) (versions and checksums)
 > - [Helm 3 End of Life](https://helm.sh/blog/helm-v3-end-of-life) (why this guide installs Helm 4)
 
-Helm installs ready-made app packages (*charts*) into a Kubernetes cluster;
-[MONITORING.md](MONITORING.md) and other guides use it. This downloads the official `helm`
-program, checks that it arrived whole (its SHA-256 checksum) and copies it into `INSTALL_DIR`. If
-that folder needs `sudo` and `sudo` would ask for a password, it uses `~/.local/bin` instead (see
-[PREREQS.md](PREREQS.md#sudo-optional)). On Windows it also adds the folder to your PATH.
+Helm installs ready-made app packages (*charts*) into a VKS cluster;
+[MONITORING.md](MONITORING.md) and other guides use it.
 
 ## Prerequisites
 
@@ -23,7 +20,12 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 |---|---|---|---|
 | your machine | `get.helm.sh` | 443 | downloading Helm and its checksum |
 
-## Install Helm
+## 1. Download and install helm
+
+Run this once on each machine where a guide uses `helm`. It downloads the official `helm` program,
+checks that it arrived whole (its SHA-256 checksum) and copies it into `INSTALL_DIR`. If that
+folder needs `sudo` and `sudo` would ask for a password, it uses `~/.local/bin` instead (see
+[PREREQS.md](PREREQS.md#sudo-optional)). On Windows it also adds the folder to your PATH.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
