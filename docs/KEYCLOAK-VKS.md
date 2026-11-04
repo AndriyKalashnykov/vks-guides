@@ -32,8 +32,8 @@ Run the steps in order. Who does what:
 ## Prerequisites
 
 - a VKS cluster for Keycloak alone, made as below;
-- the [VCF CLI](VCF.md) with the context `supervisor` ([LOGIN.md](LOGIN.md)), for the cert-manager
-  add-on;
+- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
+  for the cert-manager add-on;
 - [kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md);
 - a DNS name for Keycloak that you can point at an address (step 7), resolvable by the people who
   sign in and by the control-plane nodes of every VKS cluster that will trust Keycloak.

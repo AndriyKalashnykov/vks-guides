@@ -21,8 +21,8 @@ exactly that token's rights: someone with a read-only token can look, not change
 
 - a VKS cluster ([CLUSTER.md](CLUSTER.md)) and its administrator kubeconfig
   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
-- the [VCF CLI](VCF.md) with the context `supervisor` ([LOGIN.md](LOGIN.md)), and the edit or
-  owner role on the cluster's vSphere Namespace;
+- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
+  and the edit or owner role on the cluster's vSphere Namespace;
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md);
 - for the Kubescape plugin only (step 11): [Helm](HELM.md);
 - about 250m CPU and 400 MiB of memory free on the workers, for Headlamp and cert-manager.

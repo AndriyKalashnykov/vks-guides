@@ -737,7 +737,7 @@ and `daemonset.apps/fluent-bit restarted`), then `daemon set "fluent-bit" succes
 **If not:**
 - `not found` for the release: copy its name again from LOGGING.md step 1.
 - A login error (`Unauthorized`, `Unable to read password from terminal`,
-  `provide credentials`) or `context supervisor not found`: as in LOGGING.md step 1.
+  `provide credentials`) or `context … not found`: as in LOGGING.md step 1.
 - `FAILED: the add-on also sends to Log Management`: you did LOGGING.md; set `LOGS_FQDN` to Log
   Management's name, so this step keeps that output.
 - `FAILED: add-on update` or `FAILED: add-on install`: the line above it says why.
@@ -1244,8 +1244,8 @@ For this step you need:
 
 - a vCenter administrator for steps 11.1 to 11.4, and for step 11.5 the Supervisor's kubeconfig
   of a user with the Edit role on the vSphere Namespace (or of a vCenter administrator)
-  ([LOGIN.md](LOGIN.md)), saved as `~/.kube/supervisor.kubeconfig` (PowerShell:
-  `$HOME\.kube\supervisor.kubeconfig`);
+  ([LOGIN.md](LOGIN.md)), saved as `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` (PowerShell:
+  `$HOME\.kube\<SUPERVISOR_CONTEXT>.kubeconfig`);
 - a Broadcom support portal account for the download;
 - a Supervisor that reaches `projects.packages.broadcom.com`;
 - in VCF Operations, the vCenter account with **Enable vSphere Supervisor Collection** on (the

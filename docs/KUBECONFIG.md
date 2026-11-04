@@ -30,7 +30,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | file | made by | its login | a copy lets anyone | works for | send it? |
 |---|---|---|---|---|---|
-| `~/.kube/supervisor.kubeconfig` | [LOGIN.md](LOGIN.md#create-supervisor-context-with-ca) (`vcf context create`) | your SSO token | act as you on the Supervisor | 10 hours | no |
+| `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` | [LOGIN.md](LOGIN.md#create-supervisor-context-with-ca) (`vcf context create`) | your SSO token | act as you on the Supervisor | 10 hours | no |
 | `~/.kube/<cluster>.kubeconfig` | [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig), or [Download it](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client) | the cluster's administrator certificate and key | be the cluster's administrator | about a year from when the cluster made it | no |
 | `~/<team>.kubeconfig` | [A ServiceAccount token](ACCESS.md#a-serviceaccount-token) | a ServiceAccount token | act as that ServiceAccount | `DAYS` (30 by default), or until the ServiceAccount is deleted | to the team only |
 | `~/<person>.kubeconfig` | [A personal certificate](ACCESS.md#a-personal-certificate) | a certificate and key | act as that person | `DAYS` (30 by default); cannot be withdrawn | to that person only |
@@ -81,11 +81,11 @@ Name the file with `--kubeconfig` in each command, or make it the default in thi
 
 A file with several contexts (a *context* is a saved "this cluster, as this user"), such as
 `~/.kube/supervisor.kubeconfig` (`supervisor` and one `supervisor:<namespace>` per vSphere
-Namespace) or a merged `~/.kube/config`, uses its current context. Pick another for one command
-with `--context <name>`, or make it the current one with `kubectl config use-context <name>`,
-which changes the file. `KUBECONFIG` may also list several files, separated by `:` (Windows: `;`);
-kubectl then reads them together, the first file wins where two use the same name, and
-`use-context` changes the first file.
+Namespace; the names follow `SUPERVISOR_CONTEXT`) or a merged `~/.kube/config`, uses its current
+context. Pick another for one command with `--context <name>`, or make it the current one with
+`kubectl config use-context <name>`, which changes the file. `KUBECONFIG` may also list several
+files, separated by `:` (Windows: `;`); kubectl then reads them together, the first file wins where
+two use the same name, and `use-context` changes the first file.
 
 ## 3. Hand a file over
 
@@ -129,11 +129,11 @@ its contexts, and only then replaces `~/.kube/config`, keeping the old one as
 `~/.kube/config.before-merge`. It stops, changing nothing, when a file is missing or two files hold
 a context, cluster or user of the same name with different content.
 
-Merge VKS cluster files and hand-outs only. Not `~/.kube/supervisor.kubeconfig` or any file a `vcf`
-login writes (`vcf context list`): `vcf` renews only its own file, so the copy stops working. The
-copy does not follow later changes to a file: after a new file for the same cluster, delete the old
-entries the block names (`kubectl config delete-context <name>`, `delete-cluster`, `delete-user`;
-`kubectl config get-contexts` shows which contexts use them) and merge again.
+Merge VKS cluster files and hand-outs only. Not `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` or any
+file a `vcf` login writes (`vcf context list`): `vcf` renews only its own file, so the copy stops
+working. The copy does not follow later changes to a file: after a new file for the same cluster,
+delete the old entries the block names (`kubectl config delete-context <name>`, `delete-cluster`,
+`delete-user`; `kubectl config get-contexts` shows which contexts use them) and merge again.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

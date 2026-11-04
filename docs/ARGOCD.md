@@ -256,7 +256,7 @@ every half minute until it shows `Ready` and an address: one to two minutes.
 - `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
 - `failed calling webhook` with `connection refused`: the service is still starting after step 2.
   Wait a minute and run the block again.
-- Not `Ready` after 10 minutes: `kubectl --kubeconfig <supervisor.kubeconfig> -n <namespace>
+- Not `Ready` after 10 minutes: `kubectl --kubeconfig <Supervisor kubeconfig> -n <namespace>
   describe argocd argocd-1` shows why. No address: the Supervisor has no free load-balancer
   address.
 
@@ -455,7 +455,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedenti
 **Clusters** lists the namespace at `https://kubernetes.default.svc/?context=<namespace>`, status
 **Unknown** until an Application uses it (picture in step 7).
 
-**If not:** not `Ready` after a minute: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD
+**If not:** not `Ready` after a minute: `kubectl --kubeconfig <Supervisor kubeconfig> -n <ArgoCD
 namespace> get managedentity ns-<namespace> -o yaml` shows, under `conditions`, the ones with
 `status: "False"` and why.
 `MissingRoleBinding`: the RoleBinding was not created.
@@ -725,7 +725,7 @@ cluster: **Missing** and **OutOfSync**.
 - `application destination … is not permitted in project`: create the project above.
 - The tile shows `ComparisonError` with `repository not accessible` or a timeout: the Supervisor
   cannot reach `github.com`. Behind a proxy, add it to the instance:
-  `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> patch argocd argocd-1
+  `kubectl --kubeconfig <Supervisor kubeconfig> -n <ArgoCD namespace> patch argocd argocd-1
   --type merge -p '{"spec":{"repo":{"proxy":{"httpsProxy":"http://<proxy>:<port>"}}}}'`
   (PowerShell: write each `"` inside the quotes as `\"`).
 - `set kubernetesVersion` or another `set …`: that value is empty.
@@ -777,7 +777,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.clust
 **If not:**
 - `OutOfSync` right after a sync: `K8S_VERSION` has a `-vkr.N` ending. Run the Application block
   again without it.
-- `Progressing` after 30 minutes: `kubectl --kubeconfig <supervisor.kubeconfig> -n <namespace>
+- `Progressing` after 30 minutes: `kubectl --kubeconfig <Supervisor kubeconfig> -n <namespace>
   describe clusters.cluster.x-k8s.io <cluster>` shows what it waits for (a VM class too small, a
   namespace without room).
 
@@ -893,7 +893,7 @@ created`.
   the policy below; nothing to do.
 - You ran this block before, with an `argoCDProject:` line in it: that line let every app of that
   project deploy anywhere on the cluster, and running the block again leaves it in place. Delete
-  the destination (`kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> delete
+  the destination (`kubectl --kubeconfig <Supervisor kubeconfig> -n <ArgoCD namespace> delete
   managedentity vks-<namespace>-<cluster>`) and run the block again.
 
 This checks that the cluster was added, and shows when ArgoCD's login to it ends; after that date
@@ -957,11 +957,11 @@ if (-not $D) {
 ![Settings, Clusters: the VKS cluster at https://192.168.101.134:6443 with status Unknown, and the namespace with status Successful](img/argocd/09-clusters.png)
 
 **If not:**
-- Not `Ready`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> get
+- Not `Ready`: `kubectl --kubeconfig <Supervisor kubeconfig> -n <ArgoCD namespace> get
   managedentity vks-<namespace>-<cluster> -o yaml` shows, under `conditions`, the ones with
   `status: "False"` and why.
   `MissingRoleBinding`: the RoleBinding above is missing.
-- `secrets "cls-vks-…" not found`: `kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD
+- `secrets "cls-vks-…" not found`: `kubectl --kubeconfig <Supervisor kubeconfig> -n <ArgoCD
   namespace> get secret -l argocd.argoproj.io/secret-type=cluster` lists the stored destinations.
 
 ArgoCD's certificate is a copy of the one in the VKS cluster's kubeconfig, made when the cluster
@@ -1002,7 +1002,7 @@ if ($LASTEXITCODE -eq 0 -and $K) {
 **Expect:** `notAfter=…`. A later date than ArgoCD's: delete the destination and register again
 (the apps on the cluster keep running, and their Applications show `Unknown` until the
 destination is back):
-`kubectl --kubeconfig <supervisor.kubeconfig> -n <ArgoCD namespace> delete managedentity
+`kubectl --kubeconfig <Supervisor kubeconfig> -n <ArgoCD namespace> delete managedentity
 vks-<namespace>-<cluster>`, then the registration block above. The same date: ask a vCenter
 administrator.
 

@@ -35,8 +35,9 @@ Run the steps in order. Who does what:
 ## Prerequisites
 
 - a VKS cluster for Nexus, made as below;
-- the [VCF CLI](VCF.md) with the context `supervisor` ([LOGIN.md](LOGIN.md)), for the cert-manager
-  add-on (step 2), and the Supervisor kubeconfig `~/.kube/supervisor.kubeconfig` for step 11;
+- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
+  for the cert-manager add-on (step 2), and the Supervisor kubeconfig
+  `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` for step 11;
 - [kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md), and
   [podman or docker](PREREQS.md#podman-and-docker-optional) for step 10;
 - one free load-balancer address, for Nexus (step 4).
@@ -1574,7 +1575,7 @@ else {
 CA to an existing Secret, or to change the CA later (a new Nexus, or step 5's CA renewed), keep the
 Secret's name: add the CA under a new key (`nexus-ca-2`, then `nexus-ca-3`, …) and point the
 cluster's `secretRef.key` at it with
-`kubectl --kubeconfig "$HOME/.kube/supervisor.kubeconfig" -n <vSphere Namespace> edit cluster <cluster name>`;
+`kubectl --kubeconfig <Supervisor kubeconfig> -n <vSphere Namespace> edit cluster <cluster name>`;
 that changes the Cluster and starts the node update (below).
 <!-- TODO-MEASURE: on VKS 3.8, that a new key in the same Secret plus a secretRef.key change rolls the nodes with the new CA -->
 

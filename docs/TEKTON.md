@@ -32,8 +32,8 @@ The blocks keep their files in `~/.config/vks-guides/tekton` (PowerShell:
 - a VKS cluster ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
 - [kubectl](KUBECTL.md), and [curl and jq](PREREQS.md);
-- for A, the [VCF CLI](VCF.md) with the context `supervisor` ([LOGIN.md](LOGIN.md)), and the edit
-  or owner role on the cluster's vSphere Namespace.
+- for A, the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
+  and the edit or owner role on the cluster's vSphere Namespace.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):

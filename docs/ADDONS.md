@@ -22,7 +22,7 @@ Supervisor Service.
 
 ## Prerequisites
 
-- for the two blocks at the end: the [VCF CLI](VCF.md) with the context `supervisor`
+- for the two blocks at the end: the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT`
   ([LOGIN.md](LOGIN.md)).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):

@@ -86,7 +86,7 @@ Harbor registry` may follow the context line; it does no harm here.
 **If not:**
 - `Unauthorized`, `Unable to read password from terminal` or `provide credentials`: your
   Supervisor login ended; run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
-- `context supervisor not found`: create the Supervisor context ([LOGIN.md](LOGIN.md)).
+- `context … not found`: create the Supervisor context ([LOGIN.md](LOGIN.md)).
 - The cluster's list already has `fluent-bit`: it is installed; to change where it sends logs,
   see step 7.
 
@@ -288,7 +288,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 **If not:**
 - `not found` for the release: copy its name again from step 1.
 - A login error (`Unauthorized`, `Unable to read password from terminal`,
-  `provide credentials`) or `context supervisor not found`: as in step 1.
+  `provide credentials`) or `context … not found`: as in step 1.
 
 ## 5. Give Fluent Bit the CA
 
@@ -552,7 +552,7 @@ then run step 6 again.
 - `FAILED: not found`: save the CA as step 2 says.
 - `FAILED: add-on update`: the error above it says why.
 - A login error (`Unauthorized`, `Unable to read password from terminal`,
-  `provide credentials`) or `context supervisor not found`: as in step 1.
+  `provide credentials`) or `context … not found`: as in step 1.
 
 ## 8. Uninstall (optional)
 
@@ -596,6 +596,6 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 within a minute.
 
 **If not:** a login error (`Unauthorized`, `Unable to read password from terminal`,
-`provide credentials`) or `context supervisor not found`: as in step 1.
+`provide credentials`) or `context … not found`: as in step 1.
 
 Back to [README](../README.md).

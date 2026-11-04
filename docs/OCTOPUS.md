@@ -28,8 +28,8 @@ Run the steps in order. Steps 11 to 13 are for later.
 ## Prerequisites
 
 - a VKS cluster for Octopus, made as below;
-- the [VCF CLI](VCF.md) with the context `supervisor` ([LOGIN.md](LOGIN.md)), for the cert-manager
-  add-on (step 2);
+- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
+  for the cert-manager add-on (step 2);
 - [kubectl](KUBECTL.md), [Helm](HELM.md), and [jq, curl and openssl](PREREQS.md);
 - two free load-balancer addresses, one for each Service (step 4);
 - an Octopus licence key, saved as a file: sign up for the free licence

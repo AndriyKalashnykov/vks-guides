@@ -504,7 +504,7 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 **Expect:** your namespace, `Active`, then a table whose `NAME` column holds your VKS cluster.
 
 **If not:**
-- `… supervisor.kubeconfig: no such file or directory`: you are not logged in. Create the
+- `… .kubeconfig: no such file or directory`: you are not logged in. Create the
   Supervisor context first.
 - `NotFound`: check `VKS_NAMESPACE`, or [create the namespace](NAMESPACE.md).
 - `Forbidden`: check `VKS_NAMESPACE` (a user who is not a vCenter administrator gets `Forbidden`
