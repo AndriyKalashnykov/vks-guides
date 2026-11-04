@@ -1316,13 +1316,15 @@ In the admin console (step 12), in the realm `REALM`:
    Authorization Grant** off); **PKCE Method** `S256` → **Next**.
 3. **Login settings**: **Valid redirect URIs** the Callback URL from 11.1, nothing else →
    **Save**.
-4. **Client scopes** tab: remove every scope whose type is **Optional**. Then open
+4. **Client scopes** tab: keep `basic`, `email` and `profile` as **Default**, and remove every
+   scope whose type is **Optional**. Then open
    `supervisor-dedicated` and add a **Group Membership** mapper as in step 9: **Name** and **Token
    Claim Name** `groups`, **Full group path** off, **Add to ID token** on.
 5. **Credentials** tab: copy the **Client Secret** for the vCenter administrator.
 
-Or with Keycloak's admin command line, as in step 9: this makes the same client, or, when
-`supervisor` exists, sets its redirect to `CALLBACK` and prints what it was. It prints the secret
+Or with Keycloak's admin command line, as in step 9: this makes the client with the default
+scopes `basic`, `email` and `profile` only, or, when `supervisor` exists, sets its redirect to
+`CALLBACK` (and prints what it was) and those default scopes. It prints the secret
 only with `SHOW_SECRET="yes"`; then clear the terminal once you have sent it.
 
 <details>
@@ -1374,7 +1376,14 @@ for S in basic profile email; do
   SID=""
   while IFS=, read -r I N; do if [ "$N" = "$S" ]; then SID="$I"; fi; done <<< "$L"
   if [ -z "$SID" ]; then echo "FAILED: no client scope $S in realm $REALM"; exit 1; fi
+  "$K" delete "clients/$ID/optional-client-scopes/$SID" -r "$REALM" >/dev/null 2>&1
   "$K" update "clients/$ID/default-client-scopes/$SID" -r "$REALM" || { echo "FAILED: the client scope $S (see above)"; exit 1; }
+done
+D="$("$K" get "clients/$ID/default-client-scopes" -r "$REALM" --fields name --format csv --noquotes)"
+for S in basic profile email; do
+  OK=""
+  while IFS= read -r N; do if [ "$N" = "$S" ]; then OK="yes"; fi; done <<< "$D"
+  if [ -z "$OK" ]; then echo "FAILED: the client scope $S is not a default scope of supervisor"; exit 1; fi
 done
 echo "client supervisor: default client scopes basic, profile, email"
 if [ "$SHOW_SECRET" = yes ]; then
@@ -1437,7 +1446,14 @@ for S in basic profile email; do
   SID=""
   while IFS=, read -r I N; do if [ "$N" = "$S" ]; then SID="$I"; fi; done <<< "$L"
   if [ -z "$SID" ]; then echo "FAILED: no client scope $S in realm $REALM"; exit 1; fi
+  "$K" delete "clients/$ID/optional-client-scopes/$SID" -r "$REALM" >/dev/null 2>&1
   "$K" update "clients/$ID/default-client-scopes/$SID" -r "$REALM" || { echo "FAILED: the client scope $S (see above)"; exit 1; }
+done
+D="$("$K" get "clients/$ID/default-client-scopes" -r "$REALM" --fields name --format csv --noquotes)"
+for S in basic profile email; do
+  OK=""
+  while IFS= read -r N; do if [ "$N" = "$S" ]; then OK="yes"; fi; done <<< "$D"
+  if [ -z "$OK" ]; then echo "FAILED: the client scope $S is not a default scope of supervisor"; exit 1; fi
 done
 echo "client supervisor: default client scopes basic, profile, email"
 if [ "$SHOW_SECRET" = yes ]; then
@@ -1465,6 +1481,7 @@ then `client secret: not shown …` (the secret with `SHOW_SECRET="yes"`).
 - `FAILED: the admin login`: as in step 9.
 - `client supervisor: exists, its redirect was …`: the client had another redirect, and now has
   `CALLBACK`; if another Supervisor used it, give that one a client of its own.
+- `FAILED: the client scope …`: kcadm's message above says why; run the block again.
 - `FAILED: no client scope …`: the realm lacks one of Keycloak's built-in client scopes `basic`,
   `profile` or `email` (the Keycloak this guide installs has all three): check the realm's
   **Client scopes** in the admin console (step 12).
