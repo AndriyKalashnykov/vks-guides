@@ -2,10 +2,9 @@
 
 Start with [Prerequisites](PREREQS.md) for your OS, on each machine where you paste blocks: the
 guides' blocks use its tools. Then install kubectl and the VCF CLI, in either order; Log in needs
-both. Log in's first part, the Supervisor context, needs only the Supervisor's address
-([NAMESPACE.md](NAMESPACE.md) step 1); its *Check your vSphere Namespace* and *Get the VKS
-cluster's kubeconfig* come after [NAMESPACE.md](NAMESPACE.md) and [CLUSTER.md](CLUSTER.md). Helm is
-needed only by the guides that install apps with it.
+both. Log in's first part, the Supervisor context, needs a vSphere Namespace with a role for your
+user ([NAMESPACE.md](NAMESPACE.md) steps 1 to 4); its *Get the VKS cluster's kubeconfig* comes after
+[CLUSTER.md](CLUSTER.md). Helm is needed only by the guides that install apps with it.
 
 | guide | what it is |
 |---|---|

@@ -328,9 +328,9 @@ if ($LASTEXITCODE -eq 0) {
 
 **If not:**
 - `False` and a message that ends in `insufficient storage quota`: the vSphere Namespace's storage
-  limit is full. A cluster of one control-plane node and two best-effort-small workers needs about
-  72 GB, and about 120 GB while it updates (step 2). Free storage in the namespace, or ask your
-  vCenter administrator to raise its limit.
+  limit is full. A cluster of one control-plane node and two best-effort-small workers in one node
+  pool needs about 72 GB, and about 120 GB while it updates (step 2). Free storage in the namespace,
+  or ask your vCenter administrator to raise its limit.
 - Nothing printed: check `VKS_NAMESPACE` and `VKS_CLUSTER`, or wait until the first block of this
   step lists machines.
 - `Forbidden`: ask your vCenter administrator to run it.
