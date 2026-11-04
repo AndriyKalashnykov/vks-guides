@@ -904,7 +904,7 @@ elif KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf context delete "$SUPERVISOR_CONTEXT
     rm -f "$SUPERVISOR_KUBECONFIG"
     rm -rf "$HOME/.config/vcf/logs"
   else
-    echo "kept $SUPERVISOR_KUBECONFIG: it is not a Supervisor login"
+    echo "kept ${SUPERVISOR_KUBECONFIG}: it is not a Supervisor login"
   fi
   vcf context list </dev/null
 else
@@ -931,7 +931,7 @@ if ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPER
       Remove-Item -Force -ErrorAction SilentlyContinue $SUPERVISOR_KUBECONFIG
       Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$HOME\.config\vcf\logs"
     } else {
-      "kept $SUPERVISOR_KUBECONFIG: it is not a Supervisor login"
+      "kept ${SUPERVISOR_KUBECONFIG}: it is not a Supervisor login"
     }
     $null | vcf context list
   } else {
