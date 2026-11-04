@@ -205,8 +205,8 @@ it changes nothing.
 
 ## 3. Create the namespace and the Secrets
 
-This creates the namespace `octopus` (a namespace inside the VKS cluster, not a vSphere
-Namespace; it does not show in the vSphere Client), which allows only pods that follow the
+This creates the namespace `octopus` (a namespace inside the VKS cluster, not a vSphere Namespace;
+it is not listed under Supervisor Management → Namespaces), which allows only pods that follow the
 `restricted` Pod Security Standard, and these Secrets:
 
 - `sql-sa` and `sql-octopus`: random passwords for SQL Server's administrator `sa` and for the
@@ -451,9 +451,11 @@ again), then `Octopus's web address:` and `Octopus's gRPC address:`, each with a
 the web address as `OCTOPUS_ADDRESS` from here on.
 
 **If not:** `FAILED: no load balancer address`: the cluster has no two free load balancer addresses.
-The vSphere Client shows the Supervisor's range (not which addresses are free): **Supervisor
-Management** → **Supervisors** → your Supervisor → **Configure** → **Supervisor** → **Network** →
-**Load Balancer** → **Virtual Server Network** → **VIEW DETAILS** → **Virtual IP Address Range(s)**.
+With the Foundation Load Balancer, the vSphere Client shows the Supervisor's range (not which
+addresses are free): **Supervisor Management** → **Supervisors** → your Supervisor → **Configure** →
+**Supervisor** → **Network** → **Load Balancer** → **Virtual Server Network** → **VIEW DETAILS** →
+**Virtual IP Address Range(s)**. With NSX or Avi, the range is in that load balancer's own
+settings.
 
 ## 5. Make the web page's certificate
 

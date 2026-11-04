@@ -15,10 +15,10 @@ it in a browser and with `curl`. The page it shows names the engine that built i
 it from the same app pulled from Docker Hub.
 
 Every step works with podman or docker. Steps 3, 4 and 6 start with `CONTAINER_ENGINE="podman"`:
-keep it for podman, or change it to `CONTAINER_ENGINE="docker"` for docker. The app runs in its
-own namespace, `harbor-demo` (a namespace inside the VKS cluster, not a vSphere Namespace; it does
-not show in the vSphere Client): [ARGOCD.md](ARGOCD.md) keeps the same app in `test-web-apps` and
-would undo changes there.
+keep it for podman, or change it to `CONTAINER_ENGINE="docker"` for docker. The app runs in its own
+namespace, `harbor-demo` (a namespace inside the VKS cluster, not a vSphere Namespace; it is not
+listed under Supervisor Management → Namespaces): [ARGOCD.md](ARGOCD.md) keeps the same app in
+`test-web-apps` and would undo changes there.
 
 ## Prerequisites
 
@@ -813,10 +813,11 @@ else {
 ![The app's page in a browser, served from the image in Harbor](img/image/01-app-in-browser.png)
 
 **If not:**
-- `FAILED: … no external IP`: the Supervisor's load balancer has no address left. The vSphere Client
-  shows its range (not which addresses are free): **Supervisor Management** → **Supervisors** → your
-  Supervisor → **Configure** → **Supervisor** → **Network** → **Load Balancer** → **Virtual Server
-  Network** → **VIEW DETAILS** → **Virtual IP Address Range(s)**.
+- `FAILED: … no external IP`: the Supervisor's load balancer has no address left. With the
+  Foundation Load Balancer, the vSphere Client shows its range (not which addresses are free):
+  **Supervisor Management** → **Supervisors** → your Supervisor → **Configure** → **Supervisor** →
+  **Network** → **Load Balancer** → **Virtual Server Network** → **VIEW DETAILS** → **Virtual IP
+  Address Range(s)**. With NSX or Avi, the range is in that load balancer's own settings.
 - No `page:` line: the address does not answer from this machine (a firewall between your network
   and the Supervisor's load balancer network), or the pods are not running (step 6).
 

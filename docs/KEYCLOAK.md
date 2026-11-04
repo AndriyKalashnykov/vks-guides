@@ -97,8 +97,9 @@ the control-plane nodes.
 
 ## 2. Give the group rights (cluster administrator)
 
-This gives the Keycloak group `KEYCLOAK_GROUP` the `edit` role in `TEAM_NAMESPACE`, then shows what
-a member may do. Bind groups, never `system:authenticated`: every user of the realm is in it.
+This creates `TEAM_NAMESPACE` if missing (a namespace inside the VKS cluster, not a vSphere
+Namespace), gives the Keycloak group `KEYCLOAK_GROUP` the `edit` role in it, then shows what a
+member may do. Bind groups, never `system:authenticated`: every user of the realm is in it.
 
 **Linux, macOS, WSL (bash or zsh):**
 

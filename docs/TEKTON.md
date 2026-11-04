@@ -328,10 +328,10 @@ then two `deployment.apps/… condition met` lines and the pods `tekton-operator
 
 This tells the operator which Tekton parts to install: Pipelines, which runs builds, and Triggers,
 which starts them from a web request. They go in the namespace `tekton-pipelines` (a namespace
-inside the VKS cluster, not a vSphere Namespace; it does not show in the vSphere Client), and add
-cluster-wide object types (CRDs) and webhooks. It also makes the containers Tekton adds to each
-run safe enough for step 4's namespace. The operator may take a
-few minutes to accept this, so the block retries, then waits until Tekton runs.
+inside the VKS cluster, not a vSphere Namespace; it is not listed under Supervisor Management →
+Namespaces), and add cluster-wide object types (CRDs) and webhooks. It also makes the containers
+Tekton adds to each run safe enough for step 4's namespace. The operator may take a few minutes to
+accept this, so the block retries, then waits until Tekton runs.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -503,10 +503,11 @@ foreach ($F in $FILES) {
 
 This installs Tekton from those files: first Pipelines, which runs builds, then Triggers, which
 starts them from a web request. They go in the namespaces `tekton-pipelines` and
-`tekton-pipelines-resolvers` (namespaces inside the VKS cluster, not vSphere Namespaces; they do not
-show in the vSphere Client), and add cluster-wide object types (CRDs) and webhooks. Each part must
-finish starting before the next is accepted, so the block retries and waits. It stops if the cluster
-already has the add-on (A). It can take several minutes while the nodes pull the images.
+`tekton-pipelines-resolvers` (namespaces inside the VKS cluster, not vSphere Namespaces; they are
+not listed under Supervisor Management → Namespaces), and add cluster-wide object types (CRDs) and
+webhooks. Each part must finish starting before the next is accepted, so the block retries and
+waits. It stops if the cluster already has the add-on (A). It can take several minutes while the
+nodes pull the images.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

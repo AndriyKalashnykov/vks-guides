@@ -112,8 +112,9 @@ nothing after it, or `daemonset.apps/fluent-bit` if you did [LOGGING.md](LOGGING
 
 ## 2. Create the namespaces
 
-This creates two namespaces: `observability` for Loki and Jaeger, and `podinfo` for the sample
-app. Both keep the cluster's strictest default security for pods (`restricted`).
+This creates two namespaces (inside the VKS cluster, not vSphere Namespaces; they are not listed
+under Supervisor Management → Namespaces): `observability` for Loki and Jaeger, and `podinfo` for
+the sample app. Both keep the cluster's strictest default security for pods (`restricted`).
 
 **Linux, macOS, WSL (bash or zsh):**
 

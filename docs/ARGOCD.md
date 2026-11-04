@@ -1149,7 +1149,8 @@ creates:
 - the project `test-web-apps`, which limits ArgoCD to this one app on this cluster;
 - the Application `test-web-apps`, which ArgoCD deploys at once.
 
-On the cluster you get the namespace `test-web-apps`, five copies (pods) of the web server, and a
+On the cluster you get the namespace `test-web-apps` (inside the VKS cluster, not a vSphere
+Namespace), five copies (pods) of the web server, and a
 Service: an address you can open from your machine. If someone changes or deletes them on the
 cluster, ArgoCD puts them back.
 

@@ -196,6 +196,7 @@ make**: with `edit`, the team could have made lasting tokens for the ServiceAcco
 it made that way with `kubectl create token`, and workloads it started, keep working: delete the
 team's workloads, and delete and re-create any ServiceAccount in `TEAM_NAMESPACE` that has rights.
 So never give `edit` on a namespace that holds software with wider rights.
+
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh

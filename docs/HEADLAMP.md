@@ -222,10 +222,11 @@ installed in the cluster …`, `deployment.apps/headlamp condition met`, then th
   cert-manager was not ready yet; the add-on retries by itself within minutes.
 - `FAILED: … add-on` with `Forbidden`: you need the edit or owner role on the vSphere Namespace.
 - `FAILED: the VCF CLI`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
-- `EXTERNAL-IP` stays `<pending>`: the Supervisor has no free load balancer address. The vSphere
-  Client shows its range (not which addresses are free): **Supervisor Management** →
-  **Supervisors** → your Supervisor → **Configure** → **Supervisor** → **Network** → **Load
-  Balancer** → **Virtual Server Network** → **VIEW DETAILS** → **Virtual IP Address Range(s)**.
+- `EXTERNAL-IP` stays `<pending>`: the Supervisor has no free load balancer address. With the
+  Foundation Load Balancer, the vSphere Client shows its range (not which addresses are free):
+  **Supervisor Management** → **Supervisors** → your Supervisor → **Configure** → **Supervisor** →
+  **Network** → **Load Balancer** → **Virtual Server Network** → **VIEW DETAILS** → **Virtual IP
+  Address Range(s)**. With NSX or Avi, the range is in that load balancer's own settings.
 
 ## 3. Check what the add-on set up
 
@@ -317,8 +318,8 @@ names (role `headlamp-namespace-lister`), so that Headlamp's namespace list work
 inside the other namespaces. Give no one `admin` or `cluster-admin` through Headlamp.
 
 `ACCOUNT`: the person's or team's name (a-z, 0-9, -). `ROLE`: `view` or `edit`. `ACCESS_NAMESPACE`:
-a namespace inside the VKS cluster, not a vSphere Namespace (it does not show in the vSphere
-Client), created if it is missing; empty for every namespace (view only).
+a namespace inside the VKS cluster, not a vSphere Namespace (it is not listed under Supervisor
+Management → Namespaces), created if it is missing; empty for every namespace (view only).
 
 The block makes the ServiceAccount `ACCOUNT` in the namespace `headlamp`. With `ACCESS_NAMESPACE`
 empty it adds the cluster-wide ClusterRoleBinding `headlamp-<ACCOUNT>`. Otherwise it creates

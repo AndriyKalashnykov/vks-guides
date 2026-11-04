@@ -101,9 +101,9 @@ if ($LASTEXITCODE -eq 0) {
 ## 2. Create the namespace
 
 This creates the namespace `gitea`, a separate area of the cluster for everything Gitea needs (a
-namespace inside the VKS cluster, not a vSphere Namespace; it does not show in the vSphere Client).
-Gitea does not need root, so the namespace accepts only pods that run without admin rights (the
-`restricted` level).
+namespace inside the VKS cluster, not a vSphere Namespace; it is not listed under Supervisor
+Management → Namespaces). Gitea does not need root, so the namespace accepts only pods that run
+without admin rights (the `restricted` level).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1104,11 +1104,12 @@ characters, ending in `HEAD` and `refs/heads/main`.
 
 **If not:**
 - `FAILED: no load-balancer address`: if an error is printed above it, fix that first. Otherwise
-  `kubectl --kubeconfig <the VKS kubeconfig> -n gitea describe service gitea-public` says why;
-  often the Supervisor has no free load-balancer address. The vSphere Client shows its range (not
-  which addresses are free): **Supervisor Management** → **Supervisors** → your Supervisor →
-  **Configure** → **Supervisor** → **Network** → **Load Balancer** → **Virtual Server Network** →
-  **VIEW DETAILS** → **Virtual IP Address Range(s)**.
+  `kubectl --kubeconfig <the VKS kubeconfig> -n gitea describe service gitea-public` says why; often
+  the Supervisor has no free load-balancer address. With the Foundation Load Balancer, the vSphere
+  Client shows its range (not which addresses are free): **Supervisor Management** → **Supervisors**
+  → your Supervisor → **Configure** → **Supervisor** → **Network** → **Load Balancer** → **Virtual
+  Server Network** → **VIEW DETAILS** → **Virtual IP Address Range(s)**. With NSX or Avi, the range
+  is in that load balancer's own settings.
 - `Failed to connect` or `timed out` after the clone address: the address is new; wait a minute
   and run this again.
 - git asks for a username or password, or prints `terminal prompts disabled`: the repository is

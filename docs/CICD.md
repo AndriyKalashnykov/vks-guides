@@ -197,8 +197,8 @@ Namespace>` among the names.
 
 ## 2. Create the namespaces
 
-This creates two namespaces (namespaces inside the VKS cluster, not vSphere Namespaces; they do
-not show in the vSphere Client):
+This creates two namespaces (namespaces inside the VKS cluster, not vSphere Namespaces; they are not
+listed under Supervisor Management → Namespaces):
 
 - `cicd-demo`, where the app runs; it accepts only pods without admin rights;
 - the build namespace: `cicd-ci` with Gitea and Tekton, GITLAB.md's `gitlab-runner` with GitLab.
