@@ -1,7 +1,8 @@
 # GitOps and CI/CD
 
 ArgoCD first. For build and deploy on every push, use Gitea and Tekton, or GitLab instead of both.
-Octopus Deploy, for releases promoted through dev, test and prod, comes after ArgoCD.
+Octopus Deploy, for releases promoted through dev, test and prod, comes after ArgoCD; its step 11
+uses Nexus, so do Nexus before it.
 
 | guide | what it is |
 |---|---|
