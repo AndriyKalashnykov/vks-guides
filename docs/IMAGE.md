@@ -532,13 +532,15 @@ project now lists the repository `test-web-apps`.
 - `denied: requested access to the resource is denied` (podman) or `insufficient_scope` (docker):
   the robot may not push to this project.
 
-## 5. Let the cluster pull from a private project (optional)
+## 5. Let the cluster pull from a private project
 
-Skip this for a public project. For a private one, the cluster needs a robot's login: this stores
-it in the cluster as the Secret `harbor-pull`, and step 6 makes the app use it. Use a robot that
-may only pull: in Harbor's web page, a robot with only **Pull Repository** on this project
-([HARBOR.md step 10](HARBOR.md#create-a-robot-account), *In Harbor's web page*); the push robot
-also works, but it can also push. Anyone who may read Secrets in the namespace can read it.
+Needed unless you made the project public (HARBOR.md step 10 makes it private by default). For a
+private one, the cluster needs a robot's login: this stores it in the cluster as the Secret
+`harbor-pull`, and step 6 makes the app use it. Use a robot that may only pull: in Harbor's web
+page, a robot with only **Pull Repository** on this project ([HARBOR.md step
+10](HARBOR.md#create-a-robot-account), *In Harbor's web page*); the push robot also works, but it
+can also push. Set `HARBOR_PULL_ROBOT` to the name Harbor showed for it (`robot$` and the name you
+typed). Anyone who may read Secrets in the namespace can read it.
 
 Type the pull robot's secret in this terminal (it is not shown):
 
@@ -569,7 +571,7 @@ The cluster's nodes log in to Harbor with it when they download the app's image 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 HARBOR_FQDN="harbor.example.test"
-HARBOR_PULL_ROBOT='robot$my-project+pull'
+HARBOR_PULL_ROBOT='robot$my-project-pull'
 APP_NAMESPACE="harbor-demo"
 IMAGE_DIR="$HOME/.config/vks-guides/image"
 
@@ -602,7 +604,7 @@ unset HARBOR_PULL_SECRET
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $HARBOR_FQDN = "harbor.example.test"
-$HARBOR_PULL_ROBOT = 'robot$my-project+pull'
+$HARBOR_PULL_ROBOT = 'robot$my-project-pull'
 $APP_NAMESPACE = "harbor-demo"
 $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 

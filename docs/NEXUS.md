@@ -2062,7 +2062,9 @@ else {
 `kubectl --kubeconfig <file> -n nexus delete certificate nexus-ca nexus-tls`, then the same with
 `secret nexus-ca nexus-tls`, run this block again, then step 5 again.
 
-Then restore (both cases). Set `NEXUS_BACKUP` to the backup's folder:
+Then restore (both cases). **This stops Nexus and deletes its database, images (blobs) and
+keystores, then puts the backup's in their place: anything pushed, created or changed since the
+backup is gone for good.** Set `NEXUS_BACKUP` to the backup's folder:
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

@@ -360,8 +360,9 @@ Two rules keep these separate files working:
 
 ### If you already use kubectl with other clusters
 
-Skip this section if `~/.kube/config` does not exist (`ls ~/.kube/config` reports that it does
-not exist). Tools that create other Kubernetes clusters, such as kind, minikube, Docker Desktop and
+Skip this section if `~/.kube/config` does not exist (`ls ~/.kube/config` reports that it does not
+exist), or if you logged in only as LOGIN.md shows: this block would delete that login. Tools that
+create other Kubernetes clusters, such as kind, minikube, Docker Desktop and
 `aws eks update-kubeconfig`, create it even if you never ran `kubectl` yourself. If that file
 exists, it holds your other clusters, and a `vcf` login made without `KUBECONFIG` set goes into it:
 

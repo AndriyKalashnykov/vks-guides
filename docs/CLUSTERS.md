@@ -1,7 +1,9 @@
 # vSphere Namespaces and VKS clusters
 
-Create the vSphere Namespace (a vCenter administrator's task), then a VKS cluster in it. Add-ons and
-a private container registry (Harbor) are optional.
+Create the vSphere Namespace (a vCenter administrator's task). If you will use a private container
+registry (Harbor), install it next ([HARBOR.md](HARBOR.md) steps 1 to 10): installing it updates
+every node of every VKS cluster. Then create a VKS cluster, and run HARBOR.md step 11 on it. Add-ons
+are optional.
 
 | guide | what it is |
 |---|---|
