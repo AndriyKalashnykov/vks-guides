@@ -63,6 +63,9 @@ blocks; there is nothing to build.
   found`. Outside single quotes a `!` is followed by a space (`[ ! -f x ]`,
   `if ! cmd`); never in a `case` pattern such as `*[!a-z]*`
   (interactive zsh history-expands it). `[^…]` is not a fix: dash reads it differently.
+  macOS's bash 3.2 also expands a `!` inside `'…'` when an earlier `"` on the same line is still
+  open (`N="$(kubectl … -l '!x')"`): put such a value in a variable on its own line
+  (`WORKERS='!x'`) and use `"$WORKERS"`; test it with `docker run -i bash:3.2 bash -i`.
 - Where the terminal does not bracket the paste, a pasted block's later lines wait in the terminal,
   and sudo 1.9.14 or later (`use_pty` by default: Ubuntu, Debian) reads them: nothing may follow a
   line that runs `sudo`, so clean-up goes on that line (`fi; rm -rf "$TMP"`). `vcf context use`

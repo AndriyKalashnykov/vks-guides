@@ -61,9 +61,10 @@ each node is `Ready`, the free memory and image disk on each worker, the default
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
+WORKERS='!node-role.kubernetes.io/control-plane'
 git --version
 if kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes \
-   && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory')" \
+   && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l "$WORKERS" --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory')" \
    && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory')" \
    && SC="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)" \
    && NS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace -o name)"; then

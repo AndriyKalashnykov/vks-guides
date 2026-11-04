@@ -102,12 +102,13 @@ already in the `octopus` and `cert-manager` namespaces are not counted as using 
 VKS_CLUSTER="my-octopus-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
+WORKERS='!node-role.kubernetes.io/control-plane'
 if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
 elif ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
 elif ! command -v helm >/dev/null 2>&1; then echo "MISSING: helm (HELM.md)"
 elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (LOGIN.md)"
 elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide \
-     && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu')" \
+     && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l "$WORKERS" --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu')" \
      && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu')" \
      && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
   [ -n "$N" ] || echo "NO WORKER: this cluster has no worker node"
