@@ -144,7 +144,8 @@ KUBE_CONFIG="$HOME/.kube/config"
 
 MISSING="$(printf '%s\n' "$FILES" | tr ':' '\n' | while IFS= read -r F; do if [ ! -s "$F" ]; then printf '%s ' "$F"; fi; done)"
 if [ -f "$KUBE_CONFIG" ]; then LIST="$KUBE_CONFIG:$FILES"; else LIST="$FILES"; fi
-SAME="$(printf '%s\n' "$LIST" | tr ':' '\n' | while IFS= read -r F; do kubectl --kubeconfig "$F" config view --flatten -o jsonpath='{range .contexts[*]}context {.name}{"\t"}{.context}{"\n"}{end}{range .clusters[*]}cluster {.name}{"\t"}{.cluster}{"\n"}{end}{range .users[*]}user {.name}{"\t"}{.user}{"\n"}{end}' 2>/dev/null; done | sort -u | cut -f1 | sort | uniq -d | tr '\n' ' ')"
+SAME="$(printf '%s\n' "$LIST" | tr ':' '\n' | while IFS= read -r F; do kubectl --kubeconfig "$F" config view --flatten -o jsonpath='{range .contexts[*]}context {.name}{"\t"}{.context}{"\n"}{end}{range .clusters[*]}cluster {.name}{"\t"}{.cluster}{"\n"}{end}{range .users[*]}user {.name}{"\t"}{.user}{"\n"}{end}' 2>/dev/null \
+  || kubectl --kubeconfig "$F" config view --raw -o jsonpath='{range .contexts[*]}context {.name}{"\t"}{.context}{"\n"}{end}{range .clusters[*]}cluster {.name}{"\t"}{.cluster}{"\n"}{end}{range .users[*]}user {.name}{"\t"}{.user}{"\n"}{end}' 2>/dev/null; done | sort -u | cut -f1 | sort | uniq -d | tr '\n' ' ')"
 rm -f "$KUBE_CONFIG.new"
 if [ -n "$MISSING" ]; then
   echo "MISSING: $MISSING"
@@ -172,7 +173,9 @@ $KUBE_CONFIG = "$HOME\.kube\config"
 $MISSING = @($FILES.Split(';') | Where-Object { -not (Test-Path $_ -PathType Leaf) })
 if (Test-Path $KUBE_CONFIG) { $LIST = "$KUBE_CONFIG;$FILES" } else { $LIST = $FILES }
 $SAME = @($LIST.Split(';') | Where-Object { Test-Path $_ -PathType Leaf } | ForEach-Object {
-    $j = (kubectl --kubeconfig $_ config view --flatten -o json 2>$null | Out-String) | ConvertFrom-Json
+    $o = kubectl --kubeconfig $_ config view --flatten -o json 2>$null
+    if ($LASTEXITCODE -ne 0) { $o = kubectl --kubeconfig $_ config view --raw -o json 2>$null }
+    $j = ($o | Out-String) | ConvertFrom-Json
     foreach ($e in @($j.contexts)) { "context $($e.name)`t$($e.context | ConvertTo-Json -Compress -Depth 20)" }
     foreach ($e in @($j.clusters)) { "cluster $($e.name)`t$($e.cluster | ConvertTo-Json -Compress -Depth 20)" }
     foreach ($e in @($j.users)) { "user $($e.name)`t$($e.user | ConvertTo-Json -Compress -Depth 20)" }
