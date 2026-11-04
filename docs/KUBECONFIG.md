@@ -31,12 +31,16 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 | file | made by | its login | a copy lets anyone | works for | send it? |
 |---|---|---|---|---|---|
 | `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` | [LOGIN.md](LOGIN.md#create-supervisor-context-with-ca) (`vcf context create`) | your SSO token | act as you on the Supervisor | 10 hours | no |
-| `~/.kube/<cluster>.kubeconfig` | [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig), or [Download it](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client) | the cluster's administrator certificate and key | be the cluster's administrator | about a year from when the cluster made it | no |
+| `~/.kube/<cluster>.kubeconfig` | [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig), or [Download it](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client) | the cluster's administrator certificate and key | be the cluster's administrator | until the date in its certificate, at most a year; a copy cannot be withdrawn, and only deleting the cluster ends it sooner | no |
 | `~/<team>.kubeconfig` | [A ServiceAccount token](ACCESS.md#a-serviceaccount-token) | a ServiceAccount token | act as that ServiceAccount | `DAYS` (30 by default), or until the ServiceAccount is deleted | to the team only |
 | `~/<person>.kubeconfig` | [A personal certificate](ACCESS.md#a-personal-certificate) | a certificate and key | act as that person | `DAYS` (30 by default); cannot be withdrawn | to that person only |
 | `~/.kube/<cluster>-sso.kubeconfig` | [The person's own SSO account](ACCESS.md#the-persons-own-sso-account) | the person's SSO token | act as that person | 10 hours | no |
 | `~/.kube/<cluster>-keycloak.kubeconfig` | [KEYCLOAK.md](KEYCLOAK.md#3-make-the-persons-kubeconfig-cluster-administrator) | none: runs kubelogin, which asks for a Keycloak sign-in | nothing without a Keycloak account | as long as the cluster's address and CA stay | yes |
 | `~/<cluster>-keycloak-sv.kubeconfig` | [A group from an external identity provider, through the Supervisor](ACCESS.md#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) | none: runs `vcf pinniped-auth login`, which asks for a sign-in | nothing without an account | as long as the address and CA stay | yes |
+
+The last five rows exist only after [ACCESS.md](ACCESS.md) or [KEYCLOAK.md](KEYCLOAK.md). A
+ServiceAccount is a login for a tool or a team rather than a person; kubelogin is a kubectl add-on
+that asks for a sign-in in a browser.
 
 Every file the guides write is readable only by you (Linux, macOS: `-rw-------`; Windows: your
 user, `SYSTEM` and `Administrators`, until [step 3](#3-hand-a-file-over) leaves only your user). The sign-ins of the last two rows are kept elsewhere, also readable only by you: kubelogin's in `~/.kube/cache/oidc-login`,

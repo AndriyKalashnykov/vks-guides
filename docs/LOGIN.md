@@ -14,10 +14,18 @@
 You log in to the Supervisor with the VCF CLI and your vCenter SSO user, then read your VKS
 cluster's kubeconfig from it.
 
-Run the sections in order, in one terminal, doing **one** of
-[Create Supervisor context with CA](#create-supervisor-context-with-ca) or
-[Create Supervisor context without CA](#create-supervisor-context-without-ca). After that, you
-need only [Renew the Supervisor login](#renew-the-supervisor-login) when the login ends, and
+Run these in one terminal, in this order:
+
+1. Log in to the Supervisor, one of
+   [Create Supervisor context with CA](#create-supervisor-context-with-ca) or
+   [Create Supervisor context without CA](#create-supervisor-context-without-ca).
+2. [Check your vSphere Namespace](#check-your-vsphere-namespace).
+3. Get the VKS cluster's kubeconfig, one of
+   [Download the VKS cluster's kubeconfig from the vSphere Client](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)
+   or [Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig).
+4. [Use the VKS cluster](#use-the-vks-cluster).
+
+Later, run [Renew the Supervisor login](#renew-the-supervisor-login) when the login ends, and
 [Log out](#log-out) when you are done.
 
 ## Prerequisites
@@ -27,7 +35,7 @@ need only [Renew the Supervisor login](#renew-the-supervisor-login) when the log
   ([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca), step 1);
 - an SSO user with a role on your vSphere Namespace (for example `administrator@vsphere.local`),
   and its password (a login through a web page, Okta or Entra ID is not covered); to read a VKS
-  cluster's kubeconfig, the **Edit** role;
+  cluster's kubeconfig, the **Namespaces Edit** role;
 - the vSphere Namespace's name and, once you see it in
   [Check your vSphere Namespace](#check-your-vsphere-namespace), the VKS cluster's name.
 
@@ -54,7 +62,9 @@ The Supervisor proves who it is with a certificate, by default signed by vCenter
 that the login can check that it talks to your real Supervisor. It saves them as
 `vcenter-ca.pem.new` and prints each CA's fingerprint, a short code that identifies it. Nothing
 checks the download itself: keep the file (next block) only when the fingerprints match the ones
-your vCenter administrator gives you. Set `VCENTER_FQDN` to vCenter's DNS name.
+your vCenter administrator gives you; they come from
+[NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca) step 1, and if that is
+you, run it yourself. Set `VCENTER_FQDN` to vCenter's DNS name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -171,12 +181,13 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 <a id="create-the-context"></a>**3. Create the context**
 
-This logs you in to the Supervisor with the VCF CLI, as your SSO user with the password from step
-2, and checks the Supervisor's certificate against `SUPERVISOR_CA` (step 1's vCenter CA, or
-`<SUPERVISOR_CONTEXT>.crt` from the Alternative below). The login is saved in
+Run this to log in: it logs you in to the Supervisor with the VCF CLI, as your SSO user with the
+password from step 2, and checks the Supervisor's certificate against `SUPERVISOR_CA` (step 1's
+vCenter CA, or `<SUPERVISOR_CONTEXT>.crt` from the Alternative below). The login is saved in
 `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig`, a kubeconfig of its own (the file kubectl reads to find
-a cluster and log in to it), as the context `SUPERVISOR_CONTEXT` (`supervisor`; give each
-Supervisor its own name: lower-case letters, digits and `-`). Your other kubeconfigs are not
+a cluster and log in to it), as the context (a saved "this server, as this user" entry)
+`SUPERVISOR_CONTEXT` (`supervisor`; give each Supervisor its own name: lower-case letters, digits
+and `-`). Your other kubeconfigs are not
 changed. **A few failed logins in a row lock the SSO user for some minutes**, so type the password
 carefully. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
@@ -417,7 +428,8 @@ Later logins are checked against the Supervisor's certificate, fetched once. Its
 <details>
 <summary><b>Steps</b></summary>
 
-**1. Type your SSO password** (step 1 above).
+**1. Type your SSO password** (step 1 of
+[Create Supervisor context without CA](#create-supervisor-context-without-ca)).
 
 **2. Fetch the certificate**
 
@@ -491,8 +503,14 @@ you fetched it: fetch it again (step 2 above).
 
 ## Check your vSphere Namespace
 
-This checks that your SSO user can see your vSphere Namespace, and lists the VKS clusters in
-it.
+In the vSphere Client, the namespace's **Resources** tab shows its VKS clusters: the
+**Kubernetes** card counts them, and **GO TO SERVICE** lists them (see
+[Download the VKS cluster's kubeconfig from the vSphere Client](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client),
+step 1).
+
+Run this block to check also that your Supervisor login works: it checks that your SSO user can
+see your vSphere Namespace, and lists the VKS clusters in it (`clusters.cluster.x-k8s.io`, the
+Supervisor's list of VKS clusters).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -531,16 +549,106 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
   [Renew the Supervisor login](#renew-the-supervisor-login).
 - `No resources found`: the namespace has no VKS cluster yet: [create one](CLUSTER.md).
 
-## Get the VKS cluster's kubeconfig
+## Download the VKS cluster's kubeconfig from the vSphere Client
 
 kubectl needs a kubeconfig, a file with the cluster's address and a login, to work with your VKS
-cluster. This reads that file from the Supervisor, saves it as `~/.kube/<cluster>.kubeconfig`
-(on Linux, macOS and WSL, readable only by you), then lists the cluster's nodes to show it works.
-It is the cluster's shared administrator login: anyone with the file controls the cluster, and it
-keeps working after your Supervisor login ends, for up to a year, and cannot be withdrawn.
-Keep it private
+cluster. What the file is, whichever way you get it:
+
+- **The cluster's administrator login.** Whoever has the file is an administrator of the whole
+  cluster; it is not limited to a vSphere Namespace or to one person.
+- **It cannot be withdrawn.** It stops working on the date in its certificate
+  ([how long it works](KUBECONFIG.md#the-files-the-guides-make)); download it again then.
+- **It does not depend on an SSO login.** It keeps working after any vCenter login ends.
+
+The vSphere Client gives the same file as
+[Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig) below, byte for byte, without
+the VCF CLI or a Supervisor login on this machine; you need only kubectl afterwards.
+
+1. In the vSphere Client, from the menu (☰) choose **Supervisor Management**, the **Namespaces**
+   tab, and your namespace. Open its **Resources** tab and, on the **Kubernetes** card, click
+   **GO TO SERVICE**.
+
+   ![The Resources tab of a vSphere Namespace: six cards, the Kubernetes card with 1 Kubernetes Cluster and its links GO TO SERVICE and CREATE CLUSTER](img/login/01-resources.png)
+
+2. Click **⋮** at the start of your cluster's row, then **Download Kubeconfig File**.
+
+   ![The vSphere Kubernetes Service list: the menu of the cluster's row with View YAML, Download Kubeconfig File and Delete](img/login/02-cluster-row-menu.png)
+
+   Or click the cluster's name and, on its page, **DOWNLOAD KUBECONFIG FILE**: the same file.
+
+   ![The cluster's page: its name, VIEW YAML, DOWNLOAD KUBECONFIG FILE, and a Summary with Status Available](img/login/03-cluster-page.png)
+
+Run this after the download, because the browser saves the file as `<cluster>-kubeconfig.yaml`
+in your downloads folder, readable by other users of this machine. It moves the file to
+`~/.kube/<cluster>.kubeconfig`, readable only by you, then lists the cluster's nodes (its VMs:
+control plane and workers) to show it works. Set `DOWNLOADED` to where the browser saved it;
+on WSL, a browser on Windows saves it under `/mnt/c/Users/<you>/Downloads`.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+DOWNLOADED="$HOME/Downloads/${VKS_CLUSTER}-kubeconfig.yaml"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+mkdir -p "$HOME/.kube"
+if [ -e "$VKS_KUBECONFIG" ] \
+   && ! kubectl --kubeconfig "$VKS_KUBECONFIG" config get-contexts -o name 2>/dev/null | grep -qxF -- "${VKS_CLUSTER}-admin@${VKS_CLUSTER}"; then
+  echo "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
+elif [ -f "$DOWNLOADED" ] && kubectl --kubeconfig "$DOWNLOADED" config view >/dev/null 2>&1; then
+  install -m 600 "$DOWNLOADED" "$VKS_KUBECONFIG" && rm -f "$DOWNLOADED"
+  kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes
+else
+  echo "FAILED: no kubeconfig at $DOWNLOADED"
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$DOWNLOADED = "$HOME\Downloads\${VKS_CLUSTER}-kubeconfig.yaml"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+New-Item -ItemType Directory -Force "$HOME\.kube" | Out-Null
+$global:LASTEXITCODE = $null
+if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFIG config get-contexts -o name 2>$null) -ccontains "${VKS_CLUSTER}-admin@${VKS_CLUSTER}")) {
+  "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
+} else {
+  if (Test-Path $DOWNLOADED) { kubectl --kubeconfig $DOWNLOADED config view *> $null }
+  if ((Test-Path $DOWNLOADED) -and $LASTEXITCODE -eq 0) {
+    Move-Item -Force $DOWNLOADED $VKS_KUBECONFIG
+    kubectl --kubeconfig $VKS_KUBECONFIG get nodes
+  } else {
+    "FAILED: no kubeconfig at $DOWNLOADED"
+  }
+}
+```
+
+**Expect:** the cluster's nodes, each `Ready`.
+
+**If not:**
+- `FAILED: … holds another login, not this cluster's`: a file of that name is another login (a
+  Supervisor login whose `SUPERVISOR_CONTEXT` is this cluster's name, a hand-out, or a damaged
+  file). It is kept;
+  move it aside, or log out of that Supervisor and log in again with another `SUPERVISOR_CONTEXT`.
+- `FAILED: no kubeconfig at …`: set `DOWNLOADED` to the file the browser saved (a second
+  download of the same name may be saved as `<cluster>-kubeconfig (1).yaml`).
+- `error: You must be logged in to the server (Unauthorized)`: the file has expired; download it
+  again.
+
+## Get the VKS cluster's kubeconfig
+
+Or, with kubectl and your Supervisor login: run this instead of the vSphere Client download when
+you are logged in to the Supervisor in this terminal. It reads the same file from the Supervisor,
+saves it as `~/.kube/<cluster>.kubeconfig` (on Linux, macOS and WSL, readable only by you), then
+lists the cluster's nodes (its VMs: control plane and workers) to show it works. It is the
+cluster's shared administrator login
+([what the file is](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)); keep it
+private
 ([why it is a kubeconfig of its own](VCF.md#why-the-supervisor-and-each-vks-cluster-have-their-own-kubeconfig)).
-Set `VKS_CLUSTER` to a name from the `NAME` column above.
+Set `VKS_CLUSTER` to a name from the `NAME` column of
+[Check your vSphere Namespace](#check-your-vsphere-namespace).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -612,96 +720,10 @@ if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFI
 - `FAILED: no kubeconfig read`, under `secrets "<name>-kubeconfig" not found`: check
   `VKS_CLUSTER`, or the cluster is still being created.
 - … under `Forbidden`: your role on the namespace cannot read the kubeconfig; ask for the
-  **Edit** role, then [Log out](#log-out) and log in again.
+  **Namespaces Edit** role, then [Log out](#log-out) and log in again.
 - … under `Unauthorized`: run [Renew the Supervisor login](#renew-the-supervisor-login).
 - A node `NotReady`: the cluster is still starting, or a node has a problem; ask its
   administrator.
-
-## Download the VKS cluster's kubeconfig from the vSphere Client
-
-The vSphere Client gives the same file as
-[Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig), byte for byte, without the
-VCF CLI or a Supervisor login on this machine; you need only kubectl afterwards. What the file is:
-
-- **The cluster's administrator login.** Whoever has the file is an administrator of the whole
-  cluster; it is not limited to a vSphere Namespace or to one person.
-- **It cannot be withdrawn from one holder.** Only replacing the cluster's certificate authority
-  ends it, and that ends every copy at once.
-- **It stops working about a year after the cluster made it.** Every copy stops on that date,
-  wherever it was given; download it again then.
-- **It does not depend on an SSO login.** It keeps working after any vCenter login ends.
-
-1. In the vSphere Client, from the menu (☰) choose **Supervisor Management**, the **Namespaces**
-   tab, and your namespace. Open its **Resources** tab and, on the **Kubernetes** card, click
-   **GO TO SERVICE**.
-
-   ![The Resources tab of a vSphere Namespace: six cards, the Kubernetes card with 1 Kubernetes Cluster and its links GO TO SERVICE and CREATE CLUSTER](img/login/01-resources.png)
-
-2. Click **⋮** at the start of your cluster's row, then **Download Kubeconfig File**.
-
-   ![The vSphere Kubernetes Service list: the menu of the cluster's row with View YAML, Download Kubeconfig File and Delete](img/login/02-cluster-row-menu.png)
-
-   Or click the cluster's name and, on its page, **DOWNLOAD KUBECONFIG FILE**: the same file.
-
-   ![The cluster's page: its name, VIEW YAML, DOWNLOAD KUBECONFIG FILE, and a Summary with Status Available](img/login/03-cluster-page.png)
-
-The browser saves it as `<cluster>-kubeconfig.yaml` in your downloads folder, readable by other
-users of this machine. This moves it to `~/.kube/<cluster>.kubeconfig`, readable only by you,
-then lists the cluster's nodes to show it works. Set `DOWNLOADED` to where the browser saved it;
-on WSL, a browser on Windows saves it under `/mnt/c/Users/<you>/Downloads`.
-
-**Linux, macOS, WSL (bash or zsh):**
-
-```sh
-VKS_CLUSTER="my-vks-cluster"
-DOWNLOADED="$HOME/Downloads/${VKS_CLUSTER}-kubeconfig.yaml"
-VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-
-mkdir -p "$HOME/.kube"
-if [ -e "$VKS_KUBECONFIG" ] \
-   && ! kubectl --kubeconfig "$VKS_KUBECONFIG" config get-contexts -o name 2>/dev/null | grep -qxF -- "${VKS_CLUSTER}-admin@${VKS_CLUSTER}"; then
-  echo "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
-elif [ -f "$DOWNLOADED" ] && kubectl --kubeconfig "$DOWNLOADED" config view >/dev/null 2>&1; then
-  install -m 600 "$DOWNLOADED" "$VKS_KUBECONFIG" && rm -f "$DOWNLOADED"
-  kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes
-else
-  echo "FAILED: no kubeconfig at $DOWNLOADED"
-fi
-```
-
-**Windows (PowerShell):**
-
-```powershell
-$VKS_CLUSTER = "my-vks-cluster"
-$DOWNLOADED = "$HOME\Downloads\${VKS_CLUSTER}-kubeconfig.yaml"
-$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-
-New-Item -ItemType Directory -Force "$HOME\.kube" | Out-Null
-$global:LASTEXITCODE = $null
-if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFIG config get-contexts -o name 2>$null) -ccontains "${VKS_CLUSTER}-admin@${VKS_CLUSTER}")) {
-  "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
-} else {
-  if (Test-Path $DOWNLOADED) { kubectl --kubeconfig $DOWNLOADED config view *> $null }
-  if ((Test-Path $DOWNLOADED) -and $LASTEXITCODE -eq 0) {
-    Move-Item -Force $DOWNLOADED $VKS_KUBECONFIG
-    kubectl --kubeconfig $VKS_KUBECONFIG get nodes
-  } else {
-    "FAILED: no kubeconfig at $DOWNLOADED"
-  }
-}
-```
-
-**Expect:** the cluster's nodes, each `Ready`.
-
-**If not:**
-- `FAILED: … holds another login, not this cluster's`: a file of that name is another login (a
-  Supervisor login whose `SUPERVISOR_CONTEXT` is this cluster's name, a hand-out, or a damaged
-  file). It is kept;
-  move it aside, or log out of that Supervisor and log in again with another `SUPERVISOR_CONTEXT`.
-- `FAILED: no kubeconfig at …`: set `DOWNLOADED` to the file the browser saved (a second
-  download of the same name may be saved as `<cluster>-kubeconfig (1).yaml`).
-- `error: You must be logged in to the server (Unauthorized)`: the file has expired; download it
-  again.
 
 ## Use the VKS cluster
 
@@ -757,12 +779,13 @@ kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" get nodes
 **Expect:** the cluster's nodes, each `Ready`.
 
 **If not:** `error: You must be logged in to the server (Unauthorized)`: the VKS cluster's file has
-expired (about a year after the cluster made it); run
+expired ([how long it works](KUBECONFIG.md#the-files-the-guides-make)); run
 [Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig) again.
 
 ## Match kubectl to the cluster's version (optional)
 
-Optional: kubectl must be within one minor version of the cluster to be supported. This prints both
+Optional: kubectl must be within one minor version of the cluster to be supported (the middle
+number: 1.36, 1.37 and 1.38 for a 1.37 cluster). This prints both
 versions, so you can tell:
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -808,12 +831,12 @@ terminal and keeps the context `SUPERVISOR_CONTEXT`. Run it only when a `kubectl
 Supervisor answers `error: You must be logged in to the server (Unauthorized)` or `… (the server
 has asked for the client to provide credentials)`, or a `vcf` command answers `Unable to read
 password from terminal` or `the server has asked for the client to provide credentials`. Its
-kubeconfig holds only a token: when the token ends, every context in it fails at once, while
-`vcf context list` still shows them as before, and only a new login (this block) helps, not a new
-file. The VKS cluster's kubeconfig does not need it. In a new terminal, first run the
-password step of the Create section you used, and mind the lock-out. Set `SUPERVISOR_CA` to the
-file you created the context with (the vCenter CA, or `<SUPERVISOR_CONTEXT>.crt`), or to `""` if you created
-it without CA.
+kubeconfig holds only a token (a temporary key from your SSO login): when the token ends, every
+context in it fails at once, while `vcf context list` still shows them as before, and only a new
+login (this block) helps, not a new file. The VKS cluster's kubeconfig does not need it. In a new
+terminal, first run the password step of the Create section you used, and mind the lock-out. Set
+`SUPERVISOR_CA` to the file you created the context with (the vCenter CA, or
+`<SUPERVISOR_CONTEXT>.crt`), or to `""` if you created it without CA.
 
 **Linux, macOS, WSL (bash or zsh):**
 

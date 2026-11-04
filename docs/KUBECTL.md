@@ -9,7 +9,8 @@
 > - [The Kubernetes CLI Tools for vSphere download package (vsphere-plugin.zip) cannot be downloaded from the Web UI](https://knowledge.broadcom.com/external/article/414343/the-kubernetes-cli-tools-for-vsphere-dow.html) (Broadcom KB 414343: the Supervisor's download links)
 > - [Using Intel-based apps on a Mac with Apple silicon](https://support.apple.com/en-us/102527) (Rosetta)
 
-`kubectl` is the Kubernetes command-line tool. Run **one** of the two install blocks:
+`kubectl` is the command-line tool for the Supervisor and your VKS clusters (both are
+Kubernetes). Run **one** of the two install blocks:
 [From dl.k8s.io](#from-dlk8sio), or [From the Supervisor](#from-the-supervisor-dlk8sio-blocked)
 when this machine cannot reach dl.k8s.io. After you log in,
 [match it to your cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
@@ -17,8 +18,10 @@ when this machine cannot reach dl.k8s.io. After you log in,
 ## Prerequisites
 
 - [curl](PREREQS.md); for [From the Supervisor](#from-the-supervisor-dlk8sio-blocked) also
-  [unzip (Photon OS: bsdtar) and openssl](PREREQS.md), the Supervisor's IP address or DNS name, and the vCenter CA
-  from step 1 of [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca).
+  [unzip (Photon OS: bsdtar) and openssl](PREREQS.md), the Supervisor's IP address or DNS name
+  ([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca), step 1), and the
+  vCenter CA from step 1 of
+  [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):
 
@@ -143,7 +146,8 @@ vCenter CA, so first do step 1 of
 `mv` block (on Linux and macOS it needs only curl, unzip or bsdtar, and openssl). On Windows, then trust that
 CA with `Import-Certificate -FilePath "$HOME\.kube\vcenter-ca.pem" -CertStoreLocation
 Cert:\CurrentUser\Root` and confirm with **Yes**. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP
-address or DNS name.
+address or DNS name ([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca),
+step 1).
 
 On Apple silicon this kubectl runs through Rosetta. If you have not installed Rosetta, do it
 first: `softwareupdate --install-rosetta --agree-to-license`.

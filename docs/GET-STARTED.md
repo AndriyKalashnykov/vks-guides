@@ -1,10 +1,26 @@
 # Getting started
 
-Start with [Prerequisites](PREREQS.md) for your OS, on each machine where you paste blocks: the
-guides' blocks use its tools. Then install kubectl and the VCF CLI, in either order; Log in needs
-both. Log in's first part, the Supervisor context, needs a vSphere Namespace with a role for your
-user ([NAMESPACE.md](NAMESPACE.md) steps 1 to 4); its *Get the VKS cluster's kubeconfig* comes after
-[CLUSTER.md](CLUSTER.md). Helm is needed only by the guides that install apps with it.
+The Supervisor is the Kubernetes control plane vCenter runs when Workload Management is on; a VKS
+cluster is a set of VMs in a vSphere Namespace that runs your apps. kubectl is the command-line
+tool for both, and a kubeconfig is the file that tells kubectl which one to reach and how to log in.
+
+Do them in this order:
+
+1. [Prerequisites](PREREQS.md) for your OS, on each machine where you paste blocks: the guides'
+   blocks use its tools.
+2. [Install kubectl](KUBECTL.md). Its *From the Supervisor* needs step 1 of
+   [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca) first.
+3. [Install the VCF CLI](VCF.md), before or after kubectl.
+4. A vSphere Namespace with a role for your user: [NAMESPACE.md](NAMESPACE.md) steps 1 to 4.
+5. [Log in](LOGIN.md) to the Supervisor, up to and including
+   [Check your vSphere Namespace](LOGIN.md#check-your-vsphere-namespace).
+6. A VKS cluster: [CLUSTER.md](CLUSTER.md).
+7. The VKS cluster's kubeconfig, one of
+   [from the vSphere Client](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)
+   or [with kubectl](LOGIN.md#get-the-vks-clusters-kubeconfig), then
+   [Use the VKS cluster](LOGIN.md#use-the-vks-cluster).
+8. [Kubeconfig files](KUBECONFIG.md), when you hand a kubeconfig to someone.
+9. [Install Helm](HELM.md), only for the guides that install apps with it.
 
 | guide | what it is |
 |---|---|

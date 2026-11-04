@@ -214,7 +214,10 @@ Once `vcf` has been used on a machine, every command may first print `The vcf cl
 plugins have not been installed …` and `Failed to install plugin 'telemetry:v9.0.2'`: `vcf` looks
 online for a plugin version Broadcom has not published. The command still runs. Setting
 `VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION` to `v9.1.1` stops the lookup; Broadcom does not document
-this variable. This sets it for this terminal and for new ones.
+this variable. This sets it for this terminal and for new ones: it adds one line to `~/.zshrc` or
+`~/.bashrc` (`~/.bash_profile` on macOS bash, and creates `~/.bash_profile` when bash has none of
+`~/.bash_profile`, `~/.bash_login` and `~/.profile`); on Windows it sets a user environment
+variable.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -292,15 +295,15 @@ sends commands to), each with its own logins. This is how VKS works:
 | | Supervisor | VKS cluster |
 |---|---|---|
 | what you work with there | what is in your vSphere Namespace: VKS clusters, VMs, and Supervisor Services such as ArgoCD (add-ons a vCenter administrator installs on the Supervisor) | your apps |
-| how you can log in | your vCenter SSO account, with your permission on each vSphere Namespace (Can view, Can edit or Owner) | your vCenter SSO account through the Supervisor, or the cluster's administrator certificate, which the cluster keeps on the Supervisor |
-| how long the login lasts | about 10 hours; then you renew it (log in again: [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login)) | the administrator certificate: about a year from when the cluster made it (so 6 to 12 months from when you got the file), whatever happens to your SSO account |
+| how you can log in | your vCenter SSO account, with your role on each vSphere Namespace (**Namespaces View**, **Namespaces Edit** or **Namespaces Owner**; Broadcom's documentation: Can view, Can edit, Owner) | your vCenter SSO account through the Supervisor, or the cluster's administrator certificate, which the cluster keeps on the Supervisor |
+| how long the login lasts | about 10 hours; then you renew it (log in again: [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login)) | the administrator certificate: until the date in it, at most a year ([KUBECONFIG.md](KUBECONFIG.md#the-files-the-guides-make)), whatever happens to your SSO account |
 
 These guides use the administrator certificate for VKS clusters
 ([Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig)): it needs no extra
 login and does not end in the middle of a block. Anyone with a copy of that file is the cluster's
-administrator, and anyone with **Can edit** on the vSphere Namespace can read it. A copy cannot be
-withdrawn: it works until the certificate expires or the cluster is deleted, even after its holder
-loses their permission on the vSphere Namespace. Keep it private.
+administrator, and anyone with **Namespaces Edit** (Can edit) on the vSphere Namespace can read
+it. A copy cannot be withdrawn: it works until the certificate expires or the cluster is deleted,
+even after its holder loses their permission on the vSphere Namespace. Keep it private.
 
 To log in to a VKS cluster as your own SSO user instead, see Broadcom's
 [Log in to a VKS Cluster Using vCenter SSO Credentials](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connecting-to-vsphere-with-tanzu-clusters/connect-to-a-tkg-service-cluster-as-a-vcenter-single-sign-on-user-with-kubectl/log-in-using-credentials.html)
@@ -334,9 +337,9 @@ flowchart TB
 Why separate files:
 
 - each command names the server it acts on, so an app meant for the VKS cluster does not end up on
-  the Supervisor by mistake (with **Can edit** on the vSphere Namespace you can run apps there too,
-  as vSphere Pods, containers that run directly on the ESXi hosts, if your Supervisor's setup
-  supports them);
+  the Supervisor by mistake (with **Namespaces Edit** on the vSphere Namespace you can run apps
+  there too, as vSphere Pods, containers that run directly on the ESXi hosts, if your
+  Supervisor's setup supports them);
 - renewing or ending the Supervisor login leaves the VKS cluster files as they are, and deleting a
   VKS cluster file changes nothing else;
 - your own `~/.kube/config`, if you have one, is not changed.

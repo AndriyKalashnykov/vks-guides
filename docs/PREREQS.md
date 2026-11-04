@@ -20,9 +20,15 @@ any other guide. The sections marked optional are needed only where a guide says
 
 ## Linux (Debian / Ubuntu)
 
+Run this on Debian or Ubuntu: it installs the five tools with apt (needs `sudo`).
+
 ```sh
 sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
 ```
+
+**Expect:** the prompt returns with no `E:` line. Then run [Check](#check).
+
+**If not:** `sudo: command not found`: run it as `root`, without `sudo`.
 
 On other distributions (except AlmaLinux, Photon OS and Arch Linux, below), install the same five packages
 with your package manager.
@@ -48,10 +54,10 @@ This refreshes the package list and installs the tools the guides use, plus basi
 lacks by default (`coreutils`, `findutils`, `gawk`, `diffutils`, `sed`, `grep`).
 
 It installs `libarchive` instead of `unzip`. Photon OS 5's own package repositories have `unzip`,
-but recent Photon VM Service images for a vSphere Namespace are set to a shorter package list from
-Broadcom, without `unzip`, so `sudo tdnf install -y unzip` can fail there. The guides unpack zip
-files with `unzip` where it is installed, and otherwise with `libarchive`'s `bsdtar`, which gives
-the same files.
+but recent Photon OS VMs deployed through a vSphere Namespace's VM Service are set to a shorter
+package list from Broadcom, without `unzip`, so `sudo tdnf install -y unzip` can fail there. The
+guides unpack zip files with `unzip` where it is installed, and otherwise with `libarchive`'s
+`bsdtar`, which gives the same files.
 
 The line can update the SSH server (keep `openssh openssh-socket` in it); its end restarts it, so
 new SSH logins work. Keep this session open until a new one logs in.
@@ -192,7 +198,9 @@ terminal soon after.
 
 If an install printed `note: …/.local/bin added to PATH for this terminal only`, new terminals do
 not find the tool yet. This adds `~/.local/bin` to `PATH`, the list of folders your shell searches
-for commands, in your shell's startup file (`~/.zshrc`, `~/.bashrc` or `~/.bash_profile`):
+for commands, in your shell's startup file (`~/.zshrc`, `~/.bashrc` or `~/.bash_profile`). With
+`~/.bashrc`, it also creates `~/.bash_profile` when bash has none of `~/.bash_profile`,
+`~/.bash_login` and `~/.profile`, so SSH logins read it:
 
 ```sh
 case "$(uname -s)/${BASH_VERSION:+bash}" in
@@ -212,7 +220,8 @@ echo "PATH set in $RC"
 
 ## podman and docker (optional)
 
-Only for [IMAGE.md](IMAGE.md), where you build an image and push it to Harbor. Install one or both
+Only for [IMAGE.md](IMAGE.md) (building app images and uploading them to Harbor, the image
+registry). Install one or both
 for your OS, then run [Check podman and docker](#check-podman-and-docker). Use docker 29.5 or
 newer: docker 29.0 to 29.4 does not trust Harbor's CA when it pushes. Ubuntu's own `docker.io` is
 29.1, so the Ubuntu and AlmaLinux blocks install Docker's own packages; Arch Linux's own `docker` is
@@ -497,8 +506,6 @@ build prints it), then `installed …`. `kubectl oidc-login --help` then prints 
 **If not:** `FAILED: download …`: this machine cannot reach `github.com` and
 `release-assets.githubusercontent.com` on port 443. `note: … added to PATH for this terminal only`:
 see [`~/.local/bin` on your PATH](#localbin-on-your-path).
-
-Back to [README](../README.md).
 
 ## Registry hosts, for a firewall
 
