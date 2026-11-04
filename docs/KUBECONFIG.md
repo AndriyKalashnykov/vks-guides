@@ -175,10 +175,12 @@ if (Test-Path $KUBE_CONFIG) { $LIST = "$KUBE_CONFIG;$FILES" } else { $LIST = $FI
 $SAME = @($LIST.Split(';') | Where-Object { Test-Path $_ -PathType Leaf } | ForEach-Object {
     $o = kubectl --kubeconfig $_ config view --flatten -o json 2>$null
     if ($LASTEXITCODE -ne 0) { $o = kubectl --kubeconfig $_ config view --raw -o json 2>$null }
-    $j = ($o | Out-String) | ConvertFrom-Json
-    foreach ($e in @($j.contexts)) { "context $($e.name)`t$($e.context | ConvertTo-Json -Compress -Depth 20)" }
-    foreach ($e in @($j.clusters)) { "cluster $($e.name)`t$($e.cluster | ConvertTo-Json -Compress -Depth 20)" }
-    foreach ($e in @($j.users)) { "user $($e.name)`t$($e.user | ConvertTo-Json -Compress -Depth 20)" }
+    if ($LASTEXITCODE -eq 0) {
+      $j = ($o | Out-String) | ConvertFrom-Json
+      foreach ($e in @($j.contexts)) { "context $($e.name)`t$($e.context | ConvertTo-Json -Compress -Depth 20)" }
+      foreach ($e in @($j.clusters)) { "cluster $($e.name)`t$($e.cluster | ConvertTo-Json -Compress -Depth 20)" }
+      foreach ($e in @($j.users)) { "user $($e.name)`t$($e.user | ConvertTo-Json -Compress -Depth 20)" }
+    }
   } | Sort-Object -Unique -CaseSensitive | ForEach-Object { $_.Split("`t")[0] } |
   Group-Object -CaseSensitive | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name })
 Remove-Item -Force -ErrorAction SilentlyContinue "$KUBE_CONFIG.new"
