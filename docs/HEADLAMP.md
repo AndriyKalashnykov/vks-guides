@@ -403,9 +403,10 @@ The browser may ask again later, and does when the certificate changes (step 9).
 
 Everyone with a vCenter SSO login to the cluster pastes that login's token into Headlamp; Headlamp
 then has exactly that user's rights. You hold **Can edit** or **Owner** (Prerequisites), so you use
-6.1, and skip ACCESS.md steps 1 and 3. People with narrower rights ([ACCESS.md, "The person's own
-SSO account"](ACCESS.md#the-persons-own-sso-account)) use 6.2: send them steps 5, 6.2 and 7, with
-the address and the fingerprint from step 4.
+6.1, and skip steps 1 and 3 of [ACCESS.md, "The person's own SSO
+account"](ACCESS.md#the-persons-own-sso-account). People with narrower rights from that section use
+6.2: send them steps 5, 6.2 and 7, with the address and the fingerprint from step 4 (they need
+kubectl and jq: PREREQS.md).
 
 First log in to the cluster with your SSO user, as in
 [ACCESS.md](ACCESS.md#the-persons-own-sso-account) step 2a (VCF CLI) or steps 2b to 2d (kubectl
@@ -434,7 +435,7 @@ is an administrator; it changes nothing.
 VKS_CLUSTER="my-vks-cluster"
 VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
 T="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
-C="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | . + ("=" * ((4 - length % 4) % 4)) | @base64d | fromjson | select(.exp|type=="number") | "\(.exp) \(.aud | if type=="array" then .[0] else . end)"' 2>/dev/null)"
+C="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | . + ("=" * ((4 - length % 4) % 4)) | @base64d | fromjson | select(.exp|type=="number") | "\(.exp|floor) \([.aud] | flatten | map(select(type=="string" and startswith("vmware-tes:vc:vns:k8s:"))) | .[0] // "")"' 2>/dev/null)"
 E="${C%% *}"
 AUD="${C#* }"
 ALL="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)"
@@ -472,7 +473,7 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
 $T = kubectl --kubeconfig $VKS_SSO_KUBECONFIG config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>$null
 $E = $null; $AUD = ""
-if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $J = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json; if ($J.exp -is [int] -or $J.exp -is [long] -or $J.exp -is [decimal] -or $J.exp -is [double]) { $E = $J.exp }; $AUD = "$(@($J.aud)[0])" } catch { } }
+if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $J = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json; if ($J.exp -is [int] -or $J.exp -is [long] -or $J.exp -is [decimal] -or $J.exp -is [double]) { $E = $J.exp }; $AUD = "$(@($J.aud) | Where-Object { "$_".StartsWith('vmware-tes:vc:vns:k8s:') } | Select-Object -First 1)" } catch { } }
 $ALL = "$(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth can-i '*' '*' -A 2>$null)"
 if (-not $T -or -not $E) {
   "FAILED: no SSO login for $VKS_CLUSTER in $VKS_SSO_KUBECONFIG; log in first (ACCESS.md)"
@@ -525,7 +526,7 @@ This block prints the token of your SSO login for the cluster; it changes nothin
 VKS_CLUSTER="my-vks-cluster"
 VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
 T="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
-C="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | . + ("=" * ((4 - length % 4) % 4)) | @base64d | fromjson | select(.exp|type=="number") | "\(.exp) \(.aud | if type=="array" then .[0] else . end)"' 2>/dev/null)"
+C="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | . + ("=" * ((4 - length % 4) % 4)) | @base64d | fromjson | select(.exp|type=="number") | "\(.exp|floor) \([.aud] | flatten | map(select(type=="string" and startswith("vmware-tes:vc:vns:k8s:"))) | .[0] // "")"' 2>/dev/null)"
 E="${C%% *}"
 AUD="${C#* }"
 ALL="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)"
@@ -558,7 +559,7 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
 $T = kubectl --kubeconfig $VKS_SSO_KUBECONFIG config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>$null
 $E = $null; $AUD = ""
-if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $J = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json; if ($J.exp -is [int] -or $J.exp -is [long] -or $J.exp -is [decimal] -or $J.exp -is [double]) { $E = $J.exp }; $AUD = "$(@($J.aud)[0])" } catch { } }
+if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $J = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json; if ($J.exp -is [int] -or $J.exp -is [long] -or $J.exp -is [decimal] -or $J.exp -is [double]) { $E = $J.exp }; $AUD = "$(@($J.aud) | Where-Object { "$_".StartsWith('vmware-tes:vc:vns:k8s:') } | Select-Object -First 1)" } catch { } }
 $ALL = "$(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth can-i '*' '*' -A 2>$null)"
 if (-not $T -or -not $E) {
   "FAILED: no SSO login for $VKS_CLUSTER in $VKS_SSO_KUBECONFIG; log in first (ACCESS.md)"
@@ -1206,11 +1207,11 @@ each person), as in step 5.
 Plugins add pages to Headlamp. Broadcom's Headlamp carries two inside it, which need no download;
 a third is downloaded when you turn it on:
 
-| plugin | adds | comes from | on when | a person or account with narrower rights also needs |
+| plugin | adds | comes from | on when | an account from step 8.1 also needs |
 |---|---|---|---|---|
 | cert-manager | **cert-manager** in the menu: certificates, issuers | inside Headlamp | always (step 2 installs cert-manager) | nothing; it sees the certificates in its namespaces |
-| Prometheus | CPU, memory and network charts on pods, nodes, deployments | inside Headlamp | the Prometheus add-on is installed | `headlamp-prometheus-query` (block below): it shows the whole cluster's metrics |
-| Kubescape | **Kubescape**: security scan results, vulnerabilities, compliance | downloaded from ArtifactHub when turned on | Kubescape runs in the cluster and step 9 has `KUBESCAPE_PLUGIN="yes"` | an account for every namespace (empty `ACCESS_NAMESPACE`) and `headlamp-kubescape-reports` (block below): its pages read the whole cluster |
+| Prometheus | CPU, memory and network charts on pods, nodes, deployments | inside Headlamp | the Prometheus add-on is installed | `headlamp-prometheus-query` (step 11.3): it shows the whole cluster's metrics |
+| Kubescape | **Kubescape**: security scan results, vulnerabilities, compliance | downloaded from ArtifactHub when turned on | Kubescape runs in the cluster and step 9 has `KUBESCAPE_PLUGIN="yes"` | an account for every namespace (empty `ACCESS_NAMESPACE`) and `headlamp-kubescape-reports` (step 11.3): its pages read the whole cluster |
 
 The plugins have no rights of their own: each person sees in them what their token may read.
 
@@ -1421,9 +1422,8 @@ Kubescape's pages show the whole cluster: an account limited to one namespace se
 
 ### 11.3 Let an account read the plugins' data (cluster administrator)
 
-This gives an account from step 8.1 what the plugins read. For a person who logs in with their own
-SSO user (step 6.2), the cluster administrator binds the same role to that name, as in ACCESS.md
-step 3.
+This gives an account from step 8.1 what the plugins read. Giving the same to a person who logs
+in with their own SSO user (step 6.2) is not covered here.
 
 - `headlamp-kubescape-reports`: Kubescape's results in every namespace. Given only to an account
   with an empty `ACCESS_NAMESPACE`, when Kubescape is in the cluster: the plugin's pages read the
@@ -1617,8 +1617,8 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 **Expect:** `Addon 'headlamp' installed in the cluster … has been deleted`, `… deleted` lines for
 each binding and role this guide made, and `removed: namespace headlamp is gone`. The namespaces
-step 8.1 made for the accounts stay, with whatever runs in them. `kept: … still used`: an SSO
-user's binding (step 11.3) still names that role; delete that binding first if you want it gone. A second run prints
+step 8.1 made for the accounts stay, with whatever runs in them. `kept: … still used`: a binding you
+made yourself, for example for an SSO user, still names that role; delete that binding first if you want it gone. A second run prints
 `Error: clusterAddon for addon headlamp … not found`, `(not deleted; …)`, and `removed: …` again.
 
 **If not:** `NOT YET: …`: the add-on is still being removed; run the block again. An error about
