@@ -111,7 +111,7 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
-REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null)"
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null | tr -d '\r')"
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
   echo "FAILED: cannot read the Supervisor (see the error above)"
 elif [ -z "$REC" ]; then
@@ -149,7 +149,7 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $global:LASTEXITCODE = $null
-$REC = "$(Get-Content "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)"
+$REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
 elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run HARBOR.md step 1 first" }
@@ -2498,7 +2498,7 @@ HARBOR_PROJECT="cicd-demo"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 GITEA_URL="http://localhost:3300"
 
-REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null)"
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null | tr -d '\r')"
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
   echo "FAILED: cannot read the Supervisor (see the error above)"
 elif [ -z "$REC" ]; then
@@ -2583,7 +2583,7 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 $GITEA_URL = "http://localhost:3300"
 
 $global:LASTEXITCODE = $null
-$REC = "$(Get-Content "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)"
+$REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
 elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run HARBOR.md step 1 first" }

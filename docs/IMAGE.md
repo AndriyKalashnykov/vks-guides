@@ -22,9 +22,10 @@ undo changes there.
 ## Prerequisites
 
 - Harbor with a project and a robot account that may push to it
-  ([HARBOR.md](HARBOR.md), steps 1 to 10), and Harbor's CA from
-  [HARBOR.md step 9](HARBOR.md#save-the-ca) (`harbor-ca.crt` in the Harbor folder) or step 1 below,
-  saved as `~/.config/vks-guides/image/<HARBOR_FQDN>-ca.crt`;
+  ([HARBOR.md](HARBOR.md), steps 1 to 10), and Harbor's CA: step 1 below copies it from
+  [HARBOR.md step 9](HARBOR.md#save-the-ca)
+  (`~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>/harbor-ca.crt`) or downloads it, and saves it
+  as `~/.config/vks-guides/image/<HARBOR_FQDN>-ca.crt`;
 - [podman or docker](PREREQS.md#podman-and-docker-optional), [curl, jq and openssl](PREREQS.md),
   and [kubectl](KUBECTL.md);
 - the VKS cluster's kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
@@ -47,6 +48,65 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 Harbor's certificate is signed by Harbor's own CA (certificate authority), not by one your
 machine already knows. podman and docker need that CA's file to trust Harbor (step 2); without it
 they refuse to connect (`x509: certificate signed by unknown authority`).
+
+If you ran [HARBOR.md step 9](HARBOR.md#save-the-ca) on this machine, copy its CA with the first
+blocks below and go on with step 2. Otherwise download it with the blocks after them.
+
+### If you ran HARBOR.md step 9 on this machine: copy its CA
+
+This copies `harbor-ca.crt` from HARBOR.md's folder to `~/.config/vks-guides/image`, only if it is
+a certificate, and prints its fingerprint.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_FQDN="harbor.example.test"
+IMAGE_DIR="$HOME/.config/vks-guides/image"
+
+SRC="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}/harbor-ca.crt"
+if [ ! -s "$SRC" ]; then
+  echo "FAILED: no $SRC (HARBOR.md step 9); download the CA below"
+elif ! openssl x509 -in "$SRC" -noout -subject -fingerprint -sha256; then
+  echo "FAILED: $SRC is not a certificate (see the error above); nothing copied"
+elif mkdir -p "$IMAGE_DIR" && cp "$SRC" "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt"; then
+  echo "copied to $IMAGE_DIR/${HARBOR_FQDN}-ca.crt"
+else
+  echo "FAILED: nothing copied (see the error above)"
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_FQDN = "harbor.example.test"
+$IMAGE_DIR = "$HOME\.config\vks-guides\image"
+
+$SRC = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}\harbor-ca.crt"
+if (-not (Test-Path -LiteralPath $SRC -PathType Leaf)) { "FAILED: no $SRC (HARBOR.md step 9); download the CA below" }
+else {
+  try {
+    $X = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $SRC -ErrorAction Stop
+    "subject=$($X.Subject)"
+    "sha256 Fingerprint=$(([Security.Cryptography.SHA256]::Create().ComputeHash($X.RawData) | ForEach-Object { $_.ToString('X2') }) -join ':')"
+    New-Item -ItemType Directory -Force -Path $IMAGE_DIR -ErrorAction Stop | Out-Null
+    Copy-Item -Force -LiteralPath $SRC -Destination "$IMAGE_DIR\${HARBOR_FQDN}-ca.crt" -ErrorAction Stop
+    "copied to $IMAGE_DIR\${HARBOR_FQDN}-ca.crt"
+  } catch {
+    "FAILED: nothing copied ($($_.Exception.Message))"
+  }
+}
+```
+
+**Expect:** a `subject=` line, the `sha256 Fingerprint=` that HARBOR.md step 9 printed, and
+`copied to …`. Go on with step 2.
+
+**If not:** `FAILED: no …`: HARBOR.md step 9 was not run on this machine with this
+`SUPERVISOR_CONTEXT`; download the CA below. `FAILED: … is not a certificate`: run HARBOR.md
+step 9 again, or download the CA below. `FAILED: nothing copied`: the error above it says why.
+
+### Otherwise: download it from Harbor
 
 This downloads Harbor's CA from Harbor, saves it as `<HARBOR_FQDN>-ca.crt.new` in
 `~/.config/vks-guides/image` and prints its fingerprint, a short code that identifies it. Harbor
@@ -145,7 +205,7 @@ HARBOR_FQDN="harbor.example.test"
 IMAGE_DIR="$HOME/.config/vks-guides/image"
 
 if [ ! -s "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt" ]; then
-  echo "FAILED: no $IMAGE_DIR/${HARBOR_FQDN}-ca.crt (step 1 above)"
+  echo "FAILED: no $IMAGE_DIR/${HARBOR_FQDN}-ca.crt (step 1 above: download it, or copy it from HARBOR.md step 9)"
 else
   mkdir -p "$HOME/.config/containers/certs.d/$HARBOR_FQDN" \
     && cp "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt" "$HOME/.config/containers/certs.d/$HARBOR_FQDN/ca.crt" \
