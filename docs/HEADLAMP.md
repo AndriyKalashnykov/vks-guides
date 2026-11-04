@@ -233,15 +233,24 @@ installed in the cluster …`, `deployment.apps/headlamp condition met`, then th
 
 ## 3. Check what the add-on set up (cluster administrator)
 
-The add-on gives Headlamp's own account (the ServiceAccount `headlamp`) the cluster's
-administrator role, `cluster-admin`, and runs its namespace `headlamp` (a namespace inside the VKS
-cluster, not a vSphere Namespace) without pod security limits (`privileged`). Headlamp itself uses
-the token each person pastes, never that account, for what people see and do. This shows the
-address, those two settings, and that a request without a token gets nothing. It changes nothing.
+Run this once after the install, before you give anyone Headlamp's address: it proves that
+Headlamp refuses anyone without a login, and shows two powerful settings the add-on made, so you
+know what to protect. It changes nothing.
+
+The two settings:
+
+- Headlamp's own account (the ServiceAccount `headlamp`) has the cluster's administrator role,
+  `cluster-admin`. Headlamp does not use it for what people see and do: it uses the token each
+  person pastes (steps 6 and 7).
+- Its namespace `headlamp` (a namespace inside the VKS cluster, not a vSphere Namespace) runs
+  without pod security limits (`privileged`).
 
 Anyone who may create pods or tokens in the namespace `headlamp` can use that account and so
 controls the cluster. Give no one but cluster administrators rights in `headlamp`: these are
 Kubernetes role bindings in the cluster, not vCenter permissions.
+
+The block prints Headlamp's address, the two settings, and the answer to a request without a token,
+which must be a refusal.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
