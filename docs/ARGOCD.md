@@ -789,7 +789,7 @@ elsewhere. To use the cluster, run [Get the VKS cluster's kubeconfig](LOGIN.md#g
 So far ArgoCD can only create VKS clusters. To deploy apps into the VKS cluster, it needs the
 cluster's login. This:
 
-- lets ArgoCD's account `argocd-k8s-sa` read VKS clusters and their logins, and nothing else (the
+- lets ArgoCD's account `argocd-k8s-sa` read VKS clusters and their logins (the
   role `argocd-manage-vks`, which the ArgoCD Service installs on the Supervisor);
 - asks the ArgoCD Service to add the cluster as a destination: one for every app, step 8's,
   [MONITORING.md](MONITORING.md)'s and [CICD.md](CICD.md)'s alike. Each app's project says what it

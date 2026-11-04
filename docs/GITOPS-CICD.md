@@ -5,8 +5,8 @@ With GitLab, read [CICD.md's Prerequisites](CICD.md#prerequisites) before you cr
 GitLab's cluster needs a worker with its own image disk (tested with 40 GiB), made with
 [CLUSTER.md](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file) step 9, not
 [ARGOCD.md](ARGOCD.md#6-create-a-vks-cluster-with-argocd) step 6. Octopus Deploy, for releases
-promoted through dev, test and prod, needs no other guide of this group; its step 11 uses Nexus, so
-do Nexus before it.
+promoted through dev, test and prod, needs none of the other guides here except Nexus, for its step
+11.
 
 | guide | what it is |
 |---|---|

@@ -1388,8 +1388,8 @@ mkdir -p "$HOME/.config/containers/certs.d/$NEXUS_REGISTRY" \
 ```
 
 **Linux, docker** (run it as a block of its own: it uses `sudo`; podman reads this folder too).
-docker 29.5 or newer reads the CA at once, without a restart; older docker logs in but stops at the
-push with `x509` ([PREREQS.md](PREREQS.md#podman-and-docker-optional)):
+docker 29.5 or newer reads the CA at once, without a restart; docker 29.0 to 29.4 logs in but stops at
+the push with `x509` ([PREREQS.md](PREREQS.md#podman-and-docker-optional)):
 
 ```sh
 NEXUS_REGISTRY="192.168.10.50"

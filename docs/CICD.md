@@ -24,7 +24,7 @@ other steps are the same, and where their blocks set `GIT_SERVER="gitea"`, chang
 
 | | With Gitea and Tekton | With GitLab |
 |---|---|---|
-| done first | [HARBOR.md](HARBOR.md) 1-9; a VKS cluster from [ARGOCD.md](ARGOCD.md) 5 and 6, or from [CLUSTER.md](CLUSTER.md); [ARGOCD.md](ARGOCD.md) 1-4 and 7; [GITEA.md](GITEA.md) 1-8; [TEKTON.md](TEKTON.md) 1 and 2 (A) or 1 and 3 (B) | [HARBOR.md](HARBOR.md) 1-9; a VKS cluster from [CLUSTER.md](CLUSTER.md) step 9 with the `workers:` part below; [ARGOCD.md](ARGOCD.md) 1-4 and 7; [GITLAB.md](GITLAB.md) 1-8 |
+| done first | [HARBOR.md](HARBOR.md) 1-9; [ARGOCD.md](ARGOCD.md) 1-4; a VKS cluster from [ARGOCD.md](ARGOCD.md) 5 and 6, or from [CLUSTER.md](CLUSTER.md); [ARGOCD.md](ARGOCD.md) 7; [GITEA.md](GITEA.md) 1-8; [TEKTON.md](TEKTON.md) 1 and 2 (A) or 1 and 3 (B) | [HARBOR.md](HARBOR.md) 1-9; a VKS cluster from [CLUSTER.md](CLUSTER.md) step 9 with the `workers:` part below; [ARGOCD.md](ARGOCD.md) 1-4 and 7; [GITLAB.md](GITLAB.md) 1-8 |
 | builds in | namespace `cicd-ci` | namespace `gitlab-runner` (GITLAB.md's runner) |
 | writes back from | a Tekton Task with a Gitea bot user's token | a second, locked runner with a project access token |
 | starts on a push | a signed Gitea webhook (step 7) | by itself |
@@ -2463,7 +2463,7 @@ if ($LASTEXITCODE -eq 0) {
 **Expect:** after the password, `<old>..<new>  HEAD -> main`. With Gitea, within a minute
 `kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci get pipelineruns` lists a new run that turns
 `Succeeded`; with GitLab, `http://localhost:3400/cicd/app/-/pipelines` shows a new pipeline that
-turns **Passed**. Then run step 5's check with `WANT="test-web-apps v2"`. The rollout took about
+turns **Passed**. Then run step 5's check with `WANT="test-web-apps v2"`. The rollout can take about
 10 minutes from the push; if the check ends on `test-web-apps v1`, run it once more. Then the page
 says `test-web-apps v2`, `image:` ends in a new `@sha256:…`, and every pod's image ID ends in that
 digest.

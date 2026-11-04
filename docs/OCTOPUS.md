@@ -612,7 +612,7 @@ This runs SQL Server 2025 Express with a 10 GiB volume, waits until it accepts l
 the database `OctopusDeploy` and the login `octopus` that owns it. Octopus uses that login, not
 `sa`. The SQL statements go to `sqlcmd` in the pod on its input, and `sqlcmd` reads the `sa`
 password from the pod's own environment: no password is on a command line. Running this block
-accepts Microsoft's licence terms for SQL Server Express (`ACCEPT_EULA`); read them first.
+accepts Microsoft's licence terms for SQL Server Express (`ACCEPT_EULA`).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -876,7 +876,7 @@ from step 3's Secrets), installs or updates Octopus with it, waits until Octopus
 nginx in front of Octopus's web page with step 5's certificate. Octopus runs as a non-root user
 with a read-only file system, and without Docker-in-Docker (so steps cannot run in containers on
 Octopus's built-in worker). It accepts Octopus Deploy's EULA (`acceptEula`) and gives the `admin`
-user the e-mail `admin@example.com` (change it in the block). The first start takes several
+user the e-mail `admin@example.com`. The first start takes several
 minutes: the nodes download a 1.6 GB image and Octopus creates its database tables.
 
 <details>
