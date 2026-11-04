@@ -282,7 +282,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 }
 ```
 
-**Expect:** the context lines from step 1, then `Addon 'fluent-bit' is being installed in the cluster …`.
+**Expect:** `Addon 'fluent-bit' is being installed in the cluster …`.
 
 **If not:**
 - `not found` for the release: copy its name again from step 1.
@@ -542,8 +542,8 @@ if (-not (Test-Path $CA -PathType Leaf) -or (Get-Item $CA).Length -eq 0) {
 
 </details>
 
-**Expect:** `secret/tls-ca-cert configured` (or `unchanged`), the context lines
-from step 1, `Addon 'fluent-bit' in the cluster … is being updated`, then
+**Expect:** `secret/tls-ca-cert configured` (or `unchanged`), `Addon 'fluent-bit' in the cluster …
+is being updated`, `daemonset.apps/fluent-bit restarted`, then
 `daemon set "fluent-bit" successfully rolled out`. Wait a minute, as the pods may restart once more,
 then run step 6 again.
 
@@ -590,9 +590,8 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 }
 ```
 
-**Expect:** the context lines from step 1, then
-`Addon 'fluent-bit' installed in the cluster … has been deleted`; the Fluent Bit pods go away
-within a minute.
+**Expect:** `Addon 'fluent-bit' installed in the cluster … has been deleted`; the Fluent Bit pods go
+away within a minute.
 
 **If not:** a login error (`Unauthorized`, `Unable to read password from terminal` (Windows:
 `The handle is invalid`), `provide credentials`) or `context … not found`: as in step 1.
