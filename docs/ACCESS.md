@@ -20,7 +20,7 @@ Who does what:
 | role | who it is | does here |
 |---|---|---|
 | cluster administrator | holds the VKS cluster's administrator kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) | gives rights inside the cluster, makes the files and sends them |
-| vCenter administrator | administers vCenter and the Supervisor | gives roles on the vSphere Namespace; reads the identity provider's settings on the Supervisor (registering it: Broadcom's page in the note above) |
+| vCenter administrator | administers vCenter and the Supervisor | gives roles on the vSphere Namespace; registers the identity provider on the Supervisor (for Keycloak: [KEYCLOAK-VKS.md step 11](KEYCLOAK-VKS.md#11-register-keycloak-with-the-supervisor-optional)) and reads its settings |
 | identity provider's administrator | administers the external identity provider (Keycloak in this guide) | makes its users and groups |
 | the person | gets the access | logs in, and sends their name back where a way needs it |
 
@@ -48,7 +48,7 @@ how to hand it over, use and merge it: [KUBECONFIG.md](KUBECONFIG.md).
 - vCenter administrator (SSO and identity provider ways): the vCenter CA
   ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca), step 1); for the identity provider way,
   curl and jq ([PREREQS.md](PREREQS.md)), and the identity provider registered on the Supervisor
-  (Broadcom's page above);
+  (for Keycloak: [KEYCLOAK-VKS.md step 11](KEYCLOAK-VKS.md#11-register-keycloak-with-the-supervisor-optional));
 - the person: kubectl; SSO way: the [VCF CLI](VCF.md) or the kubectl vSphere plugin (step 2c), and
   the vCenter CA (sent in step 1); identity provider way: the VCF CLI and a browser.
 
@@ -682,7 +682,7 @@ binding and run this again.
 ## A group from an external identity provider, through the Supervisor
 
 Once the vCenter administrator has registered an external OpenID Connect (OIDC) identity provider
-on the Supervisor (Broadcom's page in the note above; this guide uses Keycloak as the example),
+on the Supervisor (for Keycloak, the example in this guide: [KEYCLOAK-VKS.md step 11](KEYCLOAK-VKS.md#11-register-keycloak-with-the-supervisor-optional)),
 people in one of its groups sign in to the VKS clusters in a browser with their identity provider
 account; they need no vCenter account.
 
@@ -707,12 +707,12 @@ client's group mapper with **Full group path** off).
 ### 1. Read the provider name and prefix (vCenter administrator)
 
 In the vSphere Client: menu > **Supervisor Management** > **Supervisors** > your Supervisor >
-**Configure** > **Identity Providers** shows a card for the provider (here **keycloak**). Its **VIEW
-SETTINGS** shows the **Provider Name**, the **Issuer URL** (the provider's address; for Keycloak,
-your realm), the **Groups Claim** and the **Prefix**.
+**Configure** > **Supervisor** > **Identity Providers** shows a card for the provider (here
+**keycloak**). Its **VIEW SETTINGS** shows the **Provider Name**, the **Issuer URL** (the provider's
+address; for Keycloak, your realm), the **Groups Claim** and the **Prefix**.
 
-Keep the **Provider Name** for step 2, and send the **Prefix** to the cluster administrator for step
-3. No card: the provider is not registered yet (Broadcom's page in the note above).
+Keep the **Provider Name** for step 2, and send the **Prefix** to the cluster administrator for
+step 3. No card: the provider is not registered yet ([KEYCLOAK-VKS.md step 11](KEYCLOAK-VKS.md#11-register-keycloak-with-the-supervisor-optional)).
 
 ![The Supervisor's Identity Providers page with a card for keycloak](img/access/01-identity-providers.jpg)
 
@@ -743,7 +743,8 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 `IDP_NAME`: the **Provider Name** from step 1. `KC_GROUP`: the group's name at the identity
 provider (in Keycloak, as the realm lists it), letters, digits, `-` or `_` only. A group that
-already has a role gets the new one.
+already has a role gets the new one. After the provider was removed and registered again, run this
+for each group again.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -858,7 +859,7 @@ the VKS cluster. This gives the group `edit` (or `view`) in `TEAM_NAMESPACE` of 
 
 ```sh
 ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
-KC_PREFIX="keycloak"
+KC_PREFIX="keycloak-sv"
 KC_GROUP="k8s-devs"
 TEAM_NAMESPACE="team-a"
 ROLE="edit"
@@ -871,7 +872,7 @@ kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$TEAM_NAMESPACE" create rolebinding
 
 ```powershell
 $ADMIN_KUBECONFIG = "$HOME\.kube\my-vks-cluster.kubeconfig"
-$KC_PREFIX = "keycloak"
+$KC_PREFIX = "keycloak-sv"
 $KC_GROUP = "k8s-devs"
 $TEAM_NAMESPACE = "team-a"
 $ROLE = "edit"
@@ -880,13 +881,13 @@ kubectl --kubeconfig $ADMIN_KUBECONFIG create namespace $TEAM_NAMESPACE --dry-ru
 kubectl --kubeconfig $ADMIN_KUBECONFIG -n $TEAM_NAMESPACE create rolebinding "$KC_PREFIX-$KC_GROUP-$ROLE" "--clusterrole=$ROLE" "--group=${KC_PREFIX}:$KC_GROUP"
 ```
 
-**Expect:** `rolebinding.rbac.authorization.k8s.io/keycloak-k8s-devs-edit created`. It works at
+**Expect:** `rolebinding.rbac.authorization.k8s.io/keycloak-sv-k8s-devs-edit created`. It works at
 once, also for people already signed in.
 
 **If not:** `already exists`: the group already has it.
 
 To take it away, delete that RoleBinding (`kubectl --kubeconfig <admin file> -n team-a delete
-rolebinding keycloak-k8s-devs-edit`).
+rolebinding keycloak-sv-k8s-devs-edit`).
 
 ### 4. Make the group's kubeconfig and hand it over (cluster administrator)
 
