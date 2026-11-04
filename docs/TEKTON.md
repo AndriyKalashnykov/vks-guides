@@ -60,8 +60,9 @@ installed.
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
+WORKERS='!node-role.kubernetes.io/control-plane'
 if kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes \
-   && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,CPU:.status.allocatable.cpu')" \
+   && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l "$WORKERS" --no-headers -o 'custom-columns=NAME:.metadata.name,CPU:.status.allocatable.cpu')" \
    && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,CPU:.spec.containers[*].resources.requests.cpu')" \
    && C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
   { printf '%s\n' "$P" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
