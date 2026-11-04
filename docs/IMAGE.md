@@ -55,9 +55,10 @@ blocks below and go on with step 2. Otherwise download it with the blocks after 
 ### If you ran HARBOR.md step 9 on this machine: copy its CA
 
 This copies `harbor-ca.crt` from HARBOR.md's folder to `~/.config/vks-guides/image`, only if it is
-a certificate, and prints its fingerprint.
+a certificate of the Harbor `HARBOR_FQDN` names, and prints its fingerprint.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 SUPERVISOR_CONTEXT="supervisor"
@@ -65,8 +66,11 @@ HARBOR_FQDN="harbor.example.test"
 IMAGE_DIR="$HOME/.config/vks-guides/image"
 
 SRC="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}/harbor-ca.crt"
+N="$(sed -n 's/^hostname: //p' "$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}/harbor-data-values.yml" 2>/dev/null)"
 if [ ! -s "$SRC" ]; then
   echo "FAILED: no $SRC (HARBOR.md step 9); download the CA below"
+elif [ "$HARBOR_FQDN" != "$N" ]; then
+  echo "FAILED: HARBOR_FQDN ($HARBOR_FQDN) is not this folder's Harbor (${N:-none}); nothing copied"
 elif ! openssl x509 -in "$SRC" -noout -subject -fingerprint -sha256; then
   echo "FAILED: $SRC is not a certificate (see the error above); nothing copied"
 elif mkdir -p "$IMAGE_DIR" && cp "$SRC" "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt"; then
@@ -76,7 +80,10 @@ else
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $SUPERVISOR_CONTEXT = "supervisor"
@@ -84,27 +91,40 @@ $HARBOR_FQDN = "harbor.example.test"
 $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 
 $SRC = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}\harbor-ca.crt"
-if (-not (Test-Path -LiteralPath $SRC -PathType Leaf)) { "FAILED: no $SRC (HARBOR.md step 9); download the CA below" }
+$N = "$((Get-Content "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+if (-not ((Get-Item -LiteralPath $SRC -ErrorAction SilentlyContinue).Length -gt 0)) { "FAILED: no $SRC (HARBOR.md step 9); download the CA below" }
+elseif ($HARBOR_FQDN -cne $N) { "FAILED: HARBOR_FQDN ($HARBOR_FQDN) is not this folder's Harbor ($(if ($N) { $N } else { 'none' })); nothing copied" }
 else {
+  $X = $null
   try {
     $X = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $SRC -ErrorAction Stop
-    "subject=$($X.Subject)"
-    "sha256 Fingerprint=$(([Security.Cryptography.SHA256]::Create().ComputeHash($X.RawData) | ForEach-Object { $_.ToString('X2') }) -join ':')"
-    New-Item -ItemType Directory -Force -Path $IMAGE_DIR -ErrorAction Stop | Out-Null
-    Copy-Item -Force -LiteralPath $SRC -Destination "$IMAGE_DIR\${HARBOR_FQDN}-ca.crt" -ErrorAction Stop
-    "copied to $IMAGE_DIR\${HARBOR_FQDN}-ca.crt"
   } catch {
-    "FAILED: nothing copied ($($_.Exception.Message))"
+    "FAILED: $SRC is not a certificate ($($_.Exception.Message)); nothing copied"
+  }
+  if ($X) {
+    try {
+      "subject=$($X.Subject)"
+      "sha256 Fingerprint=$(([Security.Cryptography.SHA256]::Create().ComputeHash($X.RawData) | ForEach-Object { $_.ToString('X2') }) -join ':')"
+      New-Item -ItemType Directory -Force -Path $IMAGE_DIR -ErrorAction Stop | Out-Null
+      Copy-Item -Force -LiteralPath $SRC -Destination "$IMAGE_DIR\${HARBOR_FQDN}-ca.crt" -ErrorAction Stop
+      "copied to $IMAGE_DIR\${HARBOR_FQDN}-ca.crt"
+    } catch {
+      "FAILED: nothing copied ($($_.Exception.Message))"
+    }
   }
 }
 ```
+
+</details>
 
 **Expect:** a `subject=` line, the `sha256 Fingerprint=` that HARBOR.md step 9 printed, and
 `copied to …`. Go on with step 2.
 
 **If not:** `FAILED: no …`: HARBOR.md step 9 was not run on this machine with this
-`SUPERVISOR_CONTEXT`; download the CA below. `FAILED: … is not a certificate`: run HARBOR.md
-step 9 again, or download the CA below. `FAILED: nothing copied`: the error above it says why.
+`SUPERVISOR_CONTEXT`; download the CA below. `FAILED: HARBOR_FQDN (…) is not this folder's
+Harbor (…)`: set `HARBOR_FQDN` to your Harbor's name, or `SUPERVISOR_CONTEXT` to the login of the
+Supervisor that runs it. `FAILED: … is not a certificate`: run HARBOR.md step 9 again, or download
+the CA below. `FAILED: nothing copied`: the error above it says why.
 
 ### Otherwise: download it from Harbor
 

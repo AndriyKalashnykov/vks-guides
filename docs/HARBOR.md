@@ -89,6 +89,7 @@ else
   if [ -z "$M" ] || [ "$(printf '%s\n' "$M" | grep -c .)" != 1 ]; then
     echo "moved to $NEW; bind it: Bind the moved files to this Supervisor"
   elif ! printf '%s\n' "${M#none-before-}" > "$NEW/supervisor-uid"; then
+    rm -f "$NEW/supervisor-uid"
     echo "moved to $NEW, but FAILED: cannot write $NEW/supervisor-uid (see the error above)"
   else
     echo "moved to $NEW, recorded Supervisor ${M#none-before-}"
@@ -126,6 +127,7 @@ else {
         Set-Content -Encoding ascii -Path "$NEW\supervisor-uid" -Value $U -ErrorAction Stop
         "moved to $NEW, recorded Supervisor $U"
       } catch {
+        Remove-Item -LiteralPath "$NEW\supervisor-uid" -ErrorAction SilentlyContinue
         "moved to $NEW, but FAILED: cannot write $NEW\supervisor-uid ($($_.Exception.Message))"
       }
     }
@@ -139,7 +141,8 @@ else {
 
 **If not:**
 - `FAILED: … exists; nothing moved`: if `harbor-<SUPERVISOR_CONTEXT>` holds only `supervisor-uid`
-  (and maybe a `none-before-…` file), step 1 made it: delete that folder and run this block again.
+  (and maybe a `none-before-…` file), step 1 made it: rename it (`mv` it to
+  `harbor-<SUPERVISOR_CONTEXT>.old`; PowerShell `Rename-Item`) and run this block again.
   Otherwise compare the `hostname:` line of each folder's `harbor-data-values.yml` with the Harbor
   in the vSphere Client, and keep the matching one.
 - `FAILED: nothing moved (see the error above)`: the error names the cause (often no permission);
@@ -151,13 +154,15 @@ else {
 
 ### Bind the moved files to this Supervisor
 
-Run this only when you know these files belong to the Supervisor this login reaches: the Harbor
-it runs has the hostname the block prints. It records that Supervisor's ID in `supervisor-uid`.
+Run this only for files that belong to the Supervisor this login reaches. The first run prints the
+Harbor hostname in the files and writes nothing. If that is the Harbor of this Supervisor, set
+`BIND_HOSTNAME` to it and run the block again: it records the Supervisor's ID in `supervisor-uid`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
+BIND_HOSTNAME=""
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
@@ -165,14 +170,16 @@ HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 N="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
 if [ ! -d "$HARBOR_DIR" ]; then
   echo "FAILED: $HARBOR_DIR does not exist; nothing to bind"
-elif [ -e "$HARBOR_DIR/supervisor-uid" ]; then
+elif [ -n "$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null | tr -d '\r')" ]; then
   echo "FAILED: $HARBOR_DIR already has a supervisor-uid; nothing changed"
+elif [ -z "$BIND_HOSTNAME" ] || [ "$BIND_HOSTNAME" != "${N:-none}" ]; then
+  echo "hostname in these files: ${N:-none}; if that is the Harbor of the Supervisor this login reaches, set BIND_HOSTNAME=\"${N:-none}\" and run this again"
 elif ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
   echo "FAILED: cannot read the Supervisor (see the error above)"
 elif ! printf '%s\n' "$SUP" > "$HARBOR_DIR/supervisor-uid"; then
+  rm -f "$HARBOR_DIR/supervisor-uid"
   echo "FAILED: cannot write $HARBOR_DIR (see the error above)"
 else
-  echo "Harbor hostname in these files: ${N:-none}"
   echo "bound $HARBOR_DIR to the Supervisor $SUP"
 fi
 ```
@@ -183,23 +190,27 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
+$BIND_HOSTNAME = ""
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
 $N = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
+if (-not $N) { $N = "none" }
 if (-not (Test-Path -LiteralPath $HARBOR_DIR -PathType Container)) { "FAILED: $HARBOR_DIR does not exist; nothing to bind" }
-elseif (Test-Path "$HARBOR_DIR\supervisor-uid") { "FAILED: $HARBOR_DIR already has a supervisor-uid; nothing changed" }
-else {
+elseif ("$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()) { "FAILED: $HARBOR_DIR already has a supervisor-uid; nothing changed" }
+elseif (-not $BIND_HOSTNAME -or $BIND_HOSTNAME -cne $N) {
+  "hostname in these files: ${N}; if that is the Harbor of the Supervisor this login reaches, set BIND_HOSTNAME=`"${N}`" and run this again"
+} else {
   $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
   if ($LASTEXITCODE -ne 0 -or -not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
   else {
     try {
       Set-Content -Encoding ascii -Path "$HARBOR_DIR\supervisor-uid" -Value $SUP -ErrorAction Stop
-      "Harbor hostname in these files: $(if ($N) { $N } else { 'none' })"
       "bound $HARBOR_DIR to the Supervisor $SUP"
     } catch {
+      Remove-Item -LiteralPath "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue
       "FAILED: cannot write $HARBOR_DIR ($($_.Exception.Message))"
     }
   }
@@ -208,10 +219,14 @@ else {
 
 </details>
 
-**Expect:** `Harbor hostname in these files: <your Harbor's name>`, then
-`bound … to the Supervisor <uid>`. Then run step 1.
+**Expect:** first run: `hostname in these files: <your Harbor's name>; …`. Second run, with
+`BIND_HOSTNAME` set to that name: `bound … to the Supervisor <uid>`. Then run step 1.
 
 **If not:**
+- The hostname is not this Supervisor's Harbor: the folder belongs to another Supervisor. Log in
+  to that one under its own `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)),
+  or move the folder aside (`mv ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT> ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>.old`;
+  PowerShell: `Rename-Item $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT> harbor-<SUPERVISOR_CONTEXT>.old`).
 - `FAILED: … already has a supervisor-uid`: the folder is bound already; run step 1, and see its
   **If not** if it says the folder belongs to another Supervisor.
 - `FAILED: cannot read the Supervisor`: as in step 1's **If not**.
@@ -233,18 +248,19 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null | tr -d '\r')"
+N="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
   echo "FAILED: cannot read the Supervisor (see the error above)"
 elif [ -n "$REC" ] && [ "$REC" != "$SUP" ]; then
-  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
+  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC, Harbor ${N:-none}); set another SUPERVISOR_CONTEXT"
 elif [ -z "$REC" ] && { [ -e "$HARBOR_DIR/secrets.env" ] || [ -e "$HARBOR_DIR/harbor-data-values.yml" ]; }; then
-  N="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
   echo "FAILED: $HARBOR_DIR holds Harbor files of an unknown Supervisor (hostname: ${N:-none}); if they belong to this Supervisor, bind them: see Files from an earlier version"
 elif ! H="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o name)"; then
   echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
 else
   MARK="$HARBOR_DIR/none-before-$SUP"
   if [ -z "$REC" ] && ! { mkdir -p "$HARBOR_DIR" && printf '%s\n' "$SUP" > "$HARBOR_DIR/supervisor-uid"; }; then
+    rm -f "$HARBOR_DIR/supervisor-uid"
     echo "FAILED: cannot write $HARBOR_DIR (see the error above)"
   elif [ -z "$H" ] && [ ! -e "$MARK" ] && ! : > "$MARK"; then
     echo "FAILED: cannot write $HARBOR_DIR (see the error above)"
@@ -271,13 +287,13 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
+$N = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 if ($LASTEXITCODE -ne 0 -or -not $SUP) {
   "FAILED: cannot read the Supervisor (see the error above)"
 } elseif ($REC -and $REC -cne $SUP) {
-  "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
+  "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC, Harbor $(if ($N) { $N } else { 'none' })); set another SUPERVISOR_CONTEXT"
 } elseif (-not $REC -and ((Test-Path "$HARBOR_DIR\secrets.env") -or (Test-Path "$HARBOR_DIR\harbor-data-values.yml"))) {
-  $N = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
   "FAILED: $HARBOR_DIR holds Harbor files of an unknown Supervisor (hostname: $(if ($N) { $N } else { 'none' })); if they belong to this Supervisor, bind them: see Files from an earlier version"
 } else {
   $H = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name
@@ -296,6 +312,9 @@ if ($LASTEXITCODE -ne 0 -or -not $SUP) {
       }
       $OK = $true
     } catch {
+      if (-not "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()) {
+        Remove-Item -LiteralPath "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue
+      }
       "FAILED: cannot write $HARBOR_DIR ($($_.Exception.Message))"
     }
     if ($OK) {
@@ -324,12 +343,10 @@ on at the step you need.
 - `namespace/svc-harbor-…` and `recorded: nothing …`: this Supervisor already runs a Harbor that
   you did not install. Use it, and do not install a second one.
 - `FAILED: … belongs to another Supervisor (…)`:
-  - If you disabled and enabled this Supervisor again, the folder belongs to the old one and its
-    Harbor is gone. Check in the vSphere Client that no Harbor runs (**Supervisor Management** →
-    **Supervisors** → **View** in your Supervisor's **Services** column), then delete the folder
-    (`rm -rf ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>`; PowerShell:
-    `Remove-Item -Recurse -Force $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT>`) and run
-    this block again.
+  - If you disabled and enabled this Supervisor again, the folder belongs to the old one. Move it
+    aside (`mv ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT> ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>.old`;
+    PowerShell: `Rename-Item $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT> harbor-<SUPERVISOR_CONTEXT>.old`)
+    and run this block again. Delete the `.old` folder later, only once you know its Harbor is gone.
   - Otherwise this folder holds the files of the Supervisor that this context name was used for
     before. Log in to this Supervisor under another name
     ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)) and set `SUPERVISOR_CONTEXT` to it in
@@ -2386,7 +2403,8 @@ certificate team may take days.
      configuration*), then click **FINISH**. The box shows Harbor's passwords and your key: do not
      share your screen. Then step 6 *Empty the clipboard*.
   4. *Restart Harbor's web server* below.
-  5. Steps 8, 9 and 11, then give the new `harbor-ca.crt` to whatever uses Harbor.
+  5. Steps 8, 9 and 11, then [IMAGE.md steps 1 and 2](IMAGE.md#1-get-harbors-ca) on every
+     machine that pushes.
 
 To go back to Harbor's own certificate, set the three variables `HARBOR_TLS_CRT`,
 `HARBOR_TLS_KEY` and `HARBOR_CA_CRT` to `""` and do the same. Harbor
@@ -2980,11 +2998,12 @@ else {
 - `Nothing deleted: a Harbor is still …`: these files belong to it; keep them.
 - `Nothing deleted: … belongs to another Supervisor (…)`: the folder belongs to the Supervisor
   that this context name was used for before, or to this Supervisor before it was deployed again
-  (a new UID). Keep it while that Harbor exists; once you know it is gone, delete the folder by
-  hand (`rm -rf ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>`; PowerShell:
-  `Remove-Item -Recurse -Force $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT>`).
+  (a new UID). To free the name, move it aside
+  (`mv ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT> ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>.old`;
+  PowerShell: `Rename-Item $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT> harbor-<SUPERVISOR_CONTEXT>.old`).
+  Delete the `.old` folder only once you know its Harbor is gone.
 - `Nothing deleted: … has no supervisor-uid`: step 1 was not run with this `SUPERVISOR_CONTEXT`;
-  check that the folder is the one you mean, then delete it the same way.
+  move the folder aside the same way.
 
 If you trusted Harbor's CA for podman or docker, [IMAGE.md step 8](IMAGE.md#8-remove-it-optional)
 says how to stop.
