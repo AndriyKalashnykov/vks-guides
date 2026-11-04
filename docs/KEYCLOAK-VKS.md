@@ -243,10 +243,11 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 ## 3. Create the namespace and the passwords
 
-This creates the namespace `keycloak`, which allows only pods that follow the `restricted` Pod
-Security Standard, and two Secrets with random passwords: one for PostgreSQL and one for
-Keycloak's first administrator, `admin`. Nothing prints a password. A Secret that exists is kept:
-PostgreSQL keeps the password it was first given.
+This creates the namespace `keycloak` (a namespace inside the VKS cluster, not a vSphere
+Namespace; it does not show in the vSphere Client), which allows only pods that follow the
+`restricted` Pod Security Standard, and two Secrets with random passwords: one for PostgreSQL and
+one for Keycloak's first administrator, `admin`. Nothing prints a password. A Secret that exists
+is kept: PostgreSQL keeps the password it was first given.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -888,8 +889,11 @@ rolled out`, then `Keycloak's address:` and an IP address.
   still runs, but no change to PostgreSQL applies until you set `storage: 5Gi` in the block.
 - `exceeded its progress deadline` when you run the block again after a failed run: Keycloak was
   still starting. Wait a minute and run the block again.
-- `Keycloak's address:` with nothing after it: the cluster has no free load balancer address; ask
-  your vSphere administrator.
+- `Keycloak's address:` with nothing after it: the cluster has no free load balancer address. The
+  vSphere Client shows the Supervisor's range (not which addresses are free): **Supervisor
+  Management** → **Supervisors** → your Supervisor → **Configure** → **Supervisor** → **Network** →
+  **Load Balancer** → **Virtual Server Network** → **VIEW DETAILS** → **Virtual IP Address
+  Range(s)**.
 
 ## 6. Save Keycloak's CA
 

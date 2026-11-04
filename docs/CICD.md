@@ -197,7 +197,8 @@ Namespace>` among the names.
 
 ## 2. Create the namespaces
 
-This creates two namespaces:
+This creates two namespaces (namespaces inside the VKS cluster, not vSphere Namespaces; they do
+not show in the vSphere Client):
 
 - `cicd-demo`, where the app runs; it accepts only pods without admin rights;
 - the build namespace: `cicd-ci` with Gitea and Tekton, GITLAB.md's `gitlab-runner` with GitLab.
@@ -1799,8 +1800,8 @@ then within a few minutes `Succeeded: Tasks Completed: 2 (Failed: 0, Cancelled 0
 
 This prepares GitLab's runners for the build, then runs the pipeline once:
 
-- GITLAB.md step 8's runner also takes jobs from `cicd/app`. It is installed again so that its jobs
-  get Harbor's certificate and the `push` robot from step 3.
+- GITLAB.md step 8's runner also takes jobs from `cicd/app`. It is installed again with Helm and
+  restarted, so that its jobs get Harbor's certificate and the `push` robot from step 3.
 - A second runner, `gitlab-writeback`, is the only one that may write to `deploy`. It takes only the
   write-back job, and gets a token that may push to `cicd/deploy` for 30 days.
 
@@ -2103,7 +2104,9 @@ Then run step 5's check with `WANT="test-web-apps v1"`.
 
 This makes every push to `app` start a build. It creates:
 
-- in `cicd-ci`, a listener that starts the build when Gitea reports a push to `main`;
+- in `cicd-ci`, a listener that starts the build when Gitea reports a push to `main`, and two
+  cluster-wide objects for it, the ClusterRole and ClusterRoleBinding `cicd-listener`, which let
+  it read Tekton's cluster interceptors and cluster trigger bindings;
 - a random shared secret in the Secret `cicd-webhook`; the listener ignores messages not signed
   with it;
 - a rule that lets only Gitea reach the listener;
@@ -2481,8 +2484,11 @@ in that digest.
 
 This removes what this guide made: the Application (ArgoCD deletes the app with it) and its
 project, the namespaces, the Harbor project with its robots and images, and the repositories. The
-Git server, Tekton or the runner from the other guides stay. With Gitea, run it in the terminal
-where you typed the Gitea password in step 4.
+Git server, Tekton or the runner from the other guides stay. With Gitea it also deletes the user
+`cicd-bot` and the cluster-wide ClusterRole and ClusterRoleBinding `cicd-listener`. **With
+GitLab it deletes the whole GitLab group `cicd`, with every project in it**, and the runner
+`gitlab-writeback`, and puts GITLAB.md's runner back to its step 8 settings. With Gitea, run it
+in the terminal where you typed the Gitea password in step 4.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

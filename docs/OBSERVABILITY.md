@@ -1430,7 +1430,9 @@ Services. An error naming the YAML: you chose the wrong file.
 
    ![The Validate step: Compatibility Check Pass and Signature Verification Pass](img/observability/15-ma-validate.jpg)
 
-4. **Review:** leave **YAML Service Config (optional)** empty. Click **FINISH**.
+4. **Review:** leave **YAML Service Config (optional)** empty. **Once FINISH installs the
+   service, the Supervisor labels every new VKS cluster `enabled`, and Broadcom's Telegraf and
+   Prometheus add-ons run in it, unless the cluster's label is `disabled`.** Click **FINISH**.
 
    ![The Review step with the empty YAML Service Config box](img/observability/16-ma-review.jpg)
 

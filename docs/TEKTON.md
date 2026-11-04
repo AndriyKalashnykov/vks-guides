@@ -327,8 +327,10 @@ then two `deployment.apps/… condition met` lines and the pods `tekton-operator
 - `FAILED: the VCF CLI`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
 This tells the operator which Tekton parts to install: Pipelines, which runs builds, and Triggers,
-which starts them from a web request. They go in the namespace `tekton-pipelines`. It also makes
-the containers Tekton adds to each run safe enough for step 4's namespace. The operator may take a
+which starts them from a web request. They go in the namespace `tekton-pipelines` (a namespace
+inside the VKS cluster, not a vSphere Namespace; it does not show in the vSphere Client), and add
+cluster-wide object types (CRDs) and webhooks. It also makes the containers Tekton adds to each
+run safe enough for step 4's namespace. The operator may take a
 few minutes to accept this, so the block retries, then waits until Tekton runs.
 
 <details>
@@ -500,9 +502,11 @@ foreach ($F in $FILES) {
   install it; run the block again.
 
 This installs Tekton from those files: first Pipelines, which runs builds, then Triggers, which
-starts them from a web request. Each part must finish starting before the next is accepted, so the
-block retries and waits. It stops if the cluster already has the add-on (A). It can take several
-minutes while the nodes pull the images.
+starts them from a web request. They go in the namespaces `tekton-pipelines` and
+`tekton-pipelines-resolvers` (namespaces inside the VKS cluster, not vSphere Namespaces; they do not
+show in the vSphere Client), and add cluster-wide object types (CRDs) and webhooks. Each part must
+finish starting before the next is accepted, so the block retries and waits. It stops if the cluster
+already has the add-on (A). It can take several minutes while the nodes pull the images.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -889,8 +893,10 @@ Every run stays, with its pods, until you delete it:
 
 This lets a web request start the pipeline, as a Git server does on a push. It creates an
 EventListener: a small web service in `tekton-demo` that reads a name from the request and starts
-`hello` with it. It gives the listener only the permissions it needs, and blocks requests from
-other pods, so only your machine (next block) reaches it. The block waits until the listener runs.
+`hello` with it. It gives the listener only the permissions it needs; two of the objects are
+cluster-wide, the ClusterRole and ClusterRoleBinding `tekton-demo-listener`, which let it read
+Tekton's cluster interceptors and cluster trigger bindings. It blocks requests from other pods,
+so only your machine (next block) reaches it. The block waits until the listener runs.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
