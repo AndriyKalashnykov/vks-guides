@@ -126,13 +126,14 @@ kubelogin needs [kubelogin](PREREQS.md#kubelogin-optional).
 Optional: tools that read only `~/.kube/config` see every cluster at once. This copies the files in
 `FILES`, after your `~/.kube/config` if you have one, into a new file readable only by you, lists
 its contexts, and only then replaces `~/.kube/config`, keeping the old one as
-`~/.kube/config.before-merge`. It stops, changing nothing, when a file is missing or two files use
-the same context name.
+`~/.kube/config.before-merge`. It stops, changing nothing, when a file is missing or two files hold
+a context, cluster or user of the same name with different content.
 
 Merge VKS cluster files and hand-outs only. Not `~/.kube/supervisor.kubeconfig` or any file a `vcf`
 login writes (`vcf context list`): `vcf` renews only its own file, so the copy stops working. The
-copy does not follow later changes to a file: after a new file for the same cluster, delete its old
-entries (`kubectl config delete-context <name>`, `delete-cluster`, `delete-user`) and merge again.
+copy does not follow later changes to a file: after a new file for the same cluster, delete the old
+entries the block names (`kubectl config delete-context <name>`, `delete-cluster`, `delete-user`;
+`kubectl config get-contexts` shows which contexts use them) and merge again.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -143,12 +144,13 @@ KUBE_CONFIG="$HOME/.kube/config"
 
 MISSING="$(printf '%s\n' "$FILES" | tr ':' '\n' | while IFS= read -r F; do if [ ! -s "$F" ]; then printf '%s ' "$F"; fi; done)"
 if [ -f "$KUBE_CONFIG" ]; then LIST="$KUBE_CONFIG:$FILES"; else LIST="$FILES"; fi
-SAME="$(printf '%s\n' "$LIST" | tr ':' '\n' | while IFS= read -r F; do kubectl --kubeconfig "$F" config get-contexts -o name 2>/dev/null; done | sort | uniq -d | tr '\n' ' ')"
+SAME="$(printf '%s\n' "$LIST" | tr ':' '\n' | while IFS= read -r F; do kubectl --kubeconfig "$F" config view --flatten -o jsonpath='{range .contexts[*]}context {.name}{"\t"}{.context}{"\n"}{end}{range .clusters[*]}cluster {.name}{"\t"}{.cluster}{"\n"}{end}{range .users[*]}user {.name}{"\t"}{.user}{"\n"}{end}' 2>/dev/null \
+  || kubectl --kubeconfig "$F" config view --raw -o jsonpath='{range .contexts[*]}context {.name}{"\t"}{.context}{"\n"}{end}{range .clusters[*]}cluster {.name}{"\t"}{.cluster}{"\n"}{end}{range .users[*]}user {.name}{"\t"}{.user}{"\n"}{end}' 2>/dev/null; done | sort -u | cut -f1 | sort | uniq -d | tr '\n' ' ')"
 rm -f "$KUBE_CONFIG.new"
 if [ -n "$MISSING" ]; then
   echo "MISSING: $MISSING"
 elif [ -n "$SAME" ]; then
-  echo "SAME CONTEXT NAME IN TWO FILES: $SAME"
+  echo "SAME NAME, DIFFERENT CONTENT IN TWO FILES: $SAME"
 elif mkdir -p "$HOME/.kube" && ( umask 077; KUBECONFIG="$LIST" kubectl config view --flatten > "$KUBE_CONFIG.new" ) \
      && kubectl --kubeconfig "$KUBE_CONFIG.new" config get-contexts; then
   if [ -f "$KUBE_CONFIG" ]; then cp -p "$KUBE_CONFIG" "$KUBE_CONFIG.before-merge"; fi
@@ -170,11 +172,20 @@ $KUBE_CONFIG = "$HOME\.kube\config"
 
 $MISSING = @($FILES.Split(';') | Where-Object { -not (Test-Path $_ -PathType Leaf) })
 if (Test-Path $KUBE_CONFIG) { $LIST = "$KUBE_CONFIG;$FILES" } else { $LIST = $FILES }
-$SAME = @($LIST.Split(';') | ForEach-Object { kubectl --kubeconfig $_ config get-contexts -o name 2>$null } |
+$SAME = @($LIST.Split(';') | Where-Object { Test-Path $_ -PathType Leaf } | ForEach-Object {
+    $o = kubectl --kubeconfig $_ config view --flatten -o json 2>$null
+    if ($LASTEXITCODE -ne 0) { $o = kubectl --kubeconfig $_ config view --raw -o json 2>$null }
+    if ($LASTEXITCODE -eq 0) {
+      $j = ($o | Out-String) | ConvertFrom-Json
+      foreach ($e in @($j.contexts)) { "context $($e.name)`t$($e.context | ConvertTo-Json -Compress -Depth 20)" }
+      foreach ($e in @($j.clusters)) { "cluster $($e.name)`t$($e.cluster | ConvertTo-Json -Compress -Depth 20)" }
+      foreach ($e in @($j.users)) { "user $($e.name)`t$($e.user | ConvertTo-Json -Compress -Depth 20)" }
+    }
+  } | Sort-Object -Unique -CaseSensitive | ForEach-Object { $_.Split("`t")[0] } |
   Group-Object -CaseSensitive | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name })
 Remove-Item -Force -ErrorAction SilentlyContinue "$KUBE_CONFIG.new"
 if ($MISSING.Count -gt 0) { "MISSING: $MISSING" }
-elseif ($SAME.Count -gt 0) { "SAME CONTEXT NAME IN TWO FILES: $SAME" }
+elseif ($SAME.Count -gt 0) { "SAME NAME, DIFFERENT CONTENT IN TWO FILES: $SAME" }
 else {
   New-Item -ItemType Directory -Force -Path (Split-Path $KUBE_CONFIG) | Out-Null
   $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $LIST
@@ -204,9 +215,11 @@ cluster.
 **If not:**
 - `MISSING: …`: set `FILES` to files that exist (kubectl itself would skip a missing file without
   a word).
-- `SAME CONTEXT NAME IN TWO FILES: …`: only the first file's would be kept. Rename it in one file
-  (`kubectl --kubeconfig <file> config rename-context <old> <new>`), or, if it is already in
-  `~/.kube/config`, delete it there as above, and run this again.
+- `SAME NAME, DIFFERENT CONTENT IN TWO FILES: …` (a context, cluster or user): the first file's entry
+  would be used for both, so a context could reach the wrong cluster or sign-in. Keep that file on its
+  own and use it with `--kubeconfig` (renaming the context does not help: its cluster and user keep
+  their names). If the entry is an old one already in `~/.kube/config`, delete it there as above and
+  run this again.
 - To undo: `mv ~/.kube/config.before-merge ~/.kube/config` (Windows:
   `Move-Item -Force $HOME\.kube\config.before-merge $HOME\.kube\config`); if you had no
   `~/.kube/config` before, delete it instead. A second merge replaces `config.before-merge`.
