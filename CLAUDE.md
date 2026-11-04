@@ -58,15 +58,26 @@ blocks; there is nothing to build.
   on the dev host; use the Windows walkbox from nested-vsphere-lab: `make walkbox-vm-start
   WALKBOX_OS=windows`).
 - Readers paste blocks into an interactive shell, so a block is run pasted, not only as a script:
-  feed it to `bash -i` and `zsh -i` under a pseudo-terminal (`script -qec "zsh -i" /dev/null <
-  block.sh`, with an empty `.zshrc` in a scratch `HOME`/`ZDOTDIR`) and check for `event not
-  found`. Outside single quotes a `!` is followed by a space (`[ ! -f x ]`,
+  the checker below pastes it into interactive bash and zsh (do not hand-roll `script -qec`
+  loops). Outside single quotes a `!` is followed by a space (`[ ! -f x ]`,
   `if ! cmd`); never in a `case` pattern such as `*[!a-z]*`
   (interactive zsh history-expands it). `[^…]` is not a fix: dash reads it differently.
   macOS's bash 3.2 also expands a `!` inside `'…'` when an odd number of `"` come before it on that
   line (it ignores `$(` nesting: `N="$(kubectl … -l '!x')"`): put such a value in a variable on its
   own line (`WORKERS='!x'`) and use `"$WORKERS"`. A `!` before `=` or a space is safe everywhere.
   Test with `docker run --rm -i --network none bash:3.2 timeout -s KILL 60 bash -i < block.sh`.
+- Run the `/guide-block-check` skill's checker on every file a change touches that has sh
+  blocks (group pages and README have none: a call with no sh block ends rc 2), whole files, in
+  one call (or a few parallel calls for a whole-repo sweep). It runs its own self-test first,
+  about 16 minutes per call, so run it in the background with its output in a file:
+  `bash "$(readlink -f ~/.claude/commands)/../scripts/guide-block-check.sh" "$PWD/docs/X.md"`
+  (one path per touched file). It pastes each sh block into this host's bash and zsh, raw and
+  bracketed, with tools stubbed. Read its rc on its own line: only 0 is clean (1 FAIL, 2
+  instrument, 3 INCONCLUSIVE), and the log must start with `self-check: N fixture verdicts
+  match`. ADVISORY for `security` (macOS) and `wslpath` (WSL) is expected on Linux. It does not
+  run PowerShell blocks (parse those on the Windows walkbox), and it runs no bash 3.2: still run
+  the bash 3.2 test above. Measured 2026-11-04 on main acd023a: 328 blocks in 33 files, rc 0,
+  about 37 minutes as three parallel calls.
 - Where the terminal does not bracket the paste, a pasted block's later lines wait in the terminal,
   and sudo 1.9.14 or later (`use_pty` by default: Ubuntu, Debian) reads them: nothing may follow a
   line that runs `sudo`, so clean-up goes on that line (`fi; rm -rf "$TMP"`). `vcf context use`
