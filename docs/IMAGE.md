@@ -543,7 +543,7 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 
 **If not:** `FAILED: the namespace … was not made` with `Unauthorized` above it: the login in the
 cluster's kubeconfig has expired; save it again ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)),
-then run the line above and this block again.
+type the pull robot's secret again (the line above the block) and run this block again.
 
 ## 6. Deploy the app
 
@@ -644,7 +644,11 @@ if (-not $DIGEST -or -not (Test-Path "$K\deployment.yaml") -or -not (Test-Path $
 lines, `deployment "test-web-apps" successfully rolled out`, then
 `pods running your image: 5 of 5`.
 
-**If not:** the wait ends with `exceeded its progress deadline` or times out: run
+**If not:** `Unauthorized` (after `pull secret: none`): the login in the cluster's kubeconfig has
+expired; save it again ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), redo step 5 if you
+use the Secret, then run this block again.
+
+The wait ends with `exceeded its progress deadline` or times out: run
 `kubectl --kubeconfig "$HOME/.kube/<cluster>.kubeconfig" -n harbor-demo get events --sort-by=.lastTimestamp`
 and read its last lines.
 - `x509: certificate signed by unknown authority`: the nodes do not trust Harbor; run HARBOR.md
