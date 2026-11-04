@@ -193,6 +193,7 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
 elif [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0-9-]*[a-z0-9])?')" != 1 ] \
+     || [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | wc -l | tr -d ' ')" != 1 ] \
      || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$'; then
   echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
 elif [ -e "$SUPERVISOR_KUBECONFIG" ]; then
@@ -259,6 +260,8 @@ The first login after [Log out](#log-out) prints `Initialization done!` lines fi
   a VKS cluster), then run this block again.
 - `FAILED: … exists`: you are logged in with this name already. Run [Log out](#log-out) first, or
   set another `SUPERVISOR_CONTEXT` for another Supervisor.
+- `context "…" already exists`: the file is gone, but `vcf` still has the context. Run
+  [Log out](#log-out), then the password line and this block again.
 - A connection error: check `SUPERVISOR_ENDPOINT`.
 - `x509: certificate is valid for …, not …`: the certificate is not issued for the address in
   `SUPERVISOR_ENDPOINT`. Use the Supervisor's DNS name or IP address as the message lists it.
@@ -325,6 +328,7 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
 elif [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0-9-]*[a-z0-9])?')" != 1 ] \
+     || [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | wc -l | tr -d ' ')" != 1 ] \
      || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$'; then
   echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
 elif [ -e "$SUPERVISOR_KUBECONFIG" ]; then
@@ -385,6 +389,8 @@ The first login after [Log out](#log-out) prints `Initialization done!` lines fi
   a VKS cluster), then run this block again.
 - `FAILED: … exists`: you are logged in with this name already. Run [Log out](#log-out) first, or
   set another `SUPERVISOR_CONTEXT` for another Supervisor.
+- `context "…" already exists`: the file is gone, but `vcf` still has the context. Run
+  [Log out](#log-out), then the password line and this block again.
 - A connection error: check `SUPERVISOR_ENDPOINT`.
 - A login error: check `SSO_USERNAME`, and run the password line again. Mind the lock-out.
 - `Failed to install plugin 'telemetry:…'` before the output: harmless; the command still runs.
@@ -788,6 +794,7 @@ if [ -n "$SUPERVISOR_CA" ]; then TLS="--ca-certificate=$SUPERVISOR_CA"; else TLS
 if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
 elif [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0-9-]*[a-z0-9])?')" != 1 ] \
+     || [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | wc -l | tr -d ' ')" != 1 ] \
      || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$'; then
   echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
 elif [ ! -f "$SUPERVISOR_KUBECONFIG" ]; then
@@ -858,6 +865,7 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 unset SSO_PASSWORD
 if [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0-9-]*[a-z0-9])?')" != 1 ] \
+   || [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | wc -l | tr -d ' ')" != 1 ] \
    || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$'; then
   echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
 elif KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf context delete "$SUPERVISOR_CONTEXT" -y --skip-delete-kubeconfig-context </dev/null; then
