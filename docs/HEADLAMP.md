@@ -389,15 +389,113 @@ The browser may ask again later, and does when the certificate changes (step 9).
 
 ## 6. Log in with your own SSO user
 
-Someone who has a Kubernetes login of their own on the cluster, through the VCF CLI or the kubectl
-vSphere plugin ([ACCESS.md, "The person's own SSO account"](ACCESS.md#the-persons-own-sso-account)),
-can paste that login's token into Headlamp. Headlamp then has exactly that user's
-rights. The token is made for this cluster (the Supervisor refuses it) and ends 10 hours after that
-login; nobody can end it sooner, only take the user's rights away.
+Everyone with a vCenter SSO login to the cluster pastes that login's token into Headlamp; Headlamp
+then has exactly that user's rights. First log in to the cluster with your SSO user, as in
+[ACCESS.md](ACCESS.md#the-persons-own-sso-account) step 2a (VCF CLI) or steps 2b to 2d (kubectl
+vSphere plugin), so that `~/.kube/<cluster>-sso.kubeconfig` holds the login. The token works only
+for this cluster and ends 10 hours after that login; the length cannot be changed, and the block
+prints when it ends.
 
-A user with **Can edit** or **Owner** on the vSphere Namespace is an administrator of every
-cluster in it, so their token can do anything there. This block stops for such a user; use an
-account from step 8 instead.
+### 6.1 As the cluster administrator
+
+A user with **Can edit** or **Owner** on the vSphere Namespace (for example
+`administrator@vsphere.local`, through the group Administrators) is an administrator of every
+cluster in it: skip ACCESS.md steps 1 and 3. Anyone who holds that user's token can change and
+delete anything in the cluster, through Headlamp and its plugins (step 11) or with kubectl, until it
+ends; nobody can end it sooner, and logging out of Headlamp does not end it. For daily work, give
+yourself a `view` or `edit` account in step 8 instead, with a short token.
+
+This block prints the token of your SSO login for the cluster, with a warning first when that user
+is an administrator; it changes nothing.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
+T="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
+C="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | . + ("=" * ((4 - length % 4) % 4)) | @base64d | fromjson | "\(.exp) \(.aud)"' 2>/dev/null)"
+E="${C%% *}"
+AUD="${C#* }"
+ALL="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)"
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ -z "$T" ] || [ -z "$E" ]; then
+  echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_SSO_KUBECONFIG}; log in first (ACCESS.md)"
+elif [ "$E" -le "$(date +%s)" ]; then
+  echo "ENDED: that login has ended; log in again (ACCESS.md)"
+elif [ "${AUD#vmware-tes:vc:vns:k8s:}" = "$AUD" ] || [ -z "${AUD#vmware-tes:vc:vns:k8s:}" ]; then
+  echo "FAILED: this login is for the Supervisor, not ${VKS_CLUSTER}; log in to the cluster again (ACCESS.md)"
+elif [ "$ALL" != yes ] && [ "${ALL#no}" = "$ALL" ]; then
+  echo "FAILED: the cluster did not answer with this login (${ALL:-no answer}); kubectl --kubeconfig ${VKS_SSO_KUBECONFIG} get pods shows why"
+else
+  END="$(printf '%s' "$E" | jq -r 'tonumber | todate')"
+  U="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
+  if [ "$ALL" = yes ]; then
+    echo "WARNING: ${U} is an administrator of the whole cluster. Until the token ends (${END}),"
+    echo "anyone who holds it, Headlamp and its plugins included, can change and delete anything in the cluster."
+    echo "Logging out of Headlamp does not end it, and nobody can end it sooner."
+  fi
+  echo "token for ${U}:"
+  echo "$T"
+  echo "it ends: ${END}"
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
+$T = kubectl --kubeconfig $VKS_SSO_KUBECONFIG config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>$null
+$E = $null; $AUD = ""
+if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $J = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json; $E = $J.exp; $AUD = "$($J.aud)" } catch { } }
+$ALL = "$(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth can-i '*' '*' -A 2>$null)"
+if (-not $T -or -not $E) {
+  "FAILED: no SSO login for $VKS_CLUSTER in $VKS_SSO_KUBECONFIG; log in first (ACCESS.md)"
+} elseif ($E -le [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) {
+  "ENDED: that login has ended; log in again (ACCESS.md)"
+} elseif (-not $AUD.StartsWith('vmware-tes:vc:vns:k8s:') -or $AUD.Length -le 'vmware-tes:vc:vns:k8s:'.Length) {
+  "FAILED: this login is for the Supervisor, not $VKS_CLUSTER; log in to the cluster again (ACCESS.md)"
+} elseif ($ALL -ne 'yes' -and -not $ALL.StartsWith('no')) {
+  "FAILED: the cluster did not answer with this login ($(if ($ALL) { $ALL } else { 'no answer' })); kubectl --kubeconfig $VKS_SSO_KUBECONFIG get pods shows why"
+} else {
+  $END = [DateTimeOffset]::FromUnixTimeSeconds($E).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ')
+  $U = kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}'
+  if ($ALL -eq 'yes') {
+    "WARNING: $U is an administrator of the whole cluster. Until the token ends ($END),"
+    "anyone who holds it, Headlamp and its plugins included, can change and delete anything in the cluster."
+    "Logging out of Headlamp does not end it, and nobody can end it sooner."
+  }
+  "token for ${U}:"
+  $T
+  "it ends: $END"
+}
+```
+
+</details>
+
+**Expect:** for an administrator, the three `WARNING:` lines; then `token for sso:<user>@<domain>:`,
+the token, and `it ends:` 10 hours after the login (UTC). Paste it in step 7, then clear the
+terminal; log out of Headlamp when you are done.
+
+**If not:**
+- `FAILED: this login is for the Supervisor …`: the file's current login is the Supervisor's; log in
+  to the cluster again (ACCESS.md step 2a, or 2b to 2d).
+- `FAILED: the cluster did not answer …`: the command it names shows why.
+- `FAILED: no SSO login …` or `ENDED: …`: run the login in ACCESS.md again. A login through an
+  external identity provider (ACCESS.md, `vcf pinniped-auth`) keeps no token in the file: use step 8.
+
+### 6.2 As a person with narrower rights
+
+Someone who got rights on the cluster through [ACCESS.md, "The person's own SSO
+account"](ACCESS.md#the-persons-own-sso-account) uses this block. Headlamp then has exactly that
+user's rights. The token ends 10 hours after the login; nobody can end it sooner, only take the
+user's rights away (ACCESS.md). This block stops for an administrator: use 6.1.
 
 This block prints the token of your SSO login for the cluster; it changes nothing.
 
@@ -407,17 +505,23 @@ This block prints the token of your SSO login for the cluster; it changes nothin
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
-
 T="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
-E="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | . + ("=" * ((4 - length % 4) % 4)) | @base64d | fromjson | .exp' 2>/dev/null)"
+C="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | . + ("=" * ((4 - length % 4) % 4)) | @base64d | fromjson | "\(.exp) \(.aud)"' 2>/dev/null)"
+E="${C%% *}"
+AUD="${C#* }"
+ALL="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)"
 if ! command -v jq >/dev/null 2>&1; then
   echo "MISSING: jq (PREREQS.md)"
 elif [ -z "$T" ] || [ -z "$E" ]; then
   echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_SSO_KUBECONFIG}; log in first (ACCESS.md)"
 elif [ "$E" -le "$(date +%s)" ]; then
   echo "ENDED: that login has ended; log in again (ACCESS.md)"
-elif [ "$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)" != no ]; then
-  echo "STOPPED: this SSO user is an administrator of the cluster, or the cluster did not answer; use an account from step 8 in Headlamp"
+elif [ "${AUD#vmware-tes:vc:vns:k8s:}" = "$AUD" ] || [ -z "${AUD#vmware-tes:vc:vns:k8s:}" ]; then
+  echo "FAILED: this login is for the Supervisor, not ${VKS_CLUSTER}; log in to the cluster again (ACCESS.md)"
+elif [ "$ALL" != yes ] && [ "${ALL#no}" = "$ALL" ]; then
+  echo "FAILED: the cluster did not answer with this login (${ALL:-no answer}); kubectl --kubeconfig ${VKS_SSO_KUBECONFIG} get pods shows why"
+elif [ "$ALL" = yes ]; then
+  echo "STOPPED: this SSO user is an administrator of the cluster; use step 6.1"
 else
   echo "token for $(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}'):"
   echo "$T"
@@ -433,16 +537,20 @@ fi
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
-
 $T = kubectl --kubeconfig $VKS_SSO_KUBECONFIG config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>$null
-$E = $null
-if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $E = ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json).exp } catch { } }
+$E = $null; $AUD = ""
+if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $J = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json; $E = $J.exp; $AUD = "$($J.aud)" } catch { } }
+$ALL = "$(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth can-i '*' '*' -A 2>$null)"
 if (-not $T -or -not $E) {
   "FAILED: no SSO login for $VKS_CLUSTER in $VKS_SSO_KUBECONFIG; log in first (ACCESS.md)"
 } elseif ($E -le [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) {
   "ENDED: that login has ended; log in again (ACCESS.md)"
-} elseif ((kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth can-i '*' '*' -A 2>$null) -ne 'no') {
-  "STOPPED: this SSO user is an administrator of the cluster, or the cluster did not answer; use an account from step 8 in Headlamp"
+} elseif (-not $AUD.StartsWith('vmware-tes:vc:vns:k8s:') -or $AUD.Length -le 'vmware-tes:vc:vns:k8s:'.Length) {
+  "FAILED: this login is for the Supervisor, not $VKS_CLUSTER; log in to the cluster again (ACCESS.md)"
+} elseif ($ALL -ne 'yes' -and -not $ALL.StartsWith('no')) {
+  "FAILED: the cluster did not answer with this login ($(if ($ALL) { $ALL } else { 'no answer' })); kubectl --kubeconfig $VKS_SSO_KUBECONFIG get pods shows why"
+} elseif ($ALL -eq 'yes') {
+  "STOPPED: this SSO user is an administrator of the cluster; use step 6.1"
 } else {
   "token for $(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}'):"
   $T
@@ -455,12 +563,12 @@ if (-not $T -or -not $E) {
 **Expect:** `token for sso:<user>@<domain>:`, the token, and `it ends:` 10 hours after the login
 (UTC). Paste it in step 7, then clear the terminal.
 
-**If not:** `STOPPED: …`: this user would be an administrator in Headlamp; or, if `kubectl
---kubeconfig <the SSO file> get pods` also fails, the cluster did not answer. `FAILED: …` or
-`ENDED: …`: run the login in ACCESS.md again. In Headlamp the user sees nothing: the cluster
-administrator has not given that name rights yet
-([ACCESS.md](ACCESS.md#the-persons-own-sso-account), step 3; add `headlamp-namespace-lister` as in step 8.1 so
-that the Namespaces list works).
+**If not:**
+- `STOPPED: …`: this user is an administrator; use step 6.1.
+- The `FAILED: …` and `ENDED: …` lines: as in step 6.1.
+- In Headlamp the user sees nothing: the cluster administrator has not given that name rights yet
+  (ACCESS.md step 3); for the Namespaces list, also bind the role `headlamp-namespace-lister` to
+  that name, as step 8.1 does for an account.
 
 ## 7. Log in to Headlamp with the token (each person)
 
@@ -523,7 +631,8 @@ the least rights they need, and a token for it in step 8.2. Pick one row:
 ServiceAccount of its namespace, so the block refuses the namespace `headlamp` and the cluster's
 system namespaces. An account limited to one namespace also gets the right to list the namespaces'
 names (role `headlamp-namespace-lister`), so that Headlamp's namespace list works; it sees nothing
-inside the other namespaces. Give no one `admin` or `cluster-admin` through Headlamp.
+inside the other namespaces. Give no account made here `admin` or `cluster-admin` (an
+administrator logs in as in step 6.1).
 
 `ACCOUNT`: the person's or team's name (a-z, 0-9, -). `ROLE`: `view` or `edit`. `ACCESS_NAMESPACE`:
 a namespace inside the VKS cluster, not a vSphere Namespace (it is not listed under Supervisor
@@ -1394,7 +1503,8 @@ This removes the Headlamp add-on, which takes the namespace `headlamp` with it: 
 certificate, the accounts of step 8.1 (their tokens stop working) and step 10's HTTPProxy. It then
 deletes what this guide gave those accounts elsewhere: their bindings, and the roles
 `headlamp-namespace-lister`, `headlamp-prometheus-query` and `headlamp-kubescape-reports`. cert-manager, Prometheus, Contour
-and Kubescape stay; the lines after the block remove them.
+and Kubescape stay; the lines after the block remove them. SSO tokens from step 6 keep working until
+they end.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1480,7 +1590,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 **Expect:** `Addon 'headlamp' installed in the cluster … has been deleted`, `… deleted` lines for
 each binding and role this guide made, and `removed: namespace headlamp is gone`. The namespaces
 step 8.1 made for the accounts stay, with whatever runs in them. `kept: … still used`: an SSO
-user's binding (step 6) still names that role; delete that binding first if you want it gone. A second run prints
+user's binding (step 6.2, If not) still names that role; delete that binding first if you want it gone. A second run prints
 `Error: clusterAddon for addon headlamp … not found`, `(not deleted; …)`, and `removed: …` again.
 
 **If not:** `NOT YET: …`: the add-on is still being removed; run the block again. An error about
