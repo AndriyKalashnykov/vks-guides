@@ -54,7 +54,8 @@ success looks like and **If not:** says what to do.
 1. Do the steps in order. Where a block comes in versions for different shells, paste the one for
    yours: **Linux, macOS, WSL (bash or zsh)** or **Windows (PowerShell)**. On Windows, a block with
    no PowerShell version runs in WSL 2 ([Prerequisites](docs/PREREQS.md#windows)).
-2. If a block starts with variables, set them first.
+2. If a block starts with variables, set them to your own values first (`my-namespace`,
+   `my-vks-cluster` and the like are examples).
 3. Compare the output with the **Expect:** line under the block; if it differs, do what **If not:** says.
 
 ## Guides

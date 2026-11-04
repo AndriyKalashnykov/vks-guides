@@ -342,8 +342,8 @@ ArgoCD can create a VKS cluster only in a vSphere Namespace it may change. This 
 `VKS_NAMESPACE`:
 
 - ArgoCD's account `argocd-k8s-sa` gets the `edit` role there;
-- the namespace becomes a *destination*, a place ArgoCD may deploy to, named after the namespace.
-  Step 6 uses it.
+- the namespace becomes a *destination*, a place ArgoCD may deploy to, named after the namespace,
+  for the project `vks-clusters` that step 6 creates.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -790,7 +790,7 @@ So far ArgoCD can only create VKS clusters. To deploy apps into the VKS cluster,
 cluster's login. This:
 
 - lets ArgoCD's account `argocd-k8s-sa` read VKS clusters and their logins, and nothing else (the
-  role `argocd-manage-vks`);
+  role `argocd-manage-vks`, which the ArgoCD Service installs on the Supervisor);
 - asks the ArgoCD Service to add the cluster as a destination: one for every app, step 8's,
   [MONITORING.md](MONITORING.md)'s and [CICD.md](CICD.md)'s alike. Each app's project says what it
   may deploy there.
@@ -885,8 +885,9 @@ spec:
 created`.
 
 **If not:**
-- `clusterroles.rbac.authorization.k8s.io "argocd-manage-vks" not found`: set `ROLE="edit"` and
-  run the block again.
+- `clusterroles.rbac.authorization.k8s.io "argocd-manage-vks" not found`: your ArgoCD Service did
+  not install that role. Set `ROLE="edit"` and run the block again: ArgoCD then gets everything
+  Namespaces Edit allows in `VKS_NAMESPACE`, as step 5 describes.
 - `Forbidden` on the RoleBinding: your role may not grant `ROLE`. Ask a vCenter administrator to
   run the block.
 - `spec.targetRef is already in use by another ManagedEntity`: the cluster is already added, by
@@ -950,9 +951,9 @@ if (-not $D) {
 
 </details>
 
-**Expect:** `ns-<namespace>` and `vks-<namespace>-<cluster>`, both `Ready`; then `subject=…` and
-`notAfter=…`, a date after today, at most a year away. In the ArgoCD page, **Settings** → **Clusters** lists
-`<cluster>-<namespace>` at `https://<address>:6443`.
+**Expect:** `vks-<namespace>-<cluster>` `Ready` (and `ns-<namespace>` if you did step 5); then
+`subject=…` and `notAfter=…`, a date after today, at most a year away. In the ArgoCD page, **Settings**
+→ **Clusters** lists `<cluster>-<namespace>` at `https://<address>:6443`.
 
 ![Settings, Clusters: the VKS cluster at https://192.168.101.134:6443 with status Unknown, and the namespace with status Successful](img/argocd/09-clusters.png)
 
@@ -1100,7 +1101,11 @@ spec:
 **Expect:** `rolebinding…/argocd-k8s-sa-vks created` (or `unchanged`) and
 `entitymanagementpolicy…/vks-clusters-<namespace> created`.
 
-**If not:** `clusterroles…"argocd-manage-vks" not found` or `Forbidden`: as for the block above.
+**If not:**
+- `clusterroles…"argocd-manage-vks" not found`: your ArgoCD Service did not install that role. Set
+  `ROLE="edit"` and run the block again: ArgoCD then gets everything Namespaces Edit allows in
+  `VKS_NAMESPACE`, as step 5 describes.
+- `Forbidden`: as for the block above.
 
 This shows what the policy decided for each cluster:
 

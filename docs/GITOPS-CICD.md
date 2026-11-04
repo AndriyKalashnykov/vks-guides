@@ -2,8 +2,11 @@
 
 ArgoCD first. For build and deploy on every push, use Gitea and Tekton, or GitLab instead of both.
 With GitLab, read [CICD.md's Prerequisites](CICD.md#prerequisites) before you create any cluster:
-GitLab's cluster needs a 40 GiB worker disk. Octopus Deploy, for releases promoted through dev, test
-and prod, comes after ArgoCD; its step 11 uses Nexus, so do Nexus before it.
+GitLab's cluster needs a worker with its own image disk (tested with 40 GiB), made with
+[CLUSTER.md](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file) step 9, not
+[ARGOCD.md](ARGOCD.md#6-create-a-vks-cluster-with-argocd) step 6. Octopus Deploy, for releases
+promoted through dev, test and prod, needs no other guide of this group; its step 11 uses Nexus, so
+do Nexus before it.
 
 | guide | what it is |
 |---|---|
