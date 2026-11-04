@@ -600,7 +600,7 @@ if ($LASTEXITCODE -ne 0) {
 controller, webhook and core interceptors.
 
 **If not:**
-- `STOPPED: … Tekton Operator (A)`: use A (step 2's second block, then step 4).
+- `STOPPED: … Tekton Operator (A)`: use A: run step 2's add-on block, then its TektonConfig block, then step 4.
 - `timed out waiting for the condition`: run `kubectl --kubeconfig <the VKS kubeconfig> -n
   tekton-pipelines get pods`. `ErrImagePull` or `ImagePullBackOff`: the nodes cannot reach
   `ghcr.io`. `Pending`: not enough free CPU (step 1).

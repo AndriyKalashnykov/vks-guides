@@ -188,9 +188,9 @@ line per worker, and `default storage class:` and a class name. Nexus needs a wo
 
 Nexus's HTTPS certificate (step 5) comes from cert-manager, a Broadcom add-on of the VKS cluster
 ([what add-ons are](ADDONS.md)). Run
-[KEYCLOAK-VKS.md step 2](KEYCLOAK-VKS.md#2-install-cert-manager) once, with `VKS_CLUSTER` set to
-Nexus's cluster and `VKS_NAMESPACE` to its vSphere Namespace. When the add-on is there already, it
-changes nothing.
+[KEYCLOAK-VKS.md step 2](KEYCLOAK-VKS.md#2-install-cert-manager) once, with `VKS_CLUSTER` changed
+from `my-keycloak-cluster` to Nexus's cluster and `VKS_NAMESPACE` to its vSphere Namespace. When
+the add-on is there already, it changes nothing.
 
 **Expect:** as in that step: `condition met` for the three cert-manager deployments, or
 `cert-manager: already installed`.
@@ -1388,7 +1388,8 @@ mkdir -p "$HOME/.config/containers/certs.d/$NEXUS_REGISTRY" \
 ```
 
 **Linux, docker** (run it as a block of its own: it uses `sudo`; podman reads this folder too).
-docker 29.5 or newer reads the CA at once; older docker needs a restart of the docker service:
+docker 29.5 or newer reads the CA at once, without a restart; docker 29.0 to 29.4 logs in but stops at
+the push with `x509` ([PREREQS.md](PREREQS.md#podman-and-docker-optional)):
 
 ```sh
 NEXUS_REGISTRY="192.168.10.50"
@@ -1518,7 +1519,7 @@ VKS adds a CA to every node from a Secret in the vSphere Namespace, named
 creates that Secret on the Supervisor with `nexus-ca.pem` (Broadcom requires the CA, base64-encoded
 twice in the Secret, and not the server's own certificate:
 [KB 448189](https://knowledge.broadcom.com/external/article/448189/ssltls-server-certificates-specified-in.html)).
-It needs the **Edit** role on the vSphere Namespace.
+It needs the **Namespaces Edit** role on the vSphere Namespace.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1573,7 +1574,7 @@ else {
 `secret/my-vks-cluster-user-trusted-ca-secret created`.
 
 **If not:**
-- `forbidden`: you need the **Edit** role on the vSphere Namespace.
+- `forbidden`: you need the **Namespaces Edit** role on the vSphere Namespace.
 - `STOPPED: the Secret … exists already`: add Nexus's CA to it under a new key, as below, and use
   that key in the cluster's `secretRef`.
 
@@ -1581,8 +1582,8 @@ else {
 CA to an existing Secret, or to change the CA later (a new Nexus, or step 5's CA renewed), keep the
 Secret's name: add the CA under a new key (`nexus-ca-2`, then `nexus-ca-3`, …) and point the
 cluster's `secretRef.key` at it with
-`kubectl --kubeconfig <Supervisor kubeconfig> -n <vSphere Namespace> edit cluster <cluster name>`;
-that changes the Cluster and starts the node update (below).
+`kubectl --kubeconfig <Supervisor kubeconfig> -n <vSphere Namespace> edit cluster <cluster name>`
+(it opens the cluster in a text editor; saving starts the node update, below).
 <!-- TODO-MEASURE: on VKS 3.8, that a new key in the same Secret plus a secretRef.key change rolls the nodes with the new CA -->
 
 <details>
@@ -1635,7 +1636,7 @@ else {
 `secret/my-vks-cluster-user-trusted-ca-secret patched`.
 
 **If not:** `not found`: the Secret does not exist; run the block before this one instead.
-`forbidden`: you need the **Edit** role on the vSphere Namespace.
+`forbidden`: you need the **Namespaces Edit** role on the vSphere Namespace.
 
 Then point the cluster at it.
 
@@ -1654,8 +1655,9 @@ cluster's name in `name:`, and create the cluster as that step says:
                     key: nexus-ca
 ```
 
-**An existing cluster:** this adds the same setting. VKS replaces the cluster's nodes (a cluster with
-one control-plane node and one worker had both replaced in about 5 minutes), so pods move. On Nexus's own
+**An existing cluster:** this adds the same setting. VKS updates every node: it replaces some and
+may update others in place (a cluster with one control-plane node and one worker had both replaced
+in about 5 minutes), so pods move. On Nexus's own
 cluster, Nexus is unavailable for a few minutes while its pod moves to the new worker: do that
 cluster last. A cluster made by [ARGOCD.md](ARGOCD.md): its chart has no setting for this. The
 patch below works, but ArgoCD then shows the cluster OutOfSync, and a later SYNC removes the
@@ -1714,7 +1716,7 @@ Remove-Item -Force -ErrorAction SilentlyContinue $T
 
 **Expect:** `cluster.cluster.x-k8s.io/my-vks-cluster patched`. Then run
 [CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)'s check until both lines say `True`
-(while nodes are replaced they say `False`).
+(while nodes are updated they say `False`).
 
 **If not:**
 - `STOPPED: … osConfiguration setting already`: the cluster trusts another CA already; add a
@@ -1905,13 +1907,13 @@ this block with `-n default` changed.
 - `IMAGE: …`: push `busybox:1.37.0` to `NEXUS_REPO` (step 10).
 - `OTHER: the test pod failed and the cluster gave no reason`: run this block again; if it says the
   same, check that the nodes are `Ready` and have free memory and disk.
-- `CA: …`: the nodes are still being replaced (wait until CLUSTER.md step 10's check says `True`
+- `CA: …`: the nodes are still being updated (wait until CLUSTER.md step 10's check says `True`
   twice, above), or the cluster does not point at the Secret (above).
 - `NAME: …`: `NEXUS_REGISTRY` is not the value step 5 was run with.
 - `DNS: …`: the DNS server the nodes use does not have the record for `NEXUS_REGISTRY`.
 - `LOGIN: …`: the pull user's name or password is wrong, or the Secret's key is not exactly
   `NEXUS_REGISTRY`.
-- `OTHER: …` on Nexus's own cluster while its nodes are replaced: Nexus is moving to the new worker;
+- `OTHER: …` on Nexus's own cluster while its nodes are updated: Nexus is moving to the new worker;
   wait until CLUSTER.md step 10's check says `True` and run this block again.
 - `OTHER: …` with `i/o timeout` or `connection refused` at other times: the nodes cannot reach
   Nexus's address on port 443: a network or firewall matter.

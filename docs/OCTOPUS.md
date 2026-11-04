@@ -84,7 +84,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 | the cluster's nodes | `mcr.microsoft.com` | 443 | the SQL Server image (step 6) |
 | the cluster's nodes | `docker.io` | 443 | the Octopus and nginx images (step 7) |
 | your machine and your browser | `octopus-web`'s address (step 4) | 443 | Octopus's web page and REST API (steps 8 to 11) |
-| Octopus agents (the Argo CD gateway) | `octopus-web`'s address and `octopus-grpc`'s address (step 4) | 443 and 8443 | Octopus's REST API and gRPC |
+| Octopus agents (the Argo CD gateway) | `octopus-web`'s address and `octopus-grpc`'s address (step 4) | 443 and 8443 | Octopus's REST API and gRPC, only if you connect Argo CD later |
 | the cluster's nodes | Nexus's address | 443 | the Docker feed (step 11) |
 | the cluster's nodes | the hosts in [Octopus's outbound requests](https://octopus.com/docs/security/outbound-requests) | 443 | updates, step templates, telemetry (optional) |
 
@@ -196,9 +196,9 @@ disk free.
 
 The certificate for Octopus's web page (step 5) comes from cert-manager, a Broadcom add-on of the
 VKS cluster ([what add-ons are](ADDONS.md)). Run
-[KEYCLOAK-VKS.md step 2](KEYCLOAK-VKS.md#2-install-cert-manager) once, with `VKS_CLUSTER` set to
-Octopus's cluster and `VKS_NAMESPACE` to its vSphere Namespace. When the add-on is there already,
-it changes nothing.
+[KEYCLOAK-VKS.md step 2](KEYCLOAK-VKS.md#2-install-cert-manager) once, with `VKS_CLUSTER` changed
+from `my-keycloak-cluster` to Octopus's cluster and `VKS_NAMESPACE` to its vSphere Namespace.
+When the add-on is there already, it changes nothing.
 
 **Expect:** as in that step: `condition met` for the three cert-manager deployments, or
 `cert-manager: already installed`.
@@ -608,10 +608,11 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n octopus wait 
 
 ## 6. Run SQL Server and create Octopus's database
 
-This runs SQL Server 2025 Express with a 10 GB volume, waits until it accepts logins, then creates
+This runs SQL Server 2025 Express with a 10 GiB volume, waits until it accepts logins, then creates
 the database `OctopusDeploy` and the login `octopus` that owns it. Octopus uses that login, not
 `sa`. The SQL statements go to `sqlcmd` in the pod on its input, and `sqlcmd` reads the `sa`
-password from the pod's own environment: no password is on a command line.
+password from the pod's own environment: no password is on a command line. Running this block
+accepts Microsoft's licence terms for SQL Server Express (`ACCEPT_EULA`).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -874,8 +875,9 @@ This writes a values file for Octopus's Helm chart 1.18.0 (no secrets in it: Oct
 from step 3's Secrets), installs or updates Octopus with it, waits until Octopus is ready, then runs
 nginx in front of Octopus's web page with step 5's certificate. Octopus runs as a non-root user
 with a read-only file system, and without Docker-in-Docker (so steps cannot run in containers on
-Octopus's built-in worker). The first start takes several minutes: the nodes download a 1.6 GB
-image and Octopus creates its database tables.
+Octopus's built-in worker). It accepts Octopus Deploy's EULA (`acceptEula`) and gives the `admin`
+user the e-mail `admin@example.com`. The first start takes several
+minutes: the nodes download a 1.6 GB image and Octopus creates its database tables.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1343,8 +1345,7 @@ if ($LASTEXITCODE -eq 0 -and $B) {
 …/octopus-ca.pem`, a `"Version"` line with `2026.3.16049`, `Octopus answers at https://<address>`,
 `ALPN protocol: h2` and a `gRPC certificate:` line naming `Octopus gRPC` (Windows: `Version:
 2026.3.16049` and no ALPN line). The
-gRPC port keeps Octopus's own certificate; the Argo CD gateway trusts it by itself, when Argo CD is
-connected.
+gRPC port keeps Octopus's own certificate.
 
 **If not:**
 - `Connection refused` or a timeout: this machine cannot reach the web address on port 443, or nginx
@@ -1606,8 +1607,8 @@ dev-test-prod: created, phases dev,test,prod` (`exists` when run again).
 
 Octopus checks Nexus's certificate when it lists image tags. This gives Octopus Nexus's CA: it
 saves `nexus-ca.pem` from [NEXUS.md step 7](NEXUS.md#7-save-nexuss-ca-and-check-its-address) as a ConfigMap
-(the certificate only, no key), writes a second values file that builds a CA bundle for Octopus
-when it starts, and runs step 7 again, which uses both files. Octopus restarts once.
+(the certificate only, no key), and writes a second values file that builds a CA bundle for
+Octopus when it starts. Then run step 7 again: it uses both files, and Octopus restarts once.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

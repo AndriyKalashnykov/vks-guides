@@ -521,7 +521,7 @@ and waits for Gitea to answer.
 > [!NOTE]
 > **Limits of the Helm way:**
 > - Chart 12.7.0 is built for Gitea 1.27; these values run Gitea 28.2.0, the image A uses.
->   `helm list` shows the chart's `1.27.0`.
+>   `helm list` shows the chart's `1.27.0` as APP VERSION; the pod still runs 28.2.0.
 > - Gitea keeps its settings in a file on the volume. A changed value takes effect when you run
 >   this block again, but a value you remove stays set, and the keys from step 3 are read only at
 >   the first start. To start over, run step 9.
