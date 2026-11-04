@@ -91,7 +91,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 ## 2. Install cert-manager and Headlamp (cluster administrator)
 
-Run this once, after step 1, to install Headlamp in the cluster and get its address.
+Run this once, after step 1, to install Headlamp in the cluster.
 Headlamp's add-on gets its HTTPS certificate from cert-manager, another add-on, so this installs
 cert-manager first when the cluster does not have it. Set `VKS_NAMESPACE` to the cluster's vSphere
 Namespace, `VKS_CLUSTER` to the cluster's name, and `HEADLAMP_RELEASE` to the release from step 1.
@@ -235,15 +235,15 @@ installed in the cluster …`, `deployment.apps/headlamp condition met`, then th
 
 ## 3. Check what the add-on set up (cluster administrator)
 
-Run this once after the install, before you give anyone Headlamp's address: it proves that
-Headlamp refuses anyone without a login, and shows two powerful settings the add-on made, so you
-know what to protect. It changes nothing.
+Run this once after the install, before you give anyone Headlamp's address: it checks that
+Headlamp passes a request without a login to the cluster, which refuses it, and shows two powerful
+settings the add-on made, so you know what to protect. It changes nothing.
 
 The two settings:
 
 - Headlamp's own account (the ServiceAccount `headlamp`) has the cluster's administrator role,
   `cluster-admin`. Headlamp does not use it for what people see and do: it uses the token each
-  person pastes (steps 6 and 7).
+  person pastes (step 7).
 - Its namespace `headlamp` (a namespace inside the VKS cluster, not a vSphere Namespace) runs
   without pod security limits (`privileged`).
 
@@ -674,7 +674,8 @@ administrator logs in as in step 6.1).
 a namespace inside the VKS cluster, not a vSphere Namespace (it is not listed under Supervisor
 Management → Namespaces), created if it is missing; empty for every namespace (view only).
 
-Run this once for each person or team who will use Headlamp without their own SSO login.
+Run this once for each person or team who will use Headlamp without their own SSO login, and for
+yourself when you want a login with fewer rights than your SSO user (step 6.1).
 The block makes the ServiceAccount `ACCOUNT` in the namespace `headlamp`. With `ACCESS_NAMESPACE`
 empty it adds the cluster-wide ClusterRoleBinding `headlamp-<ACCOUNT>` (a binding gives an
 account a role, as a permission does on a vCenter object; the Cluster… forms apply to the whole
@@ -838,7 +839,7 @@ cluster limits token lifetimes; give a new token before it ends.
 
 ### 8.3 Take a person's access away
 
-To take access away, delete the account and every binding that names it: every token it was given
+Run this when a person or team should lose access to Headlamp. To take access away, delete the account and every binding that names it: every token it was given
 stops working within seconds. This block deletes the account `ACCOUNT` and its bindings.
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -1450,8 +1451,8 @@ Kubescape's pages show the whole cluster: an account limited to one namespace se
 
 ### 11.3 Let an account read the plugins' data (cluster administrator)
 
-Run this for each account from step 8.1 that should see the plugins' pages: without it, the
-account sees no Prometheus charts and no Kubescape results.
+Run this for each account from step 8.1 that should see Prometheus charts, or (an account for every
+namespace) Kubescape results: without it, the account sees neither.
 This gives an account from step 8.1 what the plugins read. Giving the same to a person who logs
 in with their own SSO user (step 6.2) is not covered here.
 
