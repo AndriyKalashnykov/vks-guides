@@ -1353,7 +1353,7 @@ ID="$("$K" get clients -r "$REALM" -q clientId=supervisor --fields id --format c
 if [ -z "$ID" ]; then
   printf '{"clientId":"supervisor","name":"vSphere Supervisor","publicClient":false,"clientAuthenticatorType":"client-secret",
  "standardFlowEnabled":true,"implicitFlowEnabled":false,"directAccessGrantsEnabled":false,"serviceAccountsEnabled":false,
- "redirectUris":["%s"],"webOrigins":[],"optionalClientScopes":[],
+ "redirectUris":["%s"],"webOrigins":[],"defaultClientScopes":["basic","profile","email"],"optionalClientScopes":[],
  "attributes":{"pkce.code.challenge.method":"S256","oauth2.device.authorization.grant.enabled":"false"},
  "protocolMappers":[{"name":"groups","protocol":"openid-connect","protocolMapper":"oidc-group-membership-mapper",
    "config":{"claim.name":"groups","full.path":"false","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}}]}' "$CALLBACK" \
@@ -1369,6 +1369,14 @@ else
     "$K" update "clients/$ID" -r "$REALM" -s "redirectUris=[\"$CALLBACK\"]" && echo "client supervisor: redirect now $CALLBACK"
   fi
 fi
+L="$("$K" get client-scopes -r "$REALM" --fields id,name --format csv --noquotes)"
+for S in basic profile email; do
+  SID=""
+  while IFS=, read -r I N; do if [ "$N" = "$S" ]; then SID="$I"; fi; done <<< "$L"
+  if [ -z "$SID" ]; then echo "FAILED: no client scope $S in realm $REALM"; exit 1; fi
+  "$K" update "clients/$ID/default-client-scopes/$SID" -r "$REALM" || { echo "FAILED: the client scope $S (see above)"; exit 1; }
+done
+echo "client supervisor: default client scopes basic, profile, email"
 if [ "$SHOW_SECRET" = yes ]; then
   echo "client secret: $("$K" get "clients/$ID/client-secret" -r "$REALM" --fields value --format csv --noquotes)"
 else
@@ -1408,7 +1416,7 @@ ID="$("$K" get clients -r "$REALM" -q clientId=supervisor --fields id --format c
 if [ -z "$ID" ]; then
   printf '{"clientId":"supervisor","name":"vSphere Supervisor","publicClient":false,"clientAuthenticatorType":"client-secret",
  "standardFlowEnabled":true,"implicitFlowEnabled":false,"directAccessGrantsEnabled":false,"serviceAccountsEnabled":false,
- "redirectUris":["%s"],"webOrigins":[],"optionalClientScopes":[],
+ "redirectUris":["%s"],"webOrigins":[],"defaultClientScopes":["basic","profile","email"],"optionalClientScopes":[],
  "attributes":{"pkce.code.challenge.method":"S256","oauth2.device.authorization.grant.enabled":"false"},
  "protocolMappers":[{"name":"groups","protocol":"openid-connect","protocolMapper":"oidc-group-membership-mapper",
    "config":{"claim.name":"groups","full.path":"false","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}}]}' "$CALLBACK" \
@@ -1424,6 +1432,14 @@ else
     "$K" update "clients/$ID" -r "$REALM" -s "redirectUris=[\"$CALLBACK\"]" && echo "client supervisor: redirect now $CALLBACK"
   fi
 fi
+L="$("$K" get client-scopes -r "$REALM" --fields id,name --format csv --noquotes)"
+for S in basic profile email; do
+  SID=""
+  while IFS=, read -r I N; do if [ "$N" = "$S" ]; then SID="$I"; fi; done <<< "$L"
+  if [ -z "$SID" ]; then echo "FAILED: no client scope $S in realm $REALM"; exit 1; fi
+  "$K" update "clients/$ID/default-client-scopes/$SID" -r "$REALM" || { echo "FAILED: the client scope $S (see above)"; exit 1; }
+done
+echo "client supervisor: default client scopes basic, profile, email"
 if [ "$SHOW_SECRET" = yes ]; then
   echo "client secret: $("$K" get "clients/$ID/client-secret" -r "$REALM" --fields value --format csv --noquotes)"
 else
@@ -1439,7 +1455,7 @@ fi
 
 **Expect:** `Logging into https://keycloak.keycloak.svc as user admin of realm master`, then
 a `Created new client …` line and `client supervisor: created, redirect https://…/wcp/pinniped/callback`
-(or `exists, redirect …`),
+(or `exists, redirect …`), `client supervisor: default client scopes basic, profile, email`,
 then `client secret: not shown …` (the secret with `SHOW_SECRET="yes"`).
 
 **If not:**
@@ -1449,6 +1465,9 @@ then `client secret: not shown …` (the secret with `SHOW_SECRET="yes"`).
 - `FAILED: the admin login`: as in step 9.
 - `client supervisor: exists, its redirect was …`: the client had another redirect, and now has
   `CALLBACK`; if another Supervisor used it, give that one a client of its own.
+- `FAILED: no client scope …`: the realm lacks one of Keycloak's built-in client scopes `basic`,
+  `profile` or `email` (the Keycloak this guide installs has all three): check the realm's
+  **Client scopes** in the admin console (step 12).
 
 ### 11.3 Register Keycloak (vCenter administrator)
 
@@ -1491,7 +1510,8 @@ values above. To check a sign-in, run the
   the firewall (Prerequisites), then the client secret (11.2) and the certificate authority data
   (step 6).
 - `invalid_scope` on Keycloak's page or in the browser's address: the additional scopes are not
-  exactly `openid email profile`; edit the provider.
+  exactly `openid email profile` (edit the provider), or the client `supervisor` lacks the client
+  scopes `profile` and `email` (run 11.2 again).
 - `Invalid parameter: redirect_uri` on Keycloak's page: the client's redirect is not the Callback
   URL; run 11.2 again with it.
 - The wrong prefix: remove the provider and register it again (the consequences above).
