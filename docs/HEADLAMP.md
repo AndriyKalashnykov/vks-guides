@@ -83,8 +83,8 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 **If not:**
 - No `0.45.0` row: VKS on the Supervisor is older than 3.8. Release `0.42.0` does not support
   Kubernetes v1.37; use it only on a cluster with v1.33 to v1.36.
-- `Unable to read password from terminal`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login)
-  and run this again.
+- `Unable to read password from terminal` (Windows: `The handle is invalid`): [renew the Supervisor
+  login](LOGIN.md#renew-the-supervisor-login) and run this again.
 
 ## 2. Install cert-manager and Headlamp
 

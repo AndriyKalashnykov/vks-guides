@@ -179,8 +179,8 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 **If not:**
 - No row: the Supervisor runs a VKS older than 3.8. Use B (step 3).
-- `Unable to read password from terminal`, `provide credentials` or `no current context set`:
-  [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+- `Unable to read password from terminal` (Windows: `The handle is invalid`), `provide credentials`
+  or `no current context set`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
 Set `TEKTON_RELEASE` to the release name above. This asks the Supervisor to install the Tekton
 Operator on your cluster: a program that installs and manages Tekton for you. Tekton itself comes
@@ -1451,8 +1451,9 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 - `STOPPED: this Tekton Operator is not the VKS add-on`: someone else installed it; leave it.
 - `STOPPED: … objects outside tekton-demo`: list them with `kubectl --kubeconfig <the VKS
   kubeconfig> get <kind> -A`; delete them first if they are yours.
-- `STOPPED: the VCF CLI` under `Unable to read password from terminal` or `provide credentials`:
-  [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then run the block again.
+- `STOPPED: the VCF CLI` under `Unable to read password from terminal` (Windows:
+  `The handle is invalid`) or `provide credentials`: [renew the Supervisor
+  login](LOGIN.md#renew-the-supervisor-login), then run the block again.
 - `FAILED: the operator's sets are still there`: `kubectl --kubeconfig <the VKS kubeconfig> get
   tektoninstallersets -o yaml` shows what holds them (`finalizers`); run the block again.
 - `Tekton CRDs left:` more than 0, or `FAILED: …`: see the error above it, and run the block

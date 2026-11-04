@@ -110,8 +110,8 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 **Expect:** a table of add-on names and descriptions, for example `cert-manager  Certificate
 management` and `headlamp  Web UI for Kubernetes (Headlamp).`.
 
-**If not:** `Unable to read password from terminal`: your login has ended;
-[renew it](LOGIN.md#renew-the-supervisor-login) and run this again.
+**If not:** `Unable to read password from terminal` (Windows: `The handle is invalid`): your login
+has ended; [renew it](LOGIN.md#renew-the-supervisor-login) and run this again.
 
 ## See what a cluster has
 
@@ -155,8 +155,8 @@ remove or upgrade them. It is `Allowed` for the ones installed from your vSphere
 cluster may show only `NotAllowed` rows. The core add-ons are not listed; `--show-internal` adds
 them.
 
-**If not:** `Unable to read password from terminal`: [renew your login](LOGIN.md#renew-the-supervisor-login)
-and run this again. A `READY` that stays `False`: `vcf addon install get <name> --cluster-name
-"$VKS_CLUSTER" -n "$VKS_NAMESPACE"` shows why.
+**If not:** `Unable to read password from terminal` (Windows: `The handle is invalid`): [renew your
+login](LOGIN.md#renew-the-supervisor-login) and run this again. A `READY` that stays `False`:
+`vcf addon install get <name> --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"` shows why.
 
 Back to [README](../README.md).

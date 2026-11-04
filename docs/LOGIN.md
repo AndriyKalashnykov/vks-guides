@@ -199,8 +199,8 @@ if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
 elif [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0-9-]*[a-z0-9])?')" != 1 ] \
      || [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | wc -l | tr -d ' ')" != 1 ] \
-     || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$'; then
-  echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
+     || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$' -e '-keycloak$'; then
+  echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
 elif [ -e "$SUPERVISOR_KUBECONFIG" ]; then
   echo "FAILED: $SUPERVISOR_KUBECONFIG exists: run Log out first, or set another SUPERVISOR_CONTEXT"
 elif [ ! -f "$SUPERVISOR_CA" ] || [ ! -s "$SUPERVISOR_CA" ]; then
@@ -230,8 +230,8 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $global:LASTEXITCODE = $null
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this terminal; run the line under Type your SSO password"
-} elseif ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPERVISOR_CONTEXT.EndsWith('-sso')) {
-  "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
+} elseif ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPERVISOR_CONTEXT.EndsWith('-sso') -or $SUPERVISOR_CONTEXT.EndsWith('-keycloak')) {
+  "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
 } elseif (Test-Path $SUPERVISOR_KUBECONFIG) {
   "FAILED: $SUPERVISOR_KUBECONFIG exists: run Log out first, or set another SUPERVISOR_CONTEXT"
 } elseif (-not (Test-Path $SUPERVISOR_CA -PathType Leaf) -or (Get-Item $SUPERVISOR_CA).Length -eq 0) {
@@ -339,8 +339,8 @@ if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
 elif [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0-9-]*[a-z0-9])?')" != 1 ] \
      || [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | wc -l | tr -d ' ')" != 1 ] \
-     || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$'; then
-  echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
+     || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$' -e '-keycloak$'; then
+  echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
 elif [ -e "$SUPERVISOR_KUBECONFIG" ]; then
   echo "FAILED: $SUPERVISOR_KUBECONFIG exists: run Log out first, or set another SUPERVISOR_CONTEXT"
 elif mkdir -p "$(dirname "$SUPERVISOR_KUBECONFIG")" \
@@ -367,8 +367,8 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $global:LASTEXITCODE = $null
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this terminal; run the line under Type your SSO password"
-} elseif ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPERVISOR_CONTEXT.EndsWith('-sso')) {
-  "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
+} elseif ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPERVISOR_CONTEXT.EndsWith('-sso') -or $SUPERVISOR_CONTEXT.EndsWith('-keycloak')) {
+  "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
 } elseif (Test-Path $SUPERVISOR_KUBECONFIG) {
   "FAILED: $SUPERVISOR_KUBECONFIG exists: run Log out first, or set another SUPERVISOR_CONTEXT"
 } else {
@@ -606,7 +606,8 @@ if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFI
 
 **If not:**
 - `FAILED: … holds another login, not this cluster's`: a file of that name is another login (a
-  Supervisor login whose `SUPERVISOR_CONTEXT` is this cluster's name, or a hand-out). It is kept;
+  Supervisor login whose `SUPERVISOR_CONTEXT` is this cluster's name, a hand-out, or a damaged
+  file). It is kept;
   move it aside, or log out of that Supervisor and log in again with another `SUPERVISOR_CONTEXT`.
 - `FAILED: no kubeconfig read`, under `secrets "<name>-kubeconfig" not found`: check
   `VKS_CLUSTER`, or the cluster is still being created.
@@ -694,7 +695,8 @@ if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFI
 
 **If not:**
 - `FAILED: … holds another login, not this cluster's`: a file of that name is another login (a
-  Supervisor login whose `SUPERVISOR_CONTEXT` is this cluster's name, or a hand-out). It is kept;
+  Supervisor login whose `SUPERVISOR_CONTEXT` is this cluster's name, a hand-out, or a damaged
+  file). It is kept;
   move it aside, or log out of that Supervisor and log in again with another `SUPERVISOR_CONTEXT`.
 - `FAILED: no kubeconfig at …`: set `DOWNLOADED` to the file the browser saved (a second
   download of the same name may be saved as `<cluster>-kubeconfig (1).yaml`).
@@ -825,8 +827,8 @@ if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
 elif [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0-9-]*[a-z0-9])?')" != 1 ] \
      || [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | wc -l | tr -d ' ')" != 1 ] \
-     || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$'; then
-  echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
+     || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$' -e '-keycloak$'; then
+  echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
 elif [ ! -f "$SUPERVISOR_KUBECONFIG" ]; then
   echo "FAILED: not found: $SUPERVISOR_KUBECONFIG; create the context first"
 elif [ -n "$SUPERVISOR_CA" ] && { [ ! -f "$SUPERVISOR_CA" ] || [ ! -s "$SUPERVISOR_CA" ]; }; then
@@ -847,8 +849,8 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $TLS = if ($SUPERVISOR_CA) { "--ca-certificate=$SUPERVISOR_CA" } else { "--insecure-skip-tls-verify" }
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this terminal; run the line under Type your SSO password"
-} elseif ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPERVISOR_CONTEXT.EndsWith('-sso')) {
-  "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
+} elseif ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPERVISOR_CONTEXT.EndsWith('-sso') -or $SUPERVISOR_CONTEXT.EndsWith('-keycloak')) {
+  "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
 } elseif (-not (Test-Path $SUPERVISOR_KUBECONFIG -PathType Leaf)) {
   "FAILED: not found: $SUPERVISOR_KUBECONFIG; create the context first"
 } elseif ($SUPERVISOR_CA -and (-not (Test-Path $SUPERVISOR_CA -PathType Leaf) -or (Get-Item $SUPERVISOR_CA).Length -eq 0)) {
@@ -896,8 +898,8 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 unset SSO_PASSWORD
 if [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0-9-]*[a-z0-9])?')" != 1 ] \
    || [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | wc -l | tr -d ' ')" != 1 ] \
-   || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$'; then
-  echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
+   || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$' -e '-keycloak$'; then
+  echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
 elif KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf context delete "$SUPERVISOR_CONTEXT" -y --skip-delete-kubeconfig-context </dev/null; then
   if [ ! -e "$SUPERVISOR_KUBECONFIG" ] \
      || kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" config get-contexts -o name 2>/dev/null | grep -qxF -- "$SUPERVISOR_CONTEXT"; then
@@ -919,8 +921,8 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 Remove-Variable SSO_PASSWORD -ErrorAction SilentlyContinue
-if ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPERVISOR_CONTEXT.EndsWith('-sso')) {
-  "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
+if ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPERVISOR_CONTEXT.EndsWith('-sso') -or $SUPERVISOR_CONTEXT.EndsWith('-keycloak')) {
+  "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
 } else {
   $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
   $null | vcf context delete $SUPERVISOR_CONTEXT -y --skip-delete-kubeconfig-context
@@ -952,6 +954,6 @@ list without that context.
   name, the file is an old Supervisor login: delete it with `rm`. Otherwise keep it and set
   another `SUPERVISOR_CONTEXT`.
 - `kept …: it is not a Supervisor login`: the context is deleted; the file of that name is another
-  login (a VKS cluster's or a hand-out) and stays.
+  login (a VKS cluster's or a hand-out) and stays. If it is a damaged file, move it aside.
 
 Back to [README](../README.md).

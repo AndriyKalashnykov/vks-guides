@@ -435,10 +435,10 @@ in the same kubeconfig. Messages you may see:
 - `failed to discover plugin sources …` from `vcf context use`, with an error exit: `vcf` looks for
   plugins in the Supervisor's registry after it switched, and the switch is done all the same. The
   guides check for `Successfully activated context '<name>'` in its output, not the exit code.
-- `Unable to read password from terminal` from `vcf context use`: the login has expired, so it
-  asked for the password; the guides run it with `</dev/null` (PowerShell: `$null | vcf context
-  use $SUPERVISOR_CONTEXT`) so that it stops instead, and print `FAILED: the VCF CLI is not on
-  context …`. Renew the login, then run the block again.
+- `Unable to read password from terminal` (Windows: `The handle is invalid`) from `vcf context use`:
+  the login has expired, so it asked for the password; the guides run it with `</dev/null`
+  (PowerShell: `$null | vcf context use $SUPERVISOR_CONTEXT`) so that it stops instead, and print
+  `FAILED: the VCF CLI is not on context …`. Renew the login, then run the block again.
 
 The block below shows your `vcf` contexts, the kubeconfig file each one uses, and the
 current-context of each file. It needs `jq` ([PREREQS.md](PREREQS.md)) and `kubectl`

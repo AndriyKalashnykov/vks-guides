@@ -971,9 +971,9 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$KC_KUBECONFIG.new"
 renames that file), then `runs: vcf pinniped-auth` and `saved …`.
 
 **If not:**
-- `FAILED: the VCF CLI is not on context …`, under `Unable to read password from terminal`: run
-  [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this block again; under
-  `context … not found`: log in to the Supervisor first
+- `FAILED: the VCF CLI is not on context …`, under `Unable to read password from terminal` (Windows:
+  `The handle is invalid`): run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login),
+  then this block again; under `context … not found`: log in to the Supervisor first
   ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)).
 - `FAILED: cannot read the cluster …` after `clusters.cluster.x-k8s.io "…" not found`: check
   `VKS_CLUSTER`; after `namespaces "…" not found`: check `VKS_NAMESPACE`.
