@@ -2321,7 +2321,7 @@ delete the cluster until it is gone.
 
 (not tested with Nexus) With DNS names, the Contour add-on can take Nexus's HTTPS on a shared address instead of its own
 load balancer: install Contour as in
-[HEADLAMP.md step 10](HEADLAMP.md#10-reach-headlamp-by-a-dns-name-through-contour-optional), and
+[HEADLAMP.md step 10](HEADLAMP.md#10-reach-headlamp-by-a-dns-name-through-contour-optional-cluster-administrator), and
 give Nexus an HTTPProxy for its name with `timeoutPolicy` `response: infinity` and
 `idle: infinity` (Contour's default of 15 seconds breaks large pushes and pulls). The nodes of every
 VKS cluster that pulls must then resolve that name.
