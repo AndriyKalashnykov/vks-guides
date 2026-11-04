@@ -202,7 +202,7 @@ if (-not $N) { $N = "none" }
 if (-not (Test-Path -LiteralPath $HARBOR_DIR -PathType Container)) { "FAILED: $HARBOR_DIR does not exist; nothing to bind" }
 elseif ("$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()) { "FAILED: $HARBOR_DIR already has a supervisor-uid; nothing changed" }
 elseif (-not $BIND_HOSTNAME -or $BIND_HOSTNAME -cne $N) {
-  "hostname in these files: ${N}; if that is the Harbor of the Supervisor this login reaches, put $BIND_HOSTNAME = `"${N}`" in this block's first line and run the block again"
+  "hostname in these files: ${N}; if that is the Harbor of the Supervisor this login reaches, put `$BIND_HOSTNAME = `"${N}`" in this block's first line and run the block again"
 } else {
   $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
   if ($LASTEXITCODE -ne 0 -or -not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
