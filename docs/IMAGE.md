@@ -495,6 +495,8 @@ elif sed "s/^  name: test-web-apps\$/  name: $APP_NAMESPACE/" "$IMAGE_DIR/k8s/na
       data: {".dockerconfigjson": ({auths: {($h): {username: $u, password: env.HARBOR_PULL_SECRET,
         auth: ("\($u):\(env.HARBOR_PULL_SECRET)" | @base64)}}} | tojson | @base64)}}' \
     | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -
+else
+  echo "FAILED: the namespace $APP_NAMESPACE was not made (see the error above)"
 fi
 unset HARBOR_PULL_SECRET
 ```
@@ -529,6 +531,7 @@ else {
         ConvertTo-Json -Depth 5 | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
     } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($B); $P = $null; $AUTH = $null; $CFG = $null }
   }
+  else { "FAILED: the namespace $APP_NAMESPACE was not made (see the error above)" }
 }
 Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 ```
@@ -537,6 +540,10 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 
 **Expect:** `namespace/harbor-demo created` (or `unchanged`), then `secret/harbor-pull created`
 (or `configured`).
+
+**If not:** `FAILED: the namespace … was not made` with `Unauthorized` above it: the login in the
+cluster's kubeconfig has expired; save it again ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)),
+type the pull robot's secret again (the line above the block) and run this block again.
 
 ## 6. Deploy the app
 
@@ -637,7 +644,11 @@ if (-not $DIGEST -or -not (Test-Path "$K\deployment.yaml") -or -not (Test-Path $
 lines, `deployment "test-web-apps" successfully rolled out`, then
 `pods running your image: 5 of 5`.
 
-**If not:** the wait ends with `exceeded its progress deadline` or times out: run
+**If not:** `Unauthorized` (after `pull secret: none`): the login in the cluster's kubeconfig has
+expired; save it again ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), redo step 5 if you
+use the Secret, then run this block again.
+
+The wait ends with `exceeded its progress deadline` or times out: run
 `kubectl --kubeconfig "$HOME/.kube/<cluster>.kubeconfig" -n harbor-demo get events --sort-by=.lastTimestamp`
 and read its last lines.
 - `x509: certificate signed by unknown authority`: the nodes do not trust Harbor; run HARBOR.md
