@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Official Broadcom, Keycloak, cert-manager and Kubernetes documentation for this guide**
 >
-> - Broadcom: [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html) (cert-manager)
+> - Broadcom: [Register an External Identity Provider with Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/connecting-to-tkg-service-clusters-using-an-external-identity-provider/register-an-external-idp-with-supervisor.html) (step 11), [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html) (cert-manager)
 > - Keycloak: [Running Keycloak in a container](https://www.keycloak.org/server/containers), [Configuring TLS](https://www.keycloak.org/server/enabletls), [Configuring the hostname](https://www.keycloak.org/server/hostname), [Management interface](https://www.keycloak.org/server/management-interface), [Admin CLI](https://www.keycloak.org/docs/latest/server_admin/index.html#admin-cli), [Sizing CPU and memory](https://www.keycloak.org/high-availability/single-cluster/concepts-memory-and-cpu-sizing)
 > - cert-manager: [CA issuer](https://cert-manager.io/docs/configuration/ca/), [SelfSigned issuer](https://cert-manager.io/docs/configuration/selfsigned/)
 > - Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) (`restricted`)
@@ -24,8 +24,9 @@ HTTPS certificate and a name, and sets up a realm that VKS clusters can use for 
 
 Run the steps in order. Who does what:
 
-- a vCenter administrator: the VM class for the cluster (Prerequisites);
-- you, the administrator of Keycloak's cluster: steps 1 to 7 and 9 to 13;
+- a vCenter administrator: the VM class for the cluster (Prerequisites), and Keycloak's
+  registration on the Supervisor (step 11, optional);
+- you, the administrator of Keycloak's cluster: steps 1 to 7 and 9 to 14 (in step 11, the client);
 - whoever runs your DNS: the record in step 7;
 - everyone who signs in to Keycloak, you included: step 8, once.
 
@@ -36,7 +37,9 @@ Run the steps in order. Who does what:
   for the cert-manager add-on;
 - [kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md);
 - a DNS name for Keycloak that you can point at an address (step 7), resolvable by the people who
-  sign in and by the control-plane nodes of every VKS cluster that will trust Keycloak.
+  sign in, by the control-plane nodes of every VKS cluster that will trust Keycloak, and, for
+  step 11, by the Supervisor's DNS servers;
+- for step 11 only: a vCenter administrator, who registers Keycloak on the Supervisor.
 
 The cluster for Keycloak:
 
@@ -69,6 +72,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 | the cluster's nodes | `quay.io`, `docker.io` | 443 | the Keycloak and PostgreSQL images (step 5) |
 | your machine, the people's machines and browsers | Keycloak's address (step 5) | 443 | Keycloak's pages and logins |
 | the control-plane nodes of the clusters that trust Keycloak | Keycloak's address | 443 | checking logins ([KEYCLOAK.md](KEYCLOAK.md)) |
+| the vCenter administrator's browser | vCenter | 443 | the vSphere Client (step 11) |
+| the Supervisor's control plane | Keycloak's address | 443 | the Supervisor's sign-ins (step 11) |
 
 ## 1. Check the cluster
 
@@ -312,7 +317,8 @@ This makes a CA (certificate authority) of your own with cert-manager, valid for
 it a certificate for `KEYCLOAK_HOST`, the DNS name Keycloak will have (step 7), and for its name
 inside the cluster. cert-manager renews the certificate before it ends; Keycloak picks the new one
 up within an hour. The CA itself is renewed with a new key after about 6.5 years: then hand out the
-new CA (step 6) again, as for a new Keycloak.
+new CA (step 6) again, as for a new Keycloak, and, if Keycloak is registered on the Supervisor
+(step 11), have the vCenter administrator edit the provider there and give it the new CA.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -950,7 +956,8 @@ if ($LASTEXITCODE -eq 0 -and $B) {
 ## 7. Give Keycloak its name
 
 Create a DNS record (type A) for `KEYCLOAK_HOST` with Keycloak's address from step 5, in the DNS
-that the people who sign in and the control-plane nodes of the clusters that trust Keycloak use.
+that the people who sign in, the control-plane nodes of the clusters that trust Keycloak and, for
+step 11, the Supervisor use.
 Then this checks the name, the certificate and the address it answers with (its issuer).
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -988,7 +995,7 @@ if ($LASTEXITCODE -eq 0) { "issuer: $((ConvertFrom-Json ($J | Out-String)).issue
 
 People sign in to Keycloak in a browser, which must trust Keycloak's CA. Give each person
 `keycloak-ca.pem` from step 6 (it holds no secret), and each person adds it once on the machine
-whose browser they sign in with. Do it on your own machine too, before step 11.
+whose browser they sign in with. Do it on your own machine too, before step 12.
 
 **Linux:** Chrome uses its own certificate database in your home. This adds the CA there (it needs
 `certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on
@@ -1154,7 +1161,7 @@ each group (`exists` for what was there), with a `Created new …` line from Key
 `keycloak-admin` was changed after Keycloak's first start (Keycloak keeps the first password), or
 the administrator `admin` was deleted or got another password in the admin console.
 
-In the admin console (step 11), the realm's **Clients** list shows `kubernetes-device`; its
+In the admin console (step 12), the realm's **Clients** list shows `kubernetes-device`; its
 **Capability config** has **Client authentication** off and **OAuth 2.0 Device Authorization Grant**
 on; and under **Client scopes**, `kubernetes-device-dedicated`, the mapper `groups` has **Full
 group path** off and **Add to ID token** on.
@@ -1277,7 +1284,256 @@ Under **Groups**, a group's **Members** tab lists the people added to it.
 
 ![The group team-a's Members tab: alice, carol and erin with their email addresses and names](img/keycloak-vks/05-group-members.jpg)
 
-## 11. Open the admin console (optional)
+## 11. Register Keycloak with the Supervisor (optional)
+
+This lets people sign in to every VKS cluster of a Supervisor with their Keycloak account, through
+the Supervisor: the group way of [ACCESS.md](ACCESS.md#a-group-from-an-external-identity-provider-through-the-supervisor).
+Skip it if people sign in only to clusters made with [KEYCLOAK.md](KEYCLOAK.md). Who does what:
+
+- you, the Keycloak administrator: the client `supervisor` in the realm (11.2), then you send the
+  vCenter administrator its secret, `keycloak-ca.pem` (step 6) and the issuer
+  `https://<KEYCLOAK_HOST>/realms/<REALM>`, through a password manager's share or another private
+  channel;
+- the vCenter administrator: the Callback URL (11.1) and the registration (11.3).
+
+### 11.1 Copy the Callback URL (vCenter administrator)
+
+In the vSphere Client: ☰ → **Supervisor Management** → **Supervisors** → your Supervisor →
+**Configure** → **Supervisor** → **Identity Providers**. Copy the **Callback URL** the page shows,
+`https://<Supervisor address>/wcp/pinniped/callback`, and send it to the Keycloak administrator.
+
+### 11.2 Make the client (Keycloak administrator)
+
+The Supervisor signs people in through a client of its own, `supervisor`, with a secret (a
+confidential client), whose one redirect is the Callback URL.
+
+In the admin console (step 12), in the realm `REALM`:
+
+1. **Clients** → **Create client**: **Client type** `OpenID Connect`, **Client ID** `supervisor` →
+   **Next**.
+2. **Capability config**: **Client authentication** on; of the flows only **Standard flow** on
+   (**Direct access grants**, **Implicit flow**, **Service accounts roles** and **OAuth 2.0 Device
+   Authorization Grant** off); **PKCE Method** `S256` → **Next**.
+3. **Login settings**: **Valid redirect URIs** the Callback URL from 11.1, nothing else →
+   **Save**.
+4. **Client scopes** tab: keep `basic`, `email` and `profile` as **Default**, and remove every
+   scope whose type is **Optional**. Then open
+   `supervisor-dedicated` and add a **Group Membership** mapper as in step 9: **Name** and **Token
+   Claim Name** `groups`, **Full group path** off, **Add to ID token** on.
+5. **Credentials** tab: copy the **Client Secret** for the vCenter administrator.
+
+Or with Keycloak's admin command line, as in step 9: this makes the client with the default
+scopes `basic`, `email` and `profile` only, or, when `supervisor` exists, sets its redirect to
+`CALLBACK` (and prints what it was) and those default scopes. It prints the secret
+only with `SHOW_SECRET="yes"`; then clear the terminal once you have sent it.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_CLUSTER="my-keycloak-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+REALM="my-realm"
+CALLBACK="https://10.0.0.10/wcp/pinniped/callback"
+SHOW_SECRET="no"
+
+if [ -n "$(printf '%s' "$CALLBACK" | tr -d 'A-Za-z0-9.:/-')" ] \
+   || ! printf '%s\n' "$CALLBACK" | grep -Eqx 'https://[A-Za-z0-9.-]+(:[0-9]+)?/wcp/pinniped/callback'; then
+  echo "STOPPED: CALLBACK is not a Callback URL such as https://<Supervisor address>/wcp/pinniped/callback: $CALLBACK"
+else
+  { printf 'REALM=%s\nCALLBACK=%s\nSHOW_SECRET=%s\n' "$REALM" "$CALLBACK" "$SHOW_SECRET"; cat <<'SCRIPT'
+K=/opt/keycloak/bin/kcadm.sh
+TS="$(mktemp -d)/truststore.p12"
+keytool -importcert -noprompt -alias keycloak-ca -file /etc/keycloak-tls/ca.crt -keystore "$TS" \
+  -storetype PKCS12 -storepass truststore >/dev/null 2>&1 || { echo "FAILED: no truststore"; exit 1; }
+export KC_CLI_PASSWORD="$KC_BOOTSTRAP_ADMIN_PASSWORD"
+"$K" config truststore --trustpass truststore "$TS" >/dev/null \
+  && "$K" config credentials --server https://keycloak.keycloak.svc --realm master --user "$KC_BOOTSTRAP_ADMIN_USERNAME" >/dev/null \
+  || { echo "FAILED: the admin login (see above)"; exit 1; }
+"$K" get "realms/$REALM" --fields realm >/dev/null || { echo "FAILED: no realm $REALM (step 9)"; exit 1; }
+ID="$("$K" get clients -r "$REALM" -q clientId=supervisor --fields id --format csv --noquotes)"
+if [ -z "$ID" ]; then
+  printf '{"clientId":"supervisor","name":"vSphere Supervisor","publicClient":false,"clientAuthenticatorType":"client-secret",
+ "standardFlowEnabled":true,"implicitFlowEnabled":false,"directAccessGrantsEnabled":false,"serviceAccountsEnabled":false,
+ "redirectUris":["%s"],"webOrigins":[],"defaultClientScopes":["basic","profile","email"],"optionalClientScopes":[],
+ "attributes":{"pkce.code.challenge.method":"S256","oauth2.device.authorization.grant.enabled":"false"},
+ "protocolMappers":[{"name":"groups","protocol":"openid-connect","protocolMapper":"oidc-group-membership-mapper",
+   "config":{"claim.name":"groups","full.path":"false","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}}]}' "$CALLBACK" \
+    | "$K" create clients -r "$REALM" -f - >/dev/null || { echo "FAILED: the client (see above)"; exit 1; }
+  echo "client supervisor: created, redirect $CALLBACK"
+  ID="$("$K" get clients -r "$REALM" -q clientId=supervisor --fields id --format csv --noquotes)"
+else
+  R="$("$K" get "clients/$ID" -r "$REALM" --fields redirectUris)"; R="${R//[[:space:]]/}"
+  if [ "$R" = "{\"redirectUris\":[\"$CALLBACK\"]}" ]; then
+    echo "client supervisor: exists, redirect $CALLBACK"
+  else
+    echo "client supervisor: exists, its redirect was $R"
+    "$K" update "clients/$ID" -r "$REALM" -s "redirectUris=[\"$CALLBACK\"]" && echo "client supervisor: redirect now $CALLBACK"
+  fi
+fi
+L="$("$K" get client-scopes -r "$REALM" --fields id,name --format csv --noquotes)"
+for S in basic profile email; do
+  SID=""
+  while IFS=, read -r I N; do if [ "$N" = "$S" ]; then SID="$I"; fi; done <<< "$L"
+  if [ -z "$SID" ]; then echo "FAILED: no client scope $S in realm $REALM"; exit 1; fi
+  "$K" delete "clients/$ID/optional-client-scopes/$SID" -r "$REALM" >/dev/null 2>&1
+  "$K" update "clients/$ID/default-client-scopes/$SID" -r "$REALM" || { echo "FAILED: the client scope $S (see above)"; exit 1; }
+done
+D="$("$K" get "clients/$ID/default-client-scopes" -r "$REALM" --fields name --format csv --noquotes)"
+for S in basic profile email; do
+  OK=""
+  while IFS= read -r N; do if [ "$N" = "$S" ]; then OK="yes"; fi; done <<< "$D"
+  if [ -z "$OK" ]; then echo "FAILED: the client scope $S is not a default scope of supervisor"; exit 1; fi
+done
+echo "client supervisor: default client scopes basic, profile, email"
+if [ "$SHOW_SECRET" = yes ]; then
+  echo "client secret: $("$K" get "clients/$ID/client-secret" -r "$REALM" --fields value --format csv --noquotes)"
+else
+  echo "client secret: not shown (admin console: Clients > supervisor > Credentials, or SHOW_SECRET=\"yes\")"
+fi
+SCRIPT
+  } | kubectl --kubeconfig "$VKS_KUBECONFIG" -n keycloak exec -i deploy/keycloak -- bash -s
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-keycloak-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$REALM = "my-realm"
+$CALLBACK = "https://10.0.0.10/wcp/pinniped/callback"
+$SHOW_SECRET = "no"
+
+if ($CALLBACK -cnotmatch '^https://[A-Za-z0-9.-]+(:[0-9]+)?/wcp/pinniped/callback\z') {
+  "STOPPED: CALLBACK is not a Callback URL such as https://<Supervisor address>/wcp/pinniped/callback: $CALLBACK"
+} else {
+  $SCRIPT = "REALM=$REALM`nCALLBACK=$CALLBACK`nSHOW_SECRET=$SHOW_SECRET`n" + @'
+K=/opt/keycloak/bin/kcadm.sh
+TS="$(mktemp -d)/truststore.p12"
+keytool -importcert -noprompt -alias keycloak-ca -file /etc/keycloak-tls/ca.crt -keystore "$TS" \
+  -storetype PKCS12 -storepass truststore >/dev/null 2>&1 || { echo "FAILED: no truststore"; exit 1; }
+export KC_CLI_PASSWORD="$KC_BOOTSTRAP_ADMIN_PASSWORD"
+"$K" config truststore --trustpass truststore "$TS" >/dev/null \
+  && "$K" config credentials --server https://keycloak.keycloak.svc --realm master --user "$KC_BOOTSTRAP_ADMIN_USERNAME" >/dev/null \
+  || { echo "FAILED: the admin login (see above)"; exit 1; }
+"$K" get "realms/$REALM" --fields realm >/dev/null || { echo "FAILED: no realm $REALM (step 9)"; exit 1; }
+ID="$("$K" get clients -r "$REALM" -q clientId=supervisor --fields id --format csv --noquotes)"
+if [ -z "$ID" ]; then
+  printf '{"clientId":"supervisor","name":"vSphere Supervisor","publicClient":false,"clientAuthenticatorType":"client-secret",
+ "standardFlowEnabled":true,"implicitFlowEnabled":false,"directAccessGrantsEnabled":false,"serviceAccountsEnabled":false,
+ "redirectUris":["%s"],"webOrigins":[],"defaultClientScopes":["basic","profile","email"],"optionalClientScopes":[],
+ "attributes":{"pkce.code.challenge.method":"S256","oauth2.device.authorization.grant.enabled":"false"},
+ "protocolMappers":[{"name":"groups","protocol":"openid-connect","protocolMapper":"oidc-group-membership-mapper",
+   "config":{"claim.name":"groups","full.path":"false","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}}]}' "$CALLBACK" \
+    | "$K" create clients -r "$REALM" -f - >/dev/null || { echo "FAILED: the client (see above)"; exit 1; }
+  echo "client supervisor: created, redirect $CALLBACK"
+  ID="$("$K" get clients -r "$REALM" -q clientId=supervisor --fields id --format csv --noquotes)"
+else
+  R="$("$K" get "clients/$ID" -r "$REALM" --fields redirectUris)"; R="${R//[[:space:]]/}"
+  if [ "$R" = "{\"redirectUris\":[\"$CALLBACK\"]}" ]; then
+    echo "client supervisor: exists, redirect $CALLBACK"
+  else
+    echo "client supervisor: exists, its redirect was $R"
+    "$K" update "clients/$ID" -r "$REALM" -s "redirectUris=[\"$CALLBACK\"]" && echo "client supervisor: redirect now $CALLBACK"
+  fi
+fi
+L="$("$K" get client-scopes -r "$REALM" --fields id,name --format csv --noquotes)"
+for S in basic profile email; do
+  SID=""
+  while IFS=, read -r I N; do if [ "$N" = "$S" ]; then SID="$I"; fi; done <<< "$L"
+  if [ -z "$SID" ]; then echo "FAILED: no client scope $S in realm $REALM"; exit 1; fi
+  "$K" delete "clients/$ID/optional-client-scopes/$SID" -r "$REALM" >/dev/null 2>&1
+  "$K" update "clients/$ID/default-client-scopes/$SID" -r "$REALM" || { echo "FAILED: the client scope $S (see above)"; exit 1; }
+done
+D="$("$K" get "clients/$ID/default-client-scopes" -r "$REALM" --fields name --format csv --noquotes)"
+for S in basic profile email; do
+  OK=""
+  while IFS= read -r N; do if [ "$N" = "$S" ]; then OK="yes"; fi; done <<< "$D"
+  if [ -z "$OK" ]; then echo "FAILED: the client scope $S is not a default scope of supervisor"; exit 1; fi
+done
+echo "client supervisor: default client scopes basic, profile, email"
+if [ "$SHOW_SECRET" = yes ]; then
+  echo "client secret: $("$K" get "clients/$ID/client-secret" -r "$REALM" --fields value --format csv --noquotes)"
+else
+  echo "client secret: not shown (admin console: Clients > supervisor > Credentials, or SHOW_SECRET=\"yes\")"
+fi
+'@
+  $B64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($SCRIPT.Replace("`r", '')))
+  kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak exec deploy/keycloak -- bash -c "echo $B64 | base64 -d | bash"
+}
+```
+
+</details>
+
+**Expect:** `Logging into https://keycloak.keycloak.svc as user admin of realm master`, then
+a `Created new client …` line and `client supervisor: created, redirect https://…/wcp/pinniped/callback`
+(or `exists, redirect …`), `client supervisor: default client scopes basic, profile, email`,
+then `client secret: not shown …` (the secret with `SHOW_SECRET="yes"`).
+
+**If not:**
+- `STOPPED: CALLBACK is not a Callback URL …`: copy it again from the Identity Providers page
+  (11.1), whole and unchanged.
+- `FAILED: no realm …`: run step 9 first, with the same `REALM`.
+- `FAILED: the admin login`: as in step 9.
+- `client supervisor: exists, its redirect was …`: the client had another redirect, and now has
+  `CALLBACK`; if another Supervisor used it, give that one a client of its own.
+- `FAILED: the client scope …`: kcadm's message above says why; run the block again.
+- `FAILED: no client scope …`: the realm lacks one of Keycloak's built-in client scopes `basic`,
+  `profile` or `email` (the Keycloak this guide installs has all three): check the realm's
+  **Client scopes** in the admin console (step 12).
+
+### 11.3 Register Keycloak (vCenter administrator)
+
+**A Supervisor takes one identity provider.** If its Identity Providers page shows a provider
+already, you must remove it first, and then:
+
+- every sign-in through that provider stops at once;
+- the roles its groups have on vSphere Namespaces ([ACCESS.md step 2](ACCESS.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator))
+  no longer apply: after this registration, run that step again for each group;
+- every VKS cluster of the Supervisor takes the change;
+- vCenter SSO logins keep working, so you can always get back in.
+
+Also: **the Prefix cannot be changed later** (only by removing the provider and registering it
+again, with the consequences above), and while Keycloak's cluster is down nobody signs in through
+the Supervisor.
+
+On the Identity Providers page (11.1), open the add form and fill it in. The settings below have
+the names the provider's **VIEW SETTINGS** shows, or else the vCenter API's name:
+
+| setting | value |
+|---|---|
+| **Provider Name** (`display_name`) | `keycloak`; ACCESS.md (steps 1, 2 and 5) uses it |
+| **Issuer URL** (`issuer_URL`) | `https://<KEYCLOAK_HOST>/realms/<REALM>`, exactly as Keycloak prints it (step 7's check with your realm for `master`), no `/` at the end |
+| **Client ID** (`client_ID`) | `supervisor` |
+| client secret (`client_secret`) | the secret from 11.2 |
+| certificate authority data (`certificate_authority_data`) | the content of `keycloak-ca.pem` (step 6), from `-----BEGIN CERTIFICATE-----` to `-----END CERTIFICATE-----` |
+| **Username Claim** (`username_claim`) | `preferred_username` |
+| **Groups Claim** (`groups_claim`) | `groups` |
+| additional scopes (`additional_scopes`) | exactly `openid`, `email` and `profile`; not `groups` or `offline_access` |
+| **Prefix** (`prefix`) | `keycloak-sv`, without `:` (the Supervisor adds it); not `keycloak`, which [KEYCLOAK.md](KEYCLOAK.md)'s clusters use |
+
+**Expect:** the Identity Providers page shows a card **keycloak**, and its **VIEW SETTINGS** the
+values above. To check a sign-in, run the
+[ACCESS.md group steps](ACCESS.md#a-group-from-an-external-identity-provider-through-the-supervisor)
+1 to 5 for one group: the person is `keycloak-sv:<user>`, in `keycloak-sv:<group>`.
+
+**If not:**
+- The sign-in never reaches Keycloak's page, or fails after it: the Supervisor cannot resolve
+  `KEYCLOAK_HOST` or reach Keycloak's address on port 443. Check the Supervisor's DNS servers and
+  the firewall (Prerequisites), then the client secret (11.2) and the certificate authority data
+  (step 6).
+- `invalid_scope` on Keycloak's page or in the browser's address: the additional scopes are not
+  exactly `openid email profile` (edit the provider), or the client `supervisor` lacks the client
+  scopes `profile` and `email` (run 11.2 again).
+- `Invalid parameter: redirect_uri` on Keycloak's page: the client's redirect is not the Callback
+  URL; run 11.2 again with it.
+- The wrong prefix: remove the provider and register it again (the consequences above).
+
+## 12. Open the admin console (optional)
 
 Keycloak's web page for administrators is `https://<KEYCLOAK_HOST>/admin`; your browser must trust
 Keycloak's CA (step 8). This prints the password of the administrator `admin` from step 3. Clear
@@ -1309,7 +1565,7 @@ else { "FAILED: no password read (see the error above)" }
 Sign in as `admin`. Keycloak marks this first administrator as temporary: for lasting use, create
 your own administrator under **Users** in the realm `master` and give it the role `admin`.
 
-## 12. Use Keycloak for VKS cluster logins
+## 13. Use Keycloak for VKS cluster logins
 
 [KEYCLOAK.md](KEYCLOAK.md) turns Keycloak logins on for another VKS cluster, when you create it,
 and hands people a kubeconfig for it. Its values come from this guide:
@@ -1321,11 +1577,12 @@ and hands people a kubeconfig for it. Its values come from this guide:
 | the client `kubernetes-device` and its groups mapper | step 9 |
 | a group to give rights to | a name in `KEYCLOAK_GROUPS` (step 9) |
 
-## 13. Remove Keycloak (optional)
+## 14. Remove Keycloak (optional)
 
 This deletes the namespace `keycloak` with Keycloak, PostgreSQL, the users and the CA, then waits
-until PostgreSQL's volume is gone. Clusters that trust this Keycloak no longer accept its logins; a
-new CA made by step 4 is a different CA. cert-manager stays. To delete Keycloak's cluster too, run
+until PostgreSQL's volume is gone. Clusters that trust this Keycloak no longer accept its logins,
+nor does the Supervisor (remove the provider there, step 11); a new CA made by step 4 is a
+different CA. cert-manager stays. To delete Keycloak's cluster too, run
 this first and [CLUSTER.md step 8](CLUSTER.md#8-delete-the-cluster-optional) after it: a volume
 still in use when the cluster goes is left behind in the vSphere Namespace and stops its removal.
 
