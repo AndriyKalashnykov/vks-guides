@@ -429,7 +429,7 @@ in the same kubeconfig. Messages you may see:
 - `no current context set for type "kubernetes"` from a command such as `vcf cluster list`: a login
   as LOGIN.md runs it does not make a context active; `vcf context use <name>` does.
 - `context "<name>" already exists` at login: run [Log out](LOGIN.md#log-out), then log in again
-  (LOGIN.md stops before that with `FAILED: … exists`).
+  (LOGIN.md stops before that with `FAILED: … exists` while the file is there).
 - The current `vcf` context is one for your user, shared by every terminal: `vcf context use` in one
   terminal switches the others too. Work on one Supervisor at a time.
 - `failed to discover plugin sources …` from `vcf context use`, with an error exit: `vcf` looks for

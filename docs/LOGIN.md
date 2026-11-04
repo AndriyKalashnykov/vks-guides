@@ -180,6 +180,11 @@ Supervisor its own name: lower-case letters, digits and `-`). Your other kubecon
 changed. **A few failed logins in a row lock the SSO user for some minutes**, so type the password
 carefully. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
+With several Supervisors, set `SUPERVISOR_CONTEXT` in every block you run for that Supervisor,
+type the password again for each one, and give each vCenter its own `SUPERVISOR_CA` file. The name
+must not be the name of a VKS cluster or of another file in `~/.kube`, and your VKS clusters need
+different names across Supervisors: each cluster's file is `~/.kube/<cluster>.kubeconfig`.
+
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
@@ -315,6 +320,11 @@ Supervisor its own name: lower-case letters, digits and `-`). Your other kubecon
 changed. **A few
 failed logins in a row lock the SSO user for some minutes**, so type the password carefully. Set
 `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
+
+With several Supervisors, set `SUPERVISOR_CONTEXT` in every block you run for that Supervisor,
+type the password again for each one, and give each vCenter its own `SUPERVISOR_CA` file. The name
+must not be the name of a VKS cluster or of another file in `~/.kube`, and your VKS clusters need
+different names across Supervisors: each cluster's file is `~/.kube/<cluster>.kubeconfig`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -543,7 +553,10 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 rm -f "$VKS_KUBECONFIG.new"
-if ( umask 077
+if [ -e "$VKS_KUBECONFIG" ] \
+   && ! kubectl --kubeconfig "$VKS_KUBECONFIG" config get-contexts -o name 2>/dev/null | grep -qxF -- "${VKS_CLUSTER}-admin@${VKS_CLUSTER}"; then
+  echo "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
+elif ( umask 077
      kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get secret "${VKS_CLUSTER}-kubeconfig" \
        -o go-template='{{.data.value | base64decode}}' > "$VKS_KUBECONFIG.new" ) \
    && kubectl --kubeconfig "$VKS_KUBECONFIG.new" config view >/dev/null 2>&1; then
@@ -567,19 +580,23 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
-$global:LASTEXITCODE = $null
-$KC = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" `
-  -o go-template='{{.data.value | base64decode}}'
-if ($LASTEXITCODE -eq 0 -and $KC) {
-  Set-Content -Encoding ascii -Path "$VKS_KUBECONFIG.new" -Value $KC
-  kubectl --kubeconfig "$VKS_KUBECONFIG.new" config view *> $null
-}
-if ($LASTEXITCODE -eq 0 -and $KC) {
-  Move-Item -Force "$VKS_KUBECONFIG.new" $VKS_KUBECONFIG
-  kubectl --kubeconfig $VKS_KUBECONFIG get nodes
+if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFIG config get-contexts -o name 2>$null) -ccontains "${VKS_CLUSTER}-admin@${VKS_CLUSTER}")) {
+  "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
 } else {
-  Remove-Item -Force -ErrorAction SilentlyContinue "$VKS_KUBECONFIG.new"
-  "FAILED: no kubeconfig read (see the kubectl error above); $VKS_KUBECONFIG is as it was"
+  $global:LASTEXITCODE = $null
+  $KC = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" `
+    -o go-template='{{.data.value | base64decode}}'
+  if ($LASTEXITCODE -eq 0 -and $KC) {
+    Set-Content -Encoding ascii -Path "$VKS_KUBECONFIG.new" -Value $KC
+    kubectl --kubeconfig "$VKS_KUBECONFIG.new" config view *> $null
+  }
+  if ($LASTEXITCODE -eq 0 -and $KC) {
+    Move-Item -Force "$VKS_KUBECONFIG.new" $VKS_KUBECONFIG
+    kubectl --kubeconfig $VKS_KUBECONFIG get nodes
+  } else {
+    Remove-Item -Force -ErrorAction SilentlyContinue "$VKS_KUBECONFIG.new"
+    "FAILED: no kubeconfig read (see the kubectl error above); $VKS_KUBECONFIG is as it was"
+  }
 }
 ```
 
@@ -588,6 +605,9 @@ if ($LASTEXITCODE -eq 0 -and $KC) {
 **Expect:** the cluster's nodes, each `Ready`.
 
 **If not:**
+- `FAILED: … holds another login, not this cluster's`: a file of that name is another login (a
+  Supervisor login whose `SUPERVISOR_CONTEXT` is this cluster's name, or a hand-out). It is kept;
+  move it aside, or log out of that Supervisor and log in again with another `SUPERVISOR_CONTEXT`.
 - `FAILED: no kubeconfig read`, under `secrets "<name>-kubeconfig" not found`: check
   `VKS_CLUSTER`, or the cluster is still being created.
 - … under `Forbidden`: your role on the namespace cannot read the kubeconfig; ask for the
@@ -637,7 +657,10 @@ DOWNLOADED="$HOME/Downloads/${VKS_CLUSTER}-kubeconfig.yaml"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 mkdir -p "$HOME/.kube"
-if [ -f "$DOWNLOADED" ] && kubectl --kubeconfig "$DOWNLOADED" config view >/dev/null 2>&1; then
+if [ -e "$VKS_KUBECONFIG" ] \
+   && ! kubectl --kubeconfig "$VKS_KUBECONFIG" config get-contexts -o name 2>/dev/null | grep -qxF -- "${VKS_CLUSTER}-admin@${VKS_CLUSTER}"; then
+  echo "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
+elif [ -f "$DOWNLOADED" ] && kubectl --kubeconfig "$DOWNLOADED" config view >/dev/null 2>&1; then
   install -m 600 "$DOWNLOADED" "$VKS_KUBECONFIG" && rm -f "$DOWNLOADED"
   kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes
 else
@@ -654,18 +677,25 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 New-Item -ItemType Directory -Force "$HOME\.kube" | Out-Null
 $global:LASTEXITCODE = $null
-if (Test-Path $DOWNLOADED) { kubectl --kubeconfig $DOWNLOADED config view *> $null }
-if ((Test-Path $DOWNLOADED) -and $LASTEXITCODE -eq 0) {
-  Move-Item -Force $DOWNLOADED $VKS_KUBECONFIG
-  kubectl --kubeconfig $VKS_KUBECONFIG get nodes
+if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFIG config get-contexts -o name 2>$null) -ccontains "${VKS_CLUSTER}-admin@${VKS_CLUSTER}")) {
+  "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
 } else {
-  "FAILED: no kubeconfig at $DOWNLOADED"
+  if (Test-Path $DOWNLOADED) { kubectl --kubeconfig $DOWNLOADED config view *> $null }
+  if ((Test-Path $DOWNLOADED) -and $LASTEXITCODE -eq 0) {
+    Move-Item -Force $DOWNLOADED $VKS_KUBECONFIG
+    kubectl --kubeconfig $VKS_KUBECONFIG get nodes
+  } else {
+    "FAILED: no kubeconfig at $DOWNLOADED"
+  }
 }
 ```
 
 **Expect:** the cluster's nodes, each `Ready`.
 
 **If not:**
+- `FAILED: … holds another login, not this cluster's`: a file of that name is another login (a
+  Supervisor login whose `SUPERVISOR_CONTEXT` is this cluster's name, or a hand-out). It is kept;
+  move it aside, or log out of that Supervisor and log in again with another `SUPERVISOR_CONTEXT`.
 - `FAILED: no kubeconfig at …`: set `DOWNLOADED` to the file the browser saved (a second
   download of the same name may be saved as `<cluster>-kubeconfig (1).yaml`).
 - `error: You must be logged in to the server (Unauthorized)`: the file has expired; download it
@@ -869,8 +899,13 @@ if [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0
    || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$'; then
   echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso"
 elif KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf context delete "$SUPERVISOR_CONTEXT" -y --skip-delete-kubeconfig-context </dev/null; then
-  rm -f "$SUPERVISOR_KUBECONFIG"
-  rm -rf "$HOME/.config/vcf/logs"
+  if [ ! -e "$SUPERVISOR_KUBECONFIG" ] \
+     || kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" config get-contexts -o name 2>/dev/null | grep -qxF -- "$SUPERVISOR_CONTEXT"; then
+    rm -f "$SUPERVISOR_KUBECONFIG"
+    rm -rf "$HOME/.config/vcf/logs"
+  else
+    echo "kept $SUPERVISOR_KUBECONFIG: it is not a Supervisor login"
+  fi
   vcf context list </dev/null
 else
   echo "FAILED: context $SUPERVISOR_CONTEXT not deleted, so this block deleted no file (see the vcf error above)"
@@ -892,8 +927,12 @@ if ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPER
   $RC = $LASTEXITCODE
   $env:KUBECONFIG = $OLD_KUBECONFIG
   if ($RC -eq 0) {
-    Remove-Item -Force -ErrorAction SilentlyContinue $SUPERVISOR_KUBECONFIG
-    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$HOME\.config\vcf\logs"
+    if (-not (Test-Path $SUPERVISOR_KUBECONFIG) -or (@(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG config get-contexts -o name 2>$null) -ccontains $SUPERVISOR_CONTEXT)) {
+      Remove-Item -Force -ErrorAction SilentlyContinue $SUPERVISOR_KUBECONFIG
+      Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$HOME\.config\vcf\logs"
+    } else {
+      "kept $SUPERVISOR_KUBECONFIG: it is not a Supervisor login"
+    }
     $null | vcf context list
   } else {
     "FAILED: context $SUPERVISOR_CONTEXT not deleted, so this block deleted no file (see the vcf error above)"
@@ -908,6 +947,11 @@ list without that context.
 **If not:**
 - `FAILED: SUPERVISOR_CONTEXT may hold only …`: set it to the name you created the context with.
 - `context … not found`, then `FAILED: context … not deleted`: you were already logged out. If
-  [Create](#create-the-context) still answers `FAILED: … exists`, delete that file with `rm`.
+  [Create](#create-the-context) still answers `FAILED: … exists` and
+  `kubectl --kubeconfig <that file> config get-contexts -o name` lists `SUPERVISOR_CONTEXT`'s
+  name, the file is an old Supervisor login: delete it with `rm`. Otherwise keep it and set
+  another `SUPERVISOR_CONTEXT`.
+- `kept …: it is not a Supervisor login`: the context is deleted; the file of that name is another
+  login (a VKS cluster's or a hand-out) and stays.
 
 Back to [README](../README.md).

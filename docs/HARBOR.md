@@ -29,7 +29,8 @@ The blocks keep their files in `~/.config/vks-guides/harbor` (PowerShell:
 ## Prerequisites
 
 - a vCenter administrator's SSO user (it may manage Supervisor Services and read Secrets on the
-  Supervisor), with a [Supervisor login](LOGIN.md) ([VCF CLI](VCF.md));
+  Supervisor), with a [Supervisor login](LOGIN.md) ([VCF CLI](VCF.md)); this guide keeps one
+  Harbor's files per machine and user;
 - a Broadcom support account that can download **vSphere Supervisor Services**;
 - [kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md); for step 13 on Windows, `openssl.exe`
   from [Git for Windows](https://git-scm.com/install/);
@@ -193,10 +194,12 @@ foreach ($f in $HARBOR_MANIFEST, $HARBOR_VALUES_TEMPLATE) {
 
 ## 3. Make the secrets file (optional)
 
-Harbor is installed with seven passwords and keys. This block makes seven random ones and saves
-them in `secrets.env` (on Linux, macOS and WSL, readable only by you). A file that exists is
-kept. Nothing secret is printed. To use your own admin password instead, put it in the file
-using only letters, digits and `-`: step 4 refuses any other character.
+Harbor is installed with seven passwords and keys. This block makes seven random ones and saves them
+in `secrets.env` (on Linux, macOS and WSL, readable only by you). A file that exists is kept.
+Nothing secret is printed. To use your own admin password instead, put it in the file using only
+letters, digits and `-`: step 4 refuses any other character. This folder,
+`~/.config/vks-guides/harbor`, holds one Harbor: for a second Supervisor's Harbor, use another
+machine or user.
 
 Skip this step to install Harbor with Broadcom's default values instead (step 4's table lists
 them). Step 4 then saves them in `secrets.env`, so the later steps work the same. The defaults are
@@ -1125,7 +1128,9 @@ the record if the cluster autoscaler added or removed a node.
 
 Harbor proves who it is with a certificate. Harbor signs that certificate itself, with its own
 certificate authority (CA), which no machine trusts yet. `curl`, podman, docker and browsers need
-the CA's file to trust Harbor; the next blocks and IMAGE.md use it.
+the CA's file to trust Harbor; the next blocks and IMAGE.md use it. This folder,
+`~/.config/vks-guides/harbor`, holds one Harbor: for a second Supervisor's Harbor, use another
+machine or user.
 
 This block:
 
@@ -2517,8 +2522,9 @@ reloaded.
 
 ### Delete what this guide wrote
 
-This deletes the files this guide wrote, only when no Harbor is on the Supervisor. Ask for the
-DNS record to be removed too.
+This deletes the files this guide wrote, only when no Harbor is on the Supervisor. Ask for the DNS
+record to be removed too. This folder, `~/.config/vks-guides/harbor`, holds one Harbor's secrets:
+for a second Supervisor's Harbor, use another machine or user.
 
 **Linux, macOS, WSL (bash or zsh):**
 
