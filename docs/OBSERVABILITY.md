@@ -731,7 +731,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 </details>
 
-**Expect:** the context lines from LOGGING.md step 1, then `Addon 'fluent-bit' is being
+**Expect:** `Addon 'fluent-bit' is being
 installed in the cluster …` (on an update: `Addon 'fluent-bit' in the cluster … is being updated`
 and `daemonset.apps/fluent-bit restarted`), then `daemon set "fluent-bit" successfully rolled out`.
 
