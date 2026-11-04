@@ -308,6 +308,8 @@ vSphere Namespace → **Resources** → **SERVICES** → **Network** → **Servi
 each Load Balancer named after your cluster (`<cluster>-…`): the one whose labels include
 `service.name: headlamp` is Headlamp's, and its **External IP** is the address.
 
+The block below prints the same address (`open https://<address>/`) and checks its certificate.
+
 ![Network Service of the vSphere Namespace: the Load Balancer with label service.name: headlamp and its External IP](img/headlamp/00-vsphere-client-address.png)
 
 The add-on's certificate is self-signed, which no browser trusts, so the browser warns. The block
