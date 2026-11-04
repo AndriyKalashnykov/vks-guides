@@ -1986,7 +1986,8 @@ else {
 Remove-Variable -ErrorAction SilentlyContinue HARBOR_ROBOT_SECRET
 ```
 
-**Expect:** `Login Succeeded`, then `Removed login credentials for <your Harbor name>` (docker:
+**Expect:** `Login Succeeded` (docker without a credential helper first warns that the login is stored unencrypted),
+then `Removed login credentials for <your Harbor name>` (docker:
 `Removing login credentials for …`).
 
 **If not:**
