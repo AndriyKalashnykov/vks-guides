@@ -303,8 +303,15 @@ use Headlamp need that address too.
 
 ## 4. Check Headlamp's certificate and send its address (cluster administrator)
 
-The add-on's certificate is self-signed, which no browser trusts, so the browser warns. This
-compares the certificate the address shows with the one in the cluster, so you know the warning is
+Headlamp's address shows in the vSphere Client: **Supervisor Management** → **Namespaces** → your
+vSphere Namespace → **Resources** → **SERVICES** → **Network** → **Services**. Click **»** next to
+each Load Balancer named after your cluster (`<cluster>-…`): the one whose labels include
+`service.name: headlamp` is Headlamp's, and its **External IP** is the address.
+
+![Network Service of the vSphere Namespace: the Load Balancer with label service.name: headlamp and its External IP](img/headlamp/00-vsphere-client-address.png)
+
+The add-on's certificate is self-signed, which no browser trusts, so the browser warns. The block
+below compares the certificate the address shows with the one in the cluster, so you know the warning is
 only about that. It changes nothing. It needs the cluster's kubeconfig, so the administrator runs
 it and sends the address and the fingerprint to each person who will use Headlamp.
 
