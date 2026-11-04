@@ -1777,23 +1777,27 @@ spec:
 EOF
   PUID="$(kc get pod nexus-pull-check -o jsonpath='{.metadata.uid}')"
   M=""; PH=""; n=0
-  until [ -n "$M" ] || [ "$PH" = Succeeded ] || [ "$n" -ge 24 ]; do
+  until [ -z "$PUID" ] || [ -n "$M" ] || [ "$PH" = Succeeded ] || [ "$PH" = Failed ] || [ "$n" -ge 24 ]; do
     n=$((n + 1)); sleep 5
     PH="$(kc get pod nexus-pull-check -o jsonpath='{.status.phase}')"
     M="$(kc get events --field-selector "involvedObject.uid=$PUID,reason=Failed" -o jsonpath='{.items[*].message}')"
   done
   kc delete pod nexus-pull-check --ignore-not-found >/dev/null
-  case "$PH:$M" in
-    Succeeded:*)       echo "OK: the cluster pulled ${NEXUS_REGISTRY}/${NEXUS_REPO}/busybox:1.37.0" ;;
+  case "${PUID:+made}:$PH:$M" in
+    :*)                echo "FAILED: the test pod was not made (see the error above)" ;;
+    *:Succeeded:*)     echo "OK: the cluster pulled ${NEXUS_REGISTRY}/${NEXUS_REPO}/busybox:1.37.0" ;;
     *"unknown authority"*) echo "CA: the nodes do not trust Nexus's CA yet" ;;
     *"certificate is valid for"*|*"cannot validate certificate"*|*"doesn't contain any IP SANs"*)
                        echo "NAME: Nexus's certificate is not for $NEXUS_REGISTRY (step 5)" ;;
     *"no such host"*)  echo "DNS: the nodes cannot resolve $NEXUS_REGISTRY" ;;
     *nauthorized*|*"access denied"*|*denied*) echo "LOGIN: Nexus refused the login in the Secret nexus-pull" ;;
     *"not found"*)     echo "IMAGE: no such image in Nexus (step 10)" ;;
-    *:)                echo "NO ANSWER: the cluster reported nothing in 2 minutes" ;;
+    "made:Failed:")    echo "OTHER: the test pod failed and the cluster gave no reason" ;;
+    "made:$PH:")       echo "NO ANSWER: the cluster reported nothing in 2 minutes" ;;
     *)                 echo "OTHER: $M" ;;
   esac
+else
+  echo "FAILED: the Secret nexus-pull was not made (see the error above)"
 fi
 unset NEXUS_PULL_PASSWORD
 ```
@@ -1849,21 +1853,24 @@ spec:
 "@ | kc apply -f -
     $PUID = kc get pod nexus-pull-check -o 'jsonpath={.metadata.uid}'
     $M = ''; $PH = ''; $n = 0
-    while (-not $M -and $PH -ne 'Succeeded' -and $n -lt 24) {
+    while ($PUID -and -not $M -and $PH -ne 'Succeeded' -and $PH -ne 'Failed' -and $n -lt 24) {
       $n++; Start-Sleep -Seconds 5
       $PH = kc get pod nexus-pull-check -o 'jsonpath={.status.phase}'
       $M = "$(kc get events --field-selector "involvedObject.uid=$PUID,reason=Failed" -o 'jsonpath={.items[*].message}')"
     }
     kc delete pod nexus-pull-check --ignore-not-found | Out-Null
-    if ($PH -eq 'Succeeded') { "OK: the cluster pulled $NEXUS_REGISTRY/$NEXUS_REPO/busybox:1.37.0" }
+    if (-not $PUID) { "FAILED: the test pod was not made (see the error above)" }
+    elseif ($PH -eq 'Succeeded') { "OK: the cluster pulled $NEXUS_REGISTRY/$NEXUS_REPO/busybox:1.37.0" }
     elseif ($M -like '*unknown authority*') { "CA: the nodes do not trust Nexus's CA yet" }
     elseif ($M -like '*certificate is valid for*' -or $M -like '*cannot validate certificate*' -or $M -like "*doesn't contain any IP SANs*") { "NAME: Nexus's certificate is not for $NEXUS_REGISTRY (step 5)" }
     elseif ($M -like '*no such host*') { "DNS: the nodes cannot resolve $NEXUS_REGISTRY" }
     elseif ($M -like '*nauthorized*' -or $M -like '*denied*') { "LOGIN: Nexus refused the login in the Secret nexus-pull" }
     elseif ($M -like '*not found*') { "IMAGE: no such image in Nexus (step 10)" }
+    elseif (-not $M -and $PH -eq 'Failed') { "OTHER: the test pod failed and the cluster gave no reason" }
     elseif (-not $M) { "NO ANSWER: the cluster reported nothing in 2 minutes" }
     else { "OTHER: $M" }
   }
+  else { "FAILED: the Secret nexus-pull was not made (see the error above)" }
 }
 Remove-Variable -ErrorAction SilentlyContinue NEXUS_PULL_PASSWORD
 ```
@@ -1876,6 +1883,15 @@ login with `imagePullSecrets: [{name: nexus-pull}]` in its pod spec; for another
 this block with `-n default` changed.
 
 **If not:**
+- `FAILED: the Secret nexus-pull was not made` with `Unauthorized` or `provide credentials` above it:
+  the login in `<file>` has expired; save the kubeconfig again
+  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), type the password and run this block again.
+- `FAILED: the test pod was not made`: the cluster refused the pod; the error above says why.
+- `NO ANSWER: …`: the node did not try to pull in 2 minutes; check that the cluster's nodes are
+  `Ready`, then run this block again.
+- `IMAGE: …`: push `busybox:1.37.0` to `NEXUS_REPO` (step 10).
+- `OTHER: the test pod failed and the cluster gave no reason`: run this block again; if it says the
+  same, check that the nodes are `Ready` and have free memory and disk.
 - `CA: …`: the nodes are still being replaced (wait until CLUSTER.md step 10's check says `True`
   twice, above), or the cluster does not point at the Secret (above).
 - `NAME: …`: `NEXUS_REGISTRY` is not the value step 5 was run with.
