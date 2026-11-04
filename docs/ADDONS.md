@@ -108,8 +108,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 ```
 
 **Expect:** a table of add-on names and descriptions, for example `cert-manager  Certificate
-management` and `headlamp  Web UI for Kubernetes (Headlamp).`. A `failed to discover plugin sources
-…` line from `vcf context use` is harmless ([VCF.md](VCF.md)).
+management` and `headlamp  Web UI for Kubernetes (Headlamp).`.
 
 **If not:** `Unable to read password from terminal`: your login has ended;
 [renew it](LOGIN.md#renew-the-supervisor-login) and run this again.

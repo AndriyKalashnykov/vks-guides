@@ -175,8 +175,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 }
 ```
 
-**Expect:** a row with `ADDON-RELEASE-NAME` `tekton-operator.0.80.0-vmware.1-vks.1`. A
-`failed to discover plugin sources …` line from `vcf context use` is harmless ([VCF.md](VCF.md)).
+**Expect:** a row with `ADDON-RELEASE-NAME` `tekton-operator.0.80.0-vmware.1-vks.1`.
 
 **If not:**
 - No row: the Supervisor runs a VKS older than 3.8. Use B (step 3).

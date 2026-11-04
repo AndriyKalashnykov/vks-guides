@@ -78,10 +78,8 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 }
 ```
 
-**Expect:** `Successfully activated context 'supervisor'`, then one or more releases named
-`fluent-bit.kubernetes.vmware.com.<version>`; copy the newest one's name for step 4. The
-cluster's list has no `fluent-bit`. A line `failed to discover plugin sources from the system
-Harbor registry` may follow the context line; it does no harm here.
+**Expect:** one or more releases named `fluent-bit.kubernetes.vmware.com.<version>`; copy the newest
+one's name for step 4. The cluster's list has no `fluent-bit`.
 
 **If not:**
 - `Unauthorized`, `Unable to read password from terminal` or `provide credentials`: your

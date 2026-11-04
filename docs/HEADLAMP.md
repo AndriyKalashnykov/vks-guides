@@ -78,8 +78,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 ```
 
 **Expect:** rows with `ADDON-RELEASE-NAME`, among them
-`headlamp.kubernetes.vmware.com.0.45.0-vmware.2-vks.1`. A `failed to discover plugin sources …`
-line from `vcf context use` is harmless ([VCF.md](VCF.md)).
+`headlamp.kubernetes.vmware.com.0.45.0-vmware.2-vks.1`.
 
 **If not:**
 - No `0.45.0` row: VKS on the Supervisor is older than 3.8. Release `0.42.0` does not support
