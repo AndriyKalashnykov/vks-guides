@@ -152,15 +152,27 @@ needs the release name; no release means your VKS is older than 3.8.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-vcf context use supervisor </dev/null
-vcf addon available-releases list --addon-name tekton-operator
+SUPERVISOR_CONTEXT="supervisor"
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+else
+  vcf addon available-releases list --addon-name tekton-operator
+fi
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$null | vcf context use supervisor
-vcf addon available-releases list --addon-name tekton-operator
+$SUPERVISOR_CONTEXT = "supervisor"
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+} else {
+  vcf addon available-releases list --addon-name tekton-operator
+}
 ```
 
 **Expect:** a row with `ADDON-RELEASE-NAME` `tekton-operator.0.80.0-vmware.1-vks.1`. A
@@ -186,45 +198,51 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 TEKTON_RELEASE="tekton-operator.0.80.0-vmware.1-vks.1"
 TEKTON_DIR="$HOME/.config/vks-guides/tekton"
+SUPERVISOR_CONTEXT="supervisor"
 
-vcf context use supervisor </dev/null
-mkdir -p "$TEKTON_DIR"
-printf 'helmValues:\n  exposure:\n    enabled: false\n' > "$TEKTON_DIR/addon-values.yaml"
-if ! command -v jq >/dev/null 2>&1; then
-  echo "MISSING: jq (PREREQS.md)"
-elif ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
-  echo "FAILED: cannot read the cluster (see the error above)"
-elif printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tasks.tekton.dev' \
-     && ! printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev'; then
-  echo "STOPPED: this cluster has Tekton from its release files (B)"
-elif printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev' \
-     && [ "$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}')" != vmware-system-helm ]; then
-  echo "STOPPED: this cluster has a Tekton Operator that is not the VKS add-on"
-elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
-  echo "FAILED: the VCF CLI (see the error above)"
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 else
-  OK=""
-  if [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "tekton-operator")] | length')" = 1 ]; then
-    vcf addon install update tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
-      -f "$TEKTON_DIR/addon-values.yaml" -y && OK=1
+  mkdir -p "$TEKTON_DIR"
+  printf 'helmValues:\n  exposure:\n    enabled: false\n' > "$TEKTON_DIR/addon-values.yaml"
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "MISSING: jq (PREREQS.md)"
+  elif ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
+    echo "FAILED: cannot read the cluster (see the error above)"
+  elif printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tasks.tekton.dev' \
+       && ! printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev'; then
+    echo "STOPPED: this cluster has Tekton from its release files (B)"
+  elif printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev' \
+       && [ "$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}')" != vmware-system-helm ]; then
+    echo "STOPPED: this cluster has a Tekton Operator that is not the VKS add-on"
+  elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
+    echo "FAILED: the VCF CLI (see the error above)"
   else
-    vcf addon install create tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
-      --addon-release-name "$TEKTON_RELEASE" -f "$TEKTON_DIR/addon-values.yaml" -y && OK=1
-  fi
-  D=""
-  if [ -n "$OK" ]; then
-    for i in $(seq 120); do
-      D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-operator get deployment -o name 2>/dev/null)"
-      if [ -n "$D" ]; then break; fi
-      sleep 5
-    done
-  fi
-  if [ -z "$OK" ]; then
-    echo "FAILED: the add-on (see the error above)"
-  elif [ -z "$D" ]; then
-    echo "FAILED: the add-on did not reach the cluster in 10 minutes"
-  elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-operator wait --for=condition=Available deployment --all --timeout=10m; then
-    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-operator get pods
+    OK=""
+    if [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "tekton-operator")] | length')" = 1 ]; then
+      vcf addon install update tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+        -f "$TEKTON_DIR/addon-values.yaml" -y && OK=1
+    else
+      vcf addon install create tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+        --addon-release-name "$TEKTON_RELEASE" -f "$TEKTON_DIR/addon-values.yaml" -y && OK=1
+    fi
+    D=""
+    if [ -n "$OK" ]; then
+      for i in $(seq 120); do
+        D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-operator get deployment -o name 2>/dev/null)"
+        if [ -n "$D" ]; then break; fi
+        sleep 5
+      done
+    fi
+    if [ -z "$OK" ]; then
+      echo "FAILED: the add-on (see the error above)"
+    elif [ -z "$D" ]; then
+      echo "FAILED: the add-on did not reach the cluster in 10 minutes"
+    elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-operator wait --for=condition=Available deployment --all --timeout=10m; then
+      kubectl --kubeconfig "$VKS_KUBECONFIG" -n tekton-operator get pods
+    fi
   fi
 fi
 ```
@@ -240,44 +258,50 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $TEKTON_RELEASE = "tekton-operator.0.80.0-vmware.1-vks.1"
 $TEKTON_DIR = "$HOME\.config\vks-guides\tekton"
+$SUPERVISOR_CONTEXT = "supervisor"
 
-$null | vcf context use supervisor
-New-Item -ItemType Directory -Force -Path $TEKTON_DIR | Out-Null
-[IO.File]::WriteAllText("$TEKTON_DIR\addon-values.yaml", "helmValues:`n  exposure:`n    enabled: false`n")
-$global:LASTEXITCODE = $null
-$C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
-if ($LASTEXITCODE -ne 0) {
-  "FAILED: cannot read the cluster (see the error above)"
-} elseif ($C -contains 'customresourcedefinition.apiextensions.k8s.io/tasks.tekton.dev' -and
-          $C -notcontains 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev') {
-  "STOPPED: this cluster has Tekton from its release files (B)"
-} elseif ($C -contains 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev' -and
-          (kubectl --kubeconfig $VKS_KUBECONFIG get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}') -ne 'vmware-system-helm') {
-  "STOPPED: this cluster has a Tekton Operator that is not the VKS add-on"
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 } else {
-  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
+  New-Item -ItemType Directory -Force -Path $TEKTON_DIR | Out-Null
+  [IO.File]::WriteAllText("$TEKTON_DIR\addon-values.yaml", "helmValues:`n  exposure:`n    enabled: false`n")
+  $global:LASTEXITCODE = $null
+  $C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
   if ($LASTEXITCODE -ne 0) {
-    "FAILED: the VCF CLI (see the error above)"
+    "FAILED: cannot read the cluster (see the error above)"
+  } elseif ($C -contains 'customresourcedefinition.apiextensions.k8s.io/tasks.tekton.dev' -and
+            $C -notcontains 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev') {
+    "STOPPED: this cluster has Tekton from its release files (B)"
+  } elseif ($C -contains 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev' -and
+            (kubectl --kubeconfig $VKS_KUBECONFIG get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}') -ne 'vmware-system-helm') {
+    "STOPPED: this cluster has a Tekton Operator that is not the VKS add-on"
   } else {
-    if (@(ConvertFrom-Json $L | ForEach-Object { $_ } | Where-Object { $_.addonName -eq 'tekton-operator' }).Count -eq 1) {
-      vcf addon install update tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$TEKTON_DIR\addon-values.yaml" -y
-    } else {
-      vcf addon install create tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $TEKTON_RELEASE -f "$TEKTON_DIR\addon-values.yaml" -y
-    }
+    $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
     if ($LASTEXITCODE -ne 0) {
-      "FAILED: the add-on (see the error above)"
+      "FAILED: the VCF CLI (see the error above)"
     } else {
-      $D = $null
-      foreach ($i in 1..120) {
-        $D = kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-operator get deployment -o name 2>$null
-        if ($D) { break }
-        Start-Sleep -Seconds 5
-      }
-      if (-not $D) {
-        "FAILED: the add-on did not reach the cluster in 10 minutes"
+      if (@(ConvertFrom-Json $L | ForEach-Object { $_ } | Where-Object { $_.addonName -eq 'tekton-operator' }).Count -eq 1) {
+        vcf addon install update tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$TEKTON_DIR\addon-values.yaml" -y
       } else {
-        kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-operator wait --for=condition=Available deployment --all --timeout=10m
-        if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-operator get pods }
+        vcf addon install create tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $TEKTON_RELEASE -f "$TEKTON_DIR\addon-values.yaml" -y
+      }
+      if ($LASTEXITCODE -ne 0) {
+        "FAILED: the add-on (see the error above)"
+      } else {
+        $D = $null
+        foreach ($i in 1..120) {
+          $D = kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-operator get deployment -o name 2>$null
+          if ($D) { break }
+          Start-Sleep -Seconds 5
+        }
+        if (-not $D) {
+          "FAILED: the add-on did not reach the cluster in 10 minutes"
+        } else {
+          kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-operator wait --for=condition=Available deployment --all --timeout=10m
+          if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-operator get pods }
+        }
       }
     }
   }
@@ -1261,59 +1285,65 @@ types (CRDs) are left.
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
 
-vcf context use supervisor </dev/null
-if ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)" \
-   || ! A="$(kubectl --kubeconfig "$VKS_KUBECONFIG" api-resources -o name)"; then
-  echo "STOPPED: cannot read the cluster (see the error above)"
-elif ! printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev'; then
-  echo "The Tekton add-on is not installed"
-elif [ "$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}')" != vmware-system-helm ]; then
-  echo "STOPPED: this Tekton Operator is not the VKS add-on"
-elif ! vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" >/dev/null; then
-  echo "STOPPED: the VCF CLI (see the error above)"
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 else
-  L=""
-  K="$(printf '%s\n' "$A" | grep '\.tekton\.dev$' | grep -v -e '^clusterinterceptors\.' -e '\.operator\.tekton\.dev$' | paste -sd, -)"
-  if [ -n "$K" ] && ! L="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get "$K" -A --no-headers)"; then
-    echo "STOPPED: cannot list the Tekton objects (see the error above)"
-  elif U="$(printf '%s\n' "$L" | grep -v '^$' | grep -vc '^tekton-demo ')"; [ "$U" -gt 0 ]; then
-    echo "STOPPED: $U Tekton objects outside tekton-demo use this Tekton"
+  if ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)" \
+     || ! A="$(kubectl --kubeconfig "$VKS_KUBECONFIG" api-resources -o name)"; then
+    echo "STOPPED: cannot read the cluster (see the error above)"
+  elif ! printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev'; then
+    echo "The Tekton add-on is not installed"
+  elif [ "$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}')" != vmware-system-helm ]; then
+    echo "STOPPED: this Tekton Operator is not the VKS add-on"
+  elif ! vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" >/dev/null; then
+    echo "STOPPED: the VCF CLI (see the error above)"
   else
-    kubectl --kubeconfig "$VKS_KUBECONFIG" delete tektonconfig config --ignore-not-found --timeout=5m
-    N=unknown
-    for i in $(seq 60); do
-      if C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
-        N="$(printf '%s\n' "$C" | grep '\.tekton\.dev$' | grep -vc '\.operator\.tekton\.dev$')"
-        if [ "$N" = 0 ]; then break; fi
-      fi
-      sleep 5
-    done
-    if [ "$N" != 0 ]; then
-      echo "FAILED: $N Tekton CRDs still there after 5 minutes"
-    elif ! W="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get tektoninstallersets -o name)"; then
-      echo "FAILED: cannot list the operator's sets (see the error above)"
+    L=""
+    K="$(printf '%s\n' "$A" | grep '\.tekton\.dev$' | grep -v -e '^clusterinterceptors\.' -e '\.operator\.tekton\.dev$' | paste -sd, -)"
+    if [ -n "$K" ] && ! L="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get "$K" -A --no-headers)"; then
+      echo "STOPPED: cannot list the Tekton objects (see the error above)"
+    elif U="$(printf '%s\n' "$L" | grep -v '^$' | grep -vc '^tekton-demo ')"; [ "$U" -gt 0 ]; then
+      echo "STOPPED: $U Tekton objects outside tekton-demo use this Tekton"
     else
-      printf '%s\n' "$W" | grep '/validating-mutating-webhook-' | while read -r R; do
-        kubectl --kubeconfig "$VKS_KUBECONFIG" delete "$R" --timeout=2m </dev/null
-      done
+      kubectl --kubeconfig "$VKS_KUBECONFIG" delete tektonconfig config --ignore-not-found --timeout=5m
+      N=unknown
       for i in $(seq 60); do
-        W="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get tektoninstallersets -o name)" || W="unknown"
-        if [ -z "$W" ]; then break; fi
+        if C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
+          N="$(printf '%s\n' "$C" | grep '\.tekton\.dev$' | grep -vc '\.operator\.tekton\.dev$')"
+          if [ "$N" = 0 ]; then break; fi
+        fi
         sleep 5
       done
-      if [ "$W" = unknown ]; then
+      if [ "$N" != 0 ]; then
+        echo "FAILED: $N Tekton CRDs still there after 5 minutes"
+      elif ! W="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get tektoninstallersets -o name)"; then
         echo "FAILED: cannot list the operator's sets (see the error above)"
-      elif [ -n "$W" ]; then
-        echo "FAILED: the operator's sets are still there after 5 minutes:" $W
-      elif ! vcf addon install delete tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
-        echo "FAILED: the add-on (see the error above)"
       else
-        kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace tekton-operator --ignore-not-found --timeout=5m
-        if C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
-          echo "Tekton CRDs left: $(printf '%s\n' "$C" | grep -c '\.tekton\.dev$')"
+        printf '%s\n' "$W" | grep '/validating-mutating-webhook-' | while read -r R; do
+          kubectl --kubeconfig "$VKS_KUBECONFIG" delete "$R" --timeout=2m </dev/null
+        done
+        for i in $(seq 60); do
+          W="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get tektoninstallersets -o name)" || W="unknown"
+          if [ -z "$W" ]; then break; fi
+          sleep 5
+        done
+        if [ "$W" = unknown ]; then
+          echo "FAILED: cannot list the operator's sets (see the error above)"
+        elif [ -n "$W" ]; then
+          echo "FAILED: the operator's sets are still there after 5 minutes:" $W
+        elif ! vcf addon install delete tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
+          echo "FAILED: the add-on (see the error above)"
         else
-          echo "FAILED: cannot read the cluster (see the error above)"
+          kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace tekton-operator --ignore-not-found --timeout=5m
+          if C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)"; then
+            echo "Tekton CRDs left: $(printf '%s\n' "$C" | grep -c '\.tekton\.dev$')"
+          else
+            echo "FAILED: cannot read the cluster (see the error above)"
+          fi
         fi
       fi
     fi
@@ -1330,70 +1360,76 @@ fi
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
 
-$null | vcf context use supervisor
-$global:LASTEXITCODE = $null
-$C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
-if ($LASTEXITCODE -eq 0) { $A = @(kubectl --kubeconfig $VKS_KUBECONFIG api-resources -o name) }
-if ($LASTEXITCODE -ne 0) {
-  "STOPPED: cannot read the cluster (see the error above)"
-} elseif ($C -notcontains 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev') {
-  "The Tekton add-on is not installed"
-} elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}') -ne 'vmware-system-helm') {
-  "STOPPED: this Tekton Operator is not the VKS add-on"
-} elseif ((vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE | Out-Null) -or $LASTEXITCODE -ne 0) {
-  "STOPPED: the VCF CLI (see the error above)"
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 } else {
-  $L = @()
-  $KINDS = @($A | Where-Object { $_ -match '\.tekton\.dev$' -and $_ -notmatch '^clusterinterceptors\.' -and $_ -notmatch '\.operator\.tekton\.dev$' }) -join ','
-  $global:LASTEXITCODE = 0
-  if ($KINDS) { $L = @(kubectl --kubeconfig $VKS_KUBECONFIG get $KINDS -A --no-headers) }
+  $global:LASTEXITCODE = $null
+  $C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
+  if ($LASTEXITCODE -eq 0) { $A = @(kubectl --kubeconfig $VKS_KUBECONFIG api-resources -o name) }
   if ($LASTEXITCODE -ne 0) {
-    "STOPPED: cannot list the Tekton objects (see the error above)"
-  } elseif (($U = @($L | Where-Object { $_ -and $_ -notmatch '^tekton-demo ' }).Count) -gt 0) {
-    "STOPPED: $U Tekton objects outside tekton-demo use this Tekton"
+    "STOPPED: cannot read the cluster (see the error above)"
+  } elseif ($C -notcontains 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev') {
+    "The Tekton add-on is not installed"
+  } elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}') -ne 'vmware-system-helm') {
+    "STOPPED: this Tekton Operator is not the VKS add-on"
+  } elseif ((vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE | Out-Null) -or $LASTEXITCODE -ne 0) {
+    "STOPPED: the VCF CLI (see the error above)"
   } else {
-    kubectl --kubeconfig $VKS_KUBECONFIG delete tektonconfig config --ignore-not-found --timeout=5m
-    $N = 'unknown'
-    foreach ($i in 1..60) {
-      $C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
-      if ($LASTEXITCODE -eq 0) {
-        $N = @($C | Where-Object { $_ -match '\.tekton\.dev$' -and $_ -notmatch '\.operator\.tekton\.dev$' }).Count
-        if ($N -eq 0) { break }
-      }
-      Start-Sleep -Seconds 5
-    }
-    if ($N -ne 0) {
-      "FAILED: $N Tekton CRDs still there after 5 minutes"
+    $L = @()
+    $KINDS = @($A | Where-Object { $_ -match '\.tekton\.dev$' -and $_ -notmatch '^clusterinterceptors\.' -and $_ -notmatch '\.operator\.tekton\.dev$' }) -join ','
+    $global:LASTEXITCODE = 0
+    if ($KINDS) { $L = @(kubectl --kubeconfig $VKS_KUBECONFIG get $KINDS -A --no-headers) }
+    if ($LASTEXITCODE -ne 0) {
+      "STOPPED: cannot list the Tekton objects (see the error above)"
+    } elseif (($U = @($L | Where-Object { $_ -and $_ -notmatch '^tekton-demo ' }).Count) -gt 0) {
+      "STOPPED: $U Tekton objects outside tekton-demo use this Tekton"
     } else {
-      $W = @(kubectl --kubeconfig $VKS_KUBECONFIG get tektoninstallersets -o name)
-      if ($LASTEXITCODE -ne 0) {
-        "FAILED: cannot list the operator's sets (see the error above)"
+      kubectl --kubeconfig $VKS_KUBECONFIG delete tektonconfig config --ignore-not-found --timeout=5m
+      $N = 'unknown'
+      foreach ($i in 1..60) {
+        $C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
+        if ($LASTEXITCODE -eq 0) {
+          $N = @($C | Where-Object { $_ -match '\.tekton\.dev$' -and $_ -notmatch '\.operator\.tekton\.dev$' }).Count
+          if ($N -eq 0) { break }
+        }
+        Start-Sleep -Seconds 5
+      }
+      if ($N -ne 0) {
+        "FAILED: $N Tekton CRDs still there after 5 minutes"
       } else {
-        foreach ($R in @($W | Where-Object { $_ -match '/validating-mutating-webhook-' })) {
-          kubectl --kubeconfig $VKS_KUBECONFIG delete $R --timeout=2m
-        }
-        foreach ($i in 1..60) {
-          $W = @(kubectl --kubeconfig $VKS_KUBECONFIG get tektoninstallersets -o name)
-          if ($LASTEXITCODE -ne 0) { $W = @('unknown') }
-          if ($W.Count -eq 0) { break }
-          Start-Sleep -Seconds 5
-        }
-        if ("$W" -eq 'unknown') {
+        $W = @(kubectl --kubeconfig $VKS_KUBECONFIG get tektoninstallersets -o name)
+        if ($LASTEXITCODE -ne 0) {
           "FAILED: cannot list the operator's sets (see the error above)"
-        } elseif ($W.Count -gt 0) {
-          "FAILED: the operator's sets are still there after 5 minutes: $W"
         } else {
-          vcf addon install delete tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
-          if ($LASTEXITCODE -ne 0) {
-            "FAILED: the add-on (see the error above)"
+          foreach ($R in @($W | Where-Object { $_ -match '/validating-mutating-webhook-' })) {
+            kubectl --kubeconfig $VKS_KUBECONFIG delete $R --timeout=2m
+          }
+          foreach ($i in 1..60) {
+            $W = @(kubectl --kubeconfig $VKS_KUBECONFIG get tektoninstallersets -o name)
+            if ($LASTEXITCODE -ne 0) { $W = @('unknown') }
+            if ($W.Count -eq 0) { break }
+            Start-Sleep -Seconds 5
+          }
+          if ("$W" -eq 'unknown') {
+            "FAILED: cannot list the operator's sets (see the error above)"
+          } elseif ($W.Count -gt 0) {
+            "FAILED: the operator's sets are still there after 5 minutes: $W"
           } else {
-            kubectl --kubeconfig $VKS_KUBECONFIG delete namespace tekton-operator --ignore-not-found --timeout=5m
-            $C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
-            if ($LASTEXITCODE -eq 0) {
-              "Tekton CRDs left: $(@($C | Where-Object { $_ -match '\.tekton\.dev$' }).Count)"
+            vcf addon install delete tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+            if ($LASTEXITCODE -ne 0) {
+              "FAILED: the add-on (see the error above)"
             } else {
-              "FAILED: cannot read the cluster (see the error above)"
+              kubectl --kubeconfig $VKS_KUBECONFIG delete namespace tekton-operator --ignore-not-found --timeout=5m
+              $C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
+              if ($LASTEXITCODE -eq 0) {
+                "Tekton CRDs left: $(@($C | Where-Object { $_ -match '\.tekton\.dev$' }).Count)"
+              } else {
+                "FAILED: cannot read the cluster (see the error above)"
+              }
             }
           }
         }

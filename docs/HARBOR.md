@@ -63,7 +63,8 @@ that someone else installed.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
@@ -90,7 +91,8 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $global:LASTEXITCODE = $null
@@ -294,7 +296,8 @@ the Supervisor offers for such disks. This lists them, so you can pick one for
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get storageclass -o custom-columns=NAME:.metadata.name --no-headers
 ```
@@ -302,7 +305,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get storageclass -o custom-columns
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get storageclass -o custom-columns=NAME:.metadata.name --no-headers
 ```
@@ -695,7 +699,8 @@ right before you install.
 
 ```sh
 VKS_NAMESPACE="my-namespace"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
@@ -718,7 +723,8 @@ fi
 
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $global:LASTEXITCODE = $null
@@ -867,7 +873,8 @@ ask for in the next step. No DNS record is needed yet.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
@@ -898,7 +905,8 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $global:LASTEXITCODE = $null
@@ -947,7 +955,8 @@ The vSphere Client shows the same address: **Supervisor Management** → **Names
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 if ! NS="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o jsonpath='{.items[*].metadata.name}')"; then
   echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
@@ -961,7 +970,8 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
@@ -985,7 +995,8 @@ Once the record exists, this checks that Harbor's name leads to Harbor's address
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
@@ -1010,7 +1021,8 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
@@ -1050,7 +1062,8 @@ step 6's record. Run it for each vSphere Namespace you recorded, until all are u
 
 ```sh
 VKS_NAMESPACE="my-namespace"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 BEFORE="$HARBOR_DIR/machines-$VKS_NAMESPACE.before"
@@ -1073,7 +1086,8 @@ fi
 
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $global:LASTEXITCODE = $null
@@ -1127,7 +1141,8 @@ It needs a user who may read Secrets in Harbor's namespace on the Supervisor.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
@@ -1159,7 +1174,8 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $global:LASTEXITCODE = $null
@@ -1871,7 +1887,8 @@ less), then deletes Harbor's web server pod, which starts again with that certif
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
@@ -1909,7 +1926,8 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $global:LASTEXITCODE = $null
@@ -2273,7 +2291,8 @@ new one.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 VALUES="$HARBOR_DIR/harbor-data-values.yml"
@@ -2319,7 +2338,8 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $global:LASTEXITCODE = $null
@@ -2390,7 +2410,8 @@ machine. It says `MAY UNINSTALL` only if this Supervisor had no Harbor when you 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
@@ -2405,7 +2426,8 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $global:LASTEXITCODE = $null
@@ -2440,7 +2462,8 @@ until it prints `none`: a few minutes.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 if H="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o name)"; then
   echo "Harbor namespaces left: ${H:-none}"
@@ -2452,7 +2475,8 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 $H = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name
@@ -2499,7 +2523,8 @@ DNS record to be removed too.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor"
 
 if ! H="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o name)"; then
@@ -2514,7 +2539,8 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
 
 $global:LASTEXITCODE = $null

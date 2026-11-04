@@ -1520,7 +1520,8 @@ It needs the **Edit** role on the vSphere Namespace.
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 NEXUS_CA="$HOME/nexus-ca.pem"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 S="${VKS_CLUSTER}-user-trusted-ca-secret"
 if ! openssl x509 -in "$NEXUS_CA" -noout -subject; then
@@ -1542,7 +1543,8 @@ fi
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $NEXUS_CA = "$HOME\nexus-ca.pem"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $S = "$VKS_CLUSTER-user-trusted-ca-secret"
 $global:LASTEXITCODE = $null
@@ -1584,7 +1586,8 @@ VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 NEXUS_CA="$HOME/nexus-ca.pem"
 NEXUS_CA_KEY="nexus-ca-2"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 S="${VKS_CLUSTER}-user-trusted-ca-secret"
 if ! openssl x509 -in "$NEXUS_CA" -noout -subject; then
@@ -1604,7 +1607,8 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $NEXUS_CA = "$HOME\nexus-ca.pem"
 $NEXUS_CA_KEY = "nexus-ca-2"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $S = "$VKS_CLUSTER-user-trusted-ca-secret"
 $T = Join-Path $env:TEMP "nexus-ca-patch.json"
@@ -1656,7 +1660,8 @@ setting and updates the nodes again; do not sync that Application afterwards.
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 S="${VKS_CLUSTER}-user-trusted-ca-secret"
 P='[{"op":"add","path":"/spec/topology/variables/-","value":{"name":"osConfiguration","value":{"trust":{"additionalTrustedCAs":[{"caCert":{"secretRef":{"name":"'"$S"'","key":"nexus-ca"}}}]}}}}]'
@@ -1680,7 +1685,8 @@ fi
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $S = "$VKS_CLUSTER-user-trusted-ca-secret"
 $T = Join-Path $env:TEMP "nexus-trust-patch.json"

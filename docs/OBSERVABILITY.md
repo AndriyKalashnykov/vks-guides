@@ -550,6 +550,7 @@ FLUENT_BIT_RELEASE="fluent-bit.kubernetes.vmware.com.5.1.2-vmware.1-vks.1"
 LOGS_FQDN=""
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 OBSERVABILITY_DIR="$HOME/.config/vks-guides/observability"
+SUPERVISOR_CONTEXT="supervisor"
 
 V="$OBSERVABILITY_DIR/fluent-bit-values.yaml"
 BAD_NAME=""
@@ -590,35 +591,40 @@ EOF
 EOF
   fi
 } > "$V"
-vcf context use supervisor </dev/null
-if [ -n "$BAD_NAME" ]; then
-  echo "FAILED: set LOGS_FQDN to Log Management's DNS name (LOGGING.md step 3), or leave it empty"
-elif ! kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw /version >/dev/null; then
-  echo "FAILED: cannot reach the VKS cluster; get its kubeconfig again (LOGIN.md)"
-elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit >/dev/null 2>&1; then
-  MOUNTS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit \
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+else
+  if [ -n "$BAD_NAME" ]; then
+    echo "FAILED: set LOGS_FQDN to Log Management's DNS name (LOGGING.md step 3), or leave it empty"
+  elif ! kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw /version >/dev/null; then
+    echo "FAILED: cannot reach the VKS cluster; get its kubeconfig again (LOGIN.md)"
+  elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit >/dev/null 2>&1; then
+    MOUNTS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit \
     -o jsonpath='{.spec.template.spec.volumes[*].secret.secretName}' 2>/dev/null || true)"
-  case " $MOUNTS " in *" tls-ca-cert "*) TO_OPS=1 ;; *) TO_OPS="" ;; esac
-  if [ -z "$LOGS_FQDN" ] && [ -n "$TO_OPS" ]; then
-    echo "FAILED: the add-on also sends to Log Management (LOGGING.md); set LOGS_FQDN to its name"
-  elif vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -f "$V" -y; then
-    sleep 30
-    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
+    case " $MOUNTS " in *" tls-ca-cert "*) TO_OPS=1 ;; *) TO_OPS="" ;; esac
+    if [ -z "$LOGS_FQDN" ] && [ -n "$TO_OPS" ]; then
+      echo "FAILED: the add-on also sends to Log Management (LOGGING.md); set LOGS_FQDN to its name"
+    elif vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -f "$V" -y; then
+      sleep 30
+      kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
+      kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+    else
+      echo "FAILED: add-on update (see the error above)"
+    fi
+  elif [ -n "$LOGS_FQDN" ]; then
+    echo "FAILED: LOGS_FQDN is set but the add-on is not installed; do LOGGING.md first, or leave LOGS_FQDN empty"
+  elif vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+         --addon-release-name "$FLUENT_BIT_RELEASE" -f "$V" -y; then
+    n=0
+    until kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit >/dev/null 2>&1 || [ "$n" -ge 40 ]; do
+      sleep 15; n=$((n + 1))
+    done
     kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
   else
-    echo "FAILED: add-on update (see the error above)"
+    echo "FAILED: add-on install (see the error above)"
   fi
-elif [ -n "$LOGS_FQDN" ]; then
-  echo "FAILED: LOGS_FQDN is set but the add-on is not installed; do LOGGING.md first, or leave LOGS_FQDN empty"
-elif vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
-       --addon-release-name "$FLUENT_BIT_RELEASE" -f "$V" -y; then
-  n=0
-  until kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit >/dev/null 2>&1 || [ "$n" -ge 40 ]; do
-    sleep 15; n=$((n + 1))
-  done
-  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
-else
-  echo "FAILED: add-on install (see the error above)"
 fi
 ```
 
@@ -634,6 +640,7 @@ $FLUENT_BIT_RELEASE = "fluent-bit.kubernetes.vmware.com.5.1.2-vmware.1-vks.1"
 $LOGS_FQDN = ""
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $OBSERVABILITY_DIR = "$HOME\.config\vks-guides\observability"
+$SUPERVISOR_CONTEXT = "supervisor"
 
 $global:LASTEXITCODE = $null
 $V = "$OBSERVABILITY_DIR\fluent-bit-values.yaml"
@@ -671,46 +678,51 @@ if ($LOGS_FQDN) {
 "@
 }
 [IO.File]::WriteAllText($V, ($T -replace "`r`n", "`n") + "`n")
-$null | vcf context use supervisor
-$OK = $true
-if ($LOGS_FQDN -and ($LOGS_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $LOGS_FQDN -eq 'logs.example.test')) {
-  "FAILED: set LOGS_FQDN to Log Management's DNS name (LOGGING.md step 3), or leave it empty"
-  $OK = $false
-}
-if ($OK) {
-  kubectl --kubeconfig $VKS_KUBECONFIG get --raw /version | Out-Null
-  if ($LASTEXITCODE -ne 0) { "FAILED: cannot reach the VKS cluster; get its kubeconfig again (LOGIN.md)"; $OK = $false }
-}
-if ($OK) {
-  kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit 2>$null | Out-Null
-  $INSTALLED = $LASTEXITCODE -eq 0
-  $MOUNTS = kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit -o jsonpath='{.spec.template.spec.volumes[*].secret.secretName}' 2>$null
-  $TO_OPS = @("$MOUNTS" -split ' ') -contains 'tls-ca-cert'
-  if ($INSTALLED -and $TO_OPS -and -not $LOGS_FQDN) {
-    "FAILED: the add-on also sends to Log Management (LOGGING.md); set LOGS_FQDN to its name"
-  } elseif ($INSTALLED) {
-    vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f $V -y
-    if ($LASTEXITCODE -eq 0) {
-      Start-Sleep 30
-      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
-      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+} else {
+  $OK = $true
+  if ($LOGS_FQDN -and ($LOGS_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $LOGS_FQDN -eq 'logs.example.test')) {
+    "FAILED: set LOGS_FQDN to Log Management's DNS name (LOGGING.md step 3), or leave it empty"
+    $OK = $false
+  }
+  if ($OK) {
+    kubectl --kubeconfig $VKS_KUBECONFIG get --raw /version | Out-Null
+    if ($LASTEXITCODE -ne 0) { "FAILED: cannot reach the VKS cluster; get its kubeconfig again (LOGIN.md)"; $OK = $false }
+  }
+  if ($OK) {
+    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit 2>$null | Out-Null
+    $INSTALLED = $LASTEXITCODE -eq 0
+    $MOUNTS = kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit -o jsonpath='{.spec.template.spec.volumes[*].secret.secretName}' 2>$null
+    $TO_OPS = @("$MOUNTS" -split ' ') -contains 'tls-ca-cert'
+    if ($INSTALLED -and $TO_OPS -and -not $LOGS_FQDN) {
+      "FAILED: the add-on also sends to Log Management (LOGGING.md); set LOGS_FQDN to its name"
+    } elseif ($INSTALLED) {
+      vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f $V -y
+      if ($LASTEXITCODE -eq 0) {
+        Start-Sleep 30
+        kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
+        kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+      } else {
+        "FAILED: add-on update (see the error above)"
+      }
+    } elseif ($LOGS_FQDN) {
+      "FAILED: LOGS_FQDN is set but the add-on is not installed; do LOGGING.md first, or leave LOGS_FQDN empty"
     } else {
-      "FAILED: add-on update (see the error above)"
-    }
-  } elseif ($LOGS_FQDN) {
-    "FAILED: LOGS_FQDN is set but the add-on is not installed; do LOGGING.md first, or leave LOGS_FQDN empty"
-  } else {
-    vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f $V -y
-    if ($LASTEXITCODE -eq 0) {
-      $n = 0
-      do {
-        if ($n -gt 0) { Start-Sleep 15 }
-        kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit 2>$null | Out-Null
-        $n++
-      } until ($LASTEXITCODE -eq 0 -or $n -gt 40)
-      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
-    } else {
-      "FAILED: add-on install (see the error above)"
+      vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f $V -y
+      if ($LASTEXITCODE -eq 0) {
+        $n = 0
+        do {
+          if ($n -gt 0) { Start-Sleep 15 }
+          kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit 2>$null | Out-Null
+          $n++
+        } until ($LASTEXITCODE -eq 0 -or $n -gt 40)
+        kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+      } else {
+        "FAILED: add-on install (see the error above)"
+      }
     }
   }
 }
@@ -1251,7 +1263,8 @@ collection is on for each.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 OBSERVABILITY_DIR="$HOME/.config/vks-guides/observability"
 
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
@@ -1280,7 +1293,8 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $OBSERVABILITY_DIR = "$HOME\.config\vks-guides\observability"
 
 $global:LASTEXITCODE = $null
@@ -1446,7 +1460,8 @@ first if the cluster has an older install of MONITORING.md, which would clash wi
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 addons() {
@@ -1483,7 +1498,8 @@ fi
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 function Test-Addons {
@@ -1606,7 +1622,8 @@ the cluster.
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
@@ -1620,7 +1637,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=disabled --overwrite
@@ -1646,7 +1664,8 @@ VKS clusters still `enabled`, and prints `MAY UNINSTALL` or `DO NOT UNINSTALL`.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 OBSERVABILITY_DIR="$HOME/.config/vks-guides/observability"
 
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
@@ -1671,7 +1690,8 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $OBSERVABILITY_DIR = "$HOME\.config\vks-guides\observability"
 
 $global:LASTEXITCODE = $null
@@ -1743,7 +1763,8 @@ after the uninstall above: it removes them in every vSphere Namespace, then list
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 if ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=metrics-aggregator -o name)"; then
   echo "FAILED: cannot read the Supervisor (see the error above)"
@@ -1782,7 +1803,8 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=metrics-aggregator -o name
@@ -1840,7 +1862,8 @@ treat someone else's new install as yours and say it is safe to remove.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 OBSERVABILITY_DIR="$HOME/.config/vks-guides/observability"
 
 if SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" && [ -n "$SUP" ]; then
@@ -1853,7 +1876,8 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $OBSERVABILITY_DIR = "$HOME\.config\vks-guides\observability"
 
 $global:LASTEXITCODE = $null

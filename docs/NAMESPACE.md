@@ -246,7 +246,8 @@ This checks that the namespace exists and that your user may create VKS clusters
 
 ```sh
 VKS_NAMESPACE="my-namespace"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
   && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" auth can-i create clusters.cluster.x-k8s.io
@@ -256,7 +257,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
 
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE
@@ -280,7 +282,8 @@ releases and cluster classes.
 
 ```sh
 VKS_NAMESPACE="my-namespace"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
   echo "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
@@ -310,7 +313,8 @@ fi
 
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
@@ -376,7 +380,8 @@ This lists the VKS clusters, VMs, volumes and pods left in it:
 
 ```sh
 VKS_NAMESPACE="my-namespace"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
   && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io,virtualmachines,persistentvolumeclaims,pods
@@ -386,7 +391,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
 
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE
@@ -448,7 +454,8 @@ namespaces, do not use this step.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" auth can-i create namespaces
 ```
@@ -456,7 +463,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" auth can-i create namespaces
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG auth can-i create namespaces
 ```
@@ -486,7 +494,8 @@ with `vmware-system-` or `svc-`. It cannot be changed later.
 
 ```sh
 NAMESPACE_YAML="$HOME/namespace.yaml"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" create --dry-run=server -f "$NAMESPACE_YAML" \
   && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" create -f "$NAMESPACE_YAML"
@@ -496,7 +505,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" create --dry-run=server -f "$NAMES
 
 ```powershell
 $NAMESPACE_YAML = "$HOME\namespace.yaml"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG create --dry-run=server -f $NAMESPACE_YAML
@@ -526,7 +536,8 @@ deletes the namespace from the Supervisor:
 
 ```sh
 VKS_NAMESPACE="my-namespace"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" delete namespace "$VKS_NAMESPACE"
 ```
@@ -535,7 +546,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" delete namespace "$VKS_NAMESPACE"
 
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG delete namespace $VKS_NAMESPACE
 ```

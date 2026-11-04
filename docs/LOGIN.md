@@ -186,7 +186,8 @@ carefully. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 SUPERVISOR_ENDPOINT="10.0.0.10"
 SSO_USERNAME="administrator@vsphere.local"
 SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
@@ -211,7 +212,8 @@ fi
 $SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
 $SSO_USERNAME = "administrator@vsphere.local"
 $SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
@@ -303,7 +305,8 @@ failed logins in a row lock the SSO user for some minutes**, so type the passwor
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
 SSO_USERNAME="administrator@vsphere.local"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
@@ -325,7 +328,8 @@ fi
 ```powershell
 $SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
 $SSO_USERNAME = "administrator@vsphere.local"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
@@ -451,7 +455,8 @@ it.
 
 ```sh
 VKS_NAMESPACE="my-namespace"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
   && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io
@@ -461,7 +466,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
 
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE
@@ -499,7 +505,8 @@ Set `VKS_CLUSTER` to a name from the `NAME` column above.
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 rm -f "$VKS_KUBECONFIG.new"
@@ -523,7 +530,8 @@ fi
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"                     # from the NAME column above
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $global:LASTEXITCODE = $null
@@ -746,7 +754,8 @@ it without CA.
 
 ```sh
 SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 if [ -n "$SUPERVISOR_CA" ]; then TLS="--ca-certificate=$SUPERVISOR_CA"; else TLS="--insecure-skip-tls-verify"; fi
 if [ -z "$SSO_PASSWORD" ]; then
@@ -763,7 +772,8 @@ fi
 
 ```powershell
 $SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"         # or supervisor.crt; "" if without CA
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $TLS = if ($SUPERVISOR_CA) { "--ca-certificate=$SUPERVISOR_CA" } else { "--insecure-skip-tls-verify" }
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
@@ -802,7 +812,8 @@ kubeconfig is kept; delete it with `rm` if you no longer need it.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf context delete supervisor -y --skip-delete-kubeconfig-context
 KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf context list
@@ -814,7 +825,8 @@ rm -rf "$HOME/.config/vcf/logs"
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
 vcf context delete supervisor -y --skip-delete-kubeconfig-context

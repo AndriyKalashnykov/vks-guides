@@ -49,10 +49,16 @@ has (`fluent-bit` should not be among them). You copy a version name from it for
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
+SUPERVISOR_CONTEXT="supervisor"
 
-vcf context use supervisor </dev/null
-vcf addon available-releases list --addon-name fluent-bit
-vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+else
+  vcf addon available-releases list --addon-name fluent-bit
+  vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"
+fi
 ```
 
 **Windows (PowerShell):**
@@ -60,10 +66,16 @@ vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
+$SUPERVISOR_CONTEXT = "supervisor"
 
-$null | vcf context use supervisor
-vcf addon available-releases list --addon-name fluent-bit
-vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+} else {
+  vcf addon available-releases list --addon-name fluent-bit
+  vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE
+}
 ```
 
 **Expect:** `Successfully activated context 'supervisor'`, then one or more releases named
@@ -241,10 +253,16 @@ VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 FLUENT_BIT_RELEASE="fluent-bit.kubernetes.vmware.com.5.1.2-vmware.1-vks.1"
 LOGGING_DIR="$HOME/.config/vks-guides/logging"
+SUPERVISOR_CONTEXT="supervisor"
 
-vcf context use supervisor </dev/null
-vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
-  --addon-release-name "$FLUENT_BIT_RELEASE" -f "$LOGGING_DIR/values.yaml" -y
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+else
+  vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+    --addon-release-name "$FLUENT_BIT_RELEASE" -f "$LOGGING_DIR/values.yaml" -y
+fi
 ```
 
 **Windows (PowerShell):**
@@ -254,9 +272,15 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $FLUENT_BIT_RELEASE = "fluent-bit.kubernetes.vmware.com.5.1.2-vmware.1-vks.1"
 $LOGGING_DIR = "$HOME\.config\vks-guides\logging"
+$SUPERVISOR_CONTEXT = "supervisor"
 
-$null | vcf context use supervisor
-vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f "$LOGGING_DIR\values.yaml" -y
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+} else {
+  vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f "$LOGGING_DIR\values.yaml" -y
+}
 ```
 
 **Expect:** the context lines from step 1, then `Addon 'fluent-bit' is being installed in the cluster …`.
@@ -456,6 +480,7 @@ VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 LOGGING_DIR="$HOME/.config/vks-guides/logging"
+SUPERVISOR_CONTEXT="supervisor"
 
 CA="$LOGGING_DIR/logs-ca.crt"
 if [ ! -f "$CA" ] || [ ! -s "$CA" ]; then
@@ -464,14 +489,19 @@ else
   kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging create secret generic tls-ca-cert \
     --from-file=tls_http.crt="$CA" --dry-run=client -o yaml \
     | kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f -
-  vcf context use supervisor </dev/null
-  if vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
-       -f "$LOGGING_DIR/values.yaml" -y; then
-    sleep 30
-    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
-    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+  VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+  if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+    printf '%s\n' "$VCF_USE"
+    echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
   else
-    echo "FAILED: add-on update (see the error above)"
+    if vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+         -f "$LOGGING_DIR/values.yaml" -y; then
+      sleep 30
+      kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
+      kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+    else
+      echo "FAILED: add-on update (see the error above)"
+    fi
   fi
 fi
 ```
@@ -486,6 +516,7 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $LOGGING_DIR = "$HOME\.config\vks-guides\logging"
+$SUPERVISOR_CONTEXT = "supervisor"
 
 $CA = "$LOGGING_DIR\logs-ca.crt"
 if (-not (Test-Path $CA -PathType Leaf) -or (Get-Item $CA).Length -eq 0) {
@@ -493,14 +524,19 @@ if (-not (Test-Path $CA -PathType Leaf) -or (Get-Item $CA).Length -eq 0) {
 } else {
   kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging create secret generic tls-ca-cert --from-file=tls_http.crt="$CA" --dry-run=client -o yaml |
     kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
-  $null | vcf context use supervisor
-  vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$LOGGING_DIR\values.yaml" -y
-  if ($LASTEXITCODE -eq 0) {
-    Start-Sleep 30
-    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
-    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+  $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+  if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+    $VCF_USE
+    "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
   } else {
-    "FAILED: add-on update (see the error above)"
+    vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$LOGGING_DIR\values.yaml" -y
+    if ($LASTEXITCODE -eq 0) {
+      Start-Sleep 30
+      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
+      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
+    } else {
+      "FAILED: add-on update (see the error above)"
+    }
   }
 }
 ```
@@ -528,9 +564,15 @@ Operations.
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
+SUPERVISOR_CONTEXT="supervisor"
 
-vcf context use supervisor </dev/null
-vcf addon install delete fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+else
+  vcf addon install delete fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y
+fi
 ```
 
 **Windows (PowerShell):**
@@ -538,9 +580,15 @@ vcf addon install delete fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMES
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
+$SUPERVISOR_CONTEXT = "supervisor"
 
-$null | vcf context use supervisor
-vcf addon install delete fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+} else {
+  vcf addon install delete fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+}
 ```
 
 **Expect:** the context lines from step 1, then

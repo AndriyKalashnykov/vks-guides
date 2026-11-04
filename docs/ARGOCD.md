@@ -60,7 +60,8 @@ and whether ArgoCD's first `admin` password can still be read.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get argocdversion argocd-supported-versions -o name
@@ -71,7 +72,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get secret 
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get argocdversion argocd-supported-versions -o name
@@ -189,7 +191,8 @@ This lists the ArgoCD versions the service offers. You pick one of them in the n
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get argocdversion argocd-supported-versions -o jsonpath='{range .spec.versions[*]}{.version}{"  "}{.description}{"\n"}{end}'
 ```
@@ -197,7 +200,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get argocdversion argocd-supported
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get argocdversion argocd-supported-versions -o jsonpath='{range .spec.versions[*]}{.version}{''  ''}{.description}{''\n''}{end}'
 ```
@@ -212,7 +216,8 @@ Set `ARGOCD_VERSION` to the first *Recommended* version from the list above.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 ARGOCD_VERSION="3.4.4+vmware.1-vks.1"
 
@@ -229,7 +234,8 @@ EOF
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $ARGOCD_VERSION = "3.4.4+vmware.1-vks.1"
 
@@ -270,7 +276,8 @@ password stays on the screen.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 ARGOCD_INSTANCE="argocd-1"
 
@@ -283,7 +290,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get secret 
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $ARGOCD_INSTANCE = "argocd-1"
 
@@ -341,7 +349,8 @@ ArgoCD can create a VKS cluster only in a vSphere Namespace it may change. This 
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 
@@ -380,7 +389,8 @@ EOF
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 
@@ -424,7 +434,8 @@ This checks that ArgoCD accepted the namespace as a destination:
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get managedentity
@@ -433,7 +444,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get managed
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedentity
@@ -459,7 +471,8 @@ create only VKS clusters.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 
@@ -487,7 +500,8 @@ EOF
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 
@@ -525,7 +539,8 @@ list into the Application block below:
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 VKS_NAMESPACE="my-namespace"
 
 echo "Kubernetes versions:"
@@ -546,7 +561,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get storagepol
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $VKS_NAMESPACE = "my-namespace"
 
 $global:LASTEXITCODE = $null
@@ -583,7 +599,8 @@ would delete it. This checks that nothing has the name now:
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
@@ -595,7 +612,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get applica
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
@@ -617,7 +635,8 @@ only when you click **SYNC** below.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
@@ -658,7 +677,8 @@ EOF
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
@@ -729,7 +749,8 @@ This shows whether ArgoCD has finished (`Synced  Healthy`) and whether the VKS c
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
@@ -741,7 +762,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.c
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
@@ -779,7 +801,8 @@ Nothing is installed on the cluster.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
@@ -820,7 +843,8 @@ EOF
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
@@ -882,7 +906,8 @@ the cluster as its administrator until that certificate ends.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
@@ -903,7 +928,8 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
@@ -946,7 +972,8 @@ cluster again gives ArgoCD a newer certificate:
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 
@@ -957,7 +984,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get secret "${
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
@@ -989,7 +1017,8 @@ unchanged. A cluster already added with the block above stays as it is.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 ROLE="argocd-manage-vks"
@@ -1030,7 +1059,8 @@ EOF
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 $ROLE = "argocd-manage-vks"
@@ -1077,7 +1107,8 @@ This shows what the policy decided for each cluster:
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 
@@ -1089,7 +1120,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get managed
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 
@@ -1125,7 +1157,8 @@ cluster, ArgoCD puts them back.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
@@ -1180,7 +1213,8 @@ EOF
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
@@ -1247,7 +1281,8 @@ it shows `5/5`: a minute or two.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
@@ -1265,7 +1300,8 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
@@ -1308,7 +1344,8 @@ This deletes the test app and its namespace on the VKS cluster, then its project
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete applications.argoproj.io test-web-apps --timeout=5m \
@@ -1318,7 +1355,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appl
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 
 $global:LASTEXITCODE = $null
@@ -1340,7 +1378,8 @@ takes a few minutes:
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
@@ -1353,7 +1392,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appl
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
@@ -1373,7 +1413,8 @@ project is left.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 
@@ -1392,7 +1433,8 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 
@@ -1419,7 +1461,8 @@ first `admin` password, and its project `default`. Run it only if step 3 printed
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete argocd argocd-1 --ignore-not-found --timeout=5m \
@@ -1430,7 +1473,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete argo
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 
 $global:LASTEXITCODE = $null
@@ -1458,7 +1502,8 @@ lists them:
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get argocd -A
 ```
@@ -1466,7 +1511,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get argocd -A
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get argocd -A
 ```
