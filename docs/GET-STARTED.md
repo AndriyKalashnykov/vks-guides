@@ -20,7 +20,8 @@ Do them in this order:
    [from the vSphere Client](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)
    or [with kubectl](LOGIN.md#get-the-vks-clusters-kubeconfig), then
    [Use the VKS cluster](LOGIN.md#use-the-vks-cluster).
-8. [Kubeconfig files](KUBECONFIG.md), when you hand a kubeconfig to someone.
+8. [Kubeconfig files](KUBECONFIG.md), when you hand a kubeconfig to someone; it also says how
+   `vcf` and `kubectl` keep your logins.
 9. [Install Helm](HELM.md), only for the guides that install apps with it.
 
 | guide | what it is |
@@ -29,7 +30,7 @@ Do them in this order:
 | [Install kubectl](KUBECTL.md) | the Kubernetes command-line tool, for working with your clusters |
 | [Install the VCF CLI](VCF.md) | VMware's command-line tool, for logging in to the Supervisor and managing VKS clusters |
 | [Log in to the Supervisor and a VKS cluster](LOGIN.md) | your SSO login to the Supervisor, and the kubeconfig `kubectl` uses to reach your VKS cluster |
-| [Kubeconfig files](KUBECONFIG.md) | what each kubeconfig the guides make holds, which ones may be handed over, and how to use and merge them |
+| [Kubeconfig files](KUBECONFIG.md) | what each kubeconfig the guides make holds, which ones may be handed over, how to use and merge them, and how `vcf` and `kubectl` keep your logins |
 | [Install Helm](HELM.md) | the Kubernetes package manager, for installing charts such as the monitoring stack |
 
 ## Tested on

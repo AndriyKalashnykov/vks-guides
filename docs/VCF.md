@@ -249,10 +249,10 @@ no `essential plugins` or `telemetry:v9.0.2` line before them.
 **If not:** the lines still appear in a terminal opened before this block: close it; terminals
 opened after it have the setting.
 
-Next: [Log in](LOGIN.md).
+If you logged in with `vcf` before these guides, without `KUBECONFIG` set, see
+[If you already use kubectl with other clusters](KUBECONFIG.md#if-you-already-use-kubectl-with-other-clusters)
+first.
 
-If you already use kubectl with other clusters, see
-[what a login creates](KUBECONFIG.md#if-you-already-use-kubectl-with-other-clusters) after you
-log in.
+Next: [Log in](LOGIN.md).
 
 Back to [README](../README.md).

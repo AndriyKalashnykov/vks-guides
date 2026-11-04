@@ -64,7 +64,8 @@ Decide before you install:
 - your organization's certificate: step 13; request it early, it takes time. To install with
   it, run step 13 *Write the certificate into the file* between step 4 and step 5.
 
-Used an earlier version of this guide on this machine? Run
+If the folder `~/.config/vks-guides/harbor` (Windows: `$HOME\.config\vks-guides\harbor`) already
+exists on this machine, run
 [Files from an earlier version of this guide](#files-from-an-earlier-version-of-this-guide-optional)
 first.
 
