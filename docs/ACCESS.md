@@ -16,6 +16,20 @@ work in a VKS cluster with kubectl, the Kubernetes command-line tool. This guide
 their own access, with only the rights they need, so that you never send the cluster's
 administrator kubeconfig and can take each access away on its own.
 
+**The words used here** (more in [KUBECONFIG.md](KUBECONFIG.md#the-words-used-here)):
+
+| word | what it is |
+|---|---|
+| vSphere Namespace | the vCenter object on the Supervisor that holds VKS clusters; you give people roles on it in vCenter (**Can view**, **Can edit**, **Owner**) |
+| namespace | a folder inside one VKS cluster for a team's workloads, made with kubectl; not the vSphere Namespace |
+| kubeconfig | a file that tells kubectl the cluster's address and the login to use; a *context* in it pairs the two (the team and certificate files also name a namespace) |
+| ServiceAccount | a login that lives inside the cluster, not an SSO or identity provider user; here for a tool, a team, or a person who needs the whole cluster |
+| token | the key of one login, written into the kubeconfig: whoever holds a copy is that login |
+| `cluster-admin` | the built-in role for everything in the cluster |
+| `edit` | the built-in role to create, change and delete most things in one namespace, its Secrets included; it can act as any ServiceAccount there, but cannot change who has rights |
+| `view` | the built-in role to read most things in one namespace, but not Secrets or who has rights |
+| RoleBinding, ClusterRoleBinding | what gives a user, a group or a ServiceAccount a role: in one namespace, or in the whole cluster |
+
 **Which way for which customer:**
 
 | your customer | the way | why this way |
@@ -30,22 +44,11 @@ administrator kubeconfig and can take each access away on its own.
 These ways give access to the cluster through kubectl. Add-ons with a web page have their own
 sign-in: Headlamp takes the person's SSO login or a token
 ([HEADLAMP.md steps 6 to 8](HEADLAMP.md#6-log-in-with-your-own-sso-user)); ArgoCD, Harbor and
-Grafana have their own `admin` user ([ARGOCD.md step 4](ARGOCD.md#4-log-in-to-the-argocd-web-page),
+Grafana have their own sign-in; their guides set up only the `admin` user
+([ARGOCD.md step 4](ARGOCD.md#4-log-in-to-the-argocd-web-page),
 [HARBOR.md step 9](HARBOR.md#9-save-harbors-ca-and-log-in),
-[MONITORING.md step 3](MONITORING.md#3-set-grafanas-admin-password)), and Harbor has robot accounts
-for tools ([HARBOR.md step 10](HARBOR.md#10-create-a-project-and-a-robot-account)).
-
-**The words used here** (more in [KUBECONFIG.md](KUBECONFIG.md#the-words-used-here)):
-
-| word | what it is |
-|---|---|
-| vSphere Namespace | the vCenter object on the Supervisor that holds VKS clusters; you give people roles on it in vCenter (**Can view**, **Can edit**, **Owner**) |
-| namespace | a folder inside one VKS cluster for a team's workloads, made with kubectl; not the vSphere Namespace |
-| kubeconfig | a file that tells kubectl the cluster's address and the login to use; a *context* in it pairs the two (here also with a namespace) |
-| ServiceAccount | a login inside the cluster for a tool or a team, not for a person |
-| token | the key of one login, written into the kubeconfig: whoever holds a copy is that login |
-| `cluster-admin`, `edit`, `view` | the cluster's built-in roles: everything in the cluster; create and change most things in a namespace, but not who has rights there; read most things, not Secrets |
-| RoleBinding, ClusterRoleBinding | what gives a user, a group or a ServiceAccount a role: in one namespace, or in the whole cluster |
+[MONITORING.md step 3](MONITORING.md#3-set-grafanas-admin-password)). For tools, Harbor has robot
+accounts ([HARBOR.md step 10](HARBOR.md#10-create-a-project-and-a-robot-account)).
 
 Who does what:
 
@@ -60,7 +63,7 @@ Who does what:
 
 - [The person's own SSO account](#the-persons-own-sso-account)
   1. [Give the person a role on the vSphere Namespace](#1-give-the-person-a-role-on-the-vsphere-namespace-vcenter-administrator) (vCenter administrator)
-  2. Log in and send the name (the person): [with the VCF CLI](#2a-log-in-with-the-vcf-cli-the-person), or with the kubectl vSphere plugin ([2b](#2b-without-the-vcf-cli-windows-and-macos-trust-the-vcenter-ca-the-person-once), [2c](#2c-install-the-kubectl-vsphere-plugin-the-person-once), [2d](#2d-log-in-with-the-plugin-the-person))
+  2. Log in and send the name (the person): [with the VCF CLI](#2a-log-in-with-the-vcf-cli-the-person), or with the kubectl vSphere plugin ([2b](#2b-windows-and-macos-trust-the-vcenter-ca-the-person-once), [2c](#2c-install-the-kubectl-vsphere-plugin-the-person-once), [2d](#2d-log-in-with-the-plugin-the-person))
   3. [Give that name rights](#3-give-that-name-rights-cluster-administrator) (cluster administrator)
   4. [Use the login and renew it](#4-use-the-login-and-renew-it-the-person) (the person)
   5. [Take it away](#5-take-it-away-cluster-administrator-vcenter-administrator) (cluster administrator, vCenter administrator)
@@ -75,17 +78,17 @@ Who does what:
   8. [Take the group's access away](#8-take-the-groups-access-away-cluster-administrator-vcenter-administrator) (cluster administrator, vCenter administrator)
 - [A ServiceAccount token](#a-serviceaccount-token)
   1. [Make the team's token and its file](#1-make-the-teams-token-and-its-file-cluster-administrator) (cluster administrator)
-  2. [Hand it over and use it](#2-hand-it-over-and-use-it-the-team-or-tool) (the team or tool)
+  2. [Hand it over and use it](#2-hand-it-over-and-use-it-cluster-administrator-then-the-team-or-tool) (cluster administrator, then the team or tool)
   3. [Renew the team's token](#3-renew-the-teams-token-cluster-administrator) (cluster administrator)
   4. [Take the team's token away](#4-take-the-teams-token-away-cluster-administrator) (cluster administrator)
 - [An administrator ServiceAccount token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster)
   1. [Make the administrator token and its file](#1-make-the-administrator-token-and-its-file-cluster-administrator) (cluster administrator)
-  2. [Use it on another machine](#2-use-it-on-another-machine-the-tool-or-person) (the tool or person)
+  2. [Hand it over and use it on another machine](#2-hand-it-over-and-use-it-on-another-machine-cluster-administrator-then-the-tool-or-person) (cluster administrator, then the tool or person)
   3. [Renew the administrator token](#3-renew-the-administrator-token-cluster-administrator) (cluster administrator)
   4. [Take the administrator token away](#4-take-the-administrator-token-away-cluster-administrator) (cluster administrator)
 - [A personal certificate](#a-personal-certificate)
   1. [Make the certificate and its file](#1-make-the-certificate-and-its-file-cluster-administrator) (cluster administrator)
-  2. [Hand it over and use it](#2-hand-it-over-and-use-it-the-person) (the person)
+  2. [Hand it over and use it](#2-hand-it-over-and-use-it-cluster-administrator-then-the-person) (cluster administrator, then the person)
   3. [Renew the certificate](#3-renew-the-certificate-cluster-administrator) (cluster administrator)
   4. [Take the certificate away](#4-take-the-certificate-away-cluster-administrator) (cluster administrator)
 
@@ -100,7 +103,7 @@ Compare the ways:
 | [A personal certificate](#a-personal-certificate) | the cluster administrator | kubectl | the days you set | cannot be withdrawn: delete its RoleBinding and never bind its name again |
 | [An external identity provider on one cluster](KEYCLOAK.md) | the identity provider's and cluster administrators | kubectl and kubelogin | while the person's sign-in lasts | delete the group's RoleBinding |
 
-The SSO way hands out no file: the person's login writes their own. The group way hands out a file
+The SSO way hands out no kubeconfig: the person's login writes their own. The group way hands out a file
 with no secret, which only tells kubectl where to sign in. The two ServiceAccount ways and the
 personal certificate hand out a file that works for whoever holds a copy. Which file holds what,
 how to hand it over, use and merge it: [KUBECONFIG.md](KUBECONFIG.md).
@@ -131,13 +134,14 @@ servers must resolve the identity provider's name):
 | the person's machine | the VKS cluster's API address | 6443 | kubectl with the person's file (every way) |
 | the person's machine | the Supervisor's address | 443 | the SSO login and the plugin download ([step 2c](#2c-install-the-kubectl-vsphere-plugin-the-person-once)); the identity provider sign-in through the Supervisor |
 | the person's browser | the Supervisor's address, and the identity provider | 443 | [Log in (the person)](#5-log-in-the-person) |
-| the Supervisor's control plane | the identity provider | 443 | checking the sign-in ([step 5](#5-log-in-the-person)) |
+| the Supervisor's control plane | the identity provider | 443 (or the Issuer URL's port) | checking the sign-in ([step 5](#5-log-in-the-person)) |
+| the VKS cluster's control-plane nodes | the Supervisor's address | 443 | checking group sign-ins ([step 5](#5-log-in-the-person)) |
 
 ## The person's own SSO account
 
 Pick this for people who have a vCenter SSO account. They log in as themselves with the VCF CLI or
-the kubectl vSphere plugin, and the login writes their own kubeconfig: you send them names, not a
-file. The vCenter administrator lets them log in (step 1); the cluster administrator gives their
+the kubectl vSphere plugin, and the login writes their own kubeconfig: you send them names and the
+vCenter CA, not a kubeconfig. The vCenter administrator lets them log in (step 1); the cluster administrator gives their
 name rights inside the cluster (step 3). A login lasts 10 hours.
 
 ### 1. Give the person a role on the vSphere Namespace (vCenter administrator)
@@ -173,8 +177,7 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 Then run this in the same terminal, once to get the name the cluster knows you by (the cluster
 administrator needs it for step 3), and again whenever kubectl answers `Unauthorized`, 10 hours
 after a login. It logs in to the VKS cluster as `SSO_USER` through the Supervisor, writes the login
-to its own kubeconfig `VKS_SSO_KUBECONFIG`, readable only by you, and adds the contexts
-`<cluster>-sso` and `<cluster>-sso:<cluster>` to the VCF CLI's list of logins. You then have that
+to its own kubeconfig `VKS_SSO_KUBECONFIG`, readable only by you. You then have that
 file, and the name the cluster knows you by: send it, exactly as printed, to the cluster
 administrator.
 
@@ -269,15 +272,15 @@ for example `sso:Alice@vsphere.local`).
 - After fixing a value, run the password line and this block again.
 - `Initialization done!` and lines about plugins on the first run: harmless.
 
-Without the VCF CLI, steps 2b to 2d use the kubectl vSphere plugin. Broadcom replaced it with the
+Without the VCF CLI, steps 2c and 2d use the kubectl vSphere plugin (on Windows and macOS, step 2b first). Broadcom replaced it with the
 VCF CLI, but it still works on 9.1 ([KB 435399](https://knowledge.broadcom.com/external/article/435399)).
 The Supervisor serves it only as an amd64 build (Apple silicon and Windows on Arm would need x64
 emulation; not tested).
 
-### 2b. Without the VCF CLI: Windows and macOS: trust the vCenter CA (the person, once)
+### 2b. Windows and macOS: trust the vCenter CA (the person, once)
 
-Do this once on Windows or macOS, before steps 2c and 2d: there the plugin (and on Windows the
-download in step 2c) checks the Supervisor's certificate against your user's trusted CAs, not
+Do this once on Windows or macOS, before steps 2c and 2d, and before a browser sign-in through the
+Supervisor (group step 5): there the browser, the plugin (and on Windows the download in step 2c) check the Supervisor's certificate against your user's trusted CAs, not
 `SUPERVISOR_CA`. It adds the vCenter CA to your user's trusted CAs. You then trust certificates
 the vCenter CA signed, the Supervisor's among them, as this user. On macOS (not tested):
 `security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db ~/.kube/vcenter-ca.pem`.
@@ -826,8 +829,7 @@ line), so that they can check the file before they use it.
 You need kubectl and the [VCF CLI](VCF.md) (the file runs `vcf`; you do not log in with it), and a
 browser that trusts the identity provider's CA (for Keycloak:
 [KEYCLOAK-VKS.md step 8](KEYCLOAK-VKS.md#8-trust-keycloaks-ca-each-person-once)) and the vCenter CA
-([step 2b](#2b-without-the-vcf-cli-windows-and-macos-trust-the-vcenter-ca-the-person-once) on
-Windows and macOS). Save the file in your `.kube` folder, readable only by you
+(on Windows and macOS: [step 2b](#2b-windows-and-macos-trust-the-vcenter-ca-the-person-once)). Save the file in your `.kube` folder, readable only by you
 ([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)).
 
 Before the first use, check that the file runs `vcf pinniped-auth` and that its `server:` is the
@@ -1037,7 +1039,7 @@ Remove-Variable TOKEN
   administrator file, or it has expired; get it again.
 - `may not specify a duration less than 10 minutes`: `DAYS` is 0 or empty; set it to 1 or more.
 
-### 2. Hand it over and use it (the team or tool)
+### 2. Hand it over and use it (cluster administrator, then the team or tool)
 
 Send `TEAM_KUBECONFIG` to the team as a secret: whoever has a copy acts as the ServiceAccount
 ([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)). The team saves it in their `.kube` folder,
@@ -1059,16 +1061,14 @@ a new one.
 
 ### 4. Take the team's token away (cluster administrator)
 
-**This step deletes every ServiceAccount token Secret in `TEAM_NAMESPACE`, also those the team did
-not make**: with `edit`, the team could have made lasting tokens for the ServiceAccounts there. Tokens
-it made that way with `kubectl create token`, and workloads it started, keep working: delete the
-team's workloads, and delete and re-create any ServiceAccount in `TEAM_NAMESPACE` that has rights.
-So never give `edit` on a namespace that holds software with wider rights.
-
 Do this when the team or tool should lose its access, or a copy of the file may have leaked. It
-deletes the ServiceAccount and every ServiceAccount token Secret in `TEAM_NAMESPACE`. Every copy
-of the file then answers `Unauthorized` within about 15 seconds, and making a ServiceAccount of
-the same name again does not bring the copies back.
+deletes the ServiceAccount and **every ServiceAccount token Secret in `TEAM_NAMESPACE`, also those
+the team did not make** (with `edit`, the team could have made lasting ones). Every copy of the file
+then answers `Unauthorized` within about 15 seconds, and making a ServiceAccount of the same name
+again does not bring the copies back. Tokens the team made with `kubectl create token`, and
+workloads it started, keep working: delete the team's workloads, and delete and re-create any
+ServiceAccount in `TEAM_NAMESPACE` that has rights. So never give `edit` on a namespace that holds
+software with wider rights.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1140,8 +1140,8 @@ SA_KUBECONFIG="$HOME/${SA_NAME}.kubeconfig"
 
 adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
 TOKEN=""
-if [ "$DAYS" != "never" ] && ! [ "$DAYS" -ge 1 ] 2>/dev/null; then
-  echo "STOPPED: DAYS is a number of days, 1 or more, or never: $DAYS"
+if [ "$DAYS" != "never" ] && { ! [ "$DAYS" -ge 1 ] 2>/dev/null || [ "${DAYS#0}" != "$DAYS" ] || [ "$DAYS" -gt 36500 ]; }; then
+  echo "STOPPED: DAYS is a number of days, 1 to 36500, or never: $DAYS"
 else
   adm create namespace "$SA_NAMESPACE" --dry-run=client -o yaml | adm apply -f - >/dev/null
   adm -n "$SA_NAMESPACE" create serviceaccount "$SA_NAME" --dry-run=client -o yaml | adm apply -f - >/dev/null
@@ -1194,9 +1194,9 @@ $DAYS = "365"
 $SA_KUBECONFIG = "$HOME\${SA_NAME}.kubeconfig"
 
 function adm { $input | kubectl --kubeconfig $ADMIN_KUBECONFIG @args }
-$TOKEN = $null
-if ($DAYS -ne "never" -and -not ("$DAYS" -match '^[0-9]+$' -and [int]"$DAYS" -ge 1)) {
-  "STOPPED: DAYS is a number of days, 1 or more, or never: $DAYS"
+$TOKEN = $null; $B = $null
+if ($DAYS -ne "never" -and ("$DAYS" -notmatch '^[1-9][0-9]{0,4}$' -or [int]"$DAYS" -gt 36500)) {
+  "STOPPED: DAYS is a number of days, 1 to 36500, or never: $DAYS"
 } else {
   adm create namespace $SA_NAMESPACE --dry-run=client -o yaml | adm apply -f - | Out-Null
   adm -n $SA_NAMESPACE create serviceaccount $SA_NAME --dry-run=client -o yaml | adm apply -f - | Out-Null
@@ -1231,7 +1231,7 @@ if ($DAYS -ne "never" -and -not ("$DAYS" -match '^[0-9]+$' -and [int]"$DAYS" -ge
     "FAILED: no token, server or CA read (see the kubectl errors above)"
   }
 }
-Remove-Variable TOKEN
+Remove-Variable TOKEN, B
 ```
 
 </details>
@@ -1241,7 +1241,7 @@ take it away)` for `DAYS="never"`), `acts as: system:serviceaccount:kubeconfig-a
 and `everything in every namespace: yes`.
 
 **If not:**
-- `STOPPED: DAYS is …`: set `DAYS` to a whole number of days, 1 or more, or to `never`.
+- `STOPPED: DAYS is …`: set `DAYS` to a whole number of days from 1 to 36500, with no leading 0, or to `never`.
 - `FAILED: …` with `Forbidden` or `Unauthorized` above it: `ADMIN_KUBECONFIG` is not the cluster's
   administrator file, or it has expired; get it again.
 - `FAILED: …` with no error above it, for `DAYS="never"`: the cluster did not fill the token Secret
@@ -1249,7 +1249,7 @@ and `everything in every namespace: yes`.
 
 <a id="use-the-administrator-token"></a>
 
-### 2. Use it on another machine (the tool or person)
+### 2. Hand it over and use it on another machine (cluster administrator, then the tool or person)
 
 Send `SA_KUBECONFIG` as a secret ([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)). The file
 needs no password, no SSO account and no VCF CLI: only [kubectl](KUBECTL.md) and a way to the
@@ -1258,7 +1258,7 @@ cluster's API address on port 6443 (the file's `server:` line). Save it in your 
 
 Run this once on the machine that received the file, before a tool relies on it. It makes the file
 readable only by you, shows who it acts as, then creates, reads, changes and deletes a test
-namespace `CHECK_NAMESPACE` with a ConfigMap in it, which leaves the cluster as it was. You then
+namespace `CHECK_NAMESPACE` with a ConfigMap in it, then deletes that namespace again. You then
 know the file can create, change and delete in the cluster; afterwards use it with `--kubeconfig`
 or `KUBECONFIG` ([KUBECONFIG.md](KUBECONFIG.md#2-use-a-file)).
 
@@ -1301,8 +1301,9 @@ k delete namespace $CHECK_NAMESPACE
 **If not:**
 - `Unable to connect to the server` or `i/o timeout`: this machine cannot reach the `server:`
   address on port 6443 (Prerequisites, firewall).
-- `x509: certificate signed by unknown authority`: the file was changed or is for another cluster;
-  ask for it again.
+- `x509: certificate signed by unknown authority`: the file was changed, is for another cluster, or
+  a proxy between this machine and the cluster replaces the certificate; ask for the file again, or
+  reach the cluster without the proxy.
 - `Unauthorized`: the access was taken away, or a token with days has ended; ask for a new file.
 - `already exists`: a test namespace of that name is there; set `CHECK_NAMESPACE` to another name.
 
@@ -1310,7 +1311,9 @@ k delete namespace $CHECK_NAMESPACE
 
 A token with days: run step 1 again before it ends, with the same values, and send the new file;
 the old one keeps working until its own end. A token with `DAYS="never"` needs no renewal: step 1
-run again gives the same token.
+run again gives the same token. Every older token keeps working until its own end, a `never` one
+until step 4, also after you switch `DAYS` to a number: to stop it, take the access away (step 4)
+and make a new one.
 
 <a id="take-the-administrator-token-away"></a>
 
@@ -1352,8 +1355,11 @@ Start-Sleep 20; kubectl --kubeconfig $SA_KUBECONFIG get namespaces
 **Expect:** a `deleted` line for each that existed (the Secret only with `DAYS="never"`), then
 `error: You must be logged in to the server (Unauthorized)`.
 
-**If not:** the last command lists namespaces: wait a minute and run it again; if it still does,
-check that `SA_NAME` and `SA_NAMESPACE` are what step 1 used.
+**If not:**
+- `Forbidden` or `Unauthorized` on the delete lines: `ADMIN_KUBECONFIG` is not the cluster's
+  administrator file, or it has expired; get it again and run the block again.
+- The last command lists namespaces: wait a minute and run it again; if it still does, check that
+  `SA_NAME` and `SA_NAMESPACE` are what step 1 used.
 
 ## A personal certificate
 
@@ -1426,7 +1432,7 @@ name: you need it to take the access away.
 **If not:** `FAILED: …` with `Forbidden` or `Unauthorized` above it: `ADMIN_KUBECONFIG` is not the
 cluster's administrator file, or it has expired.
 
-### 2. Hand it over and use it (the person)
+### 2. Hand it over and use it (cluster administrator, then the person)
 
 Send `PERSON_KUBECONFIG` to the person as a secret: it holds their key
 ([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)). They save it in their `.kube` folder, readable
