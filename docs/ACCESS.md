@@ -904,13 +904,17 @@ line), so that they can check the file before they use it.
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 KC_KUBECONFIG="$HOME/${VKS_CLUSTER}-keycloak-sv.kubeconfig"
 
 rm -f "$KC_KUBECONFIG.new"
-vcf context use supervisor </dev/null
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 RUNS=""
-if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" -o name >/dev/null; then
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+elif ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" -o name >/dev/null; then
   echo "FAILED: cannot read the cluster $VKS_CLUSTER in $VKS_NAMESPACE (see the error above)"
 elif vcf cluster kubeconfig get "$VKS_CLUSTER" -n "$VKS_NAMESPACE" --export-file "$KC_KUBECONFIG.new" </dev/null \
    && RUNS="$(kubectl --kubeconfig "$KC_KUBECONFIG.new" config view -o jsonpath='{.users[0].user.exec.command} {.users[0].user.exec.args[0]}')" \
@@ -931,12 +935,18 @@ fi
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $KC_KUBECONFIG = "$HOME\${VKS_CLUSTER}-keycloak-sv.kubeconfig"
 
 Remove-Item -Force -ErrorAction SilentlyContinue "$KC_KUBECONFIG.new"
-$null | vcf context use supervisor
 & {
+  $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+  if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+    $VCF_USE
+    "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+    return
+  }
   $global:LASTEXITCODE = $null
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER -o name | Out-Null
   if ($LASTEXITCODE -ne 0) {
@@ -958,21 +968,22 @@ $null | vcf context use supervisor
 </details>
 
 **Expect:** `You can now access the cluster by specifying '--kubeconfig ….new' flag` (the block
-renames that file), then `runs: vcf pinniped-auth` and `saved …`. A `failed to discover plugin
-sources …` line from `vcf context use` is harmless ([VCF.md](VCF.md)).
+renames that file), then `runs: vcf pinniped-auth` and `saved …`.
 
 **If not:**
+- `FAILED: the VCF CLI is not on context …`, under `Unable to read password from terminal` (Windows:
+  `The handle is invalid`): run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login),
+  then this block again; under `context … not found`: log in to the Supervisor first
+  ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)).
 - `FAILED: cannot read the cluster …` after `clusters.cluster.x-k8s.io "…" not found`: check
   `VKS_CLUSTER`; after `namespaces "…" not found`: check `VKS_NAMESPACE`.
 - `FAILED: cannot read the cluster …` after `Forbidden`: check `VKS_NAMESPACE` (a user who is not
   a vCenter administrator gets `Forbidden` for a name that does not exist); if it is right, ask
   for the **Can edit** role on it.
-- `FAILED: cannot read the cluster …` after `Unauthorized`, or `Unable to read password from
-  terminal`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
-  block again.
-- `FAILED: cannot read the cluster …` after `… supervisor.kubeconfig: no such file or directory`
-  (Windows: `cannot find the file specified`),
-  or `context "supervisor" not found`: log in to the Supervisor first
+- `FAILED: cannot read the cluster …` after `Unauthorized`: run
+  [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this block again.
+- `FAILED: cannot read the cluster …` after `… .kubeconfig: no such file or directory` (Windows:
+  `cannot find the file specified`): log in to the Supervisor first
   ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)).
 - `FAILED: the new file runs '…'`: the fetch failed (the error is above) or made another kind of
   file; the file you had is unchanged.

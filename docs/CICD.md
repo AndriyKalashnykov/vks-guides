@@ -42,8 +42,9 @@ The blocks keep their files in `~/.config/vks-guides/cicd` (PowerShell:
 ## Prerequisites
 
 - the guides in the table's "done first" row, for your choice;
-- the Harbor files from [HARBOR.md](HARBOR.md) in `~/.config/vks-guides/harbor` (PowerShell:
-  `$HOME\.config\vks-guides\harbor`): `harbor-data-values.yml`, `harbor-ca.crt` and `secrets.env`;
+- the Harbor files from [HARBOR.md](HARBOR.md) in `~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>`
+  (PowerShell: `$HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT>`): `harbor-data-values.yml`,
+  `harbor-ca.crt`, `secrets.env` and `supervisor-uid`;
 - the VKS cluster from ARGOCD.md step 7, its kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig))
   and your Supervisor kubeconfig;
 - with GitLab, a worker with its own disk for container images: on a worker's default disk (about
@@ -102,14 +103,22 @@ installed, and which clusters ArgoCD on the Supervisor can deploy to.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
-if [ -z "$HARBOR_FQDN" ] || [ ! -s "$HARBOR_DIR/harbor-ca.crt" ] || [ ! -r "$HARBOR_DIR/secrets.env" ]; then
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null | tr -d '\r')"
+if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif [ -z "$REC" ]; then
+  echo "FAILED: $HARBOR_DIR has no supervisor-uid: run HARBOR.md step 1 first"
+elif [ "$REC" != "$SUP" ]; then
+  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
+elif [ -z "$HARBOR_FQDN" ] || [ ! -s "$HARBOR_DIR/harbor-ca.crt" ] || [ ! -r "$HARBOR_DIR/secrets.env" ]; then
   echo "FAILED: harbor-data-values.yml, harbor-ca.crt or secrets.env is missing in $HARBOR_DIR"
 elif ! NS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace -o name)"; then
   echo "FAILED: cannot read the cluster (see the error above)"
@@ -131,15 +140,21 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 $global:LASTEXITCODE = $null
-if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not (Test-Path "$HARBOR_DIR\secrets.env")) {
+$REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
+elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run HARBOR.md step 1 first" }
+elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
+elseif (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not (Test-Path "$HARBOR_DIR\secrets.env")) {
   "FAILED: harbor-data-values.yml, harbor-ca.crt or secrets.env is missing in $HARBOR_DIR"
 } else {
   $NS = @(kubectl --kubeconfig $VKS_KUBECONFIG get namespace -o name)
@@ -169,6 +184,8 @@ Namespace>` among the names.
 **If not:**
 - `FAILED: … is missing`: run this on the machine where you did HARBOR.md, or copy that folder
   here.
+- `FAILED: … has no supervisor-uid` or `… belongs to another Supervisor (…)`: `SUPERVISOR_CONTEXT`
+  must name the Supervisor that Harbor runs on; see [HARBOR.md](HARBOR.md) step 1.
 - `Harbor <name>:` other than `200`: see [HARBOR.md](HARBOR.md) step 9.
 - A `0` for your Git server, or `Tekton Triggers objects:` under 3 with Gitea and Tekton: do its
   guide first (the table above); for Tekton, [TEKTON.md](TEKTON.md) step 1, then step 2 (A) or
@@ -273,7 +290,8 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 GIT_SERVER="gitea"
 HARBOR_PROJECT="cicd-demo"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 case "$GIT_SERVER" in gitea) CI_NAMESPACE="cicd-ci" ;; *) CI_NAMESPACE="gitlab-runner" ;; esac
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
@@ -332,7 +350,8 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $GIT_SERVER = "gitea"
 $HARBOR_PROJECT = "cicd-demo"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $CI_NAMESPACE = if ($GIT_SERVER -eq 'gitea') { 'cicd-ci' } else { 'gitlab-runner' }
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
@@ -729,7 +748,8 @@ this machine; it takes about a minute.
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
 if [ -z "$HARBOR_FQDN" ]; then
@@ -928,7 +948,8 @@ fi
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
 if (-not $HARBOR_FQDN) {
@@ -1146,7 +1167,8 @@ app stay as they are.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
@@ -1212,7 +1234,8 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
@@ -1288,7 +1311,8 @@ run it again with another `WANT`.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
@@ -1313,7 +1337,8 @@ kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-demo get pods --no-headers -o 'cu
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
@@ -1368,7 +1393,8 @@ If someone pushed to `app` while the build ran, `write-back` leaves `deploy` to 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f - <<'EOF'
 apiVersion: v1
@@ -1558,7 +1584,8 @@ fi
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 @'
 apiVersion: v1
@@ -2092,7 +2119,8 @@ first block there).
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 GITEA_URL="http://localhost:3300"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HOOK="http://el-cicd-demo.cicd-ci.svc.cluster.local:8080"
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null)"
@@ -2226,7 +2254,8 @@ fi
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $GITEA_URL = "http://localhost:3300"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $HOOK = "http://el-cicd-demo.cicd-ci.svc.cluster.local:8080"
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')"
@@ -2459,16 +2488,24 @@ where you typed the Gitea password in step 4.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 GIT_SERVER="gitea"
 HARBOR_PROJECT="cicd-demo"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 GITEA_URL="http://localhost:3300"
 
-if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete applications.argoproj.io cicd-demo --ignore-not-found --timeout=5m; then
+REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null | tr -d '\r')"
+if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif [ -z "$REC" ]; then
+  echo "FAILED: $HARBOR_DIR has no supervisor-uid: run HARBOR.md step 1 first"
+elif [ "$REC" != "$SUP" ]; then
+  echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
+elif ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete applications.argoproj.io cicd-demo --ignore-not-found --timeout=5m; then
   echo "FAILED: the Application is still there; nothing else deleted"
 else
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appprojects.argoproj.io cicd-demo --ignore-not-found
@@ -2535,16 +2572,23 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $GIT_SERVER = "gitea"
 $HARBOR_PROJECT = "cicd-demo"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 $GITEA_URL = "http://localhost:3300"
 
 $global:LASTEXITCODE = $null
+$REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
+$SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
+elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run HARBOR.md step 1 first" }
+elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
+else {
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applications.argoproj.io cicd-demo --ignore-not-found --timeout=5m
 if ($LASTEXITCODE -ne 0) {
   "FAILED: the Application is still there; nothing else deleted"
@@ -2609,6 +2653,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
   }
 }
 }
+}
 ```
 
 </details>
@@ -2624,6 +2669,8 @@ with Gitea `repository app: 404` and `repository deploy: 404`; with GitLab `runn
 back to …` and `group cicd: none`; Harbor `404`.
 
 **If not:**
+- `FAILED: … has no supervisor-uid` or `… belongs to another Supervisor (…)`: nothing was
+  deleted; see step 1's **If not**.
 - `FAILED: could not put the runner back`: do GITLAB.md step 8 again, then delete `harbor-push` and
   `harbor-ca` in `gitlab-runner` (`kubectl --kubeconfig <the VKS kubeconfig> -n gitlab-runner delete
   secret harbor-push` and `… delete configmap harbor-ca`); step 3 would otherwise keep the expired

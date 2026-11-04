@@ -32,8 +32,8 @@ Run the steps in order. Who does what:
 ## Prerequisites
 
 - a VKS cluster for Keycloak alone, made as below;
-- the [VCF CLI](VCF.md) with the context `supervisor` ([LOGIN.md](LOGIN.md)), for the cert-manager
-  add-on;
+- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
+  for the cert-manager add-on;
 - [kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md);
 - a DNS name for Keycloak that you can point at an address (step 7), resolvable by the people who
   sign in and by the control-plane nodes of every VKS cluster that will trust Keycloak.
@@ -144,30 +144,36 @@ certificate requests. When the add-on is there already (for example from
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
 
 for T in vcf kubectl jq; do command -v "$T" >/dev/null 2>&1 || echo "MISSING: $T (PREREQS.md, KUBECTL.md, VCF.md)"; done
-vcf context use supervisor </dev/null
-if ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)" \
-   || ! N="$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "cert-manager")] | length')" || [ -z "$N" ]; then
-  echo "FAILED: the VCF CLI or jq (see the error above)"
-elif [ "$N" = 1 ]; then
-  echo "cert-manager: already installed"
-elif kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io >/dev/null 2>&1; then
-  echo "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
-elif vcf addon install create cert-manager --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
-  OK=""
-  for i in $(seq 60); do
-    if kubectl --kubeconfig "$VKS_KUBECONFIG" -n cert-manager get deployment cert-manager-webhook >/dev/null 2>&1 \
-       && printf 'apiVersion: cert-manager.io/v1\nkind: Issuer\nmetadata:\n  name: check\nspec:\n  selfSigned: {}\n' \
-          | kubectl --kubeconfig "$VKS_KUBECONFIG" -n default create --dry-run=server -f - >/dev/null 2>&1; then
-      OK=1; break
-    fi
-    sleep 5
-  done
-  kubectl --kubeconfig "$VKS_KUBECONFIG" -n cert-manager wait --for=condition=Available deployment --all --timeout=5m
-  [ -n "$OK" ] || echo "FAILED: cert-manager does not accept requests yet"
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 else
-  echo "FAILED: the cert-manager add-on (see the error above)"
+  if ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)" \
+     || ! N="$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "cert-manager")] | length')" || [ -z "$N" ]; then
+    echo "FAILED: the VCF CLI or jq (see the error above)"
+  elif [ "$N" = 1 ]; then
+    echo "cert-manager: already installed"
+  elif kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io >/dev/null 2>&1; then
+    echo "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
+  elif vcf addon install create cert-manager --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
+    OK=""
+    for i in $(seq 60); do
+      if kubectl --kubeconfig "$VKS_KUBECONFIG" -n cert-manager get deployment cert-manager-webhook >/dev/null 2>&1 \
+         && printf 'apiVersion: cert-manager.io/v1\nkind: Issuer\nmetadata:\n  name: check\nspec:\n  selfSigned: {}\n' \
+            | kubectl --kubeconfig "$VKS_KUBECONFIG" -n default create --dry-run=server -f - >/dev/null 2>&1; then
+        OK=1; break
+      fi
+      sleep 5
+    done
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n cert-manager wait --for=condition=Available deployment --all --timeout=5m
+    [ -n "$OK" ] || echo "FAILED: cert-manager does not accept requests yet"
+  else
+    echo "FAILED: the cert-manager add-on (see the error above)"
+  fi
 fi
 ```
 
@@ -180,34 +186,40 @@ fi
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
 
 foreach ($T in 'vcf', 'kubectl') { if (-not (Get-Command $T -ErrorAction SilentlyContinue)) { "MISSING: $T (KUBECTL.md, VCF.md)" } }
-$null | vcf context use supervisor
-$global:LASTEXITCODE = $null
-$L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
-if ($LASTEXITCODE -ne 0 -or -not $L.Trim()) {
-  "FAILED: the VCF CLI (see the error above)"
-} elseif (@(ConvertFrom-Json $L | ForEach-Object { $_ } | ForEach-Object { $_.addonName }) -contains 'cert-manager') {
-  "cert-manager: already installed"
-} elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io 2>$null) -and $LASTEXITCODE -eq 0) {
-  "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 } else {
-  vcf addon install create cert-manager --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
-  if ($LASTEXITCODE -ne 0) {
-    "FAILED: the cert-manager add-on (see the error above)"
+  $global:LASTEXITCODE = $null
+  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
+  if ($LASTEXITCODE -ne 0 -or -not $L.Trim()) {
+    "FAILED: the VCF CLI (see the error above)"
+  } elseif (@(ConvertFrom-Json $L | ForEach-Object { $_ } | ForEach-Object { $_.addonName }) -contains 'cert-manager') {
+    "cert-manager: already installed"
+  } elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io 2>$null) -and $LASTEXITCODE -eq 0) {
+    "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
   } else {
-    $OK = $false
-    foreach ($i in 1..60) {
-      kubectl --kubeconfig $VKS_KUBECONFIG -n cert-manager get deployment cert-manager-webhook 2>$null | Out-Null
-      if ($LASTEXITCODE -eq 0) {
-        "apiVersion: cert-manager.io/v1`nkind: Issuer`nmetadata:`n  name: check`nspec:`n  selfSigned: {}" |
-          kubectl --kubeconfig $VKS_KUBECONFIG -n default create --dry-run=server -f - 2>$null | Out-Null
-        if ($LASTEXITCODE -eq 0) { $OK = $true; break }
+    vcf addon install create cert-manager --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+    if ($LASTEXITCODE -ne 0) {
+      "FAILED: the cert-manager add-on (see the error above)"
+    } else {
+      $OK = $false
+      foreach ($i in 1..60) {
+        kubectl --kubeconfig $VKS_KUBECONFIG -n cert-manager get deployment cert-manager-webhook 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+          "apiVersion: cert-manager.io/v1`nkind: Issuer`nmetadata:`n  name: check`nspec:`n  selfSigned: {}" |
+            kubectl --kubeconfig $VKS_KUBECONFIG -n default create --dry-run=server -f - 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) { $OK = $true; break }
+        }
+        Start-Sleep 5
       }
-      Start-Sleep 5
+      kubectl --kubeconfig $VKS_KUBECONFIG -n cert-manager wait --for=condition=Available deployment --all --timeout=5m
+      if (-not $OK) { "FAILED: cert-manager does not accept requests yet" }
     }
-    kubectl --kubeconfig $VKS_KUBECONFIG -n cert-manager wait --for=condition=Available deployment --all --timeout=5m
-    if (-not $OK) { "FAILED: cert-manager does not accept requests yet" }
   }
 }
 ```

@@ -314,9 +314,9 @@ separate files are these guides' choice:
 
 | | `vcf` and `kubectl` by default | these guides |
 |---|---|---|
-| where a Supervisor login is written | into the file `KUBECONFIG` names (with several files, the first one that exists), or into `~/.kube/config` when it is not set | `~/.kube/supervisor.kubeconfig`: [LOGIN.md](LOGIN.md) sets `KUBECONFIG` to it for the login and for each renewal |
+| where a Supervisor login is written | into the file `KUBECONFIG` names (with several files, the first one that exists), or into `~/.kube/config` when it is not set | `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` (`supervisor.kubeconfig` by default): [LOGIN.md](LOGIN.md) sets `KUBECONFIG` to it for the login and for each renewal |
 | the login to a VKS cluster | your SSO account: `vcf cluster kubeconfig get` adds entries to your default kubeconfig that sign you in through the Supervisor | the cluster's administrator certificate, read from the Supervisor with `kubectl`, in `~/.kube/<cluster>.kubeconfig`, a file of its own for each cluster |
-| the `vcf` context names | no default: you choose a name when you log in (`vcf context create <name>`), and `vcf` adds `<name>:<namespace>` for each vSphere Namespace you can see | `supervisor`, and `supervisor:<namespace>` |
+| the `vcf` context names | no default: you choose a name when you log in (`vcf context create <name>`), and `vcf` adds `<name>:<namespace>` for each vSphere Namespace you can see | `SUPERVISOR_CONTEXT` (`supervisor` by default; one name per Supervisor), and `<SUPERVISOR_CONTEXT>:<namespace>` |
 | which file `kubectl` uses | `KUBECONFIG`, or `~/.kube/config` | the file named on each command with `kubectl`'s standard `--kubeconfig <file>` option, or `KUBECONFIG` set for one terminal ([Make it the default in this terminal](LOGIN.md#make-it-the-default-in-this-terminal)) |
 
 ```mermaid
@@ -344,13 +344,13 @@ Why separate files:
 The cost: every `kubectl` command carries `--kubeconfig <file>`, or you set `KUBECONFIG` for one
 terminal. If you use other file names, change them in every block. Do not copy the Supervisor's
 contexts, cluster and user into another file (for example with `kubectl config view --flatten`):
-renewing updates only `~/.kube/supervisor.kubeconfig`, so a copy answers `Unauthorized` after
-about 10 hours. Adding the guides' files at the end of your own `KUBECONFIG` list is fine for
+renewing updates only `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig`, so a copy answers `Unauthorized`
+after about 10 hours. Adding the guides' files at the end of your own `KUBECONFIG` list is fine for
 `kubectl`.
 
 Two rules keep these separate files working:
 
-- Log in and renew with `KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"` in front of the command,
+- Log in and renew with `KUBECONFIG="$SUPERVISOR_KUBECONFIG"` in front of the command,
   as LOGIN.md does. A renewal (`vcf context refresh`) writes into the file `KUBECONFIG` names and
   uses that file from then on; without `KUBECONFIG=…` in front, the Supervisor's file keeps the old
   token.
@@ -380,41 +380,41 @@ same files as your login did.
 
 1. Run the block unchanged: it lists your contexts, then stops at the switch, because
    `my-old-context` does not exist. Nothing is removed.
-2. Set `MY_CONTEXT` to your old context from that list and `VCF_CONTEXT` to the name you logged in
-   with, and run it again.
+2. Set `MY_CONTEXT` to your old context from that list and `SUPERVISOR_CONTEXT` to the name you
+   logged in with, and run it again.
 3. Log in again as [LOGIN.md](LOGIN.md) shows.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VCF_CONTEXT="supervisor"
+SUPERVISOR_CONTEXT="supervisor"
 MY_CONTEXT="my-old-context"
 
 [ ! -f "$HOME/.kube/config" ] || cp -p "$HOME/.kube/config" "$HOME/.kube/config.before-cleanup"
 kubectl config get-contexts -o name
-kubectl config use-context "$MY_CONTEXT" && vcf context delete "$VCF_CONTEXT" -y
+kubectl config use-context "$MY_CONTEXT" && vcf context delete "$SUPERVISOR_CONTEXT" -y </dev/null
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VCF_CONTEXT = "supervisor"
+$SUPERVISOR_CONTEXT = "supervisor"
 $MY_CONTEXT = "my-old-context"
 
 if (Test-Path "$HOME\.kube\config") { Copy-Item "$HOME\.kube\config" "$HOME\.kube\config.before-cleanup" }
 kubectl config get-contexts -o name
 kubectl config use-context $MY_CONTEXT
-if ($LASTEXITCODE -eq 0) { vcf context delete $VCF_CONTEXT -y }
+if ($LASTEXITCODE -eq 0) { $null | vcf context delete $SUPERVISOR_CONTEXT -y }
 ```
 
 **Expect:** your contexts and the Supervisor's, then `Switched to context "<yours>".`, one
 `[i] Deleting kubeconfig context …` line per Supervisor context, and
-`[ok] Successfully deleted context "<VCF_CONTEXT>"`. `~/.kube/config.before-cleanup` is your file
-before this block; the comments it lost at the login are not restored.
+`[ok] Successfully deleted context "<SUPERVISOR_CONTEXT>"`. `~/.kube/config.before-cleanup` is
+your file before this block; the comments it lost at the login are not restored.
 
 **If not:** `no context exists with the name`: set `MY_CONTEXT` to a name from the list (the
-Supervisor's are not removed then). `context <VCF_CONTEXT> not found`: set `VCF_CONTEXT` to the
-name you logged in with (`vcf context list`).
+Supervisor's are not removed then). `context <SUPERVISOR_CONTEXT> not found`: set
+`SUPERVISOR_CONTEXT` to the name you logged in with (`vcf context list`).
 
 <a id="what-a-login-creates-and-when-it-matters"></a>
 
@@ -422,20 +422,23 @@ name you logged in with (`vcf context list`).
 
 A Supervisor login as LOGIN.md runs it creates a `vcf` context for the Supervisor and one for each
 vSphere Namespace you can see, named `<name>:<namespace>` with the vSphere Namespace's name
-(LOGIN.md: `supervisor` and `supervisor:my-namespace`). An administrator also gets one for each
-Supervisor Service's own namespace (`svc-…`). All of them are in the same kubeconfig. Messages you
-may see:
+(LOGIN.md with the default `SUPERVISOR_CONTEXT`: `supervisor` and `supervisor:my-namespace`). An
+administrator also gets one for each Supervisor Service's own namespace (`svc-…`). All of them are
+in the same kubeconfig. Messages you may see:
 
 - `no current context set for type "kubernetes"` from a command such as `vcf cluster list`: a login
   as LOGIN.md runs it does not make a context active; `vcf context use <name>` does.
-- `context "<name>" already exists` at login (`supervisor` with LOGIN.md): run
-  [Log out](LOGIN.md#log-out), then log in again.
+- `context "<name>" already exists` at login: run [Log out](LOGIN.md#log-out), then log in again
+  (LOGIN.md stops before that with `FAILED: … exists` while the file is there).
+- The current `vcf` context is one for your user, shared by every terminal: `vcf context use` in one
+  terminal switches the others too. Work on one Supervisor at a time.
 - `failed to discover plugin sources …` from `vcf context use`, with an error exit: `vcf` looks for
-  plugins in the Supervisor's registry after it switched, and the switch is done all the same. Check the switch with `kubectl --kubeconfig <the file> config current-context`, not
-  with the exit code.
-- `Unable to read password from terminal` from `vcf context use`: the login has expired, so it
-  asked for the password; the guides run it with `</dev/null` (PowerShell: `$null | vcf context
-  use supervisor`) so that it stops instead. Renew the login, then run the block again.
+  plugins in the Supervisor's registry after it switched, and the switch is done all the same. The
+  guides check for `Successfully activated context '<name>'` in its output, not the exit code.
+- `Unable to read password from terminal` (Windows: `The handle is invalid`) from `vcf context use`:
+  the login has expired, so it asked for the password; the guides run it with `</dev/null`
+  (PowerShell: `$null | vcf context use $SUPERVISOR_CONTEXT`) so that it stops instead, and print
+  `FAILED: the VCF CLI is not on context …`. Renew the login, then run the block again.
 
 The block below shows your `vcf` contexts, the kubeconfig file each one uses, and the
 current-context of each file. It needs `jq` ([PREREQS.md](PREREQS.md)) and `kubectl`

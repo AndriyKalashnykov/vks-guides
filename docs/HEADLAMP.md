@@ -21,8 +21,8 @@ exactly that token's rights: someone with a read-only token can look, not change
 
 - a VKS cluster ([CLUSTER.md](CLUSTER.md)) and its administrator kubeconfig
   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
-- the [VCF CLI](VCF.md) with the context `supervisor` ([LOGIN.md](LOGIN.md)), and the edit or
-  owner role on the cluster's vSphere Namespace;
+- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
+  and the edit or owner role on the cluster's vSphere Namespace;
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md);
 - for the Kubescape plugin only (step 11): [Helm](HELM.md);
 - about 250m CPU and 400 MiB of memory free on the workers, for Headlamp and cert-manager.
@@ -54,26 +54,37 @@ This lists the Headlamp releases your Supervisor offers.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-vcf context use supervisor </dev/null
-vcf addon available-releases list --addon-name headlamp
+SUPERVISOR_CONTEXT="supervisor"
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+else
+  vcf addon available-releases list --addon-name headlamp
+fi
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$null | vcf context use supervisor
-vcf addon available-releases list --addon-name headlamp
+$SUPERVISOR_CONTEXT = "supervisor"
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+} else {
+  vcf addon available-releases list --addon-name headlamp
+}
 ```
 
 **Expect:** rows with `ADDON-RELEASE-NAME`, among them
-`headlamp.kubernetes.vmware.com.0.45.0-vmware.2-vks.1`. A `failed to discover plugin sources …`
-line from `vcf context use` is harmless ([VCF.md](VCF.md)).
+`headlamp.kubernetes.vmware.com.0.45.0-vmware.2-vks.1`.
 
 **If not:**
 - No `0.45.0` row: VKS on the Supervisor is older than 3.8. Release `0.42.0` does not support
   Kubernetes v1.37; use it only on a cluster with v1.33 to v1.36.
-- `Unable to read password from terminal`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login)
-  and run this again.
+- `Unable to read password from terminal` (Windows: `The handle is invalid`): [renew the Supervisor
+  login](LOGIN.md#renew-the-supervisor-login) and run this again.
 
 ## 2. Install cert-manager and Headlamp
 
@@ -89,42 +100,48 @@ VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 HEADLAMP_RELEASE="headlamp.kubernetes.vmware.com.0.45.0-vmware.2-vks.1"
+SUPERVISOR_CONTEXT="supervisor"
 
-vcf context use supervisor </dev/null
-if ! command -v jq >/dev/null 2>&1; then
-  echo "MISSING: jq (PREREQS.md)"
-elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
-  echo "FAILED: the VCF CLI (see the error above)"
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 else
-  OK=1
-  if [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "cert-manager")] | length')" = 1 ]; then
-    echo "cert-manager: already installed"
-  elif kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io >/dev/null 2>&1; then
-    echo "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
-    OK=""
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "MISSING: jq (PREREQS.md)"
+  elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
+    echo "FAILED: the VCF CLI (see the error above)"
   else
-    vcf addon install create cert-manager --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y || OK=""
-  fi
-  if [ -z "$OK" ]; then
-    echo "FAILED: no cert-manager add-on (see above)"
-  elif [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "headlamp")] | length')" = 1 ]; then
-    echo "headlamp: already installed"
-  elif ! vcf addon install create headlamp --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
-         --addon-release-name "$HEADLAMP_RELEASE" -y; then
-    echo "FAILED: the headlamp add-on (see the error above)"
-  else
-    D=""
-    for i in $(seq 120); do
-      D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get deployment headlamp -o name 2>/dev/null)"
-      if [ -n "$D" ]; then break; fi
-      sleep 5
-    done
-    if [ -z "$D" ]; then
-      echo "FAILED: Headlamp did not reach the cluster in 10 minutes"
-    elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp wait --for=condition=Available deployment/headlamp --timeout=10m; then
-      kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get pods,service
+    OK=1
+    if [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "cert-manager")] | length')" = 1 ]; then
+      echo "cert-manager: already installed"
+    elif kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io >/dev/null 2>&1; then
+      echo "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
+      OK=""
     else
-      echo "FAILED: Headlamp did not start in 10 minutes"
+      vcf addon install create cert-manager --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y || OK=""
+    fi
+    if [ -z "$OK" ]; then
+      echo "FAILED: no cert-manager add-on (see above)"
+    elif [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "headlamp")] | length')" = 1 ]; then
+      echo "headlamp: already installed"
+    elif ! vcf addon install create headlamp --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+           --addon-release-name "$HEADLAMP_RELEASE" -y; then
+      echo "FAILED: the headlamp add-on (see the error above)"
+    else
+      D=""
+      for i in $(seq 120); do
+        D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get deployment headlamp -o name 2>/dev/null)"
+        if [ -n "$D" ]; then break; fi
+        sleep 5
+      done
+      if [ -z "$D" ]; then
+        echo "FAILED: Headlamp did not reach the cluster in 10 minutes"
+      elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp wait --for=condition=Available deployment/headlamp --timeout=10m; then
+        kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get pods,service
+      else
+        echo "FAILED: Headlamp did not start in 10 minutes"
+      fi
     fi
   fi
 fi
@@ -140,44 +157,50 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $HEADLAMP_RELEASE = "headlamp.kubernetes.vmware.com.0.45.0-vmware.2-vks.1"
+$SUPERVISOR_CONTEXT = "supervisor"
 
-$null | vcf context use supervisor
-$global:LASTEXITCODE = $null
-$L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
-if ($LASTEXITCODE -ne 0) {
-  "FAILED: the VCF CLI (see the error above)"
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 } else {
-  $A = @(ConvertFrom-Json $L | ForEach-Object { $_ } | ForEach-Object { $_.addonName })
-  $OK = $true
-  if ($A -contains 'cert-manager') {
-    "cert-manager: already installed"
-  } elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io 2>$null) -and $LASTEXITCODE -eq 0) {
-    "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
-    $OK = $false
+  $global:LASTEXITCODE = $null
+  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
+  if ($LASTEXITCODE -ne 0) {
+    "FAILED: the VCF CLI (see the error above)"
   } else {
-    vcf addon install create cert-manager --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
-    $OK = $LASTEXITCODE -eq 0
-  }
-  if (-not $OK) {
-    "FAILED: no cert-manager add-on (see above)"
-  } elseif ($A -contains 'headlamp') {
-    "headlamp: already installed"
-  } else {
-    vcf addon install create headlamp --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $HEADLAMP_RELEASE -y
-    if ($LASTEXITCODE -ne 0) {
-      "FAILED: the headlamp add-on (see the error above)"
+    $A = @(ConvertFrom-Json $L | ForEach-Object { $_ } | ForEach-Object { $_.addonName })
+    $OK = $true
+    if ($A -contains 'cert-manager') {
+      "cert-manager: already installed"
+    } elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io 2>$null) -and $LASTEXITCODE -eq 0) {
+      "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
+      $OK = $false
     } else {
-      $D = $null
-      foreach ($i in 1..120) {
-        $D = kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp get deployment headlamp -o name 2>$null
-        if ($D) { break }
-        Start-Sleep -Seconds 5
-      }
-      if (-not $D) {
-        "FAILED: Headlamp did not reach the cluster in 10 minutes"
+      vcf addon install create cert-manager --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+      $OK = $LASTEXITCODE -eq 0
+    }
+    if (-not $OK) {
+      "FAILED: no cert-manager add-on (see above)"
+    } elseif ($A -contains 'headlamp') {
+      "headlamp: already installed"
+    } else {
+      vcf addon install create headlamp --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $HEADLAMP_RELEASE -y
+      if ($LASTEXITCODE -ne 0) {
+        "FAILED: the headlamp add-on (see the error above)"
       } else {
-        kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp wait --for=condition=Available deployment/headlamp --timeout=10m
-        if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp get pods,service } else { "FAILED: Headlamp did not start in 10 minutes" }
+        $D = $null
+        foreach ($i in 1..120) {
+          $D = kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp get deployment headlamp -o name 2>$null
+          if ($D) { break }
+          Start-Sleep -Seconds 5
+        }
+        if (-not $D) {
+          "FAILED: Headlamp did not reach the cluster in 10 minutes"
+        } else {
+          kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp wait --for=condition=Available deployment/headlamp --timeout=10m
+          if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp get pods,service } else { "FAILED: Headlamp did not start in 10 minutes" }
+        }
       }
     }
   }
@@ -706,39 +729,45 @@ HEADLAMP_HOSTNAME="headlamp.example.com"
 CERT_WITH_IP="yes"
 KUBESCAPE_PLUGIN="no"
 DIR="$HOME/.config/vks-guides/headlamp"
+SUPERVISOR_CONTEXT="supervisor"
 
-vcf context use supervisor </dev/null
-mkdir -p "$DIR"
-IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get service headlamp -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-{
-  [ -z "$HEADLAMP_HOSTNAME" ] || printf 'hostname: %s\n' "$HEADLAMP_HOSTNAME"
-  [ "$CERT_WITH_IP" != yes ] || printf 'tls:\n  certManager:\n    ipAddresses:\n      - %s\n' "$IP"
-  [ "$KUBESCAPE_PLUGIN" != yes ] || printf '%s\n' 'pluginsManager:' '  enabled: true' '  configContent: |' '    plugins:' \
-    '      - name: kubescape' '        source: https://artifacthub.io/packages/headlamp/kubescape-headlamp-plugin/headlamp_kubescape' '        version: 0.11.2'
-} > "$DIR/addon-values.yaml"
-[ -s "$DIR/addon-values.yaml" ] || echo '{}' > "$DIR/addon-values.yaml"
-WANT="${HEADLAMP_HOSTNAME:-headlamp.vks.example.com} "
-[ "$CERT_WITH_IP" != yes ] || WANT="${WANT}${IP}"
-if [ "$CERT_WITH_IP" = yes ] && [ -z "$IP" ]; then
-  echo "FAILED: cannot read Headlamp's address (see the error above)"
-elif ! vcf addon install update headlamp --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -f "$DIR/addon-values.yaml" -y; then
-  echo "FAILED: the add-on (see the error above)"
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 else
-  SAN=""
-  for i in $(seq 24); do
-    SAN="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get secret headlamp-tls-cert -o jsonpath='{.metadata.annotations.cert-manager\.io/alt-names} {.metadata.annotations.cert-manager\.io/ip-sans}')"
-    if [ "$SAN" = "$WANT" ]; then break; fi
-    sleep 5
-  done
-  F="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get secret headlamp-tls-cert -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -noout -fingerprint -sha256 | cut -d= -f2)"
-  if [ "$SAN" != "$WANT" ]; then
-    echo "NOT YET: the certificate is for '${SAN}', not '${WANT}'; run this block again in a minute"
-  elif [ "$(openssl s_client -connect "${IP}:443" </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256 | cut -d= -f2)" != "$F" ]; then
-    kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp rollout restart deployment headlamp \
-      && kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp rollout status deployment headlamp --timeout=5m \
-      && echo "certificate for ${SAN}, SHA-256 fingerprint ${F}"
+  mkdir -p "$DIR"
+  IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get service headlamp -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+  {
+    [ -z "$HEADLAMP_HOSTNAME" ] || printf 'hostname: %s\n' "$HEADLAMP_HOSTNAME"
+    [ "$CERT_WITH_IP" != yes ] || printf 'tls:\n  certManager:\n    ipAddresses:\n      - %s\n' "$IP"
+    [ "$KUBESCAPE_PLUGIN" != yes ] || printf '%s\n' 'pluginsManager:' '  enabled: true' '  configContent: |' '    plugins:' \
+      '      - name: kubescape' '        source: https://artifacthub.io/packages/headlamp/kubescape-headlamp-plugin/headlamp_kubescape' '        version: 0.11.2'
+  } > "$DIR/addon-values.yaml"
+  [ -s "$DIR/addon-values.yaml" ] || echo '{}' > "$DIR/addon-values.yaml"
+  WANT="${HEADLAMP_HOSTNAME:-headlamp.vks.example.com} "
+  [ "$CERT_WITH_IP" != yes ] || WANT="${WANT}${IP}"
+  if [ "$CERT_WITH_IP" = yes ] && [ -z "$IP" ]; then
+    echo "FAILED: cannot read Headlamp's address (see the error above)"
+  elif ! vcf addon install update headlamp --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -f "$DIR/addon-values.yaml" -y; then
+    echo "FAILED: the add-on (see the error above)"
   else
-    echo "certificate for ${SAN}, SHA-256 fingerprint ${F}"
+    SAN=""
+    for i in $(seq 24); do
+      SAN="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get secret headlamp-tls-cert -o jsonpath='{.metadata.annotations.cert-manager\.io/alt-names} {.metadata.annotations.cert-manager\.io/ip-sans}')"
+      if [ "$SAN" = "$WANT" ]; then break; fi
+      sleep 5
+    done
+    F="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get secret headlamp-tls-cert -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -noout -fingerprint -sha256 | cut -d= -f2)"
+    if [ "$SAN" != "$WANT" ]; then
+      echo "NOT YET: the certificate is for '${SAN}', not '${WANT}'; run this block again in a minute"
+    elif [ "$(openssl s_client -connect "${IP}:443" </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256 | cut -d= -f2)" != "$F" ]; then
+      kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp rollout restart deployment headlamp \
+        && kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp rollout status deployment headlamp --timeout=5m \
+        && echo "certificate for ${SAN}, SHA-256 fingerprint ${F}"
+    else
+      echo "certificate for ${SAN}, SHA-256 fingerprint ${F}"
+    fi
   fi
 fi
 ```
@@ -756,6 +785,7 @@ $HEADLAMP_HOSTNAME = "headlamp.example.com"           # empty: headlamp.vks.exam
 $CERT_WITH_IP = "yes"                                # yes or no
 $KUBESCAPE_PLUGIN = "no"                             # yes or no
 $DIR = "$HOME\.config\vks-guides\headlamp"
+$SUPERVISOR_CONTEXT = "supervisor"
 
 function Fingerprint([byte[]]$Der) { (([Security.Cryptography.SHA256]::Create().ComputeHash($Der) | ForEach-Object { $_.ToString('X2') }) -join ':') }
 function Read-Cert { [Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String((kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp get secret headlamp-tls-cert -o jsonpath='{.data.tls\.crt}'))) }
@@ -765,39 +795,44 @@ function Served($Ip) {
     $SSL.AuthenticateAsClient($Ip); $R = Fingerprint $SSL.RemoteCertificate.GetRawCertData(); $SSL.Dispose(); $TCP.Dispose(); $R
   } catch { $null }
 }
-$null | vcf context use supervisor
-New-Item -ItemType Directory -Force -Path $DIR | Out-Null
-$IP = kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp get service headlamp -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-$Y = ""
-if ($HEADLAMP_HOSTNAME) { $Y += "hostname: $HEADLAMP_HOSTNAME`n" }
-if ($CERT_WITH_IP -eq 'yes') { $Y += "tls:`n  certManager:`n    ipAddresses:`n      - $IP`n" }
-if ($KUBESCAPE_PLUGIN -eq 'yes') { $Y += "pluginsManager:`n  enabled: true`n  configContent: |`n    plugins:`n      - name: kubescape`n        source: https://artifacthub.io/packages/headlamp/kubescape-headlamp-plugin/headlamp_kubescape`n        version: 0.11.2`n" }
-if (-not $Y) { $Y = "{}`n" }
-[IO.File]::WriteAllText("$DIR\addon-values.yaml", $Y)
-$NAME = if ($HEADLAMP_HOSTNAME) { $HEADLAMP_HOSTNAME } else { 'headlamp.vks.example.com' }
-if ($CERT_WITH_IP -eq 'yes' -and -not $IP) {
-  "FAILED: cannot read Headlamp's address (see the error above)"
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 } else {
-  vcf addon install update headlamp --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$DIR\addon-values.yaml" -y
-  if ($LASTEXITCODE -ne 0) {
-    "FAILED: the add-on (see the error above)"
+  New-Item -ItemType Directory -Force -Path $DIR | Out-Null
+  $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp get service headlamp -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  $Y = ""
+  if ($HEADLAMP_HOSTNAME) { $Y += "hostname: $HEADLAMP_HOSTNAME`n" }
+  if ($CERT_WITH_IP -eq 'yes') { $Y += "tls:`n  certManager:`n    ipAddresses:`n      - $IP`n" }
+  if ($KUBESCAPE_PLUGIN -eq 'yes') { $Y += "pluginsManager:`n  enabled: true`n  configContent: |`n    plugins:`n      - name: kubescape`n        source: https://artifacthub.io/packages/headlamp/kubescape-headlamp-plugin/headlamp_kubescape`n        version: 0.11.2`n" }
+  if (-not $Y) { $Y = "{}`n" }
+  [IO.File]::WriteAllText("$DIR\addon-values.yaml", $Y)
+  $NAME = if ($HEADLAMP_HOSTNAME) { $HEADLAMP_HOSTNAME } else { 'headlamp.vks.example.com' }
+  if ($CERT_WITH_IP -eq 'yes' -and -not $IP) {
+    "FAILED: cannot read Headlamp's address (see the error above)"
   } else {
-    $OK = $false
-    foreach ($i in 1..24) {
-      $SAN = kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp get secret headlamp-tls-cert -o jsonpath='{.metadata.annotations.cert-manager\.io/alt-names} {.metadata.annotations.cert-manager\.io/ip-sans}'
-      $OK = $SAN -eq "$NAME $(if ($CERT_WITH_IP -eq 'yes') { $IP })"
-      if ($OK) { break }
-      Start-Sleep -Seconds 5
-    }
-    $F = Fingerprint (Read-Cert).RawData
-    if (-not $OK) {
-      "NOT YET: the certificate is for '$SAN'; run this block again in a minute"
-    } elseif ((Served $IP) -ne $F) {
-      kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp rollout restart deployment headlamp
-      if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp rollout status deployment headlamp --timeout=5m }
-      if ($LASTEXITCODE -eq 0) { "certificate for $SAN, SHA-256 fingerprint $F" }
+    vcf addon install update headlamp --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$DIR\addon-values.yaml" -y
+    if ($LASTEXITCODE -ne 0) {
+      "FAILED: the add-on (see the error above)"
     } else {
-      "certificate for $SAN, SHA-256 fingerprint $F"
+      $OK = $false
+      foreach ($i in 1..24) {
+        $SAN = kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp get secret headlamp-tls-cert -o jsonpath='{.metadata.annotations.cert-manager\.io/alt-names} {.metadata.annotations.cert-manager\.io/ip-sans}'
+        $OK = $SAN -eq "$NAME $(if ($CERT_WITH_IP -eq 'yes') { $IP })"
+        if ($OK) { break }
+        Start-Sleep -Seconds 5
+      }
+      $F = Fingerprint (Read-Cert).RawData
+      if (-not $OK) {
+        "NOT YET: the certificate is for '$SAN'; run this block again in a minute"
+      } elseif ((Served $IP) -ne $F) {
+        kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp rollout restart deployment headlamp
+        if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp rollout status deployment headlamp --timeout=5m }
+        if ($LASTEXITCODE -eq 0) { "certificate for $SAN, SHA-256 fingerprint $F" }
+      } else {
+        "certificate for $SAN, SHA-256 fingerprint $F"
+      }
     }
   }
 }
@@ -835,31 +870,37 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 CONTOUR_RELEASE="contour.kubernetes.vmware.com.1.33.7-vmware.1-vks.1"
 DIR="$HOME/.config/vks-guides/headlamp"
+SUPERVISOR_CONTEXT="supervisor"
 
-vcf context use supervisor </dev/null
-mkdir -p "$DIR"
-printf 'envoy:\n  hostPorts:\n    enable: false\n  service:\n    type: LoadBalancer\n' > "$DIR/contour-values.yaml"
-if ! command -v jq >/dev/null 2>&1; then
-  echo "MISSING: jq (PREREQS.md)"
-elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
-  echo "FAILED: the VCF CLI (see the error above)"
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 else
-  if [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "contour")] | length')" = 1 ]; then
-    echo "contour: already installed; its settings are left as they are"
+  mkdir -p "$DIR"
+  printf 'envoy:\n  hostPorts:\n    enable: false\n  service:\n    type: LoadBalancer\n' > "$DIR/contour-values.yaml"
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "MISSING: jq (PREREQS.md)"
+  elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
+    echo "FAILED: the VCF CLI (see the error above)"
   else
-    vcf addon install create contour --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
-      --addon-release-name "$CONTOUR_RELEASE" -f "$DIR/contour-values.yaml" -y
-  fi
-  IP=""
-  for i in $(seq 60); do
-    IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-ingress get service envoy -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)"
-    if [ -n "$IP" ]; then break; fi
-    sleep 5
-  done
-  if [ -n "$IP" ]; then
-    echo "Contour's address: ${IP}"
-  else
-    echo "FAILED: Contour has no load balancer address after 5 minutes (its service: $(kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-ingress get service envoy -o jsonpath='{.spec.type}' 2>/dev/null))"
+    if [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "contour")] | length')" = 1 ]; then
+      echo "contour: already installed; its settings are left as they are"
+    else
+      vcf addon install create contour --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+        --addon-release-name "$CONTOUR_RELEASE" -f "$DIR/contour-values.yaml" -y
+    fi
+    IP=""
+    for i in $(seq 60); do
+      IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-ingress get service envoy -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)"
+      if [ -n "$IP" ]; then break; fi
+      sleep 5
+    done
+    if [ -n "$IP" ]; then
+      echo "Contour's address: ${IP}"
+    else
+      echo "FAILED: Contour has no load balancer address after 5 minutes (its service: $(kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-ingress get service envoy -o jsonpath='{.spec.type}' 2>/dev/null))"
+    fi
   fi
 fi
 ```
@@ -875,27 +916,33 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $CONTOUR_RELEASE = "contour.kubernetes.vmware.com.1.33.7-vmware.1-vks.1"
 $DIR = "$HOME\.config\vks-guides\headlamp"
+$SUPERVISOR_CONTEXT = "supervisor"
 
-$null | vcf context use supervisor
-New-Item -ItemType Directory -Force -Path $DIR | Out-Null
-[IO.File]::WriteAllText("$DIR\contour-values.yaml", "envoy:`n  hostPorts:`n    enable: false`n  service:`n    type: LoadBalancer`n")
-$global:LASTEXITCODE = $null
-$L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
-if ($LASTEXITCODE -ne 0) {
-  "FAILED: the VCF CLI (see the error above)"
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 } else {
-  if (@(ConvertFrom-Json $L | ForEach-Object { $_ } | Where-Object { $_.addonName -eq 'contour' }).Count -eq 1) {
-    "contour: already installed; its settings are left as they are"
+  New-Item -ItemType Directory -Force -Path $DIR | Out-Null
+  [IO.File]::WriteAllText("$DIR\contour-values.yaml", "envoy:`n  hostPorts:`n    enable: false`n  service:`n    type: LoadBalancer`n")
+  $global:LASTEXITCODE = $null
+  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
+  if ($LASTEXITCODE -ne 0) {
+    "FAILED: the VCF CLI (see the error above)"
   } else {
-    vcf addon install create contour --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $CONTOUR_RELEASE -f "$DIR\contour-values.yaml" -y
+    if (@(ConvertFrom-Json $L | ForEach-Object { $_ } | Where-Object { $_.addonName -eq 'contour' }).Count -eq 1) {
+      "contour: already installed; its settings are left as they are"
+    } else {
+      vcf addon install create contour --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $CONTOUR_RELEASE -f "$DIR\contour-values.yaml" -y
+    }
+    $IP = $null
+    foreach ($i in 1..60) {
+      $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-ingress get service envoy -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>$null
+      if ($IP) { break }
+      Start-Sleep -Seconds 5
+    }
+    if ($IP) { "Contour's address: $IP" } else { "FAILED: Contour has no load balancer address after 5 minutes (its service: $(kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-ingress get service envoy -o jsonpath='{.spec.type}' 2>$null))" }
   }
-  $IP = $null
-  foreach ($i in 1..60) {
-    $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-ingress get service envoy -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>$null
-    if ($IP) { break }
-    Start-Sleep -Seconds 5
-  }
-  if ($IP) { "Contour's address: $IP" } else { "FAILED: Contour has no load balancer address after 5 minutes (its service: $(kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-ingress get service envoy -o jsonpath='{.spec.type}' 2>$null))" }
 }
 ```
 
@@ -1024,26 +1071,32 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 PROMETHEUS_RELEASE="prometheus.kubernetes.vmware.com.3.13.3-vmware.1-vks.1"
 PROMETHEUS_STORAGE="20Gi"
 DIR="$HOME/.config/vks-guides/headlamp"
+SUPERVISOR_CONTEXT="supervisor"
 
-vcf context use supervisor </dev/null
-mkdir -p "$DIR"
-printf 'deploycomponents:\n  alertmanager: false\n  pushgateway: false\nprometheus:\n  pvc:\n    storage: %s\n' "$PROMETHEUS_STORAGE" > "$DIR/prometheus-values.yaml"
-if ! command -v jq >/dev/null 2>&1; then
-  echo "MISSING: jq (PREREQS.md)"
-elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
-  echo "FAILED: the VCF CLI (see the error above)"
-elif [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "prometheus")] | length')" = 1 ]; then
-  echo "prometheus: already installed"
-elif ! vcf addon install create prometheus --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
-       --addon-release-name "$PROMETHEUS_RELEASE" -f "$DIR/prometheus-values.yaml" -y; then
-  echo "FAILED: the prometheus add-on (see the error above)"
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 else
-  for i in $(seq 120); do
-    if kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring get deployment prometheus-server >/dev/null 2>&1; then break; fi
-    sleep 5
-  done
-  kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring wait --for=condition=Available deployment --all --timeout=10m \
-    && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring get pods,pvc
+  mkdir -p "$DIR"
+  printf 'deploycomponents:\n  alertmanager: false\n  pushgateway: false\nprometheus:\n  pvc:\n    storage: %s\n' "$PROMETHEUS_STORAGE" > "$DIR/prometheus-values.yaml"
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "MISSING: jq (PREREQS.md)"
+  elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
+    echo "FAILED: the VCF CLI (see the error above)"
+  elif [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "prometheus")] | length')" = 1 ]; then
+    echo "prometheus: already installed"
+  elif ! vcf addon install create prometheus --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+         --addon-release-name "$PROMETHEUS_RELEASE" -f "$DIR/prometheus-values.yaml" -y; then
+    echo "FAILED: the prometheus add-on (see the error above)"
+  else
+    for i in $(seq 120); do
+      if kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring get deployment prometheus-server >/dev/null 2>&1; then break; fi
+      sleep 5
+    done
+    kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring wait --for=condition=Available deployment --all --timeout=10m \
+      && kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring get pods,pvc
+  fi
 fi
 ```
 
@@ -1059,28 +1112,34 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $PROMETHEUS_RELEASE = "prometheus.kubernetes.vmware.com.3.13.3-vmware.1-vks.1"
 $PROMETHEUS_STORAGE = "20Gi"
 $DIR = "$HOME\.config\vks-guides\headlamp"
+$SUPERVISOR_CONTEXT = "supervisor"
 
-$null | vcf context use supervisor
-New-Item -ItemType Directory -Force -Path $DIR | Out-Null
-[IO.File]::WriteAllText("$DIR\prometheus-values.yaml", "deploycomponents:`n  alertmanager: false`n  pushgateway: false`nprometheus:`n  pvc:`n    storage: $PROMETHEUS_STORAGE`n")
-$global:LASTEXITCODE = $null
-$L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
-if ($LASTEXITCODE -ne 0) {
-  "FAILED: the VCF CLI (see the error above)"
-} elseif (@(ConvertFrom-Json $L | ForEach-Object { $_ } | Where-Object { $_.addonName -eq 'prometheus' }).Count -eq 1) {
-  "prometheus: already installed"
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 } else {
-  vcf addon install create prometheus --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $PROMETHEUS_RELEASE -f "$DIR\prometheus-values.yaml" -y
+  New-Item -ItemType Directory -Force -Path $DIR | Out-Null
+  [IO.File]::WriteAllText("$DIR\prometheus-values.yaml", "deploycomponents:`n  alertmanager: false`n  pushgateway: false`nprometheus:`n  pvc:`n    storage: $PROMETHEUS_STORAGE`n")
+  $global:LASTEXITCODE = $null
+  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
   if ($LASTEXITCODE -ne 0) {
-    "FAILED: the prometheus add-on (see the error above)"
+    "FAILED: the VCF CLI (see the error above)"
+  } elseif (@(ConvertFrom-Json $L | ForEach-Object { $_ } | Where-Object { $_.addonName -eq 'prometheus' }).Count -eq 1) {
+    "prometheus: already installed"
   } else {
-    foreach ($i in 1..120) {
-      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring get deployment prometheus-server *> $null
-      if ($LASTEXITCODE -eq 0) { break }
-      Start-Sleep -Seconds 5
+    vcf addon install create prometheus --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $PROMETHEUS_RELEASE -f "$DIR\prometheus-values.yaml" -y
+    if ($LASTEXITCODE -ne 0) {
+      "FAILED: the prometheus add-on (see the error above)"
+    } else {
+      foreach ($i in 1..120) {
+        kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring get deployment prometheus-server *> $null
+        if ($LASTEXITCODE -eq 0) { break }
+        Start-Sleep -Seconds 5
+      }
+      kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring wait --for=condition=Available deployment --all --timeout=10m
+      if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring get pods,pvc }
     }
-    kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring wait --for=condition=Available deployment --all --timeout=10m
-    if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring get pods,pvc }
   }
 }
 ```
@@ -1309,31 +1368,37 @@ and Kubescape stay; the lines after the block remove them.
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
 
-vcf context use supervisor </dev/null
-if ! command -v jq >/dev/null 2>&1; then
-  echo "MISSING: jq (PREREQS.md)"
+VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+  printf '%s\n' "$VCF_USE"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 else
-  vcf addon install delete headlamp --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y \
-    || echo "(not deleted; on a second run the add-on is already gone, so this goes on)"
-  N=x
-  for i in $(seq 60); do
-    N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace headlamp --ignore-not-found -o name)" || N=x
-    if [ -z "$N" ]; then break; fi
-    sleep 5
-  done
-  kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings -o json \
-    | jq -r '.items[] | select((.metadata.name | startswith("headlamp-")) and (.subjects | length > 0) and all(.subjects[]; .kind == "ServiceAccount" and .namespace == "headlamp")) | .metadata.name' \
-    | while read -r B; do kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrolebinding "$B" </dev/null; done
-  kubectl --kubeconfig "$VKS_KUBECONFIG" get rolebindings -A -o json \
-    | jq -r '.items[] | select((.metadata.name | startswith("headlamp-")) and (.subjects | length > 0) and all(.subjects[]; .kind == "ServiceAccount" and .namespace == "headlamp")) | "\(.metadata.namespace) \(.metadata.name)"' \
-    | while read -r NS B; do kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$NS" delete rolebinding "$B" </dev/null; done
-  USED="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings,rolebindings -A -o jsonpath='{range .items[*]}{.roleRef.name}{"\n"}{end}')"
-  for R in headlamp-namespace-lister headlamp-kubescape-reports; do
-    if printf '%s\n' "$USED" | grep -qx "$R"; then echo "kept: clusterrole ${R}, still used"; else kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrole "$R" --ignore-not-found; fi
-  done
-  if printf '%s\n' "$USED" | grep -qx headlamp-prometheus-query; then echo "kept: role headlamp-prometheus-query, still used"; else kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring delete role headlamp-prometheus-query --ignore-not-found 2>/dev/null; fi
-  if [ -z "$N" ]; then echo "removed: namespace headlamp is gone"; else echo "NOT YET: namespace headlamp is still there; run this block again in a few minutes"; fi
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "MISSING: jq (PREREQS.md)"
+  else
+    vcf addon install delete headlamp --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y \
+      || echo "(not deleted; on a second run the add-on is already gone, so this goes on)"
+    N=x
+    for i in $(seq 60); do
+      N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace headlamp --ignore-not-found -o name)" || N=x
+      if [ -z "$N" ]; then break; fi
+      sleep 5
+    done
+    kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings -o json \
+      | jq -r '.items[] | select((.metadata.name | startswith("headlamp-")) and (.subjects | length > 0) and all(.subjects[]; .kind == "ServiceAccount" and .namespace == "headlamp")) | .metadata.name' \
+      | while read -r B; do kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrolebinding "$B" </dev/null; done
+    kubectl --kubeconfig "$VKS_KUBECONFIG" get rolebindings -A -o json \
+      | jq -r '.items[] | select((.metadata.name | startswith("headlamp-")) and (.subjects | length > 0) and all(.subjects[]; .kind == "ServiceAccount" and .namespace == "headlamp")) | "\(.metadata.namespace) \(.metadata.name)"' \
+      | while read -r NS B; do kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$NS" delete rolebinding "$B" </dev/null; done
+    USED="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings,rolebindings -A -o jsonpath='{range .items[*]}{.roleRef.name}{"\n"}{end}')"
+    for R in headlamp-namespace-lister headlamp-kubescape-reports; do
+      if printf '%s\n' "$USED" | grep -qx "$R"; then echo "kept: clusterrole ${R}, still used"; else kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrole "$R" --ignore-not-found; fi
+    done
+    if printf '%s\n' "$USED" | grep -qx headlamp-prometheus-query; then echo "kept: role headlamp-prometheus-query, still used"; else kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring delete role headlamp-prometheus-query --ignore-not-found 2>/dev/null; fi
+    if [ -z "$N" ]; then echo "removed: namespace headlamp is gone"; else echo "NOT YET: namespace headlamp is still there; run this block again in a few minutes"; fi
+  fi
 fi
 ```
 
@@ -1346,27 +1411,33 @@ fi
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
 
-$null | vcf context use supervisor
-vcf addon install delete headlamp --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
-if ($LASTEXITCODE -ne 0) { "(not deleted; on a second run the add-on is already gone, so this goes on)" }
-$N = 'x'
-foreach ($i in 1..60) {
-  $R = kubectl --kubeconfig $VKS_KUBECONFIG get namespace headlamp --ignore-not-found -o name
-  if ($LASTEXITCODE -eq 0) { $N = $R; if (-not $N) { break } }
-  Start-Sleep -Seconds 5
+$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+  $VCF_USE
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+} else {
+  vcf addon install delete headlamp --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+  if ($LASTEXITCODE -ne 0) { "(not deleted; on a second run the add-on is already gone, so this goes on)" }
+  $N = 'x'
+  foreach ($i in 1..60) {
+    $R = kubectl --kubeconfig $VKS_KUBECONFIG get namespace headlamp --ignore-not-found -o name
+    if ($LASTEXITCODE -eq 0) { $N = $R; if (-not $N) { break } }
+    Start-Sleep -Seconds 5
+  }
+  $HL = { param($o) $o.metadata.name -like 'headlamp-*' -and @($o.subjects).Count -gt 0 -and @($o.subjects | Where-Object { -not ($_.kind -eq 'ServiceAccount' -and $_.namespace -eq 'headlamp') }).Count -eq 0 }
+  (kubectl --kubeconfig $VKS_KUBECONFIG get clusterrolebindings -o json | ConvertFrom-Json).items | Where-Object { & $HL $_ } |
+    ForEach-Object { kubectl --kubeconfig $VKS_KUBECONFIG delete clusterrolebinding $_.metadata.name }
+  (kubectl --kubeconfig $VKS_KUBECONFIG get rolebindings -A -o json | ConvertFrom-Json).items | Where-Object { & $HL $_ } |
+    ForEach-Object { kubectl --kubeconfig $VKS_KUBECONFIG -n $_.metadata.namespace delete rolebinding $_.metadata.name }
+  $USED = @((kubectl --kubeconfig $VKS_KUBECONFIG get clusterrolebindings,rolebindings -A -o json | ConvertFrom-Json).items | ForEach-Object { $_.roleRef.name })
+  foreach ($R in 'headlamp-namespace-lister', 'headlamp-kubescape-reports') {
+    if ($USED -contains $R) { "kept: clusterrole $R, still used" } else { kubectl --kubeconfig $VKS_KUBECONFIG delete clusterrole $R --ignore-not-found }
+  }
+  if ($USED -contains 'headlamp-prometheus-query') { "kept: role headlamp-prometheus-query, still used" } else { kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring delete role headlamp-prometheus-query --ignore-not-found 2>$null }
+  if (-not $N) { "removed: namespace headlamp is gone" } else { "NOT YET: namespace headlamp is still there; run this block again in a few minutes" }
 }
-$HL = { param($o) $o.metadata.name -like 'headlamp-*' -and @($o.subjects).Count -gt 0 -and @($o.subjects | Where-Object { -not ($_.kind -eq 'ServiceAccount' -and $_.namespace -eq 'headlamp') }).Count -eq 0 }
-(kubectl --kubeconfig $VKS_KUBECONFIG get clusterrolebindings -o json | ConvertFrom-Json).items | Where-Object { & $HL $_ } |
-  ForEach-Object { kubectl --kubeconfig $VKS_KUBECONFIG delete clusterrolebinding $_.metadata.name }
-(kubectl --kubeconfig $VKS_KUBECONFIG get rolebindings -A -o json | ConvertFrom-Json).items | Where-Object { & $HL $_ } |
-  ForEach-Object { kubectl --kubeconfig $VKS_KUBECONFIG -n $_.metadata.namespace delete rolebinding $_.metadata.name }
-$USED = @((kubectl --kubeconfig $VKS_KUBECONFIG get clusterrolebindings,rolebindings -A -o json | ConvertFrom-Json).items | ForEach-Object { $_.roleRef.name })
-foreach ($R in 'headlamp-namespace-lister', 'headlamp-kubescape-reports') {
-  if ($USED -contains $R) { "kept: clusterrole $R, still used" } else { kubectl --kubeconfig $VKS_KUBECONFIG delete clusterrole $R --ignore-not-found }
-}
-if ($USED -contains 'headlamp-prometheus-query') { "kept: role headlamp-prometheus-query, still used" } else { kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring delete role headlamp-prometheus-query --ignore-not-found 2>$null }
-if (-not $N) { "removed: namespace headlamp is gone" } else { "NOT YET: namespace headlamp is still there; run this block again in a few minutes" }
 ```
 
 </details>

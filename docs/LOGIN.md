@@ -173,11 +173,17 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 This logs you in to the Supervisor with the VCF CLI, as your SSO user with the password from step
 2, and checks the Supervisor's certificate against `SUPERVISOR_CA` (step 1's vCenter CA, or
-`supervisor.crt` from the Alternative below). The login is saved in
-`~/.kube/supervisor.kubeconfig`, a kubeconfig of its own (the file kubectl reads to find a cluster
-and log in to it), as the context `supervisor`. Your other kubeconfigs are not
+`<SUPERVISOR_CONTEXT>.crt` from the Alternative below). The login is saved in
+`~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig`, a kubeconfig of its own (the file kubectl reads to find
+a cluster and log in to it), as the context `SUPERVISOR_CONTEXT` (`supervisor`; give each
+Supervisor its own name: lower-case letters, digits and `-`). Your other kubeconfigs are not
 changed. **A few failed logins in a row lock the SSO user for some minutes**, so type the password
 carefully. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
+
+With several Supervisors, set `SUPERVISOR_CONTEXT` in every block you run for that Supervisor,
+type the password again for each one, and give each vCenter its own `SUPERVISOR_CA` file. The name
+must not be the name of a VKS cluster or of another file in `~/.kube`, and your VKS clusters need
+different names across Supervisors: each cluster's file is `~/.kube/<cluster>.kubeconfig`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -186,17 +192,24 @@ carefully. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 SUPERVISOR_ENDPOINT="10.0.0.10"
 SSO_USERNAME="administrator@vsphere.local"
 SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
+elif [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0-9-]*[a-z0-9])?')" != 1 ] \
+     || [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | wc -l | tr -d ' ')" != 1 ] \
+     || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$' -e '-keycloak$'; then
+  echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
+elif [ -e "$SUPERVISOR_KUBECONFIG" ]; then
+  echo "FAILED: $SUPERVISOR_KUBECONFIG exists: run Log out first, or set another SUPERVISOR_CONTEXT"
 elif [ ! -f "$SUPERVISOR_CA" ] || [ ! -s "$SUPERVISOR_CA" ]; then
   echo "FAILED: not found: $SUPERVISOR_CA"
 elif mkdir -p "$(dirname "$SUPERVISOR_KUBECONFIG")" \
      && KUBECONFIG="$SUPERVISOR_KUBECONFIG" VCF_CLI_VSPHERE_PASSWORD="$SSO_PASSWORD" \
-        vcf context create supervisor --type k8s --endpoint "https://${SUPERVISOR_ENDPOINT}" \
+        vcf context create "$SUPERVISOR_CONTEXT" --type k8s --endpoint "https://${SUPERVISOR_ENDPOINT}" \
           --username "$SSO_USERNAME" --auth-type basic --ca-certificate="$SUPERVISOR_CA"; then
-  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" config use-context supervisor
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" config use-context "$SUPERVISOR_CONTEXT"
 else
   echo "FAILED: login (see the vcf error above)"
 fi
@@ -211,23 +224,28 @@ fi
 $SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
 $SSO_USERNAME = "administrator@vsphere.local"
 $SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this terminal; run the line under Type your SSO password"
+} elseif ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPERVISOR_CONTEXT.EndsWith('-sso') -or $SUPERVISOR_CONTEXT.EndsWith('-keycloak')) {
+  "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
+} elseif (Test-Path $SUPERVISOR_KUBECONFIG) {
+  "FAILED: $SUPERVISOR_KUBECONFIG exists: run Log out first, or set another SUPERVISOR_CONTEXT"
 } elseif (-not (Test-Path $SUPERVISOR_CA -PathType Leaf) -or (Get-Item $SUPERVISOR_CA).Length -eq 0) {
   "FAILED: not found: $SUPERVISOR_CA"
 } else {
   New-Item -ItemType Directory -Force -Path (Split-Path $SUPERVISOR_KUBECONFIG) | Out-Null
   $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
   $env:VCF_CLI_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
-  vcf context create supervisor --type k8s --endpoint "https://$SUPERVISOR_ENDPOINT" `
+  vcf context create $SUPERVISOR_CONTEXT --type k8s --endpoint "https://$SUPERVISOR_ENDPOINT" `
     --username $SSO_USERNAME --auth-type basic "--ca-certificate=$SUPERVISOR_CA"
   $RC = $LASTEXITCODE
   Remove-Item Env:VCF_CLI_VSPHERE_PASSWORD; $env:KUBECONFIG = $OLD_KUBECONFIG
   if ($RC -eq 0) {
-    kubectl --kubeconfig $SUPERVISOR_KUBECONFIG config use-context supervisor
+    kubectl --kubeconfig $SUPERVISOR_KUBECONFIG config use-context $SUPERVISOR_CONTEXT
   } else {
     "FAILED: login (see the vcf error above)"
   }
@@ -237,14 +255,18 @@ if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
 </details>
 
 **Expect:** `Logged in successfully`, a list of contexts, then
-`Switched to context "supervisor"`. The login lasts about 10 hours. The first login after
-[Log out](#log-out) prints `Initialization done!` lines first.
+`Switched to context "supervisor"` (your `SUPERVISOR_CONTEXT`). The login lasts about 10 hours.
+The first login after [Log out](#log-out) prints `Initialization done!` lines first.
 
 **If not:**
 - `FAILED: no password in this terminal`: run step 2, then this block again.
 - `FAILED: not found: …`: run step 1, including its `mv` block.
-- `context "supervisor" already exists`: run [Log out](#log-out), then the password line and this
-  block again.
+- `FAILED: SUPERVISOR_CONTEXT may hold only …`: change `SUPERVISOR_CONTEXT` (not the name of
+  a VKS cluster), then run this block again.
+- `FAILED: … exists`: you are logged in with this name already. Run [Log out](#log-out) first, or
+  set another `SUPERVISOR_CONTEXT` for another Supervisor.
+- `context "…" already exists`: the file is gone, but `vcf` still has the context. Run
+  [Log out](#log-out), then the password line and this block again.
 - A connection error: check `SUPERVISOR_ENDPOINT`.
 - `x509: certificate is valid for …, not …`: the certificate is not issued for the address in
   `SUPERVISOR_ENDPOINT`. Use the Supervisor's DNS name or IP address as the message lists it.
@@ -292,10 +314,17 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 This logs you in to the Supervisor with the VCF CLI, as your SSO user with the password from step
 1, without checking the Supervisor's certificate. The login is saved in
-`~/.kube/supervisor.kubeconfig`, a kubeconfig of its own (the file kubectl reads to find a cluster
-and log in to it), as the context `supervisor`. Your other kubeconfigs are not changed. **A few
+`~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig`, a kubeconfig of its own (the file kubectl reads to find
+a cluster and log in to it), as the context `SUPERVISOR_CONTEXT` (`supervisor`; give each
+Supervisor its own name: lower-case letters, digits and `-`). Your other kubeconfigs are not
+changed. **A few
 failed logins in a row lock the SSO user for some minutes**, so type the password carefully. Set
 `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
+
+With several Supervisors, set `SUPERVISOR_CONTEXT` in every block you run for that Supervisor,
+type the password again for each one, and give each vCenter its own `SUPERVISOR_CA` file. The name
+must not be the name of a VKS cluster or of another file in `~/.kube`, and your VKS clusters need
+different names across Supervisors: each cluster's file is `~/.kube/<cluster>.kubeconfig`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -303,15 +332,22 @@ failed logins in a row lock the SSO user for some minutes**, so type the passwor
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
 SSO_USERNAME="administrator@vsphere.local"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
+elif [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0-9-]*[a-z0-9])?')" != 1 ] \
+     || [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | wc -l | tr -d ' ')" != 1 ] \
+     || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$' -e '-keycloak$'; then
+  echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
+elif [ -e "$SUPERVISOR_KUBECONFIG" ]; then
+  echo "FAILED: $SUPERVISOR_KUBECONFIG exists: run Log out first, or set another SUPERVISOR_CONTEXT"
 elif mkdir -p "$(dirname "$SUPERVISOR_KUBECONFIG")" \
      && KUBECONFIG="$SUPERVISOR_KUBECONFIG" VCF_CLI_VSPHERE_PASSWORD="$SSO_PASSWORD" \
-        vcf context create supervisor --type k8s --endpoint "https://${SUPERVISOR_ENDPOINT}" \
+        vcf context create "$SUPERVISOR_CONTEXT" --type k8s --endpoint "https://${SUPERVISOR_ENDPOINT}" \
           --username "$SSO_USERNAME" --auth-type basic --insecure-skip-tls-verify; then
-  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" config use-context supervisor
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" config use-context "$SUPERVISOR_CONTEXT"
 else
   echo "FAILED: login (see the vcf error above)"
 fi
@@ -325,21 +361,26 @@ fi
 ```powershell
 $SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
 $SSO_USERNAME = "administrator@vsphere.local"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this terminal; run the line under Type your SSO password"
+} elseif ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPERVISOR_CONTEXT.EndsWith('-sso') -or $SUPERVISOR_CONTEXT.EndsWith('-keycloak')) {
+  "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
+} elseif (Test-Path $SUPERVISOR_KUBECONFIG) {
+  "FAILED: $SUPERVISOR_KUBECONFIG exists: run Log out first, or set another SUPERVISOR_CONTEXT"
 } else {
   New-Item -ItemType Directory -Force -Path (Split-Path $SUPERVISOR_KUBECONFIG) | Out-Null
   $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
   $env:VCF_CLI_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
-  vcf context create supervisor --type k8s --endpoint "https://$SUPERVISOR_ENDPOINT" `
+  vcf context create $SUPERVISOR_CONTEXT --type k8s --endpoint "https://$SUPERVISOR_ENDPOINT" `
     --username $SSO_USERNAME --auth-type basic --insecure-skip-tls-verify
   $RC = $LASTEXITCODE
   Remove-Item Env:VCF_CLI_VSPHERE_PASSWORD; $env:KUBECONFIG = $OLD_KUBECONFIG
   if ($RC -eq 0) {
-    kubectl --kubeconfig $SUPERVISOR_KUBECONFIG config use-context supervisor
+    kubectl --kubeconfig $SUPERVISOR_KUBECONFIG config use-context $SUPERVISOR_CONTEXT
   } else {
     "FAILED: login (see the vcf error above)"
   }
@@ -349,13 +390,17 @@ if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
 </details>
 
 **Expect:** `Logged in successfully`, a list of contexts, then
-`Switched to context "supervisor"`. The login lasts about 10 hours. The first login after
-[Log out](#log-out) prints `Initialization done!` lines first.
+`Switched to context "supervisor"` (your `SUPERVISOR_CONTEXT`). The login lasts about 10 hours.
+The first login after [Log out](#log-out) prints `Initialization done!` lines first.
 
 **If not:**
 - `FAILED: no password in this terminal`: run step 1, then this block again.
-- `context "supervisor" already exists`: run [Log out](#log-out), then the password line and this
-  block again.
+- `FAILED: SUPERVISOR_CONTEXT may hold only …`: change `SUPERVISOR_CONTEXT` (not the name of
+  a VKS cluster), then run this block again.
+- `FAILED: … exists`: you are logged in with this name already. Run [Log out](#log-out) first, or
+  set another `SUPERVISOR_CONTEXT` for another Supervisor.
+- `context "…" already exists`: the file is gone, but `vcf` still has the context. Run
+  [Log out](#log-out), then the password line and this block again.
 - A connection error: check `SUPERVISOR_ENDPOINT`.
 - A login error: check `SSO_USERNAME`, and run the password line again. Mind the lock-out.
 - `Failed to install plugin 'telemetry:…'` before the output: harmless; the command still runs.
@@ -376,7 +421,7 @@ Later logins are checked against the Supervisor's certificate, fetched once. Its
 
 **2. Fetch the certificate**
 
-This downloads the Supervisor's own certificate, saves it as `~/.kube/supervisor.crt` and prints
+This downloads the Supervisor's own certificate, saves it as `~/.kube/<SUPERVISOR_CONTEXT>.crt` and prints
 its fingerprint. Compare the fingerprint with your vCenter administrator's before you log in with
 it. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
@@ -385,7 +430,8 @@ it. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
 
 ```sh
 SUPERVISOR_ENDPOINT="10.0.0.10"
-SUPERVISOR_CERT="$HOME/.kube/supervisor.crt"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_CERT="$HOME/.kube/${SUPERVISOR_CONTEXT}.crt"
 
 mkdir -p "$(dirname "$SUPERVISOR_CERT")"
 openssl s_client -connect "${SUPERVISOR_ENDPOINT}:443" </dev/null 2>/dev/null \
@@ -401,7 +447,8 @@ openssl s_client -connect "${SUPERVISOR_ENDPOINT}:443" </dev/null 2>/dev/null \
 
 ```powershell
 $SUPERVISOR_ENDPOINT = "10.0.0.10"                    # Supervisor IP or FQDN
-$SUPERVISOR_CERT = "$HOME\.kube\supervisor.crt"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_CERT = "$HOME\.kube\${SUPERVISOR_CONTEXT}.crt"
 
 try {
   $TCP = New-Object Net.Sockets.TcpClient($SUPERVISOR_ENDPOINT, 443)
@@ -432,7 +479,7 @@ that matches the one from your administrator, ignoring colons and upper/lower ca
 
 **3. Create the context:** run
 [step 3, *Create the context*, of Create Supervisor context with CA](#create-the-context) with
-`SUPERVISOR_CA="$HOME/.kube/supervisor.crt"` (PowerShell: `"$HOME\.kube\supervisor.crt"`).
+`SUPERVISOR_CA="$HOME/.kube/${SUPERVISOR_CONTEXT}.crt"` (PowerShell: `"$HOME\.kube\${SUPERVISOR_CONTEXT}.crt"`).
 `x509: certificate is valid for …, not …` there means the certificate does not list the address
 in `SUPERVISOR_ENDPOINT`: use the DNS name or IP address the message lists.
 `x509: cannot validate certificate for <IP> because it doesn't contain any IP SANs` means it lists
@@ -451,7 +498,8 @@ it.
 
 ```sh
 VKS_NAMESPACE="my-namespace"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
   && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io
@@ -461,7 +509,8 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
 
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE
@@ -471,7 +520,7 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 **Expect:** your namespace, `Active`, then a table whose `NAME` column holds your VKS cluster.
 
 **If not:**
-- `… supervisor.kubeconfig: no such file or directory`: you are not logged in. Create the
+- `… .kubeconfig: no such file or directory`: you are not logged in. Create the
   Supervisor context first.
 - `NotFound`: check `VKS_NAMESPACE`, or [create the namespace](NAMESPACE.md).
 - `Forbidden`: check `VKS_NAMESPACE` (a user who is not a vCenter administrator gets `Forbidden`
@@ -499,11 +548,15 @@ Set `VKS_CLUSTER` to a name from the `NAME` column above.
 ```sh
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 rm -f "$VKS_KUBECONFIG.new"
-if ( umask 077
+if [ -e "$VKS_KUBECONFIG" ] \
+   && ! kubectl --kubeconfig "$VKS_KUBECONFIG" config get-contexts -o name 2>/dev/null | grep -qxF -- "${VKS_CLUSTER}-admin@${VKS_CLUSTER}"; then
+  echo "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
+elif ( umask 077
      kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get secret "${VKS_CLUSTER}-kubeconfig" \
        -o go-template='{{.data.value | base64decode}}' > "$VKS_KUBECONFIG.new" ) \
    && kubectl --kubeconfig "$VKS_KUBECONFIG.new" config view >/dev/null 2>&1; then
@@ -523,22 +576,27 @@ fi
 ```powershell
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"                     # from the NAME column above
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
-$global:LASTEXITCODE = $null
-$KC = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" `
-  -o go-template='{{.data.value | base64decode}}'
-if ($LASTEXITCODE -eq 0 -and $KC) {
-  Set-Content -Encoding ascii -Path "$VKS_KUBECONFIG.new" -Value $KC
-  kubectl --kubeconfig "$VKS_KUBECONFIG.new" config view *> $null
-}
-if ($LASTEXITCODE -eq 0 -and $KC) {
-  Move-Item -Force "$VKS_KUBECONFIG.new" $VKS_KUBECONFIG
-  kubectl --kubeconfig $VKS_KUBECONFIG get nodes
+if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFIG config get-contexts -o name 2>$null) -ccontains "${VKS_CLUSTER}-admin@${VKS_CLUSTER}")) {
+  "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
 } else {
-  Remove-Item -Force -ErrorAction SilentlyContinue "$VKS_KUBECONFIG.new"
-  "FAILED: no kubeconfig read (see the kubectl error above); $VKS_KUBECONFIG is as it was"
+  $global:LASTEXITCODE = $null
+  $KC = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" `
+    -o go-template='{{.data.value | base64decode}}'
+  if ($LASTEXITCODE -eq 0 -and $KC) {
+    Set-Content -Encoding ascii -Path "$VKS_KUBECONFIG.new" -Value $KC
+    kubectl --kubeconfig "$VKS_KUBECONFIG.new" config view *> $null
+  }
+  if ($LASTEXITCODE -eq 0 -and $KC) {
+    Move-Item -Force "$VKS_KUBECONFIG.new" $VKS_KUBECONFIG
+    kubectl --kubeconfig $VKS_KUBECONFIG get nodes
+  } else {
+    Remove-Item -Force -ErrorAction SilentlyContinue "$VKS_KUBECONFIG.new"
+    "FAILED: no kubeconfig read (see the kubectl error above); $VKS_KUBECONFIG is as it was"
+  }
 }
 ```
 
@@ -547,6 +605,10 @@ if ($LASTEXITCODE -eq 0 -and $KC) {
 **Expect:** the cluster's nodes, each `Ready`.
 
 **If not:**
+- `FAILED: … holds another login, not this cluster's`: a file of that name is another login (a
+  Supervisor login whose `SUPERVISOR_CONTEXT` is this cluster's name, a hand-out, or a damaged
+  file). It is kept;
+  move it aside, or log out of that Supervisor and log in again with another `SUPERVISOR_CONTEXT`.
 - `FAILED: no kubeconfig read`, under `secrets "<name>-kubeconfig" not found`: check
   `VKS_CLUSTER`, or the cluster is still being created.
 - … under `Forbidden`: your role on the namespace cannot read the kubeconfig; ask for the
@@ -596,7 +658,10 @@ DOWNLOADED="$HOME/Downloads/${VKS_CLUSTER}-kubeconfig.yaml"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 mkdir -p "$HOME/.kube"
-if [ -f "$DOWNLOADED" ] && kubectl --kubeconfig "$DOWNLOADED" config view >/dev/null 2>&1; then
+if [ -e "$VKS_KUBECONFIG" ] \
+   && ! kubectl --kubeconfig "$VKS_KUBECONFIG" config get-contexts -o name 2>/dev/null | grep -qxF -- "${VKS_CLUSTER}-admin@${VKS_CLUSTER}"; then
+  echo "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
+elif [ -f "$DOWNLOADED" ] && kubectl --kubeconfig "$DOWNLOADED" config view >/dev/null 2>&1; then
   install -m 600 "$DOWNLOADED" "$VKS_KUBECONFIG" && rm -f "$DOWNLOADED"
   kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes
 else
@@ -613,18 +678,26 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 New-Item -ItemType Directory -Force "$HOME\.kube" | Out-Null
 $global:LASTEXITCODE = $null
-if (Test-Path $DOWNLOADED) { kubectl --kubeconfig $DOWNLOADED config view *> $null }
-if ((Test-Path $DOWNLOADED) -and $LASTEXITCODE -eq 0) {
-  Move-Item -Force $DOWNLOADED $VKS_KUBECONFIG
-  kubectl --kubeconfig $VKS_KUBECONFIG get nodes
+if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFIG config get-contexts -o name 2>$null) -ccontains "${VKS_CLUSTER}-admin@${VKS_CLUSTER}")) {
+  "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
 } else {
-  "FAILED: no kubeconfig at $DOWNLOADED"
+  if (Test-Path $DOWNLOADED) { kubectl --kubeconfig $DOWNLOADED config view *> $null }
+  if ((Test-Path $DOWNLOADED) -and $LASTEXITCODE -eq 0) {
+    Move-Item -Force $DOWNLOADED $VKS_KUBECONFIG
+    kubectl --kubeconfig $VKS_KUBECONFIG get nodes
+  } else {
+    "FAILED: no kubeconfig at $DOWNLOADED"
+  }
 }
 ```
 
 **Expect:** the cluster's nodes, each `Ready`.
 
 **If not:**
+- `FAILED: … holds another login, not this cluster's`: a file of that name is another login (a
+  Supervisor login whose `SUPERVISOR_CONTEXT` is this cluster's name, a hand-out, or a damaged
+  file). It is kept;
+  move it aside, or log out of that Supervisor and log in again with another `SUPERVISOR_CONTEXT`.
 - `FAILED: no kubeconfig at …`: set `DOWNLOADED` to the file the browser saved (a second
   download of the same name may be saved as `<cluster>-kubeconfig (1).yaml`).
 - `error: You must be logged in to the server (Unauthorized)`: the file has expired; download it
@@ -731,7 +804,7 @@ To let someone else work in the VKS cluster without its administrator file, see
 ## Renew the Supervisor login
 
 The Supervisor login lasts about 10 hours. This logs you in again with the password in this
-terminal and keeps the context `supervisor`. Run it only when a `kubectl` command to the
+terminal and keeps the context `SUPERVISOR_CONTEXT`. Run it only when a `kubectl` command to the
 Supervisor answers `error: You must be logged in to the server (Unauthorized)` or `… (the server
 has asked for the client to provide credentials)`, or a `vcf` command answers `Unable to read
 password from terminal` or `the server has asked for the client to provide credentials`. Its
@@ -739,58 +812,75 @@ kubeconfig holds only a token: when the token ends, every context in it fails at
 `vcf context list` still shows them as before, and only a new login (this block) helps, not a new
 file. The VKS cluster's kubeconfig does not need it. In a new terminal, first run the
 password step of the Create section you used, and mind the lock-out. Set `SUPERVISOR_CA` to the
-file you created the context with (the vCenter CA, or `supervisor.crt`), or to `""` if you created
+file you created the context with (the vCenter CA, or `<SUPERVISOR_CONTEXT>.crt`), or to `""` if you created
 it without CA.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 if [ -n "$SUPERVISOR_CA" ]; then TLS="--ca-certificate=$SUPERVISOR_CA"; else TLS="--insecure-skip-tls-verify"; fi
 if [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the line under Type your SSO password"
+elif [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0-9-]*[a-z0-9])?')" != 1 ] \
+     || [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | wc -l | tr -d ' ')" != 1 ] \
+     || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$' -e '-keycloak$'; then
+  echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
+elif [ ! -f "$SUPERVISOR_KUBECONFIG" ]; then
+  echo "FAILED: not found: $SUPERVISOR_KUBECONFIG; create the context first"
 elif [ -n "$SUPERVISOR_CA" ] && { [ ! -f "$SUPERVISOR_CA" ] || [ ! -s "$SUPERVISOR_CA" ]; }; then
   echo "FAILED: not found: $SUPERVISOR_CA"
 else
   KUBECONFIG="$SUPERVISOR_KUBECONFIG" VCF_CLI_VSPHERE_PASSWORD="$SSO_PASSWORD" \
-    vcf context refresh supervisor "$TLS"
+    vcf context refresh "$SUPERVISOR_CONTEXT" "$TLS"
 fi
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"         # or supervisor.crt; "" if without CA
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"         # or <context>.crt; "" if without CA
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $TLS = if ($SUPERVISOR_CA) { "--ca-certificate=$SUPERVISOR_CA" } else { "--insecure-skip-tls-verify" }
 if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this terminal; run the line under Type your SSO password"
+} elseif ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPERVISOR_CONTEXT.EndsWith('-sso') -or $SUPERVISOR_CONTEXT.EndsWith('-keycloak')) {
+  "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
+} elseif (-not (Test-Path $SUPERVISOR_KUBECONFIG -PathType Leaf)) {
+  "FAILED: not found: $SUPERVISOR_KUBECONFIG; create the context first"
 } elseif ($SUPERVISOR_CA -and (-not (Test-Path $SUPERVISOR_CA -PathType Leaf) -or (Get-Item $SUPERVISOR_CA).Length -eq 0)) {
   "FAILED: not found: $SUPERVISOR_CA"
 } else {
   $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
   $env:VCF_CLI_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
-  vcf context refresh supervisor $TLS
+  vcf context refresh $SUPERVISOR_CONTEXT $TLS
   Remove-Item Env:VCF_CLI_VSPHERE_PASSWORD; $env:KUBECONFIG = $OLD_KUBECONFIG
 }
 ```
 
-**Expect:** `Successful re-authentication completed for context "supervisor"`, or
+**Expect:** `Successful re-authentication completed for context "supervisor"` (your
+`SUPERVISOR_CONTEXT`), or
 `Token is still active. Skipped the token refresh …` when the login had not ended. Then run the
 command that answered `Unauthorized` again.
 
 **If not:**
 - `FAILED: no password in this terminal`: run the password step of the Create section you used,
   then this block again.
+- `FAILED: SUPERVISOR_CONTEXT may hold only …`: set it to the name you created the context with.
+- `FAILED: not found: …kubeconfig`: you are not logged in with this `SUPERVISOR_CONTEXT`. Run
+  [Create Supervisor context with CA](#create-supervisor-context-with-ca) or
+  [without CA](#create-supervisor-context-without-ca).
 - `FAILED: not found: …`: set `SUPERVISOR_CA` to the file you created the context with, or `""`.
-- `context supervisor not found`: you are not logged in. Run
+- `context … not found`: you are not logged in. Run
   [Create Supervisor context with CA](#create-supervisor-context-with-ca) or
   [without CA](#create-supervisor-context-without-ca).
 - `Token is still active`, and the command still answers `Unauthorized`: the login is not the
-  cause. Check that the command uses `--kubeconfig "$HOME/.kube/supervisor.kubeconfig"`.
+  cause. Check that the command uses `--kubeconfig "$SUPERVISOR_KUBECONFIG"`.
 - A login error: check the password, and mind the lock-out.
 
 ## Log out
@@ -802,31 +892,68 @@ kubeconfig is kept; delete it with `rm` if you no longer need it.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SUPERVISOR_KUBECONFIG="$HOME/.kube/supervisor.kubeconfig"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf context delete supervisor -y --skip-delete-kubeconfig-context
-KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf context list
 unset SSO_PASSWORD
-rm -f "$SUPERVISOR_KUBECONFIG"
-rm -rf "$HOME/.config/vcf/logs"
+if [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | LC_ALL=C grep -Ecx '[a-z0-9]([a-z0-9-]*[a-z0-9])?')" != 1 ] \
+   || [ "$(printf '%s\n' "$SUPERVISOR_CONTEXT" | wc -l | tr -d ' ')" != 1 ] \
+   || printf '%s\n' "$SUPERVISOR_CONTEXT" | grep -q -e '-sso$' -e '-keycloak$'; then
+  echo "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
+elif KUBECONFIG="$SUPERVISOR_KUBECONFIG" vcf context delete "$SUPERVISOR_CONTEXT" -y --skip-delete-kubeconfig-context </dev/null; then
+  if [ ! -e "$SUPERVISOR_KUBECONFIG" ] \
+     || kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" config get-contexts -o name 2>/dev/null | grep -qxF -- "$SUPERVISOR_CONTEXT"; then
+    rm -f "$SUPERVISOR_KUBECONFIG"
+    rm -rf "$HOME/.config/vcf/logs"
+  else
+    echo "kept ${SUPERVISOR_KUBECONFIG}: it is not a Supervisor login"
+  fi
+  vcf context list </dev/null
+else
+  echo "FAILED: context $SUPERVISOR_CONTEXT not deleted, so this block deleted no file (see the vcf error above)"
+fi
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\supervisor.kubeconfig"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
-$OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
-vcf context delete supervisor -y --skip-delete-kubeconfig-context
-vcf context list
-$env:KUBECONFIG = $OLD_KUBECONFIG
 Remove-Variable SSO_PASSWORD -ErrorAction SilentlyContinue
-Remove-Item -Force -ErrorAction SilentlyContinue $SUPERVISOR_KUBECONFIG
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$HOME\.config\vcf\logs"
+if ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPERVISOR_CONTEXT.EndsWith('-sso') -or $SUPERVISOR_CONTEXT.EndsWith('-keycloak')) {
+  "FAILED: SUPERVISOR_CONTEXT may hold only a-z, 0-9 and - (not at the ends), and may not end in -sso or -keycloak"
+} else {
+  $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $SUPERVISOR_KUBECONFIG
+  $null | vcf context delete $SUPERVISOR_CONTEXT -y --skip-delete-kubeconfig-context
+  $RC = $LASTEXITCODE
+  $env:KUBECONFIG = $OLD_KUBECONFIG
+  if ($RC -eq 0) {
+    if (-not (Test-Path $SUPERVISOR_KUBECONFIG) -or (@(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG config get-contexts -o name 2>$null) -ccontains $SUPERVISOR_CONTEXT)) {
+      Remove-Item -Force -ErrorAction SilentlyContinue $SUPERVISOR_KUBECONFIG
+      Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$HOME\.config\vcf\logs"
+    } else {
+      "kept ${SUPERVISOR_KUBECONFIG}: it is not a Supervisor login"
+    }
+    $null | vcf context list
+  } else {
+    "FAILED: context $SUPERVISOR_CONTEXT not deleted, so this block deleted no file (see the vcf error above)"
+  }
+}
 ```
 
 **Expect:** `[!] Skipping to delete the kubeconfig context …` lines (harmless: the block deletes
-that file itself), `Successfully deleted context "supervisor"`, and a list with no `supervisor`
-context. `context supervisor not found` means you were already logged out.
+that file itself), `Successfully deleted context "supervisor"` (your `SUPERVISOR_CONTEXT`), and a
+list without that context.
+
+**If not:**
+- `FAILED: SUPERVISOR_CONTEXT may hold only …`: set it to the name you created the context with.
+- `context … not found`, then `FAILED: context … not deleted`: you were already logged out. If
+  [Create](#create-the-context) still answers `FAILED: … exists` and
+  `kubectl --kubeconfig <that file> config get-contexts -o name` lists `SUPERVISOR_CONTEXT`'s
+  name, the file is an old Supervisor login: delete it with `rm`. Otherwise keep it and set
+  another `SUPERVISOR_CONTEXT`.
+- `kept …: it is not a Supervisor login`: the context is deleted; the file of that name is another
+  login (a VKS cluster's or a hand-out) and stays. If it is a damaged file, move it aside.
 
 Back to [README](../README.md).
