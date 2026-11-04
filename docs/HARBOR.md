@@ -64,176 +64,10 @@ Decide before you install:
 - your organization's certificate: step 13; request it early, it takes time. To install with
   it, run step 13 *Write the certificate into the file* between step 4 and step 5.
 
-## Files from an earlier version of this guide (optional)
-
-Only if `~/.config/vks-guides/harbor` (PowerShell `$HOME\.config\vks-guides\harbor`) exists on
-this machine. First-time readers skip to step 1. Run it before step 1.
-
-An earlier version kept the files in that folder. This moves it to the Supervisor's own folder.
-Set `SUPERVISOR_CONTEXT` to your login's name for the Supervisor that Harbor runs on.
-
-<details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
-
-```sh
-OLD="$HOME/.config/vks-guides/harbor"
-SUPERVISOR_CONTEXT="supervisor"
-NEW="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
-
-if [ ! -d "$OLD" ]; then
-  echo "nothing to move"
-elif [ -e "$NEW" ]; then
-  echo "FAILED: $NEW exists; nothing moved"
-elif ! mv "$OLD" "$NEW"; then
-  echo "FAILED: nothing moved (see the error above)"
-else
-  M="$(ls "$NEW" | grep '^none-before-')"
-  if [ -z "$M" ] || [ "$(printf '%s\n' "$M" | grep -c .)" != 1 ]; then
-    echo "moved to $NEW; bind it: Bind the moved files to this Supervisor"
-  elif ! printf '%s\n' "${M#none-before-}" > "$NEW/supervisor-uid"; then
-    rm -f "$NEW/supervisor-uid"
-    echo "moved to $NEW, but FAILED: cannot write $NEW/supervisor-uid (see the error above)"
-  else
-    echo "moved to $NEW, recorded Supervisor ${M#none-before-}"
-  fi
-fi
-```
-
-</details>
-
-<details>
-<summary><b>Windows (PowerShell)</b></summary>
-
-```powershell
-$OLD = "$HOME\.config\vks-guides\harbor"
-$SUPERVISOR_CONTEXT = "supervisor"
-$NEW = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
-
-if (-not (Test-Path -LiteralPath $OLD -PathType Container)) { "nothing to move" }
-elseif (Test-Path -LiteralPath $NEW) { "FAILED: $NEW exists; nothing moved" }
-else {
-  $MOVED = $false
-  try {
-    Move-Item -LiteralPath $OLD -Destination $NEW -ErrorAction Stop
-    $MOVED = $true
-  } catch {
-    "FAILED: nothing moved ($($_.Exception.Message))"
-  }
-  if ($MOVED) {
-    $M = @(Get-ChildItem -Name -LiteralPath $NEW | Where-Object { $_ -clike 'none-before-*' })
-    if ($M.Count -ne 1) {
-      "moved to $NEW; bind it: Bind the moved files to this Supervisor"
-    } else {
-      $U = $M[0].Substring(12)
-      try {
-        Set-Content -Encoding ascii -Path "$NEW\supervisor-uid" -Value $U -ErrorAction Stop
-        "moved to $NEW, recorded Supervisor $U"
-      } catch {
-        Remove-Item -LiteralPath "$NEW\supervisor-uid" -ErrorAction SilentlyContinue
-        "moved to $NEW, but FAILED: cannot write $NEW\supervisor-uid ($($_.Exception.Message))"
-      }
-    }
-  }
-}
-```
-
-</details>
-
-**Expect:** `nothing to move`, or `moved to …, recorded Supervisor <uid>`.
-
-**If not:**
-- `FAILED: … exists; nothing moved`: if `harbor-<SUPERVISOR_CONTEXT>` holds only `supervisor-uid`
-  (and maybe a `none-before-…` file), step 1 made it: rename it (`mv` it to
-  `harbor-<SUPERVISOR_CONTEXT>.old-<date>`, a name that does not exist yet; PowerShell
-  `Rename-Item`) and run this block again. Otherwise compare the `hostname:` line of each folder's
-  `harbor-data-values.yml` with the Harbor in the vSphere Client, and keep the matching one.
-- `FAILED: nothing moved (see the error above)`: the error names the cause (often no permission);
-  fix it and run the block again.
-- `moved to …; bind it: …` (no single note from step 1, or several): run
-  [Bind the moved files to this Supervisor](#bind-the-moved-files-to-this-supervisor) below.
-- `moved to …, but FAILED: cannot write …`: the files were moved; fix the cause the error names,
-  then run [Bind the moved files to this Supervisor](#bind-the-moved-files-to-this-supervisor).
-
-### Bind the moved files to this Supervisor
-
-Run this only for files that belong to the Supervisor this login reaches. The first run prints the
-Harbor hostname in the files and writes nothing. If that is the Harbor of this Supervisor, put
-that name in the block's first line (`BIND_HOSTNAME`) and run the block again: it records the
-Supervisor's ID in `supervisor-uid`.
-
-<details>
-<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
-
-```sh
-BIND_HOSTNAME=""
-SUPERVISOR_CONTEXT="supervisor"
-SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
-
-N="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null | tr -d '\r')"
-if [ ! -d "$HARBOR_DIR" ]; then
-  echo "FAILED: $HARBOR_DIR does not exist; nothing to bind"
-elif [ -n "$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null | tr -d '\r')" ]; then
-  echo "FAILED: $HARBOR_DIR already has a supervisor-uid; nothing changed"
-elif [ -z "$BIND_HOSTNAME" ] || [ "$BIND_HOSTNAME" != "${N:-none}" ]; then
-  echo "hostname in these files: ${N:-none}; if that is the Harbor of the Supervisor this login reaches, put BIND_HOSTNAME=\"${N:-none}\" in this block's first line and run the block again"
-elif ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
-  echo "FAILED: cannot read the Supervisor (see the error above)"
-elif ! printf '%s\n' "$SUP" > "$HARBOR_DIR/supervisor-uid"; then
-  rm -f "$HARBOR_DIR/supervisor-uid"
-  echo "FAILED: cannot write $HARBOR_DIR (see the error above)"
-else
-  echo "bound $HARBOR_DIR to the Supervisor $SUP"
-fi
-```
-
-</details>
-
-<details>
-<summary><b>Windows (PowerShell)</b></summary>
-
-```powershell
-$BIND_HOSTNAME = ""
-$SUPERVISOR_CONTEXT = "supervisor"
-$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
-
-$global:LASTEXITCODE = $null
-$N = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
-if (-not $N) { $N = "none" }
-if (-not (Test-Path -LiteralPath $HARBOR_DIR -PathType Container)) { "FAILED: $HARBOR_DIR does not exist; nothing to bind" }
-elseif ("$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()) { "FAILED: $HARBOR_DIR already has a supervisor-uid; nothing changed" }
-elseif (-not $BIND_HOSTNAME -or $BIND_HOSTNAME -cne $N) {
-  "hostname in these files: ${N}; if that is the Harbor of the Supervisor this login reaches, put `$BIND_HOSTNAME = `"${N}`" in this block's first line and run the block again"
-} else {
-  $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
-  if ($LASTEXITCODE -ne 0 -or -not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
-  else {
-    try {
-      Set-Content -Encoding ascii -Path "$HARBOR_DIR\supervisor-uid" -Value $SUP -ErrorAction Stop
-      "bound $HARBOR_DIR to the Supervisor $SUP"
-    } catch {
-      Remove-Item -LiteralPath "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue
-      "FAILED: cannot write $HARBOR_DIR ($($_.Exception.Message))"
-    }
-  }
-}
-```
-
-</details>
-
-**Expect:** first run: `hostname in these files: <your Harbor's name>; …`. Second run, with
-`BIND_HOSTNAME` set to that name: `bound … to the Supervisor <uid>`. Then run step 1.
-
-**If not:**
-- The hostname is not this Supervisor's Harbor: the folder belongs to another Supervisor. Log in
-  to that one under its own `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)),
-  or move the folder aside (`mv ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT> ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>.old-<date>`;
-  PowerShell: `Rename-Item $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT> harbor-<SUPERVISOR_CONTEXT>.old-<date>`).
-- `FAILED: … already has a supervisor-uid`: the folder is bound already; run step 1, and see its
-  **If not** if it says the folder belongs to another Supervisor.
-- `FAILED: cannot read the Supervisor`: as in step 1's **If not**.
-- `FAILED: cannot write …`: fix the cause the error names and run the block again.
+If the folder `~/.config/vks-guides/harbor` (Windows: `$HOME\.config\vks-guides\harbor`) already
+exists on this machine, run
+[Files from an earlier version of this guide](#files-from-an-earlier-version-of-this-guide-optional)
+first.
 
 ## 1. Check the Supervisor
 
@@ -3029,5 +2863,176 @@ says how to stop.
 | Every push and pull fails after Harbor was installed again | A new install has a new address, a new CA and an empty registry: change the DNS record, run steps 9 and 10 again. |
 | `blob upload invalid` on push | The registry volume is full. In Harbor's web page delete what you do not need, then **Administration** → **Clean Up** → **Garbage Collection**. |
 | Scans fail or never finish | Trivy downloads its data from `ghcr.io`. Without that access scans fail; pushes and pulls still work. |
+
+## Files from an earlier version of this guide (optional)
+
+Only if `~/.config/vks-guides/harbor` (PowerShell `$HOME\.config\vks-guides\harbor`) exists on
+this machine. Run it before step 1.
+
+An earlier version kept the files in that folder. This moves it to the Supervisor's own folder.
+Set `SUPERVISOR_CONTEXT` to your login's name for the Supervisor that Harbor runs on.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+OLD="$HOME/.config/vks-guides/harbor"
+SUPERVISOR_CONTEXT="supervisor"
+NEW="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
+
+if [ ! -d "$OLD" ]; then
+  echo "nothing to move"
+elif [ -e "$NEW" ]; then
+  echo "FAILED: $NEW exists; nothing moved"
+elif ! mv "$OLD" "$NEW"; then
+  echo "FAILED: nothing moved (see the error above)"
+else
+  M="$(ls "$NEW" | grep '^none-before-')"
+  if [ -z "$M" ] || [ "$(printf '%s\n' "$M" | grep -c .)" != 1 ]; then
+    echo "moved to $NEW; bind it: Bind the moved files to this Supervisor"
+  elif ! printf '%s\n' "${M#none-before-}" > "$NEW/supervisor-uid"; then
+    rm -f "$NEW/supervisor-uid"
+    echo "moved to $NEW, but FAILED: cannot write $NEW/supervisor-uid (see the error above)"
+  else
+    echo "moved to $NEW, recorded Supervisor ${M#none-before-}"
+  fi
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$OLD = "$HOME\.config\vks-guides\harbor"
+$SUPERVISOR_CONTEXT = "supervisor"
+$NEW = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
+
+if (-not (Test-Path -LiteralPath $OLD -PathType Container)) { "nothing to move" }
+elseif (Test-Path -LiteralPath $NEW) { "FAILED: $NEW exists; nothing moved" }
+else {
+  $MOVED = $false
+  try {
+    Move-Item -LiteralPath $OLD -Destination $NEW -ErrorAction Stop
+    $MOVED = $true
+  } catch {
+    "FAILED: nothing moved ($($_.Exception.Message))"
+  }
+  if ($MOVED) {
+    $M = @(Get-ChildItem -Name -LiteralPath $NEW | Where-Object { $_ -clike 'none-before-*' })
+    if ($M.Count -ne 1) {
+      "moved to $NEW; bind it: Bind the moved files to this Supervisor"
+    } else {
+      $U = $M[0].Substring(12)
+      try {
+        Set-Content -Encoding ascii -Path "$NEW\supervisor-uid" -Value $U -ErrorAction Stop
+        "moved to $NEW, recorded Supervisor $U"
+      } catch {
+        Remove-Item -LiteralPath "$NEW\supervisor-uid" -ErrorAction SilentlyContinue
+        "moved to $NEW, but FAILED: cannot write $NEW\supervisor-uid ($($_.Exception.Message))"
+      }
+    }
+  }
+}
+```
+
+</details>
+
+**Expect:** `nothing to move`, or `moved to …, recorded Supervisor <uid>`.
+
+**If not:**
+- `FAILED: … exists; nothing moved`: if `harbor-<SUPERVISOR_CONTEXT>` holds only `supervisor-uid`
+  (and maybe a `none-before-…` file), step 1 made it: rename it (`mv` it to
+  `harbor-<SUPERVISOR_CONTEXT>.old-<date>`, a name that does not exist yet; PowerShell
+  `Rename-Item`) and run this block again. Otherwise compare the `hostname:` line of each folder's
+  `harbor-data-values.yml` with the Harbor in the vSphere Client, and keep the matching one.
+- `FAILED: nothing moved (see the error above)`: the error names the cause (often no permission);
+  fix it and run the block again.
+- `moved to …; bind it: …` (no single note from step 1, or several): run
+  [Bind the moved files to this Supervisor](#bind-the-moved-files-to-this-supervisor) below.
+- `moved to …, but FAILED: cannot write …`: the files were moved; fix the cause the error names,
+  then run [Bind the moved files to this Supervisor](#bind-the-moved-files-to-this-supervisor).
+
+### Bind the moved files to this Supervisor
+
+Run this only for files that belong to the Supervisor this login reaches. The first run prints the
+Harbor hostname in the files and writes nothing. If that is the Harbor of this Supervisor, put
+that name in the block's first line (`BIND_HOSTNAME`) and run the block again: it records the
+Supervisor's ID in `supervisor-uid`.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+BIND_HOSTNAME=""
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
+HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
+
+N="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml" 2>/dev/null | tr -d '\r')"
+if [ ! -d "$HARBOR_DIR" ]; then
+  echo "FAILED: $HARBOR_DIR does not exist; nothing to bind"
+elif [ -n "$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null | tr -d '\r')" ]; then
+  echo "FAILED: $HARBOR_DIR already has a supervisor-uid; nothing changed"
+elif [ -z "$BIND_HOSTNAME" ] || [ "$BIND_HOSTNAME" != "${N:-none}" ]; then
+  echo "hostname in these files: ${N:-none}; if that is the Harbor of the Supervisor this login reaches, put BIND_HOSTNAME=\"${N:-none}\" in this block's first line and run the block again"
+elif ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
+  echo "FAILED: cannot read the Supervisor (see the error above)"
+elif ! printf '%s\n' "$SUP" > "$HARBOR_DIR/supervisor-uid"; then
+  rm -f "$HARBOR_DIR/supervisor-uid"
+  echo "FAILED: cannot write $HARBOR_DIR (see the error above)"
+else
+  echo "bound $HARBOR_DIR to the Supervisor $SUP"
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$BIND_HOSTNAME = ""
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
+$HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
+
+$global:LASTEXITCODE = $null
+$N = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
+if (-not $N) { $N = "none" }
+if (-not (Test-Path -LiteralPath $HARBOR_DIR -PathType Container)) { "FAILED: $HARBOR_DIR does not exist; nothing to bind" }
+elseif ("$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()) { "FAILED: $HARBOR_DIR already has a supervisor-uid; nothing changed" }
+elseif (-not $BIND_HOSTNAME -or $BIND_HOSTNAME -cne $N) {
+  "hostname in these files: ${N}; if that is the Harbor of the Supervisor this login reaches, put `$BIND_HOSTNAME = `"${N}`" in this block's first line and run the block again"
+} else {
+  $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
+  if ($LASTEXITCODE -ne 0 -or -not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
+  else {
+    try {
+      Set-Content -Encoding ascii -Path "$HARBOR_DIR\supervisor-uid" -Value $SUP -ErrorAction Stop
+      "bound $HARBOR_DIR to the Supervisor $SUP"
+    } catch {
+      Remove-Item -LiteralPath "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue
+      "FAILED: cannot write $HARBOR_DIR ($($_.Exception.Message))"
+    }
+  }
+}
+```
+
+</details>
+
+**Expect:** first run: `hostname in these files: <your Harbor's name>; …`. Second run, with
+`BIND_HOSTNAME` set to that name: `bound … to the Supervisor <uid>`. Then run step 1.
+
+**If not:**
+- The hostname is not this Supervisor's Harbor: the folder belongs to another Supervisor. Log in
+  to that one under its own `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)),
+  or move the folder aside (`mv ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT> ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>.old-<date>`;
+  PowerShell: `Rename-Item $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT> harbor-<SUPERVISOR_CONTEXT>.old-<date>`).
+- `FAILED: … already has a supervisor-uid`: the folder is bound already; run step 1, and see its
+  **If not** if it says the folder belongs to another Supervisor.
+- `FAILED: cannot read the Supervisor`: as in step 1's **If not**.
+- `FAILED: cannot write …`: fix the cause the error names and run the block again.
 
 Back to [README](../README.md).

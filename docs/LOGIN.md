@@ -647,7 +647,7 @@ lists the cluster's nodes (its VMs: control plane and workers) to show it works.
 cluster's shared administrator login
 ([what the file is](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)); keep it
 private
-([why it is a kubeconfig of its own](VCF.md#why-the-supervisor-and-each-vks-cluster-have-their-own-kubeconfig)).
+([why it is a kubeconfig of its own](KUBECONFIG.md#why-the-supervisor-and-each-vks-cluster-have-their-own-kubeconfig)).
 Set `VKS_CLUSTER` to a name from the `NAME` column of
 [Check your vSphere Namespace](#check-your-vsphere-namespace).
 
