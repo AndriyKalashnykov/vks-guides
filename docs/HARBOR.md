@@ -31,15 +31,16 @@ unless you chose another); every block sets it, keep the same value in all of th
 
 ## Prerequisites
 
-- a vCenter administrator's SSO user (it may manage Supervisor Services and read Secrets on the
-  Supervisor), with a [Supervisor login](LOGIN.md) ([VCF CLI](VCF.md));
+- a vCenter administrator's SSO user (it may manage Supervisor Services and read Secrets, Kubernetes'
+  stored passwords and keys, on the Supervisor), with a [Supervisor login](LOGIN.md) ([VCF CLI](VCF.md));
 - a Broadcom support account that can download **vSphere Supervisor Services**;
 - [kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md); for step 13 on Windows, `openssl.exe`
   from [Git for Windows](https://git-scm.com/install/);
 - for step 10's podman or docker login (optional): [podman or docker](PREREQS.md#podman-and-docker-optional);
 - for step 11: a VKS cluster ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
-- a storage class with room for about 18 GiB, and one free load-balancer address;
+- a storage class with room for Harbor's five volumes: 58 GiB with step 4's sizes (images 50Gi,
+  Trivy 5Gi, three of 1Gi; more if you raise them), and one free load-balancer address;
 - someone who can create a DNS record.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
@@ -60,7 +61,8 @@ Decide before you install:
 
 - the secrets: step 3;
 - the volumes' storage classes and sizes: step 4's optional part;
-- your organization's certificate: step 13; request it early, it takes time.
+- your organization's certificate: step 13; request it early, it takes time. To install with
+  it, run step 13 *Write the certificate into the file* between step 4 and step 5.
 
 ## Files from an earlier version of this guide (optional)
 
@@ -422,17 +424,16 @@ foreach ($f in $HARBOR_MANIFEST, $HARBOR_VALUES_TEMPLATE) {
 
 ## 3. Make the secrets file
 
-Harbor is installed with seven passwords and keys. Skip this step only for a test Harbor: without
-it Harbor keeps its public default passwords. This block makes seven random ones and saves them
-in `secrets.env` (on Linux, macOS and WSL, readable only by you). A file that exists is kept.
-Nothing secret is printed. To use your own admin password instead, put it in the file using only
-letters, digits and `-`: step 4 refuses any other character.
+Harbor is installed with seven passwords and keys. Run this step for any Harbor that is not a
+test: if you skip it, Harbor gets Broadcom's public default values (step 4's table lists them, and
+step 4 saves them in `secrets.env`, so the later steps work the same). Decide before step 6,
+because the admin password, the database password and `secretKey` cannot be changed after the
+install. If you change your mind after step 4, run step 4 again.
 
-Skip this step to install Harbor with Broadcom's default values instead (step 4's table lists
-them). Step 4 then saves them in `secrets.env`, so the later steps work the same. The defaults are
-public: use them for tests only. Decide before step 6, because the admin password, the database
-password and `secretKey` cannot be changed after the install. If you change your mind after step 4,
-run step 4 again.
+This block makes seven random ones and saves them in `secrets.env` (on Linux, macOS and WSL,
+readable only by you). A file that exists is kept. Nothing secret is printed. To use your own admin
+password instead, put it in the file using only letters, digits and `-`: step 4 refuses any other
+character.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -530,8 +531,9 @@ to everyone who may manage Supervisor Services.
 ### Choose the storage class
 
 Harbor keeps its data on five disks (volumes). A storage class is a kind of vSphere storage that
-the Supervisor offers for such disks. This lists them, so you can pick one for
-`HARBOR_STORAGE_CLASS` in the next block.
+the Supervisor offers for such disks, named after a vCenter storage policy (the vSphere Client
+lists the policies: [NAMESPACE.md step 2](NAMESPACE.md#2-find-the-storage-policies-and-the-vm-classes)).
+To pick one for `HARBOR_STORAGE_CLASS` in the next block, this lists them.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -770,8 +772,9 @@ The file holds the secrets in clear text: do not share or commit it.
 ### Choose each volume's storage class and size (optional)
 
 Skip this unless you want one of Harbor's five disks on another storage class or at another size.
-The block in *Write the file* put all five on `HARBOR_STORAGE_CLASS`, with Broadcom's sizes (job
-log, database and Redis `1Gi`, Trivy `5Gi`) and the registry at `HARBOR_REGISTRY_SIZE`. This block
+The block in *Write the file* put all five on `HARBOR_STORAGE_CLASS`, with Broadcom's sizes (`1Gi`
+each for the job log, the database and Redis, Harbor's cache; `5Gi` for Trivy, the image scanner)
+and the registry at `HARBOR_REGISTRY_SIZE`. This block
 changes the disks you set in `harbor-data-values.yml`; leave the others `""`. Do it before step 6:
 after the install Harbor cannot change a disk's class, nor the size of the database, Redis or Trivy
 disk.
@@ -1163,9 +1166,15 @@ browser.
 
 ### Find the address and wait for Harbor
 
-Harbor gets its own IP address on your network. This finds that address and waits until Harbor
-answers on it (it tries every 15 seconds, for up to 20 minutes). It then prints the DNS record to
-ask for in the next step. No DNS record is needed yet.
+Harbor gets its own IP address on your network. The vSphere Client shows it: **Supervisor
+Management** → **Namespaces** → the `svc-harbor-…` namespace → **Network** → **Services**, in the
+**External IPs** column of `harbor-nginx`.
+
+![The svc-harbor namespace's Network tab, Services: harbor-nginx is the only LoadBalancer, with its address under External IPs](img/harbor/11-nginx-external-ip.png)
+
+Before you ask for a DNS record, this finds the same address and waits until Harbor answers on it
+(it tries every 15 seconds, for up to 20 minutes). It then prints the DNS record to ask for in the
+next step. No DNS record is needed yet.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1248,12 +1257,6 @@ elseif (-not $HARBOR_FQDN) { "FAILED: no hostname in $VALUES (step 4)" } else {
 **Expect:** a namespace such as `svc-harbor-…`, an IP address, `http=200`, and the DNS record to
 ask for. The block may take 20 minutes before it gives up; Ctrl+C stops it.
 
-The vSphere Client shows the same address: **Supervisor Management** → **Namespaces** → the
-`svc-harbor-…` namespace → **Network** → **Services**, in the **External IPs** column of
-`harbor-nginx`.
-
-![The svc-harbor namespace's Network tab, Services: harbor-nginx is the only LoadBalancer, with its address under External IPs](img/harbor/11-nginx-external-ip.png)
-
 **If not:**
 - `FAILED: … has no supervisor-uid …`: run step 1 first. `FAILED: … belongs to another
   Supervisor (…)`: see step 1's **If not**.
@@ -1261,7 +1264,8 @@ The vSphere Client shows the same address: **Supervisor Management** → **Names
 - `Harbor address:   none yet`: the Supervisor has no free load-balancer address, or Harbor's
   pods (Harbor's running containers) never started.
 - An address but `http=000` or `http=503`: Harbor's pods are not all running. The block below
-  lists them and their volumes; a volume that stays `Pending` means a wrong storage class: uninstall
+  lists them and their volumes; a volume that stays `Pending` means a wrong storage class or no
+  room on its storage: uninstall
   (step 14), fix it in step 4, install again (this updates every VKS node twice).
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -1371,7 +1375,8 @@ elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS
 
 **If not:** `leads to 'nothing'` (PowerShell: `''`): the name does not resolve yet; a new record
 can take some minutes. Another address: the record is wrong or old, or a company proxy is in the
-way. `Harbor is at 'unknown'`: Harbor has no load-balancer address (step 7).
+way. `Harbor is at 'unknown'`: Harbor has no load-balancer address (see *Find the address and wait
+for Harbor* above).
 `FAILED: cannot list …` under `Unauthorized`: renew the Supervisor login. `FAILED: Harbor
 namespaces …: ''`: Harbor is not installed; two names: see *Fix common problems*.
 `FAILED: … has no supervisor-uid …`: run step 1 first. `FAILED: … belongs to another Supervisor
@@ -1449,7 +1454,8 @@ elseif (-not (Test-Path $BEFORE)) { "FAILED: no record $BEFORE (Record the VKS c
 **Expect:** the first number climbs while the nodes are updated; the second moves too, while new
 nodes come up and old ones go. At the end: `machines updated: <n> of <n>` with as many machines
 as you recorded, each `Running` with `READY` and `UP-TO-DATE` `True`. The total can differ from
-the record if the cluster autoscaler added or removed a node.
+the record if the Cluster Autoscaler add-on (it adds and removes nodes by load) added or removed
+a node.
 
 **If not:**
 - `FAILED: … has no supervisor-uid …`: run step 1 first. `FAILED: … belongs to another
@@ -1457,7 +1463,7 @@ the record if the cluster autoscaler added or removed a node.
 - The first number stays below the second for more than 30 minutes after Harbor answers (step
   7): those nodes may not trust Harbor's CA. Step 11 shows whether they can pull.
 - A machine stays `Provisioning` or `Deleting`: the namespace has no room for one more node
-  (**Capacity and Usage**, [NAMESPACE.md](NAMESPACE.md#7-check-the-status)).
+  (**Capacity and Usage**, [NAMESPACE.md](NAMESPACE.md#7-set-a-storage-limit-optional-and-check-the-status)).
 
 ## 9. Save Harbor's CA and log in
 
@@ -1892,10 +1898,11 @@ Its name is `robot$` and the name you typed (here `robot$my-project-push`), not
 
 ### Log in with podman or docker (optional)
 
-This checks that podman or docker on this machine can log in to Harbor, as `admin` and as the
-robot account, and logs out again. First make your engine trust Harbor's CA:
-[IMAGE.md step 1](IMAGE.md#1-get-harbors-ca) (copy the CA) and
-[step 2](IMAGE.md#2-trust-harbors-ca). Set `CONTAINER_ENGINE` to `podman` or `docker`.
+This needs [IMAGE.md step 1](IMAGE.md#1-get-harbors-ca) (copy the CA) and
+[step 2](IMAGE.md#2-trust-harbors-ca) (make your engine trust Harbor's CA), from the next group,
+[Container images](IMAGES.md): skip it now and come back after them. It checks that podman or
+docker on this machine can log in to Harbor, as `admin` and as the robot account, and logs out
+again. Set `CONTAINER_ENGINE` to `podman` or `docker`.
 
 As `admin`, with the password from the secrets file:
 
@@ -2004,7 +2011,8 @@ To build an image, push it to this project and run it in a VKS cluster, see [IMA
 This checks that your VKS cluster's nodes can reach Harbor and trust its certificate, before you
 run your own images from it. The block:
 
-- starts a small test pod (a running container) from an image that does not exist in your project;
+- starts a small test pod (a running container) in the cluster's `default` namespace (inside the
+  VKS cluster, not a vSphere Namespace), from an image that does not exist in your project;
 - reads why the cluster could not get the image, then deletes the pod.
 
 An answer such as *not found*, *unauthorized* or *access denied* is the good result: the nodes
@@ -2160,8 +2168,8 @@ them to the new name.
    organization's certificate (step 13), you need one for the new name: after that block, move
    the old `harbor.key` and `harbor.csr` out of your home folder, run step 13 *Request the
    certificate*, and when the certificate is back, step 13 *Write the certificate into the file*.
-   In 3, replace everything with the file (step 6 *Copy the configuration*) instead of the `hostname:`
-   line.
+   Then, in item 3 below, replace the whole **YAML Service Config** box with the file (copy it with
+   step 6 *Copy the configuration*) instead of changing only the `hostname:` line.
 3. In the vSphere Client, select the Supervisor, then **Configure** → **Supervisor Services** →
    **Overview**. Select **Harbor**, click **MANAGE**, keep the installed version, click **NEXT**
    twice. In **YAML Service Config**, change only the `hostname:` line to the new name, then click
@@ -2360,7 +2368,7 @@ else {
 </details>
 
 **Expect:** `certificate for <the new name>: yes`, `pod "harbor-nginx-…" deleted`, then
-`deployment "harbor-nginx" successfully rolled out`.
+`deployment "harbor-nginx" successfully rolled out` (Harbor's web server runs again).
 
 **If not:**
 - `FAILED: after 10 minutes …`: **FINISH** did not apply the new name, or the name in the file is
@@ -2793,7 +2801,7 @@ else {
 
 **Expect:** `Harbor's certificate:` with your CA as issuer (Harbor's own certificate: `CN = Harbor CA`
 / `CN=Harbor CA`), `pod "harbor-nginx-…" deleted`, then `deployment "harbor-nginx" successfully
-rolled out`.
+rolled out` (Harbor's web server runs again).
 
 **If not:**
 - `FAILED: after 10 minutes …`: **FINISH** did not apply the file: check that you pasted all of
@@ -2910,7 +2918,7 @@ else { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
 **Expect:** `Harbor namespaces left: none`.
 
 **If not:** a name: the namespace is still being deleted. Wait before you install again. Do not
-remove its finalizers by hand.
+force its deletion by hand.
 
 Then run [step 8](#8-check-that-the-vks-cluster-nodes-were-updated) until it shows
 `machines updated: <n> of <n>`. The nodes start to update some minutes after the namespace is
