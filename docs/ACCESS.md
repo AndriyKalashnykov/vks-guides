@@ -915,7 +915,8 @@ if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clust
 elif vcf cluster kubeconfig get "$VKS_CLUSTER" -n "$VKS_NAMESPACE" --export-file "$KC_KUBECONFIG.new" </dev/null \
    && RUNS="$(kubectl --kubeconfig "$KC_KUBECONFIG.new" config view -o jsonpath='{.users[0].user.exec.command} {.users[0].user.exec.args[0]}')" \
    && [ "$RUNS" = "vcf pinniped-auth" ]; then
-  mv -f "$KC_KUBECONFIG.new" "$KC_KUBECONFIG" && echo "runs: $RUNS" && echo "saved $KC_KUBECONFIG"
+  if mv -f "$KC_KUBECONFIG.new" "$KC_KUBECONFIG"; then echo "runs: $RUNS"; echo "saved $KC_KUBECONFIG"
+  else echo "FAILED: $KC_KUBECONFIG is as it was (see the mv error above)"; fi
 else
   rm -f "$KC_KUBECONFIG.new"
   echo "FAILED: the new file runs '$RUNS'; $KC_KUBECONFIG is as it was (see the error above)"
@@ -945,7 +946,8 @@ $null | vcf context use supervisor
   $null | vcf cluster kubeconfig get $VKS_CLUSTER -n $VKS_NAMESPACE --export-file "$KC_KUBECONFIG.new"
   $RUNS = kubectl --kubeconfig "$KC_KUBECONFIG.new" config view -o jsonpath='{.users[0].user.exec.command} {.users[0].user.exec.args[0]}'
   if ($RUNS -ceq 'vcf pinniped-auth') {
-    Move-Item -Force "$KC_KUBECONFIG.new" $KC_KUBECONFIG; "runs: $RUNS"; "saved $KC_KUBECONFIG"
+    Move-Item -Force "$KC_KUBECONFIG.new" $KC_KUBECONFIG
+    if ($?) { "runs: $RUNS"; "saved $KC_KUBECONFIG" } else { "FAILED: $KC_KUBECONFIG is as it was (see the error above)" }
   } else {
     Remove-Item -Force -ErrorAction SilentlyContinue "$KC_KUBECONFIG.new"
     "FAILED: the new file runs '$RUNS'; $KC_KUBECONFIG is as it was (see the error above)"
@@ -968,11 +970,14 @@ sources …` line from `vcf context use` is harmless ([VCF.md](VCF.md)).
 - `FAILED: cannot read the cluster …` after `Unauthorized`, or `Unable to read password from
   terminal`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
   block again.
-- `FAILED: cannot read the cluster …` after `… supervisor.kubeconfig: no such file or directory`,
+- `FAILED: cannot read the cluster …` after `… supervisor.kubeconfig: no such file or directory`
+  (Windows: `cannot find the file specified`),
   or `context "supervisor" not found`: log in to the Supervisor first
   ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)).
 - `FAILED: the new file runs '…'`: the fetch failed (the error is above) or made another kind of
   file; the file you had is unchanged.
+- `FAILED: … is as it was`, under a `mv` or `Move-Item` error: the file could not be replaced (the
+  error says why); the new one stays as `….new`.
 - No answer for minutes: the cluster is not ready yet ([CLUSTER.md](CLUSTER.md)), or your role
   cannot read the cluster's details; ask for **Can edit**.
 
