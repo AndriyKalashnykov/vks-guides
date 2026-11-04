@@ -39,7 +39,7 @@ unless you chose another); every block sets it, keep the same value in all of th
 - for step 10's podman or docker login (optional): [podman or docker](PREREQS.md#podman-and-docker-optional);
 - for step 11: a VKS cluster ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
-- a storage class with room for Harbor's five volumes: 58 GiB with step 4's sizes (images 50Gi,
+- a storage class with room for Harbor's five volumes: 58 GiB (about 62 GB) with step 4's sizes (images 50Gi,
   Trivy 5Gi, three of 1Gi; more if you raise them), and one free load-balancer address;
 - someone who can create a DNS record.
 

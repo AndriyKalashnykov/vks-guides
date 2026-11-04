@@ -128,7 +128,7 @@ A namespace needs one storage policy and at least one VM class (a node size).
 2. From the menu (☰) choose **Supervisor Management**, then the **Services** tab. On the **VM
    Service** card click **MANAGE**, then **VM Classes**. Each card shows a class's name, CPUs
    and memory. Note the classes your VKS clusters' nodes will use. Broadcom recommends
-   `best-effort-medium` or larger, and never `best-effort-small` for workers that run apps (KB
+   `best-effort-medium` or larger, and never a small or xsmall class for workers that run apps (KB
    446139). `best-effort-small` (2 CPUs, 4 GB) is the smallest that runs a VKS cluster's control
    plane (the nodes that run Kubernetes itself).
 

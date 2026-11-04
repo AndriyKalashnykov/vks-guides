@@ -14,8 +14,8 @@ logs, metrics, backups, a service mesh, a web console. **Add-ons** are that soft
 tested by Broadcom for VKS. You pick one from a catalog on the Supervisor and install it into a VKS
 cluster with one VCF CLI command; the Supervisor then installs it, keeps it to the configuration
 you gave, and removes it when you ask. This guide only lists them; the guides in
-[Add-ons in these guides](#add-ons-in-these-guides) install the ones they need
-(`vcf addon install create …`).
+[Add-ons in these guides](#add-ons-in-these-guides) install the ones they need,
+most with `vcf addon install create …`.
 
 If you know vSphere: a vSphere Supervisor Service (such as [Harbor](HARBOR.md)) runs on the
 Supervisor, for all vSphere Namespaces. An add-on runs inside one VKS cluster, for the apps in that
@@ -56,7 +56,7 @@ for that reason.
 
 - **Core add-ons** come with every VKS cluster: the cluster network (Antrea or Calico,
   kube-proxy), the link to vSphere for VMs and disks (vSphere CPI and CSI), name lookup
-  (CoreDNS), Metrics Server, sign-in (Pinniped and `guest-cluster-auth-service`),
+  (CoreDNS), Metrics Server, sign-in (Pinniped and the guest cluster auth service),
   kapp-controller, secretgen-controller and the Gateway API. VKS installs and upgrades them; you
   do nothing.
 - **Catalog add-ons** are the ones you choose. In VKS 3.8 they are, by support tier (your
@@ -83,7 +83,7 @@ for that reason.
 ## 1. See the catalog
 
 To see what you can install, this lists the add-ons your Supervisor offers, with a short
-description of each. It switches the VCF CLI to your Supervisor login and changes nothing else. It
+description of each. It switches the VCF CLI to your Supervisor login and changes nothing on the Supervisor or the cluster. It
 needs the [VCF CLI](VCF.md) and a [Supervisor login](LOGIN.md).
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -121,7 +121,7 @@ has ended; [renew it](LOGIN.md#renew-the-supervisor-login) and run this again.
 ## 2. See what a cluster has
 
 To see what a cluster runs beyond its core add-ons, this lists the add-ons installed in your VKS
-cluster. It switches the VCF CLI to your Supervisor login and changes nothing else.
+cluster. It switches the VCF CLI to your Supervisor login and changes nothing on the Supervisor or the cluster.
 
 **Linux, macOS, WSL (bash or zsh):**
 
