@@ -19,7 +19,8 @@ Prometheus collects and stores the cluster's metrics (CPU, memory, disk and more
 Grafana shows them as graphs, in dashboards; Alertmanager sends Prometheus's alerts. Helm installs
 software into a cluster from a package, a Helm chart; each install is a Helm release, with a name,
 that Helm can upgrade or remove. Steps 4 and 5 install with Helm; step 9 installs with ArgoCD
-([ARGOCD.md](ARGOCD.md): it installs what you describe and keeps it installed) instead.
+([ARGOCD.md](ARGOCD.md): it installs what you describe and keeps it installed) instead. With
+Helm: steps 1 to 7 (8 removes it). With ArgoCD: steps 1 to 3, 9, then 6 and 7 (10 removes it).
 
 The blocks keep their files in `~/.config/vks-guides/monitoring` (PowerShell:
 `$HOME\.config\vks-guides\monitoring`).
@@ -68,7 +69,8 @@ changes nothing. Set `VKS_CLUSTER` to the VKS cluster's name. It shows whether:
 - its nodes are up;
 - it has a default storage class, which gives Prometheus a disk for its data;
 - it runs no Prometheus yet, which would clash with this one. VCF Operations' own monitoring
-  add-on runs no full Prometheus, so it is fine.
+  ([OBSERVABILITY.md](OBSERVABILITY.md) step 11) runs Broadcom's Prometheus add-on without its
+  Prometheus server, so it is fine.
 
 You go on to step 2 when all three are as **Expect** says.
 
@@ -123,8 +125,9 @@ if ($LASTEXITCODE -eq 0) {
 **If not:**
 - `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
 - `Prometheus Operator CRDs:` or `Prometheus server workloads:` more than 0, before you ran
-  this guide's step 5 or 9: the cluster already runs a Prometheus. Use it, or a cluster without
-  one; this guide does not cover both.
+  this guide's step 5 or 9: the cluster already runs a Prometheus (for example Broadcom's
+  Prometheus add-on from [HEADLAMP.md](HEADLAMP.md) step 11.1). Use it, or a cluster without one;
+  this guide does not cover both.
 - `FAILED: cannot read the cluster`: run
   [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
@@ -410,12 +413,12 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 - `FAILED: checksum mismatch …`: the download arrived damaged, or that release was rebuilt. Do
   not install it; run the block again.
 
-## 5. Install
+## 5. Install with Helm
 
-**Run this first.** An older version of this guide created permissions that VCF Operations' own
-monitoring may now use. This finds them and marks them, so the install below does not delete
-them. On most clusters it prints `nothing to keep` and changes nothing. Set `VKS_CLUSTER` as in
-step 1.
+**Run this first.** An older version of this guide created permissions that Broadcom's Prometheus
+add-on (VCF Operations' monitoring) may now use. This finds them and marks them, so the install
+below does not delete them. If this guide was never installed on this cluster, it prints `nothing
+to keep` and changes nothing. Set `VKS_CLUSTER` as in step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -630,10 +633,10 @@ in that session, and open the address in your laptop's browser.
 ## 8. Uninstall with Helm (optional)
 
 Run this when you no longer want what step 5 installed with Helm; for an install with ArgoCD, use
-step 10. First run the first block of step 5 again, so the permissions VCF Operations' monitoring
-uses are not deleted too. If you did [OBSERVABILITY.md](OBSERVABILITY.md), do its step 12 first:
-it restarts Grafana in `monitoring`, and Loki, Jaeger and the sample app stay otherwise. This
-block removes the Helm release `prometheus`, one Service (a network name) it leaves in
+step 10. **First run the first block of step 5 again**, so the permissions VCF Operations'
+monitoring uses are not deleted too. If you did [OBSERVABILITY.md](OBSERVABILITY.md), do its step
+12 first: it restarts Grafana in `monitoring`, and Loki, Jaeger and the sample app stay otherwise.
+This block removes the Helm release `prometheus`, one Service (a network name) it leaves in
 `kube-system`, and the namespace `monitoring` with everything in it. **It deletes Prometheus's
 data and the Grafana password.** You then have a cluster without this monitoring; the new object
 types the chart added stay, and the next block removes them. Set `VKS_CLUSTER` as in step 1.
@@ -667,8 +670,9 @@ deleted` and `namespace "monitoring" deleted`.
 
 **Delete the Prometheus object types.** The chart added new kinds of objects to the cluster
 (CRDs), such as ServiceMonitor, and they stay after the uninstall. This deletes them, and every
-object of those kinds in the cluster. You then have none of them left. Run it only if step 1
-printed `Prometheus Operator CRDs: 0`; otherwise something else in the cluster uses them.
+object of those kinds in the cluster. You then have none of them left. Run it only if step 1, run
+before you installed this guide, printed `Prometheus Operator CRDs: 0`; otherwise something else
+in the cluster uses them.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -697,13 +701,13 @@ lines (nothing when run again).
 
 ## 9. Install with ArgoCD (instead of steps 4 and 5)
 
-This installs the same Prometheus and Grafana as steps 4 and 5, but through the ArgoCD of
+Use this instead of steps 4 and 5 to install the same Prometheus and Grafana through the ArgoCD of
 [ARGOCD.md](ARGOCD.md), which then keeps them installed and puts back anything that changes. You
 need that guide's steps 1 to 4 and 7 (the VKS cluster added to ArgoCD), this guide's steps 1 to
 3, and a Supervisor that reaches `prometheus-community.github.io`, `github.com` and
 `release-assets.githubusercontent.com`. On this path the chart's checksum is not checked. If an
 older version of this guide was installed, VCF Operations' monitoring may lose some permissions
-for up to 10 minutes; it then restores them.
+for up to 10 minutes (4 measured once); it then restores them.
 
 Run this first, to make sure the names this step uses are free, so you do not overwrite someone
 else's install. It looks for the ArgoCD project `monitoring` and the ArgoCD Application
@@ -967,9 +971,9 @@ spec:
 </details>
 
 **Expect:** `appproject.argoproj.io/monitoring created` and
-`application.argoproj.io/prometheus created`, after a `Warning:` about the finalizer name (as in
-[ARGOCD.md](ARGOCD.md) step 6). `configured` or `unchanged` on your first run: someone else made
-them; stop and ask them.
+`application.argoproj.io/prometheus created`, after a `Warning:` about the finalizer name
+(harmless, as in [ARGOCD.md](ARGOCD.md) step 6). `configured` or `unchanged` on your first run:
+someone else made them; stop and ask them.
 
 **If not:** `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login),
 then this block again. `Forbidden`: your SSO user has no **Namespaces Edit** role on

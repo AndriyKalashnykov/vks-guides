@@ -20,7 +20,7 @@ that produces all three signals:
 |---|---|---|---|
 | metrics | Prometheus (MONITORING.md) | Prometheus | Grafana |
 | logs | Broadcom's Fluent Bit add-on | Loki 3.7.9 | Grafana, with a link to the trace |
-| traces | the app, over OTLP | Jaeger 2.20.0 | Grafana, with a link to the logs |
+| traces | the app, over OTLP (the standard way apps send traces) | Jaeger 2.20.0 | Grafana, with a link to the logs |
 | the cluster and its node VMs | the vSphere Supervisor integration | VCF Operations | VCF Operations |
 
 ```mermaid
@@ -372,7 +372,7 @@ part took. It downloads Jaeger's chart, checks it, writes `jaeger-values.yaml` a
 2.20.0 in the namespace `observability` as the Helm release `jaeger`, one pod. Jaeger keeps the
 last 10,000 traces in memory, so a restart empties it. You then have Jaeger running, ready for
 step 6; running it again updates Jaeger to the current settings. Set `VKS_CLUSTER` as in step 1.
-Keep this version: Grafana cannot read Jaeger 2.21 or later.
+Keep this version: Grafana 13.2.4 cannot read Jaeger 2.21 or later.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -572,7 +572,8 @@ and in its kubeconfig file, and that stays after the block. You then have the lo
 checks them. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace and `VKS_CLUSTER` as in step 1,
 and also:
 
-- `FLUENT_BIT_RELEASE`: as in LOGGING.md step 1;
+- `FLUENT_BIT_RELEASE`: the newest name that `vcf addon available-releases list --addon-name
+  fluent-bit` lists (LOGGING.md step 1);
 - `LOGS_FQDN`: if you did LOGGING.md, Log Management's DNS name from its step 3, so logs keep
   going there too; otherwise leave it empty.
 
@@ -1276,10 +1277,12 @@ VKS cluster. VCF Operations then shows the cluster's node, deployment, DaemonSet
 counts and its CPU and memory (step 10). Broadcom documents this service only with VCF
 Automation, which installs it by default; check with Broadcom that your licence covers it.
 
-Once it is installed, the Supervisor labels every new VKS cluster `enabled`, and Broadcom's
-Telegraf and Prometheus add-ons run in it (about 100 MiB per node; about 400 MiB on a 3-node
-cluster), unless the cluster's label is `disabled`. On `best-effort-small` nodes the control
-plane already uses about all its allocatable memory; the add-ons add about 80 MiB to it.
+**Once it is installed, every new VKS cluster on this Supervisor, other teams' included, gets
+Broadcom's Telegraf and Prometheus add-ons**, unless the cluster's label is `disabled`: the
+Supervisor labels every new VKS cluster `enabled` (the add-ons use about 100 MiB per node; about
+400 MiB on a 3-node cluster). On a `best-effort-small` control plane, which
+[CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values) advises against, memory is already
+about full; the add-ons add about 80 MiB to it.
 
 For this step you need:
 
@@ -1621,7 +1624,7 @@ and that the vCenter account in VCF Operations has **Enable vSphere Supervisor C
 The counts keep their last values after collection stops; only fresh CPU and memory values show
 that it works.
 
-## 12. Uninstall (optional)
+## 12. Uninstall Loki, Jaeger and the sample app (optional)
 
 Run this when you no longer want this guide's logs, traces and sample app. **This deletes the
 logs in Loki and the traces in Jaeger.** It removes the sample app, the data sources (Grafana
@@ -1661,8 +1664,8 @@ uninstalled` and `namespace "observability" deleted`.
 
 **If not:** `Release not loaded`: it was already uninstalled.
 
-Then, for Fluent Bit: if you did LOGGING.md, run the block of its step 7 and skip its note about
-this guide's step 5 (Loki is gone), so logs go only to Log Management again; otherwise remove the
+Then for Fluent Bit: if you did LOGGING.md, run only the block of its step 7 (it reuses the
+`values.yaml` its step 3 wrote), and do not run this guide's step 5 again; otherwise remove the
 add-on with LOGGING.md step 8.
 
 ### Turn off VCF Operations' collection (if you did step 11)
@@ -1965,8 +1968,8 @@ if ($LASTEXITCODE -eq 0 -and $SUP) {
 login](LOGIN.md#renew-the-supervisor-login), then this block again. Under `Forbidden`: log in as a
 vCenter administrator.
 
-What stays behind: the AddonInstalls in `vmware-system-vks-public` on the Supervisor, and the
-Service `default/metrics-aggregator` in each VKS cluster. Leave every cluster at `disabled` once the
-service is gone.
+What stays behind: the add-on records (AddonInstalls) in `vmware-system-vks-public` on the
+Supervisor, and the Service `default/metrics-aggregator` in each VKS cluster. Leave every cluster at
+`disabled` once the service is gone.
 
 Back to [README](../README.md).
