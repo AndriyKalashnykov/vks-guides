@@ -467,8 +467,8 @@ Everyone with a vCenter SSO login to the cluster pastes that login's token into 
 then has exactly that user's rights. You hold **Can edit** or **Owner** (Prerequisites), so you use
 6.1, and skip steps 1 and 3 of [ACCESS.md, "The person's own SSO
 account"](ACCESS.md#the-persons-own-sso-account). People with narrower rights from that section use
-6.2: send them steps 5, 6.2 and 7, with the address and the fingerprint from step 4 (they need
-kubectl and jq: PREREQS.md).
+6.2: send them steps 5, 6.2 and 7, with the address and the fingerprint from step 4, and the name
+of their namespace (ACCESS.md step 3); they need kubectl and jq (PREREQS.md).
 
 First log in to the cluster with your SSO user, as in
 [ACCESS.md](ACCESS.md#the-persons-own-sso-account) step 2a (VCF CLI) or steps 2b to 2d (kubectl
@@ -597,8 +597,10 @@ user's rights away (ACCESS.md). This block stops for an administrator: use 6.1.
 Run this when you want to open Headlamp, after the SSO login above: Headlamp needs your login's
 token, and this prints it for step 7. It reads the token from
 `~/.kube/<cluster>-<SSO_USER>.kubeconfig` and changes nothing; run it again to print the token
-again while the login lasts. Set `VKS_CLUSTER` to the cluster's name and `SSO_USER` to your SSO
-user name, as in step 6.
+again while the login lasts. It also checks your rights in the namespace your cluster administrator
+gave you, and says when Headlamp needs that namespace's name (step 7). Set `VKS_CLUSTER` to the
+cluster's name, `SSO_USER` to your SSO user name, as in step 6, and `TEAM_NAMESPACE` to the
+namespace your administrator sent you.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -606,6 +608,7 @@ user name, as in step 6.
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 SSO_USER="alice@vsphere.local"
+TEAM_NAMESPACE="team-a"
 VKS_USER_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 case "$SSO_USER" in */*|*\\*|*:*) SSO_USER_OK="" ;; *@*) SSO_USER_OK="yes" ;; *) SSO_USER_OK="" ;; esac
 T="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
@@ -613,8 +616,16 @@ C="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") 
 E="${C%% *}"
 AUD="${C#* }"
 ALL="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)"
+NSL="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth can-i list namespaces 2>/dev/null)"
+if printf '%s' "$TEAM_NAMESPACE" | grep -qxE '[a-z0-9]([-a-z0-9]*[a-z0-9])?'; then
+  POD="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" -n "$TEAM_NAMESPACE" auth can-i list pods 2>/dev/null)"
+else
+  POD=bad
+fi
 if [ -z "$SSO_USER_OK" ]; then
   printf '%s\n' "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: $SSO_USER"
+elif [ "$POD" = bad ]; then
+  printf '%s\n' "STOPPED: TEAM_NAMESPACE is the namespace your cluster administrator sent you (a-z, 0-9, -): $TEAM_NAMESPACE"
 elif ! command -v jq >/dev/null 2>&1; then
   echo "MISSING: jq (PREREQS.md)"
 elif [ -z "$T" ] || [ -z "$E" ]; then
@@ -628,7 +639,13 @@ elif [ "$ALL" != yes ] && [ "${ALL#no}" = "$ALL" ]; then
 elif [ "$ALL" = yes ]; then
   echo "STOPPED: this SSO user is an administrator of the cluster; use step 6.1"
 else
-  echo "token for $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}'):"
+  U="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
+  if [ "${POD#no}" != "$POD" ]; then
+    echo "WARNING: ${U} has no rights in namespace ${TEAM_NAMESPACE}; Headlamp will show nothing there. Check TEAM_NAMESPACE, or ask your cluster administrator for ACCESS.md step 3"
+  elif [ "${NSL#no}" != "$NSL" ]; then
+    echo "NOTE: in Headlamp, add ${TEAM_NAMESPACE} under Settings > Cluster > Allowed namespaces (step 7)"
+  fi
+  echo "token for ${U}:"
   echo "$T"
   echo "it ends: $(printf '%s' "$E" | jq -r 'tonumber | todate')"
 fi
@@ -642,13 +659,18 @@ fi
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $SSO_USER = "alice@vsphere.local"
+$TEAM_NAMESPACE = "team-a"
 $VKS_USER_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 $T = kubectl --kubeconfig $VKS_USER_KUBECONFIG config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>$null
 $E = $null; $AUD = ""
 if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $J = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json; if ($J.exp -is [int] -or $J.exp -is [long] -or $J.exp -is [decimal] -or $J.exp -is [double]) { $E = $J.exp }; $AUD = "$(@($J.aud) | Where-Object { "$_".StartsWith('vmware-tes:vc:vns:k8s:') } | Select-Object -First 1)" } catch { } }
 $ALL = "$(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth can-i '*' '*' -A 2>$null)"
+$NSL = "$(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth can-i list namespaces 2>$null)"
+$POD = if ($TEAM_NAMESPACE -cmatch '^[a-z0-9]([-a-z0-9]*[a-z0-9])?\z') { "$(kubectl --kubeconfig $VKS_USER_KUBECONFIG -n $TEAM_NAMESPACE auth can-i list pods 2>$null)" } else { 'bad' }
 if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
   "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: ${SSO_USER}"
+} elseif ($POD -eq 'bad') {
+  "STOPPED: TEAM_NAMESPACE is the namespace your cluster administrator sent you (a-z, 0-9, -): ${TEAM_NAMESPACE}"
 } elseif (-not $T -or -not $E) {
   "FAILED: no SSO login for $VKS_CLUSTER in $VKS_USER_KUBECONFIG; log in first (ACCESS.md)"
 } elseif ($E -le [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) {
@@ -660,7 +682,13 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
 } elseif ($ALL -eq 'yes') {
   "STOPPED: this SSO user is an administrator of the cluster; use step 6.1"
 } else {
-  "token for $(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}'):"
+  $U = kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}'
+  if ($POD.StartsWith('no')) {
+    "WARNING: $U has no rights in namespace ${TEAM_NAMESPACE}; Headlamp will show nothing there. Check TEAM_NAMESPACE, or ask your cluster administrator for ACCESS.md step 3"
+  } elseif ($NSL.StartsWith('no')) {
+    "NOTE: in Headlamp, add $TEAM_NAMESPACE under Settings > Cluster > Allowed namespaces (step 7)"
+  }
+  "token for ${U}:"
   $T
   "it ends: $([DateTimeOffset]::FromUnixTimeSeconds($E).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
 }
@@ -668,14 +696,18 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
 
 </details>
 
-**Expect:** `token for sso:<user>@<domain>:`, the token, and `it ends:` 10 hours after the login
-(UTC). Paste it in step 7, then clear the terminal.
+**Expect:** `NOTE: in Headlamp, add <namespace> under Settings > Cluster > Allowed namespaces`
+when your login cannot list namespaces (do that in step 7), then `token for sso:<user>@<domain>:`,
+the token, and `it ends:` 10 hours after the login (UTC). Paste it in step 7, then clear the
+terminal.
 
 **If not:**
 - `STOPPED: this SSO user is an administrator …`: use step 6.1.
 - The `STOPPED: SSO_USER is …`, `FAILED: …` and `ENDED: …` lines: as in step 6.1.
-- In Headlamp the user sees nothing: the cluster administrator has not given that name rights yet
-  (ACCESS.md step 3). An empty Namespaces list in Headlamp: as in step 7, **If not**.
+- `WARNING: … has no rights in namespace …`: check `TEAM_NAMESPACE` (the name your administrator
+  sent you); if it is right, the administrator has not given you rights yet: send them your name
+  for ACCESS.md step 3. Headlamp would show you nothing until then.
+- `STOPPED: TEAM_NAMESPACE is …`: set it to your namespace's name.
 
 ## 7. Log in to Headlamp with the token (each person, administrator included)
 
@@ -687,10 +719,19 @@ The person icon at the top right shows who you are logged in as, and logs you ou
 
 ![The account menu: Log out: lab-tester, hl-c1](img/headlamp/04-logged-in-as.png)
 
-An account limited to one namespace first sees *You don't have permissions to view this resource* on
-the start page (**Overview** and **Events** read the whole cluster); that is expected. It picks its
-namespace in **Namespaces** at the top right of any list, such as **Workloads → Pods**; the **Map**
-has its own **Namespaces** box. Headlamp remembers the choice in this browser:
+**If step 6.2 printed a `NOTE`** (you may work in one namespace, such as `team-a`, and Headlamp
+cannot list the others): tell Headlamp its name once, in **Settings** (the gear at the top right) →
+**Cluster** → **Allowed namespaces**: type the name and click **+**. Headlamp then offers it under
+**Namespaces** and shows what is in it. Headlamp keeps this in this browser, for this cluster, and
+for everyone who opens this cluster's Headlamp in it (an administrator who logs in there afterwards
+sees only that namespace too): remove the name there to see every namespace again. In another
+browser, set it again. The **Overview** page still shows *You don't have permissions to view this
+resource* for the cluster's summary; its **Events** list shows your namespace.
+
+![Cluster Settings: Allowed namespaces with headlamp-demo](img/headlamp/16-allowed-namespaces.png)
+
+Pick the namespace in **Namespaces** at the top right of any list, such as **Workloads → Pods**;
+the **Map** has its own **Namespaces** box. Headlamp remembers the choice in this browser:
 
 ![The Namespaces list with headlamp-demo ticked](img/headlamp/05-namespaces-dropdown.png)
 
@@ -714,11 +755,8 @@ Headlamp shows its own text in the browser's language; **Settings** (gear) → *
 **If not:**
 - `Unauthorized` or back at the login page: the token has ended or its account was deleted; log in
   with SSO again (step 6), or ask for a new token (step 8.2).
-- The Namespaces list is empty: the account cannot list namespaces (step 8.1 gives an account
-  limited to one namespace that right). Or set it yourself: **Settings** → **Cluster** → **Allowed
-  namespaces**, add your namespace:
-
-  ![Cluster Settings: Allowed namespaces with headlamp-demo](img/headlamp/16-allowed-namespaces.png)
+- The Namespaces list is empty: add your namespace under **Allowed namespaces**, as above (an
+  account from step 8.1 can list namespaces and does not need this).
 
 ## 8. Give a person or team an account and a token (optional, cluster administrator)
 
