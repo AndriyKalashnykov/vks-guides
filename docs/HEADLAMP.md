@@ -426,7 +426,7 @@ kubectl and jq: PREREQS.md).
 First log in to the cluster with your SSO user, as in
 [ACCESS.md](ACCESS.md#the-persons-own-sso-account) step 2a (VCF CLI) or steps 2b to 2d (kubectl
 vSphere plugin), so that `~/.kube/<cluster>-<SSO_USER>.kubeconfig` holds the login. Set `SSO_USER`
-in the blocks below to the name that login used, letter for letter as in ACCESS.md step 2a. The
+in the blocks below to the name that login used, letter for letter as in ACCESS.md step 2a or 2d. The
 token works only for this cluster and ends 10 hours after that login; the length cannot be changed,
 and the block prints when it ends.
 
@@ -529,13 +529,14 @@ terminal; log out of Headlamp when you are done.
 
 **If not:**
 - `STOPPED: SSO_USER is …`: set `SSO_USER` to the full name with `@` and the domain, as in ACCESS.md
-  step 2a.
+  step 2a or 2d.
 - `FAILED: this login is for the Supervisor …`: the file's current login is the Supervisor's; log in
   to the cluster again (ACCESS.md step 2a, or 2b to 2d).
 - `FAILED: the cluster did not answer …`: the command it names shows why.
-- `FAILED: no SSO login …`: check that `SSO_USER` is letter for letter as in ACCESS.md step 2a.
-- `FAILED: no SSO login …` or `ENDED: …`: run the login in ACCESS.md again. A login through an
-  external identity provider (ACCESS.md, `vcf pinniped-auth`) keeps no token in the file: use step 8.
+- `FAILED: no SSO login …`: check that `SSO_USER` is letter for letter as in your login (ACCESS.md
+  step 2a or 2d), then run that login again. A login through an external identity provider
+  (ACCESS.md, `vcf pinniped-auth`) keeps no token in the file: use step 8.
+- `ENDED: …`: run the login in ACCESS.md again.
 
 ### 6.2 As a person with narrower rights (they run it)
 
@@ -620,7 +621,7 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
 
 **If not:**
 - `STOPPED: this SSO user is an administrator …`: use step 6.1.
-- The `FAILED: …` and `ENDED: …` lines: as in step 6.1.
+- The `STOPPED: SSO_USER is …`, `FAILED: …` and `ENDED: …` lines: as in step 6.1.
 - In Headlamp the user sees nothing: the cluster administrator has not given that name rights yet
   (ACCESS.md step 3). An empty Namespaces list in Headlamp: as in step 7, **If not**.
 
