@@ -8,10 +8,11 @@
 > - cert-manager: [CA issuer](https://cert-manager.io/docs/configuration/ca/), [SelfSigned issuer](https://cert-manager.io/docs/configuration/selfsigned/)
 > - Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) (`restricted`), [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
 
-Nexus Repository is a server for packages and container images. This runs Nexus Repository
-Community Edition, with a PostgreSQL database for its data, in a VKS cluster, gives it an HTTPS
-certificate and an address, creates a Docker repository with a user that may push and one that may
-only pull, and lets VKS clusters pull images from it.
+Nexus Repository is a server for packages and container images: a registry. An image is an app
+packed with everything it needs to run; a cluster starts it as containers. This runs Nexus
+Repository Community Edition, with a PostgreSQL database for its data, in a VKS cluster, gives it
+an HTTPS certificate and an address, creates a Docker repository (a folder of images in Nexus)
+with a user that may push and one that may only pull, and lets VKS clusters pull images from it.
 
 > [!NOTE]
 > **Why plain manifests, not Helm.** Sonatype's maintained chart,
@@ -83,10 +84,14 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 
 ## 1. Check the cluster
 
-This checks that the nodes are ready, the free memory, CPU and image disk on each worker, that the
-cluster has a default storage class, and that no `nexus` namespace exists yet. Nexus, PostgreSQL,
-the TLS proxy and the cert-manager add-on of step 2 ask for about 0.73 CPU and 3.7 GiB of memory;
-pods already in the `nexus` and `cert-manager` namespaces are not counted as using any.
+Run this first, before anything is installed, to see whether the cluster has room for Nexus. It
+changes nothing: it checks that the nodes (the cluster's VMs) are ready, the free memory, CPU and
+image disk on each worker, that the cluster has a default storage class (the vSphere storage policy
+its volumes, its disks, come from), and that no namespace `nexus` (a namespace inside the VKS
+cluster, not a vSphere Namespace) exists yet. You get one line per worker to compare with what
+Nexus needs (**Expect:**). Nexus, PostgreSQL, the TLS proxy and the cert-manager add-on of step 2
+ask for about 0.73 CPU and 3.7 GiB of memory; pods already in the `nexus` and `cert-manager`
+namespaces are not counted as using any. Set `VKS_CLUSTER` to Nexus's cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -197,10 +202,14 @@ the add-on is there already, it changes nothing.
 
 ## 3. Create the namespace and the database password
 
-This creates the namespace `nexus` (a namespace inside the VKS cluster, not a vSphere Namespace; it
-is not listed under Supervisor Management → Namespaces), which allows only pods that follow the
-`restricted` Pod Security Standard, and a Secret with a random password for PostgreSQL. Nothing
-prints the password. A Secret that exists is kept: PostgreSQL keeps the password it was first given.
+Run this once, after step 2, to make the place Nexus runs in and its database password. It creates
+the namespace `nexus` (a namespace inside the VKS cluster, not a vSphere Namespace; it is not
+listed under Supervisor Management → Namespaces), which allows only pods that follow the
+`restricted` Pod Security Standard (the strictest Kubernetes rules for what a pod may do), and a
+Secret `nexus-db` (the cluster's way to store a password) with a random password for PostgreSQL.
+You get the namespace and the password, which step 6 gives PostgreSQL and Nexus; nothing prints
+it. Running it again keeps a Secret that exists: PostgreSQL keeps the password it was first given.
+Set `VKS_CLUSTER` to Nexus's cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -259,10 +268,11 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 4. Create the Service and get Nexus's address
 
-This creates Nexus's Service, which gets an address from the Supervisor's load balancer, port 443,
-and prints that address. Nexus itself starts in step 6. The address stays while the Service exists;
-deleting the Service gives its address back, and a new Service can get another one: then step 5,
-step 7 and every image name, login and VKS cluster that uses the old address must change.
+Run this before step 5, because Nexus's certificate needs Nexus's address. It creates Nexus's
+Service (what gives Nexus its address), which gets an address from the Supervisor's load balancer,
+port 443, and prints that address; Nexus itself starts in step 6. You get Nexus's address, for
+`NEXUS_REGISTRY` (**Expect:**). Running it again keeps the Service and its address. Set
+`VKS_CLUSTER` to Nexus's cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -340,13 +350,19 @@ are free): **Supervisor Management** → **Supervisors** → your Supervisor →
 **Virtual IP Address Range(s)**. With NSX or Avi, the range is in that load balancer's own
 settings.
 
+**If the address changes:** the address stays while the Service exists; deleting the Service gives
+its address back, and a new Service can get another one: then step 5, step 7 and every image name,
+login and VKS cluster that uses the old address must change.
+
 ## 5. Make Nexus's certificate
 
-This makes a CA (certificate authority) of your own with cert-manager, valid for 10 years, and from
-it a certificate for Nexus's address from step 4, for `NEXUS_REGISTRY` when it is a DNS name, and
-for Nexus's name inside the cluster. cert-manager renews the certificate before it ends; the TLS
-proxy picks the new one up within about 6 minutes, without restarting Nexus. The CA itself is renewed
-with a new key after about 6.5 years: then hand out the new CA (steps 7, 10 and 11) again.
+Run this after step 4: podman, docker and the VKS clusters reach Nexus over HTTPS, which needs a
+certificate for Nexus's address. It makes a CA (certificate authority) of your own with
+cert-manager, valid for 10 years, and from it a certificate for Nexus's address from step 4, for
+`NEXUS_REGISTRY` when it is a DNS name, and for Nexus's name inside the cluster. You get the Secrets
+`nexus-ca` and `nexus-tls` in the namespace `nexus`: step 6 gives the certificate to Nexus, and
+step 7 saves the CA. Set `VKS_CLUSTER` to Nexus's cluster's name and `NEXUS_REGISTRY` to the
+address step 4 printed, or the DNS name for it.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -501,11 +517,19 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n nexus wait --
   name.
 - `timed out`: `kubectl --kubeconfig <file> -n nexus describe certificate nexus-tls` shows why.
 
+**Renewal:** cert-manager renews the certificate before it ends; the TLS proxy picks the new one up
+within about 6 minutes, without restarting Nexus. The CA itself is renewed with a new key after
+about 6.5 years: then hand out the new CA (steps 7, 10 and 11) again.
+
 ## 6. Run PostgreSQL and Nexus
 
-This runs PostgreSQL with a 5 GiB volume, waits until it is ready, then runs Nexus with a 20 GiB
-volume for its images and files, and next to it a small nginx web server that takes HTTPS on
-Nexus's address and passes it on to Nexus. Nexus takes a few minutes to start the first time.
+Run this after step 5: it starts Nexus itself. It runs PostgreSQL (the database) with a 5 GiB
+volume (a disk from the cluster's default storage class), waits until it is ready, then runs Nexus
+with a 20 GiB volume for its images and files, and next to it a small nginx web server (the TLS
+proxy) that takes HTTPS on Nexus's address and passes it on to Nexus. You get Nexus running on its
+address; it takes a few minutes to start the first time. Running it again restarts nothing that has
+not changed. Set `VKS_CLUSTER` to Nexus's cluster's name; keep the three image names at the top
+unless a restore (step 12) tells you otherwise.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1004,9 +1028,12 @@ restarts.
 
 ## 7. Save Nexus's CA and check its address
 
-This saves the CA from step 5 as `nexus-ca.pem` in your home folder, prints its fingerprint, and
-checks that Nexus answers on `NEXUS_REGISTRY` with a certificate from that CA. Everyone who pushes
-needs this file (step 10), and so does each VKS cluster that pulls (step 11). It holds no secret.
+Run this after step 6, to get the file that lets others trust Nexus. It saves the CA from step 5 as
+`nexus-ca.pem` in your home folder, prints its fingerprint (a short code that identifies it), and
+checks that Nexus answers on `NEXUS_REGISTRY` with a certificate from that CA. You get
+`nexus-ca.pem`: give it to everyone who pushes (step 10), and use it for each VKS cluster that
+pulls (step 11); it holds no secret. Running it again replaces the file with the cluster's current
+CA. Set `VKS_CLUSTER` and `NEXUS_REGISTRY` as in step 5.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1079,14 +1106,14 @@ then `Nexus answers at https://<NEXUS_REGISTRY>`.
 
 ## 8. Sign in for the first time
 
-Nexus starts with the user `admin` and a random first password in its volume. This changes the
-password to one you type, accepts the Community Edition's end-user license agreement
-([EULA](https://links.sonatype.com/products/nxrm/ce-eula); read it first: running this block
-agrees to it), turns on Docker logins (the `DockerToken` realm), and turns off anonymous access, so
-that only users who log in can read or push. The password is passed to curl in a file only you can
-read, which is deleted at the end; it is never shown or saved.
+Run this step once, after step 7, before anyone uses Nexus. Nexus starts with the user `admin` and
+a random first password in its volume; this step replaces it with one you choose and locks Nexus
+down. Type the new password first, then run the second block, in the same terminal.
 
-Type the new password for `admin`, on its own (it is not shown):
+The second block sets `admin`'s new password, so type it first, on its own; when you run this step
+again, type the password you set the first time instead. This line asks for it without showing it
+and keeps it in this terminal only, not in a file. You get the password ready for the next block,
+which forgets it when it ends:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1100,7 +1127,15 @@ printf 'New admin password: '; IFS= read -rs NEXUS_ADMIN_PASSWORD; echo
 $NEXUS_ADMIN_PASSWORD = Read-Host 'New admin password' -AsSecureString
 ```
 
-Then:
+Then run this, in the same terminal, to set the new password and lock Nexus down. It changes
+`admin`'s password to the one you typed, accepts
+the Community Edition's end-user license agreement
+([EULA](https://links.sonatype.com/products/nxrm/ce-eula); read it first: running this block
+agrees to it), turns on Docker logins (the `DockerToken` realm), and turns off anonymous access.
+You get a Nexus where only users who log in can read or push, and `admin` with your password,
+which step 9 needs. The password is
+passed to curl in a file only you can read, which is deleted at the end; it is never shown or
+saved. Set `VKS_CLUSTER` and `NEXUS_REGISTRY` as in step 5.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1212,13 +1247,13 @@ Remove-Variable -ErrorAction SilentlyContinue NEXUS_ADMIN_PASSWORD
 
 ## 9. Create the Docker repository, a push user and a pull user
 
-This creates a Docker repository `NEXUS_REPO` with path-based routing (images named
-`<NEXUS_REGISTRY>/<NEXUS_REPO>/<image>:<tag>`), where a tag, once pushed, cannot be pushed again,
-even with the same content. It then creates two users with passwords you type: `NEXUS_PUSH_USER`, who may read and push in
-that repository only (for you and your builds), and `NEXUS_PULL_USER`, who may only read it (for
-the VKS clusters, step 11). It skips what exists.
+Run this step once, after step 8, to make the place images go and the two logins for it. Type three
+passwords first, then run the second block, in the same terminal.
 
-Type `admin`'s password, then the push user's and the pull user's (none is shown):
+The second block logs in as `admin` and gives the two new users their passwords, so type all three
+first: `admin`'s (from step 8), then the push user's and the pull user's, which you choose now. This
+line asks for each without showing it and keeps them in this terminal only, not in a file. You get
+the passwords ready for the next block, which forgets them when it ends:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1232,7 +1267,15 @@ printf 'admin password: '; IFS= read -rs NEXUS_ADMIN_PASSWORD; echo; printf 'Pus
 $NEXUS_ADMIN_PASSWORD = Read-Host 'admin password' -AsSecureString; $NEXUS_PUSH_PASSWORD = Read-Host 'Push user password' -AsSecureString; $NEXUS_PULL_PASSWORD = Read-Host 'Pull user password' -AsSecureString
 ```
 
-Then:
+Then run this, in the same terminal, to make the repository and its users. It creates a Docker
+repository with path-based routing, so images are named
+`<NEXUS_REGISTRY>/<NEXUS_REPO>/<image>:<tag>`, where a tag, once pushed, cannot be pushed again,
+even with the same content. It then creates two users: a push user, who may read and push in that
+repository only (for you and your builds), and a pull user, who may only read it (for the VKS
+clusters, step 11). You get the repository and its two logins: give the push user's to those who
+push (step 10), and keep the pull user's for step 11. Running it again skips what exists and changes
+no password. Set `NEXUS_REGISTRY` as in step 5; keep or change the names of the repository
+(`NEXUS_REPO`), the push user (`NEXUS_PUSH_USER`) and the pull user (`NEXUS_PULL_USER`).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1357,8 +1400,8 @@ Remove-Variable -ErrorAction SilentlyContinue NEXUS_ADMIN_PASSWORD, NEXUS_PUSH_P
 **Expect:** `repository apps: created`, then `role apps-push: created`, `user apps-push: created`,
 `role apps-pull: created`, `user apps-pull: created` (`exists` for what was there), then
 `repository:` with `pathEnabled` `true` and `writePolicy` `ALLOW_ONCE`, `push role:` with the four
-`nx-repository-view-docker-apps-…` privileges (`read`, `browse`, `add`, `edit`) and `pull role:` with
-`read` and `browse`.
+`nx-repository-view-docker-apps-…` privileges (`read`, `browse`, `add`, `edit`) and `pull role:`
+with `read` and `browse`.
 
 **If not:**
 - `The requested URL returned error: 401`: the `admin` password is wrong (step 8).
@@ -1377,7 +1420,10 @@ their machine, with `nexus-ca.pem` from step 7.
 
 ### Trust Nexus's CA
 
-**Linux, podman** (no `sudo` needed):
+**Linux, podman:** run this if you use podman on Linux, with `nexus-ca.pem` from step 7 in your
+home folder. It copies Nexus's CA into `~/.config/containers/certs.d/<NEXUS_REGISTRY>`, the folder
+in your home where podman looks for it; no `sudo` needed. You get a podman that trusts Nexus. Set
+`NEXUS_REGISTRY` as in step 5.
 
 ```sh
 NEXUS_REGISTRY="192.168.10.50"
@@ -1387,16 +1433,21 @@ mkdir -p "$HOME/.config/containers/certs.d/$NEXUS_REGISTRY" \
   && cp "$NEXUS_CA" "$HOME/.config/containers/certs.d/$NEXUS_REGISTRY/ca.crt" && echo "podman trusts $NEXUS_REGISTRY"
 ```
 
-**Linux, docker** (run it as a block of its own: it uses `sudo`; podman reads this folder too).
-docker 29.5 or newer reads the CA at once, without a restart; docker 29.0 to 29.4 logs in but stops at
-the push with `x509` ([PREREQS.md](PREREQS.md#podman-and-docker-optional)):
+**Linux, docker:** run this if you use docker on Linux, with `nexus-ca.pem` from step 7 in your
+home folder. It copies Nexus's CA into `/etc/docker/certs.d/<NEXUS_REGISTRY>`, the system folder
+where docker looks for it (podman reads this folder too). You get a docker that trusts Nexus:
+docker 29.5 or newer reads the CA at once, without a restart; docker 29.0 to 29.4 logs in but stops
+at the push with `x509` ([PREREQS.md](PREREQS.md#podman-and-docker-optional)). Set
+`NEXUS_REGISTRY` as in step 5. Run it as a block of its own: it uses `sudo`.
 
 ```sh
 NEXUS_REGISTRY="192.168.10.50"
 sudo install -D -m 0644 "$HOME/nexus-ca.pem" "/etc/docker/certs.d/$NEXUS_REGISTRY/ca.crt" && echo "docker trusts $NEXUS_REGISTRY"
 ```
 
-**macOS:** add the CA to your login keychain (macOS asks for your password), then as in
+**macOS:** run this on a Mac, with podman or docker, with `nexus-ca.pem` from step 7 in your home
+folder. It adds Nexus's CA to your login keychain as a trusted root CA (macOS asks for your
+password). You get a keychain that trusts Nexus; then make your engine read it as in
 [IMAGE.md step 2](IMAGE.md#2-trust-harbors-ca): podman `podman machine set --import-native-ca`,
 Colima its own `certs.d`, Docker Desktop a restart.
 
@@ -1404,9 +1455,10 @@ Colima its own `certs.d`, Docker Desktop a restart.
 security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychain-db" "$HOME/nexus-ca.pem"
 ```
 
-**Windows (PowerShell):** add the CA to your user's trusted root CAs (Windows asks you to confirm
-with **Yes**), then podman `podman machine set --import-native-ca` (machine stopped), or quit and
-start Docker Desktop:
+**Windows (PowerShell):** run this on Windows, with podman or docker, with `nexus-ca.pem` from
+step 7 in your home folder. It adds Nexus's CA to your user's trusted root CAs (Windows asks you to
+confirm with **Yes**). You get a Windows user that trusts Nexus; then podman
+`podman machine set --import-native-ca` (machine stopped), or quit and start Docker Desktop.
 
 ```powershell
 Import-Certificate -FilePath "$HOME\nexus-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
@@ -1420,10 +1472,12 @@ Windows: a line with the CA's thumbprint and `CN=Nexus CA`.
 
 ### Push an image
 
-This copies a small public image, `busybox`, into your repository as
-`<NEXUS_REGISTRY>/<NEXUS_REPO>/busybox:1.37.0`: it logs in as the push user, pushes, and logs out,
-so the login is not left on this machine. Set `CONTAINER_ENGINE` to `podman` or `docker`. Type the
-push user's password first (it is not shown):
+This proves that you can push: it copies a small public image, `busybox`, into your repository.
+Type the push user's password first, then run the second block, in the same terminal.
+
+The second block logs in to Nexus as the push user, so type that user's password (step 9) first.
+This line asks for it without showing it and keeps it in this terminal only, not in a file. You get
+the password ready for the next block, which forgets it when it ends:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1437,7 +1491,13 @@ printf 'Push user password: '; IFS= read -rs NEXUS_PUSH_PASSWORD; echo
 $NEXUS_PUSH_PASSWORD = Read-Host 'Push user password' -AsSecureString
 ```
 
-Then:
+Then run this, in the same terminal, to push a test image. It pulls `busybox` from Docker Hub,
+names it
+`<NEXUS_REGISTRY>/<NEXUS_REPO>/busybox:1.37.0`, logs in to Nexus as the push user, pushes it, and
+logs out, so the login is not left on this machine. You get `busybox:1.37.0` in your repository,
+the image step 11 pulls. Running it again stops at the push: a tag cannot be pushed twice. Set
+`CONTAINER_ENGINE` to `podman` or `docker`, `NEXUS_REGISTRY` as in step 5, and `NEXUS_REPO` and
+`NEXUS_PUSH_USER` as in step 9.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1509,17 +1569,23 @@ multiplatform-content is present and only the available single-platform image wa
 ## 11. Let VKS clusters pull from Nexus
 
 A VKS cluster's nodes pull images themselves, so they must trust Nexus's CA, and, because anonymous
-access is off, each namespace needs a login for Nexus. Run this for each VKS cluster that pulls
-from Nexus, including Nexus's own cluster if it runs images from Nexus.
+access is off, each namespace in the cluster (inside the VKS cluster, not a vSphere Namespace) that
+pulls from Nexus needs a login for Nexus. Run this for each VKS cluster that pulls from Nexus,
+including Nexus's own cluster if it runs images from Nexus.
 
 ### Make the nodes trust Nexus's CA
 
-VKS adds a CA to every node from a Secret in the vSphere Namespace, named
-`<cluster>-user-trusted-ca-secret`, that the cluster's `osConfiguration` setting points at. This
-creates that Secret on the Supervisor with `nexus-ca.pem` (Broadcom requires the CA, base64-encoded
-twice in the Secret, and not the server's own certificate:
-[KB 448189](https://knowledge.broadcom.com/external/article/448189/ssltls-server-certificates-specified-in.html)).
-It needs the **Namespaces Edit** role on the vSphere Namespace.
+Run this first, once per VKS cluster that pulls, on a machine with `nexus-ca.pem` (step 7) and the
+Supervisor kubeconfig. VKS adds a CA to every node of a cluster from a Secret in the cluster's
+vSphere Namespace, named `<cluster>-user-trusted-ca-secret`, that the cluster's `osConfiguration`
+setting points at. This creates that Secret on the Supervisor with `nexus-ca.pem` under the key
+`nexus-ca` (Broadcom requires the CA, base64-encoded twice in the Secret, and not the server's own
+certificate:
+[KB 448189](https://knowledge.broadcom.com/external/article/448189/ssltls-server-certificates-specified-in.html));
+the cluster does not change yet. You get the Secret that the cluster's setting (below) points at.
+It needs the **Namespaces Edit** role on the vSphere Namespace. Set `VKS_NAMESPACE` to the
+cluster's vSphere Namespace and `VKS_CLUSTER` to the pulling cluster's name. Set
+`SUPERVISOR_CONTEXT` to the name of your Supervisor login from LOGIN.md.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1578,13 +1644,16 @@ else {
 - `STOPPED: the Secret … exists already`: add Nexus's CA to it under a new key, as below, and use
   that key in the cluster's `secretRef`.
 
-**Add a key to the Secret, or change the CA later.** VKS does not watch the Secret. To add Nexus's
-CA to an existing Secret, or to change the CA later (a new Nexus, or step 5's CA renewed), keep the
-Secret's name: add the CA under a new key (`nexus-ca-2`, then `nexus-ca-3`, …) and point the
-cluster's `secretRef.key` at it with
-`kubectl --kubeconfig <Supervisor kubeconfig> -n <vSphere Namespace> edit cluster <cluster name>`
-(it opens the cluster in a text editor; saving starts the node update, below).
-<!-- TODO-MEASURE: on VKS 3.8, that a new key in the same Secret plus a secretRef.key change rolls the nodes with the new CA -->
+**Add a key to the Secret, or change the CA later.** Run this instead of the block above when the
+Secret exists already, or later to change the CA (a new Nexus, or step 5's CA renewed): VKS does not
+watch the Secret, so keep the Secret's name and put the CA under a new key. It adds `nexus-ca.pem`
+to the Secret under the key `NEXUS_CA_KEY` (`nexus-ca-2`, then `nexus-ca-3`, …), base64-encoded
+twice, and keeps the Secret's other keys. You get the CA under the new key; then point the cluster's
+`secretRef.key` at it with `kubectl --kubeconfig <Supervisor kubeconfig> -n <vSphere Namespace> edit
+cluster <cluster name>` (it opens the cluster in a text editor; saving starts the node update,
+below). Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in the block above, and `NEXUS_CA_KEY` to a key the
+Secret does not have yet. Set `SUPERVISOR_CONTEXT` to the name of your Supervisor login from
+LOGIN.md.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1637,6 +1706,7 @@ else {
 
 **If not:** `not found`: the Secret does not exist; run the block before this one instead.
 `forbidden`: you need the **Namespaces Edit** role on the vSphere Namespace.
+<!-- TODO-MEASURE: on VKS 3.8, that a new key in the same Secret plus a secretRef.key change rolls the nodes with the new CA -->
 
 Then point the cluster at it.
 
@@ -1655,13 +1725,14 @@ cluster's name in `name:`, and create the cluster as that step says:
                     key: nexus-ca
 ```
 
-**An existing cluster:** this adds the same setting. VKS updates every node: it replaces some and
-may update others in place (a cluster with one control-plane node and one worker had both replaced
-in about 5 minutes), so pods move. On Nexus's own
-cluster, Nexus is unavailable for a few minutes while its pod moves to the new worker: do that
-cluster last. A cluster made by [ARGOCD.md](ARGOCD.md): its chart has no setting for this. The
-patch below works, but ArgoCD then shows the cluster OutOfSync, and a later SYNC removes the
-setting and updates the nodes again; do not sync that Application afterwards.
+**An existing cluster:** run this to add the same setting to a cluster that runs already; do Nexus's
+own cluster last: Nexus is unavailable for a few minutes while its pod moves to the new worker. It
+adds the `osConfiguration` setting, with the Secret's key `nexus-ca`, to the cluster on the
+Supervisor, and stops if the cluster has that setting already. You get a cluster whose nodes trust
+Nexus's CA once VKS has updated them. VKS updates every node: it replaces some and may update others
+in place (a cluster with one control-plane node and one worker had both replaced in about 5
+minutes), so pods move. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as above. Set `SUPERVISOR_CONTEXT` to
+the name of your Supervisor login from LOGIN.md.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1719,17 +1790,24 @@ Remove-Item -Force -ErrorAction SilentlyContinue $T
 (while nodes are updated they say `False`).
 
 **If not:**
-- `STOPPED: … osConfiguration setting already`: the cluster trusts another CA already; add a
-  second `- caCert:` entry under its `additionalTrustedCAs` with the `kubectl … edit cluster` command
-  the line prints, with this Secret's name and Nexus's key (`nexus-ca`, or the key you added above).
+- `STOPPED: … osConfiguration setting already`: the cluster trusts another CA already; add a second
+  `- caCert:` entry under its `additionalTrustedCAs` with the `kubectl … edit cluster` command the
+  line prints, with this Secret's name and Nexus's key (`nexus-ca`, or the key you added above).
 - `admission webhook … denied`: the cluster class refuses the variable; send the error to the
   vSphere administrator.
 
+**A cluster made by [ARGOCD.md](ARGOCD.md):** its chart has no setting for this. The patch above
+works, but ArgoCD then shows the cluster OutOfSync, and a later SYNC removes the setting and updates
+the nodes again; do not sync that Application afterwards.
+
 ### Check that a cluster can pull
 
-This stores the pull user's login (step 9; it may only read) in the namespace `default` of the VKS
-cluster as the Secret `nexus-pull`, keyed by exactly `NEXUS_REGISTRY` (as in the image names), and
-runs a test pod with the image from step 10. Type the pull user's password first (it is not shown):
+Run this after the nodes are updated (above), once per pulling VKS cluster. Type the pull user's
+password first, then run the second block, in the same terminal.
+
+The second block stores the pull user's login in the cluster, so type that user's password
+(step 9) first. This line asks for it without showing it and keeps it in this terminal only, not in
+a file. You get the password ready for the next block, which forgets it when it ends:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1743,7 +1821,14 @@ printf 'Pull user password: '; IFS= read -rs NEXUS_PULL_PASSWORD; echo
 $NEXUS_PULL_PASSWORD = Read-Host 'Pull user password' -AsSecureString
 ```
 
-Then:
+Then run this, in the same terminal, to give the cluster Nexus's login and test it. It stores the
+pull user's login (it may only read) in the
+namespace `default` of the VKS cluster as a pull secret: the Secret `nexus-pull` (the cluster's way
+to store a password), keyed by exactly `NEXUS_REGISTRY` (as in the image names). It then runs a
+test pod with the image from step 10 and deletes the pod. You get a pull secret that apps in
+`default` can use, and `OK:` when the cluster pulled the image. Running it again updates the Secret
+and runs the test again. Set `VKS_CLUSTER` to the pulling cluster's name, `NEXUS_REGISTRY` as in
+step 5, and `NEXUS_REPO` and `NEXUS_PULL_USER` as in step 9.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1898,9 +1983,10 @@ login with `imagePullSecrets: [{name: nexus-pull}]` in its pod spec; for another
 this block with `-n default` changed.
 
 **If not:**
-- `FAILED: the Secret nexus-pull was not made` with `Unauthorized` or `provide credentials` above it:
-  the login in `<file>` has expired; save the kubeconfig again
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), type the password and run this block again.
+- `FAILED: the Secret nexus-pull was not made` with `Unauthorized` or `provide credentials` above
+  it: the login in `<file>` has expired; save the kubeconfig again
+  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), type the password and run this block
+  again.
 - `FAILED: the test pod was not made`: the cluster refused the pod; the error above says why.
 - `NO ANSWER: …`: the node did not try to pull in 2 minutes; check that the cluster's nodes are
   `Ready`, then run this block again.
@@ -1920,16 +2006,18 @@ this block with `-n default` changed.
 
 ## 12. Back up Nexus
 
-Sonatype backs up the database with PostgreSQL's own tools and the files at about the same time
-([Backup and restore](https://help.sonatype.com/en/backup-and-restore.html)). This copies, to a
-new folder in your home: a dump of the database, Nexus's images and files (`blobs`), Nexus's node
-identity (`keystores`), Nexus's CA (`nexus-ca.json`) and the image names of Nexus and PostgreSQL
-(`images.txt`), then checks the copy. Make sure your machine has room for the `blobs` folder; step
-9's repository can hold up to 20 GiB. Run it when nobody pushes and no cleanup or compact task runs.
-
-`nexus-ca.json` holds the private key of Nexus's CA. Every cluster that pulls from Nexus trusts that
-CA (step 11), so whoever has the file can make certificates those clusters trust: keep the backup
-as safe as an administrator's password.
+Run this regularly, and before you change Nexus, to have a copy to restore (below); run it when
+nobody pushes and no cleanup or compact task runs. Sonatype backs up the database with PostgreSQL's
+own tools and the files at about the same time ([Backup and
+restore](https://help.sonatype.com/en/backup-and-restore.html)). This copies, to a new folder
+`nexus-backup-<date>-<time>` in your home: a dump of the database, Nexus's images and files
+(`blobs`), Nexus's node identity (`keystores`), Nexus's CA (`nexus-ca.json`) and the image names of
+Nexus and PostgreSQL (`images.txt`), then checks the copy; Nexus keeps running. You get a backup
+folder, a new one each run: keep it as safe as an administrator's password, because `nexus-ca.json`
+holds the private key of Nexus's CA, every cluster that pulls from Nexus (step 11) and every Mac or
+Windows machine that added it in step 10 trusts that CA, and whoever has the file can make
+certificates those clusters trust. Make sure your machine has room for the `blobs` folder; step 9's
+repository can hold up to 20 GiB. Set `VKS_CLUSTER` to Nexus's cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2030,7 +2118,11 @@ CA. Nexus must run the same images as when the backup was made (`images.txt`; th
   at the new address; nothing else changes. If it is an IP address, run steps 10 and 11 with the new
   address after the restore (step 10's push then says the tag exists).
 
-Put the CA back (new cluster only; after step 3, before step 5):
+Put the CA back (new cluster only; after step 3, before step 5). Run this so that step 5 reuses the
+backup's CA instead of making a new one. It creates the Secret `nexus-ca` in the namespace `nexus`
+from the backup's `nexus-ca.json`, and stops if a CA is there already. You get Nexus's old CA back,
+so those who push and pull keep trusting Nexus after the restore. Set `VKS_CLUSTER` to the new
+cluster's name and `NEXUS_BACKUP` to the backup's folder:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -2069,9 +2161,11 @@ else {
 `kubectl --kubeconfig <file> -n nexus delete certificate nexus-ca nexus-tls`, then the same with
 `secret nexus-ca nexus-tls`, run this block again, then step 5 again.
 
-Then restore (both cases). **This stops Nexus and deletes its database, images (blobs) and
-keystores, then puts the backup's in their place: anything pushed, created or changed since the
-backup is gone for good.** Set `NEXUS_BACKUP` to the backup's folder:
+Then run this to put the backup back (both cases above). It checks that Nexus runs the backup's
+images, then **stops Nexus and deletes its database, images (blobs) and keystores, then puts the
+backup's in their place: anything pushed, created or changed since the backup is gone for good.**
+You get Nexus as it was at the backup, with its users, passwords and images. Set `VKS_CLUSTER` to
+Nexus's cluster's name and `NEXUS_BACKUP` to the backup's folder:
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2266,16 +2360,13 @@ Sign in to Nexus with the admin password it had when the backup was made; step 1
 
 ## 13. Remove Nexus (optional)
 
-This deletes the namespace `nexus` with Nexus, PostgreSQL, every image and user, and the CA, then
-waits until the volumes are gone. VKS clusters that pull from Nexus can no longer do so; a new CA
-made by step 5 is a different CA: after a new install, give each pulling cluster the new CA under a
-new key (step 11, "Add a key to the Secret, or change the CA later"), or put the old CA back from a
-backup (step 12, Restore Nexus). cert-manager stays, and so do the Secrets and `osConfiguration`
-settings of step 11 (removing them updates the nodes again). To delete Nexus's cluster too, run
-this first and [CLUSTER.md step 8](CLUSTER.md#8-delete-the-cluster-optional) after it: a volume
-still in use when the cluster goes is left behind in the vSphere Namespace and stops its removal.
-Also left: `nexus-ca.pem`, the backups, the CA you trusted in step 10, and the Secret `nexus-pull`
-in each cluster from step 11.
+Run this when you no longer need Nexus. To delete Nexus's cluster too, run this first and
+[CLUSTER.md step 8](CLUSTER.md#8-delete-the-cluster-optional) after it: a volume still in use when
+the cluster goes is left behind in the vSphere Namespace and stops its removal. It deletes the
+namespace `nexus` with Nexus, PostgreSQL, every image and user, and the CA, then waits until the
+volumes are gone. VKS clusters that pull from Nexus can then no longer do so, and a new install
+makes a different CA (What stays, below). You get a cluster without Nexus, and no volume of Nexus
+left behind (what else stays: below). Set `VKS_CLUSTER` to Nexus's cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -2317,15 +2408,24 @@ if (-not $V) { "Nexus's volumes are gone" } else { "STILL THERE: $V" }
 `namespaces "nexus" not found` first.
 
 **If not:** `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not
-delete the cluster until it is gone.
+delete the cluster until it is gone. `STILL THERE: (the check failed …)`: kubectl could not read the
+cluster; the error above says why (`Unauthorized`: the file has expired, [get it
+again](LOGIN.md#get-the-vks-clusters-kubeconfig)). Then run the block again.
+
+**What stays:** VKS clusters that pull from Nexus can no longer do so; a new CA made by step 5 is a
+different CA: after a new install, give each pulling cluster the new CA under a new key (step 11,
+"Add a key to the Secret, or change the CA later"), or put the old CA back from a backup (step 12,
+Restore Nexus). cert-manager stays, and so do the Secrets and `osConfiguration` settings of
+step 11 (removing them updates the nodes again). Also left: `nexus-ca.pem`, the backups, the CA you
+trusted in step 10, and the Secret `nexus-pull` in each cluster from step 11.
 
 ## Reach Nexus by a DNS name through Contour (optional)
 
-(not tested with Nexus) With DNS names, the Contour add-on can take Nexus's HTTPS on a shared address instead of its own
-load balancer: install Contour as in
-[HEADLAMP.md step 10](HEADLAMP.md#10-reach-headlamp-by-a-dns-name-through-contour-optional-cluster-administrator), and
-give Nexus an HTTPProxy for its name with `timeoutPolicy` `response: infinity` and
-`idle: infinity` (Contour's default of 15 seconds breaks large pushes and pulls). The nodes of every
-VKS cluster that pulls must then resolve that name.
+(not tested with Nexus) With DNS names, the Contour add-on can take Nexus's HTTPS on a shared
+address instead of its own load balancer: install Contour as in [HEADLAMP.md step
+10](HEADLAMP.md#10-reach-headlamp-by-a-dns-name-through-contour-optional-cluster-administrator), and
+give Nexus an HTTPProxy for its name with `timeoutPolicy` `response: infinity` and `idle: infinity`
+(Contour's default of 15 seconds breaks large pushes and pulls). The nodes of every VKS cluster that
+pulls must then resolve that name.
 
 Back to [README](../README.md).

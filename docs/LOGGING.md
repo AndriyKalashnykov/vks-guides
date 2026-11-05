@@ -10,9 +10,12 @@
 > - [Set up the Windows system to collect logs in VCF Operations](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/log-analysis/overview-of-log-management-agents/install-fluent-bit-on-windows-server-for-vcf-operations-for-logs.html) (the Fluent Bit output this guide uses)
 > - [Agent Authentication for Log Ingestion](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/log-analysis/overview-of-log-management-agents/agent-authentication-for-log-ingestion.html)
 
-This installs Broadcom's Fluent Bit add-on (Product tier) on a VKS cluster. It runs on every
-node and sends the cluster's logs over HTTPS, with certificate verification, to Log Management
-in VCF Operations, where they appear under **Operate** → **Logs**.
+This installs Broadcom's Fluent Bit add-on (Product tier) on a VKS cluster. Fluent Bit is a small
+program that collects the logs of every app on a node and sends them on; an add-on is software
+that Broadcom packages and tests for VKS, installed into a cluster from the Supervisor
+([ADDONS.md](ADDONS.md)). Fluent Bit runs on every node and sends the cluster's logs over HTTPS,
+with certificate verification, to Log Management in VCF Operations, where they appear
+under **Operate** → **Logs**.
 
 The blocks keep their files in `~/.config/vks-guides/logging` (PowerShell:
 `$HOME\.config\vks-guides\logging`).
@@ -41,8 +44,12 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 1. Find the Fluent Bit release
 
-This shows the Fluent Bit versions you can install, and lists the add-ons your VKS cluster already
-has (`fluent-bit` should not be among them). You copy a version name from it for step 4.
+Run this first, to pick the Fluent Bit version that step 4 installs. It shows the Fluent Bit
+versions your Supervisor offers and the add-ons your VKS cluster already has, and changes nothing on
+the Supervisor or the cluster. It makes your Supervisor login (`SUPERVISOR_CONTEXT`) the active one
+for the VCF CLI and in its kubeconfig file, and that stays after the block. You get the version
+names: copy one for step 4. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace and `VKS_CLUSTER`
+to the VKS cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -92,12 +99,15 @@ one's name for step 4. The cluster's list has no `fluent-bit`.
 ## 2. Check Log Management's certificate
 
 Fluent Bit sends logs only to a server it trusts, so first check that you have the right
-certificate. Save the CA certificate from your administrator (the file that proves Log
-Management's certificate is genuine) as `~/.config/vks-guides/logging/logs-ca.crt` (PowerShell:
-`$HOME\.config\vks-guides\logging\logs-ca.crt`). Then run this. It:
+certificate. Save the CA certificate from your administrator (the file that proves Log Management's
+certificate is genuine) as `~/.config/vks-guides/logging/logs-ca.crt` (PowerShell:
+`$HOME\.config\vks-guides\logging\logs-ca.crt`). Then run this. It changes nothing, and:
 
 - prints the certificate's fingerprint, a short code to compare with your administrator's;
 - connects to Log Management and checks that it answers with a certificate this CA vouches for.
+
+You then know that this CA and this name work; step 3 uses the name, step 5 the CA. Set `LOGS_FQDN`
+to Log Management's DNS name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -145,8 +155,8 @@ if (-not (Test-Path $CA)) {
 
 </details>
 
-**Expect:** the CA's `subject=` and `sha256 Fingerprint=…` (`SHA256 Fingerprint=` on macOS), then an `http=` code other than
-`000`: the connection and the certificate are good, whatever the code.
+**Expect:** the CA's `subject=` and `sha256 Fingerprint=…` (`SHA256 Fingerprint=` on macOS), then an
+`http=` code other than `000`: the connection and the certificate are good, whatever the code.
 
 **If not:** `http=000`: this machine cannot reach the name on port 9543, or Log Management's
 certificate was not signed by this CA or not issued for this name. Run
@@ -155,10 +165,11 @@ read the error; ask your administrator for the right CA, or a certificate issued
 
 ## 3. Write the values
 
-This writes the settings file `values.yaml`, which tells Fluent Bit where to send the logs: to
-Log Management at `LOGS_FQDN`, over HTTPS, checking its certificate with the CA from step 2. Set
-`LOGS_FQDN` to Log Management's DNS name; the block writes nothing while it holds the example
-name. Step 4 installs Fluent Bit with this file.
+Run this after step 2, to tell Fluent Bit where to send the logs. It writes the settings file
+`values.yaml` on this machine: send to Log Management at `LOGS_FQDN`, over HTTPS, checking its
+certificate with the CA from step 2. Running it again replaces the file. Step 4 installs Fluent
+Bit with this file. Set `LOGS_FQDN` to Log Management's DNS name; the block writes nothing while it
+holds the example name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -241,9 +252,12 @@ fluent_bit:
 
 ## 4. Install the add-on
 
-This installs Broadcom's Fluent Bit add-on in your VKS cluster, with the settings from step 3.
-Fluent Bit then runs on every node and collects its logs. Set `FLUENT_BIT_RELEASE` to the version
-name you copied in step 1.
+Run this after step 3, to put Fluent Bit in your VKS cluster. It asks the Supervisor to install
+Broadcom's Fluent Bit add-on in the cluster, with the settings from step 3. It makes your Supervisor
+login (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and in its kubeconfig file, and that
+stays after the block. The Supervisor then sets Fluent Bit up on every node; it starts sending once
+step 5 gives it the CA. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 1, and `FLUENT_BIT_RELEASE`
+to the version name you copied there.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -291,12 +305,17 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 ## 5. Give Fluent Bit the CA
 
-Fluent Bit does not start until it has the CA certificate from step 2. This block:
+Run this right after step 4: Fluent Bit does not start until it has the CA certificate from
+step 2. It uses the VKS cluster's kubeconfig from LOGIN.md (`~/.kube/<VKS_CLUSTER>.kubeconfig`).
+Set `VKS_CLUSTER` as in step 1. This block:
 
-- waits until step 4 has created the namespace `tanzu-system-logging` (up to 10 minutes);
+- waits until step 4 has created `tanzu-system-logging`, a namespace inside the VKS cluster (a
+  folder for its objects, not a vSphere Namespace), for up to 10 minutes;
 - stores the certificate there as `tls-ca-cert`, a Kubernetes Secret (an object that holds
-  private data in the cluster);
+  private data in the cluster); on a rerun it keeps the Secret that is there;
 - waits until Fluent Bit runs on every node.
+
+You then have Fluent Bit sending the logs; step 6 checks that they arrive.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -364,8 +383,11 @@ one that is not `Running`.
 
 ## 6. Check that logs arrive
 
-This runs a pod that writes a line with a unique word into the cluster's logs, and shows what
-Fluent Bit reports about sending.
+Run this after step 5 (and after step 7), to prove that the logs reach VCF Operations. It runs a
+pod (the smallest thing Kubernetes runs: here one container) in the cluster's namespace `default`
+that writes a line with a unique word into the cluster's logs, waits 30 seconds, shows the pod's
+log and what Fluent Bit reports about sending, and deletes the pod. You get the word to search for
+in VCF Operations, as the text below the block says. Set `VKS_CLUSTER` as in step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -465,11 +487,14 @@ minutes.
 
 ## 7. Change the destination (optional)
 
-This sends the logs to a different Log Management. First run steps 2 and 3 with the new name.
-Then this block puts the new CA certificate in the cluster, gives Fluent Bit the new settings and
-restarts it. If you also send logs to Loki ([OBSERVABILITY.md](OBSERVABILITY.md) step 5), this
-block replaces those settings too: run that step 5 again afterwards, with `LOGS_FQDN` set to the
-new name.
+Run this when the logs must go to a different Log Management, or its CA changed. First run steps 2
+and 3 with the new CA or name. Then this block replaces the CA certificate in the Secret
+`tls-ca-cert`, asks the Supervisor to give Fluent Bit the new settings from step 3, and restarts
+Fluent Bit. It makes your Supervisor login (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and
+in its kubeconfig file, and that stays after the block. You then have the logs going to the new Log
+Management: check with step 6. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 1. If you also send
+logs to Loki ([OBSERVABILITY.md](OBSERVABILITY.md) step 5), this block replaces those settings too:
+run that step 5 again afterwards, with `LOGS_FQDN` set to the new name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -555,8 +580,11 @@ then run step 6 again.
 
 ## 8. Uninstall (optional)
 
-This removes the Fluent Bit add-on from your VKS cluster, so its logs stop going to VCF
-Operations.
+Run this when the cluster's logs should stop going to VCF Operations. It asks the Supervisor to
+remove the Fluent Bit add-on from your VKS cluster. It makes your Supervisor login
+(`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and in its kubeconfig file, and that stays
+after the block. You then have a cluster without Fluent Bit. Set `VKS_NAMESPACE` and `VKS_CLUSTER`
+as in step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 

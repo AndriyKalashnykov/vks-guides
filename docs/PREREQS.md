@@ -43,8 +43,8 @@ sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
 
 **If not:** `sudo: command not found`: run it as `root`, without `sudo`.
 
-On other distributions (except AlmaLinux, Photon OS and Arch Linux, below), install the same five packages
-with your package manager.
+On other distributions (except AlmaLinux, Photon OS and Arch Linux, below), install the same five
+packages with your package manager.
 
 ## AlmaLinux 10
 
@@ -66,18 +66,11 @@ sudo dnf install -y curl tar unzip jq openssl
 
 ## Photon OS 5
 
-Run this once on Photon OS 5. This refreshes the package list and
-installs the tools the guides use, plus basic tools Photon OS lacks by default (`coreutils`,
-`findutils`, `gawk`, `diffutils`, `sed`, `grep`).
-
-It installs `libarchive` instead of `unzip`. Photon OS 5's own package repositories have `unzip`,
-but recent Photon OS VMs deployed through a vSphere Namespace's VM Service are set to a shorter
-package list from Broadcom, without `unzip`, so `sudo tdnf install -y unzip` can fail there. The
-guides unpack zip files with `unzip` where it is installed, and otherwise with `libarchive`'s
-`bsdtar`, which gives the same files.
-
-The line can update the SSH server (keep `openssh openssh-socket` in it); its end restarts it, so
-new SSH logins work. Keep this session open until a new one logs in.
+Run this once on Photon OS 5. This refreshes the package list and installs the tools the guides
+use (`libarchive` in place of `unzip`, see below), plus basic tools Photon OS lacks by default
+(`coreutils`, `findutils`, `gawk`, `diffutils`, `sed`, `grep`). Afterwards the other guides' blocks
+find them. The line can update the SSH server (keep `openssh openssh-socket` in it); its end
+restarts it, so new SSH logins work. Keep this session open until a new one logs in.
 
 ```sh
 sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificates curl tar libarchive jq openssl coreutils findutils gawk diffutils sed grep openssh openssh-socket && sudo /usr/sbin/sshd -t && sudo systemctl try-restart sshd.service
@@ -95,6 +88,12 @@ an `ssh` from a new terminal logs in. Then run [Check](#check).
   when you never changed `/etc/ssh/sshd_config`. Log in as another user, or set
   `PermitRootLogin` and `AllowTcpForwarding` there as you need and run
   `sudo /usr/sbin/sshd -t && sudo systemctl try-restart sshd.service`.
+
+**`libarchive` instead of `unzip`:** Photon OS 5's own package repositories have `unzip`, but
+recent Photon OS VMs deployed through a vSphere Namespace's VM Service are set to a shorter package
+list from Broadcom, without `unzip`, so `sudo tdnf install -y unzip` can fail there. The guides
+unpack zip files with `unzip` where it is installed, and otherwise with `libarchive`'s `bsdtar`,
+which gives the same files.
 
 ## Arch Linux
 
@@ -311,8 +310,8 @@ sudo dnf install -y podman
 ```
 
 docker, to build and push images with docker: this adds Docker's own repository (AlmaLinux has no
-docker package), installs and starts docker, and adds you to the `docker` group. Afterwards, once you log out and back
-in, you run docker without `sudo`:
+docker package), installs and starts docker, and adds you to the `docker` group. Afterwards, once
+you log out and back in, you run docker without `sudo`:
 
 ```sh
 sudo dnf install -y dnf-plugins-core && sudo dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo && sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin && sudo usermod -aG docker "$USER" && sudo systemctl enable --now docker && echo "docker installed: log out and back in"
@@ -469,10 +468,11 @@ foreach ($e in 'podman', 'docker') {
 ## kubelogin (optional)
 
 Only for [KEYCLOAK.md](KEYCLOAK.md): run this once for each person who logs in to a VKS
-cluster with Keycloak, on the machine they log in from. This
-downloads kubelogin `KUBELOGIN_VERSION` from GitHub, checks it against its published checksum, and
-installs it as `kubectl-oidc_login`, the name under which kubectl runs it as `kubectl oidc-login`.
-Install [kubectl](KUBECTL.md) first.
+cluster with Keycloak, on the machine they log in from. kubelogin is a kubectl plugin (an extra
+command for kubectl) that does that Keycloak login for kubectl. This downloads kubelogin v1.36.4
+(`KUBELOGIN_VERSION`) from GitHub, checks it against its published checksum, and installs it as
+`kubectl-oidc_login`, the name under which kubectl runs it as `kubectl oidc-login`. Install
+[kubectl](KUBECTL.md) first.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

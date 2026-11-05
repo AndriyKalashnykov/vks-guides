@@ -61,15 +61,17 @@ ServiceAccount is a login for a tool or a team rather than a person; kubelogin i
 that asks for a sign-in in a browser.
 
 Every file the guides write is readable only by you (Linux, macOS: `-rw-------`; Windows: your
-user, `SYSTEM` and `Administrators`, until [step 3](#3-hand-a-file-over) leaves only your user). The sign-ins of the last two rows are kept elsewhere, also readable only by you: kubelogin's in `~/.kube/cache/oidc-login`,
-`vcf`'s in `~/.config/vcf/pinniped`. Those folders are never sent.
+user, `SYSTEM` and `Administrators`, until [step 3](#3-hand-a-file-over) leaves only your user).
+The sign-ins of the last two rows are kept elsewhere, also readable only by you: kubelogin's in
+`~/.kube/cache/oidc-login`, `vcf`'s in `~/.config/vcf/pinniped`. Those folders are never sent.
 
 ## 1. See what a file holds
 
 Run this before you use a kubeconfig you were given, or before you send one, to know what it is
 worth. It lists the file's permissions and the lines that show its server and its kind of login,
 without printing any secret, and changes nothing. You then know who may read the file and whether
-it holds a key, a token or a sign-in command.
+it holds a key, a token or a sign-in command, and can use it (step 2) or send it (step 3). Set
+`KUBECONFIG_FILE` to the file.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -122,7 +124,8 @@ file, never by email, chat or a shared folder; then delete your copy. The person
 
 The person who received the file runs this once after saving it, so that no other user of their
 machine can read it. It makes the file readable and writable only by them (Windows: only their user
-stays on the file) and changes nothing else. Afterwards it is ready for [Use a file](#2-use-a-file):
+stays on the file) and changes nothing else. Afterwards it is ready for [Use a file](#2-use-a-file).
+Set `HANDOUT` to the saved file:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -157,13 +160,9 @@ once. It copies the files in `FILES`, after your `~/.kube/config` if you have on
 readable only by you and lists its contexts; only then does it replace `~/.kube/config`, keeping
 the old one as `~/.kube/config.before-merge`. It stops, changing nothing, when a file is missing or
 two files hold a context, cluster or user of the same name with different content. Afterwards
-`kubectl --context <name>` reaches each merged cluster.
-
-Merge VKS cluster files and hand-outs only. Not `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` or any
-file a `vcf` login writes (`vcf context list`): `vcf` renews only its own file, so the copy stops
-working. The copy does not follow later changes to a file: after a new file for the same cluster,
-delete the old entries the block names (`kubectl config delete-context <name>`, `delete-cluster`,
-`delete-user`; `kubectl config get-contexts` shows which contexts use them) and merge again.
+`kubectl --context <name>` reaches each merged cluster. Set `FILES` to VKS cluster files and
+hand-outs only, not `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` or any file a `vcf` login writes
+(`vcf context list`): `vcf` renews only its own file, so the copy stops working.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -248,11 +247,16 @@ cluster.
 - `SAME NAME, DIFFERENT CONTENT IN TWO FILES: …` (a context, cluster or user): the first file's entry
   would be used for both, so a context could reach the wrong cluster or sign-in. Keep that file on its
   own and use it with `--kubeconfig` (renaming the context does not help: its cluster and user keep
-  their names). If the entry is an old one already in `~/.kube/config`, delete it there as above and
-  run this again.
+  their names). If the entry is an old one already in `~/.kube/config`, delete it there as in
+  **A new file for a merged cluster** below and run this again.
 - To undo: `mv ~/.kube/config.before-merge ~/.kube/config` (Windows:
   `Move-Item -Force $HOME\.kube\config.before-merge $HOME\.kube\config`); if you had no
   `~/.kube/config` before, delete it instead. A second merge replaces `config.before-merge`.
+
+**A new file for a merged cluster:** `~/.kube/config` does not follow later changes to a merged
+file. After a new file for the same cluster, delete the old entries the block names
+(`kubectl config delete-context <name>`, `delete-cluster`, `delete-user`;
+`kubectl config get-contexts` shows which contexts use them) and merge again.
 
 ## How `vcf` and `kubectl` keep your logins
 
@@ -381,14 +385,11 @@ Run the block below only if you logged in with `KUBECONFIG` not set: `kubectl` w
 `--kubeconfig` may then talk to the Supervisor instead of your own clusters. It saves a copy of
 `~/.kube/config` as `~/.kube/config.before-cleanup`, makes your own context the current one again,
 and removes the Supervisor's contexts, cluster and user from the file. Afterwards `kubectl` without
-`--kubeconfig` talks to your own cluster again. Run it in a new terminal, not one where you ran *Make it the default in this terminal*, so that it sees the
-same files as your login did.
-
-1. Run the block unchanged: it lists your contexts, then stops at the switch, because
-   `my-old-context` does not exist. Nothing is removed.
-2. Set `MY_CONTEXT` to your old context from that list and `SUPERVISOR_CONTEXT` to the name you
-   logged in with, and run it again.
-3. Log in again as [LOGIN.md](LOGIN.md) shows.
+`--kubeconfig` talks to your own cluster again, and you log in again as [LOGIN.md](LOGIN.md)
+shows. Run it in a new terminal (not one where you ran *Make it the default in this terminal*: there
+`KUBECONFIG` names a VKS cluster's file), unchanged first: it lists your contexts and stops at the
+switch (`my-old-context` does not exist), removing nothing. Then set `MY_CONTEXT` to your old
+context from that list and `SUPERVISOR_CONTEXT` to the name you logged in with, and run it again.
 
 **Linux, macOS, WSL (bash or zsh):**
 

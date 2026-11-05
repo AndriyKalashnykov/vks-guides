@@ -60,21 +60,16 @@ v3.7.2).
 ## 2. Install vcf and its plugins
 
 Run this once for each user on each machine you will log in from (the plugins go into your home
-folder), after you downloaded both files: the other guides need `vcf` and its plugins. It checks the two files against their SHA2 values, installs
-`vcf`, then installs its plugins from the bundle. If a file does not match, it installs nothing.
-Afterwards `vcf` and your plugins are installed, and the block prints their versions.
-
-1. Copy the block for your OS into a text editor.
-2. Paste the two SHA2 values between the quotes on its first two lines.
-3. If the files are not in `~/Downloads`, change `DOWNLOAD_DIR` (in WSL, see
-   [PREREQS.md](PREREQS.md#wsl-2-with-ubuntu)).
-4. Paste the whole block into the terminal. Values you set in the terminal before do not count:
-   the block's first lines set them again.
-
-`vcf` goes into `INSTALL_DIR`, or into `~/.local/bin` if that folder needs `sudo` and `sudo` would
-ask for a password (see [PREREQS.md](PREREQS.md#sudo-optional)).
-
-`VCF_CLI_SHA256` and `VCF_PLUGINS_SHA256`: the SHA2 values of the two files, from the download page.
+folder), after you downloaded both files: the other guides need `vcf` and its plugins. It checks the
+two files against their SHA2 values, installs `vcf` into `INSTALL_DIR` (or `~/.local/bin` when that
+needs a `sudo` password: see [PREREQS.md](PREREQS.md#sudo-optional)), then installs its plugins
+from the bundle. If a file does not match, it installs nothing. Afterwards `vcf` and your plugins
+are installed, and the block prints their versions; then do step 3. Copy the block for your OS
+into a text editor, paste the two SHA2 values from step 1 between the quotes on its first two
+lines (`VCF_CLI_SHA256`: the CLI file, `VCF_PLUGINS_SHA256`: the plugin bundle), change
+`DOWNLOAD_DIR` in the block if the files are not in `~/Downloads` (in WSL, see
+[PREREQS.md](PREREQS.md#wsl-2-with-ubuntu); a value set in the terminal before does not count),
+then paste the whole block into the terminal.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -214,16 +209,16 @@ Lines about the `essential plugins` or `telemetry:v9.0.2` are harmless; the next
 
 ## 3. Stop the essentials message
 
-Run this once for each user on each machine, right after the install, so that `vcf` commands stop printing two
-extra lines first. Once `vcf` has been used on a machine, every command may first print `The vcf
-cli essential plugins have not been installed …` and `Failed to install plugin
-'telemetry:v9.0.2'`: `vcf` looks online for a plugin version Broadcom has not published. The
-command still runs. Setting `VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION` to `v9.1.1` stops the
-lookup; Broadcom does not document this variable. This sets it for this terminal and for new ones: it adds one line to `~/.zshrc` or
-`~/.bashrc` (`~/.bash_profile` on macOS bash; on Linux bash it also creates `~/.bash_profile` when
-there is none of `~/.bash_profile`, `~/.bash_login` and `~/.profile`); on Windows it sets a user environment
-variable. Afterwards `vcf` commands no longer print those two lines, in this terminal and in the
-ones you open later.
+Run this once for each user on each machine, right after the install, so that `vcf` commands stop
+printing two extra lines first. Once `vcf` has been used on a machine, every command may first
+print `The vcf cli essential plugins have not been installed …` and `Failed to install plugin
+'telemetry:v9.0.2'`; the command still runs. The block sets
+`VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION` to `v9.1.1` for this terminal and for new ones: it adds
+one line to `~/.zshrc` or `~/.bashrc` (`~/.bash_profile` on macOS bash; on Linux bash it also
+creates `~/.bash_profile` when there is none of `~/.bash_profile`, `~/.bash_login` and
+`~/.profile`); on Windows it sets a user environment variable. Afterwards `vcf` commands no longer
+print those two lines, in this terminal and in the ones you open later; running it again changes
+nothing.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -258,6 +253,9 @@ no `essential plugins` or `telemetry:v9.0.2` line before them.
 
 **If not:** the lines still appear in a terminal opened before this block: close it; terminals
 opened after it have the setting.
+
+**Why the lines appear:** `vcf` looks online for a plugin version Broadcom has not published; the
+variable stops that lookup. Broadcom does not document this variable.
 
 If you logged in with `vcf` before these guides, without `KUBECONFIG` set, see
 [If you already use kubectl with other clusters](KUBECONFIG.md#if-you-already-use-kubectl-with-other-clusters)

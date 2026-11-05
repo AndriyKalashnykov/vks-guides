@@ -11,12 +11,14 @@
 
 Headlamp is a web page for looking at and changing what runs in a Kubernetes cluster: workloads,
 their logs, configuration, events, a map of how objects connect. This installs Broadcom's Headlamp
-add-on (Ecosystem tier: Broadcom supports its packaging and upgrades; [what add-ons are](ADDONS.md))
-in a VKS cluster, logs in with the token of your own SSO user, and, if you choose, gives people
-accounts with only the rights they need.
+add-on (a component Broadcom packages for VKS clusters and installs from the Supervisor; Ecosystem
+tier: Broadcom supports its packaging and upgrades; [what add-ons are](ADDONS.md)) in a VKS cluster,
+logs in with the token of your own SSO user, and, if you choose, gives people accounts with only the
+rights they need.
 
-Headlamp has no users of its own. Whoever opens it pastes a token, and Headlamp then acts with
-exactly that token's rights: someone with a read-only token can look, not change.
+Headlamp has no users of its own. Whoever opens it pastes a token (a long string that works as a
+login to the cluster), and Headlamp then acts with exactly that token's rights: someone with a
+read-only token can look, not change.
 
 ## Prerequisites
 
@@ -51,8 +53,10 @@ Only for the Kubescape plugin (step 11):
 
 ## 1. Choose the Headlamp release (cluster administrator)
 
-Run this first: step 2 needs the name of a Headlamp release, and this lists the ones your
-Supervisor offers. It changes nothing.
+Run this first: step 2 needs the name of a Headlamp release, and this lists the ones your Supervisor
+offers. The block first makes your Supervisor login (`SUPERVISOR_CONTEXT` from LOGIN.md) the active
+one for the VCF CLI and in its kubeconfig file, and that stays after the block. It changes nothing
+else. Copy the release you choose for step 2.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -91,11 +95,14 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 ## 2. Install cert-manager and Headlamp (cluster administrator)
 
-Run this once, after step 1, to install Headlamp in the cluster.
-Headlamp's add-on gets its HTTPS certificate from cert-manager, another add-on, so this installs
-cert-manager first when the cluster does not have it. Set `VKS_NAMESPACE` to the cluster's vSphere
-Namespace, `VKS_CLUSTER` to the cluster's name, and `HEADLAMP_RELEASE` to the release from step 1.
-The block waits until Headlamp runs, then shows its address.
+Run this once, after step 1, to install Headlamp in the cluster. Headlamp's add-on gets its HTTPS
+certificate from cert-manager, another add-on, so this installs cert-manager first when the cluster
+does not have it. It makes your Supervisor login the active one for the VCF CLI and in its
+kubeconfig file, as step 1 does (that stays), and reads the cluster with its administrator
+kubeconfig (the file kubectl reads to reach the cluster), `~/.kube/<cluster>.kubeconfig`. The block
+waits until Headlamp runs, then shows its address; run it again and it skips what is already
+installed. Next: step 3. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to
+the cluster's name, and `HEADLAMP_RELEASE` to the release from step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -221,8 +228,9 @@ installed in the cluster …`, `deployment.apps/headlamp condition met`, then th
 
 **If not:**
 - `STOPPED: … not the add-on`: someone installed cert-manager another way; use another cluster.
-- `FAILED: Headlamp did not reach the cluster` or `did not start`: `vcf addon install list --cluster-name <cluster>
-  -n <namespace>` shows `READY`; with `False`, `vcf addon install get headlamp --cluster-name
+- `FAILED: Headlamp did not reach the cluster` or `did not start`: `vcf addon install list
+  --cluster-name <cluster> -n <namespace>` shows `READY`; with `False`, `vcf addon install get
+  headlamp --cluster-name
   <cluster> -n <namespace>` says why. `Expected to find kind 'cert-manager.io/v1/Issuer'`:
   cert-manager was not ready yet; the add-on retries by itself within minutes.
 - `FAILED: … add-on` with `Forbidden`: you need the edit or owner role on the vSphere Namespace.
@@ -237,22 +245,9 @@ installed in the cluster …`, `deployment.apps/headlamp condition met`, then th
 
 Run this once after the install, before you give anyone Headlamp's address: it checks that
 Headlamp passes a request without a login to the cluster, which refuses it, and shows two powerful
-settings the add-on made, so you know what to protect. It changes nothing.
-
-The two settings:
-
-- Headlamp's own account (the ServiceAccount `headlamp`) has the cluster's administrator role,
-  `cluster-admin`. Headlamp does not use it for what people see and do: it uses the token each
-  person pastes (step 7).
-- Its namespace `headlamp` (a namespace inside the VKS cluster, not a vSphere Namespace) runs
-  without pod security limits (`privileged`).
-
-Anyone who may create pods or tokens in the namespace `headlamp` can use that account and so
-controls the cluster. Give no one but cluster administrators rights in `headlamp`: these are
-Kubernetes role bindings in the cluster, not vCenter permissions.
-
-The block prints Headlamp's address, the two settings, and the answer to a request without a token,
-which must be a refusal.
+settings the add-on made (explained below the block), so you know what to protect. It changes
+nothing. The block prints Headlamp's address, the two settings, and the answer to a request
+without a token, which must be a refusal. Next: step 4. Set `VKS_CLUSTER` to the cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -315,6 +310,18 @@ privileged`, `Headlamp's own account has: cluster-admin`, and `a request without
 tell Broadcom support. `HTTP 000`: this machine does not reach the address; the people who will
 use Headlamp need that address too.
 
+**The two settings:**
+
+- Headlamp's own account (the ServiceAccount `headlamp`: a Kubernetes login for a program, not a
+  person) has the cluster's administrator role, `cluster-admin`. Headlamp does not use it for what
+  people see and do: it uses the token each person pastes (step 7).
+- Its namespace `headlamp` (a namespace inside the VKS cluster, not a vSphere Namespace) runs
+  without pod security limits (`privileged`).
+
+Anyone who may create pods or tokens in the namespace `headlamp` can use that account and so
+controls the cluster. Give no one but cluster administrators rights in `headlamp`: these are
+Kubernetes role bindings in the cluster, not vCenter permissions.
+
 ## 4. Check Headlamp's certificate and send its address (cluster administrator)
 
 A vCenter user who can browse the vSphere Namespace in the vSphere Client sees Headlamp's address
@@ -326,13 +333,12 @@ its **External IP** is the address.
 ![Network Service of the vSphere Namespace: the Load Balancer with label service.name: headlamp and its External IP](img/headlamp/00-vsphere-client-address.png)
 
 Run this before you send Headlamp's address to the people who will use it: their browser will warn
-about Headlamp's certificate, and the fingerprint this prints lets them check that the warning is
-only because the certificate is self-signed.
-The block below prints the same address (`open https://<address>/`) and checks its certificate.
-That certificate is self-signed, which no browser trusts, so the browser warns; the block compares
-the certificate the address shows with the one in the cluster, so you know the warning is only
-about that. It changes nothing. It needs the cluster's kubeconfig, so the administrator runs
-it and sends the address and the fingerprint to each person who will use Headlamp.
+about Headlamp's certificate, because it is self-signed, which no browser trusts. The block prints
+the same address as the vSphere Client (`open https://<address>/`) and compares the certificate
+the address shows with the one in the cluster, so the fingerprint it prints lets them check that
+the warning is only about that. It changes nothing. It needs the cluster's kubeconfig, so the
+administrator runs it and sends the address and the fingerprint to each person who will use
+Headlamp; they do step 5. Set `VKS_CLUSTER` to the cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -408,7 +414,8 @@ browser trusts it until you accept it, so the first visit warns that the connect
 <img src="img/headlamp/01-cert-warning.png" width="600" alt="Chrome warns: Your connection is not private, NET::ERR_CERT_AUTHORITY_INVALID">
 
 Check the fingerprint: click **Not secure** left of the address, then the certificate details; the
-SHA-256 fingerprint must be the one from step 4. Then click **Advanced** and **Proceed to … (unsafe)**:
+SHA-256 fingerprint must be the one from step 4. Then click **Advanced** and **Proceed to …
+(unsafe)**:
 
 <img src="img/headlamp/02-cert-warning-advanced.png" width="600" alt="Advanced shows: Proceed to 192.168.101.148 (unsafe)">
 
@@ -426,9 +433,9 @@ kubectl and jq: PREREQS.md).
 First log in to the cluster with your SSO user, as in
 [ACCESS.md](ACCESS.md#the-persons-own-sso-account) step 2a (VCF CLI) or steps 2b to 2d (kubectl
 vSphere plugin), so that `~/.kube/<cluster>-<SSO_USER>.kubeconfig` holds the login. Set `SSO_USER`
-in the blocks below to the name that login used, letter for letter as in ACCESS.md step 2a or 2d. The
-token works only for this cluster and ends 10 hours after that login; the length cannot be changed,
-and the block prints when it ends.
+in the blocks below to the name that login used, letter for letter as in ACCESS.md step 2a or 2d.
+The token works only for this cluster and ends 10 hours after that login; the length cannot be
+changed, and the block prints when it ends.
 
 ### 6.1 As the cluster administrator
 
@@ -443,7 +450,9 @@ For daily work, make yourself a `view` or `edit` account in step 8 and give its 
 
 Run this when you want to open Headlamp as yourself, after the SSO login above: Headlamp needs your
 login's token, and this prints it for step 7, with a warning first when that user is an
-administrator. It changes nothing.
+administrator. It reads the token from `~/.kube/<cluster>-<SSO_USER>.kubeconfig` and changes
+nothing; run it again to print the token again while the login lasts. Set `VKS_CLUSTER` to the
+cluster's name and `SSO_USER` to your SSO user name, as above.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -546,7 +555,10 @@ user's rights. The token ends 10 hours after the login; nobody can end it sooner
 user's rights away (ACCESS.md). This block stops for an administrator: use 6.1.
 
 Run this when you want to open Headlamp, after the SSO login above: Headlamp needs your login's
-token, and this prints it for step 7. It changes nothing.
+token, and this prints it for step 7. It reads the token from
+`~/.kube/<cluster>-<SSO_USER>.kubeconfig` and changes nothing; run it again to print the token
+again while the login lasts. Set `VKS_CLUSTER` to the cluster's name and `SSO_USER` to your SSO
+user name, as in step 6.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -660,8 +672,8 @@ Headlamp shows its own text in the browser's language; **Settings** (gear) → *
 **If not:**
 - `Unauthorized` or back at the login page: the token has ended or its account was deleted; log in
   with SSO again (step 6), or ask for a new token (step 8.2).
-- The Namespaces list is empty: the account cannot list namespaces (step 8.1 gives an account limited
-  to one namespace that right). Or set it yourself: **Settings** → **Cluster** → **Allowed
+- The Namespaces list is empty: the account cannot list namespaces (step 8.1 gives an account
+  limited to one namespace that right). Or set it yourself: **Settings** → **Cluster** → **Allowed
   namespaces**, add your namespace:
 
   ![Cluster Settings: Allowed namespaces with headlamp-demo](img/headlamp/16-allowed-namespaces.png)
@@ -690,19 +702,16 @@ names (role `headlamp-namespace-lister`), so that Headlamp's namespace list work
 inside the other namespaces. Give no account made here `admin` or `cluster-admin` (an
 administrator logs in as in step 6.1).
 
-`ACCOUNT`: the person's or team's name (a-z, 0-9, -). `ROLE`: `view` or `edit`. `ACCESS_NAMESPACE`:
-a namespace inside the VKS cluster, not a vSphere Namespace (it is not listed under Supervisor
-Management → Namespaces), created if it is missing; empty for every namespace (view only).
-
 Run this once for each person or team who will use Headlamp without their own SSO login, and for
-yourself when you want a login with fewer rights than your SSO user (step 6.1).
-The block makes the ServiceAccount `ACCOUNT` in the namespace `headlamp`. With `ACCESS_NAMESPACE`
-empty it adds the cluster-wide ClusterRoleBinding `headlamp-<ACCOUNT>` (a binding gives an
-account a role, as a permission does on a vCenter object; the Cluster… forms apply to the whole
-cluster). Otherwise it creates
-`ACCESS_NAMESPACE` if it is missing, the cluster-wide ClusterRole `headlamp-namespace-lister` and
-ClusterRoleBinding `headlamp-<ACCOUNT>-namespaces`, and the RoleBinding `headlamp-<ACCOUNT>` in
-`ACCESS_NAMESPACE`.
+yourself when you want a login with fewer rights than your SSO user (step 6.1). It makes the account
+in Headlamp's namespace `headlamp` and gives it the rights of the row you picked, through a binding
+(it gives an account a role, as a permission does on a vCenter object). For one namespace it creates
+that namespace if it is missing, and lets the account list the namespaces' names. Then it prints
+what the account may and may not do. Run it again and it changes nothing. Next: its token (step
+8.2). Set `VKS_CLUSTER` to the cluster's name, `ACCOUNT` to the person's or team's name (a-z, 0-9,
+-), `ROLE` to `view` or `edit`, and `ACCESS_NAMESPACE` to a namespace inside the VKS cluster, not a
+vSphere Namespace (it is not listed under Supervisor Management → Namespaces), or empty for every
+namespace (view only).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -784,20 +793,28 @@ if (-not (($ROLE -eq 'view') -or ($ROLE -eq 'edit' -and $ACCESS_NAMESPACE)) -or 
 
 **Expect:** `serviceaccount/team-a created`, the bindings `created`, and for a namespace that did
 not exist yet `namespace/team-a created` (all `unchanged` on a second run; a namespace you did not
-expect means a typo). For `edit` in `team-a`: `may read pods in team-a: yes`, `may change deployments in team-a:
-yes`, `may read pods in other namespaces: no`. For `view` everywhere: `yes`, `no`, `no`.
+expect means a typo). For `edit` in `team-a`: `may read pods in team-a: yes`, `may change
+deployments in team-a: yes`, `may read pods in other namespaces: no`. For `view` everywhere: `yes`,
+`no`, `no`.
 
 **If not:** `STOPPED: …`: fix the three values at the top. A `yes` where you expect `no`: the
 account has another binding; `kubectl --kubeconfig <admin file> get rolebindings,clusterrolebindings
 -A -o wide | grep headlamp:<account>` lists them.
 
+**What it makes:** the ServiceAccount `ACCOUNT` in the namespace `headlamp`. With
+`ACCESS_NAMESPACE` empty, the cluster-wide ClusterRoleBinding `headlamp-<ACCOUNT>` (the Cluster…
+forms apply to the whole cluster). Otherwise `ACCESS_NAMESPACE` if it is missing, the cluster-wide
+ClusterRole `headlamp-namespace-lister` and ClusterRoleBinding `headlamp-<ACCOUNT>-namespaces`,
+and the RoleBinding `headlamp-<ACCOUNT>` in `ACCESS_NAMESPACE`.
+
 ### 8.2 Make a token and give it to the person
 
-Run this after step 8.1, and again before each token ends: the person pastes the token into
-Headlamp to log in (step 7).
-This makes a token for the account, valid for `DAYS`, and prints it once, with the time it ends.
-Send it the way you send a password: not in a ticket or a shared chat. Run the block again to
-give a new token before the old one ends; each token works until its own end.
+Run this after step 8.1, and again before each token ends: the person pastes the token into Headlamp
+to log in (step 7). This makes a token for the account, valid for `DAYS`, and prints it once, with
+the time it ends. Send it the way you send a password: not in a ticket or a shared chat. Run the
+block again to give a new token before the old one ends; each token works until its own end. Set
+`VKS_CLUSTER` to the cluster's name, `ACCOUNT` to the account from step 8.1 and `DAYS` to how many
+days the token works.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -854,13 +871,14 @@ if ($ALL -ne 'no') {
 days from now (UTC). Clear the terminal afterwards.
 
 **If not:** `STOPPED: …`: the account has more rights than step 8.1 gives (for example `headlamp`,
-the add-on's own); use another. `serviceaccounts "team-a" not found`: step 8.1 first. An end time sooner than asked: the
-cluster limits token lifetimes; give a new token before it ends.
+the add-on's own); use another. `serviceaccounts "team-a" not found`: step 8.1 first. An end time
+sooner than asked: the cluster limits token lifetimes; give a new token before it ends.
 
 ### 8.3 Take a person's access away
 
-Run this when a person or team should lose access to Headlamp. To take access away, delete the account and every binding that names it: every token it was given
-stops working within seconds. This block deletes the account `ACCOUNT` and its bindings.
+Run this when a person or team should lose access to Headlamp. It deletes the account and every
+binding that names it: every token it was given stops working within seconds. Run it again and it
+deletes nothing more. Set `VKS_CLUSTER` to the cluster's name and `ACCOUNT` to the account's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -897,10 +915,7 @@ does not end a token; only deleting the account (or waiting for its end) does.
 
 ## 9. Change the add-on's settings (optional, cluster administrator)
 
-Run this only when you need one of its changes: a DNS name in Headlamp's certificate (step 10),
-Headlamp's address in the certificate (`CERT_WITH_IP`), or the Kubescape plugin (step 11.2).
-Each change gives the add-on all of its settings at once: a setting left out goes back to its
-default. So this block always writes the three this guide uses:
+The three settings of the add-on that this guide uses:
 
 | variable | the add-on's setting | empty or `no` |
 |---|---|---|
@@ -908,12 +923,19 @@ default. So this block always writes the three this guide uses:
 | `CERT_WITH_IP` | `tls.certManager.ipAddresses`: also Headlamp's address in the certificate | name only |
 | `KUBESCAPE_PLUGIN` | `pluginsManager`: the Kubescape plugin (step 11) | no plugin |
 
-A new certificate is made when the name or address changes; Headlamp reads it only when it
-starts, so the block then restarts it (some seconds away). The browser warns again for the new
-certificate: check its new fingerprint (steps 4 and 5).
-
-`HEADLAMP_HOSTNAME`: empty gives `headlamp.vks.example.com`. `CERT_WITH_IP` and `KUBESCAPE_PLUGIN`:
-`yes` or `no`.
+Run this only when you need one of its changes: a DNS name in Headlamp's certificate (step 10),
+Headlamp's address in the certificate (`CERT_WITH_IP`), or the Kubescape plugin (step 11.2). Each
+change gives the add-on all of its settings at once: a setting left out goes back to its default. So
+this block always writes the three in the table above. The block first makes your Supervisor login
+(`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
+that stays after the block. It writes the three settings to
+`~/.config/vks-guides/headlamp/addon-values.yaml` and gives them to the add-on. A new certificate is
+made when the name or address changes; Headlamp reads it only when it starts, so the block then
+restarts it (some seconds away), and prints the certificate's names and fingerprint. The browser
+warns again for the new certificate: check its new fingerprint (steps 4 and 5). It restarts Headlamp
+only when Headlamp still shows an older certificate than the one in the cluster. Set `VKS_NAMESPACE`
+and `VKS_CLUSTER` as in step 2, `HEADLAMP_HOSTNAME` (empty gives `headlamp.vks.example.com`), and
+`CERT_WITH_IP` and `KUBESCAPE_PLUGIN` to `yes` or `no`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1039,8 +1061,9 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 **Expect:** `Addon 'headlamp' in the cluster … is being updated`, then either
 `deployment.apps/headlamp restarted` and `successfully rolled out`, or nothing (the certificate did
-not change), and `certificate for headlamp.example.com <address>, SHA-256 fingerprint …`. With `KUBESCAPE_PLUGIN="yes"` the add-on also restarts Headlamp by itself, with a
-second container that installs the plugin.
+not change), and `certificate for headlamp.example.com <address>, SHA-256 fingerprint …`. With
+`KUBESCAPE_PLUGIN="yes"` the add-on also restarts Headlamp by itself, with a second container that
+installs the plugin.
 
 **If not:** `NOT YET: …`: cert-manager has not made the new certificate yet; run the block again.
 `FAILED: the add-on`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login). The
@@ -1057,9 +1080,12 @@ Contour's address.
 
 ### 10.1 Install Contour
 
-Run this first: the DNS record in 10.2 needs Contour's address, and this prints it.
-This installs the Contour add-on with its own load balancer address, and turns off the ports it
-would otherwise open on every node. A Contour that is already installed is left as it is.
+Run this first, because the DNS record in 10.2 needs Contour's address. This installs the Contour
+add-on with its own load balancer address, and turns off the ports it would otherwise open on every
+node. A Contour that is already installed is left as it is, so you may run it again. The block first
+makes your Supervisor login (`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and
+in its kubeconfig file, and that stays after the block. It prints Contour's address for step 10.2.
+Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 2.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1168,10 +1194,11 @@ Run step 9 with that name as `HEADLAMP_HOSTNAME`, keeping the `CERT_WITH_IP` and
 
 ### 10.4 Point Contour at Headlamp
 
-Run this once the DNS record from 10.2 exists and 10.3 is done: it makes your name lead to
-Headlamp.
+Run this once the DNS record from 10.2 exists and 10.3 is done: it makes your name lead to Headlamp.
 This tells Contour to pass that name to Headlamp (it creates the HTTPProxy `headlamp` in the
-namespace `headlamp`), and checks that the name answers with Headlamp's certificate:
+namespace `headlamp`), and checks that the name answers with Headlamp's certificate; run it again
+and it changes nothing. Set `VKS_CLUSTER` to the cluster's name and `HEADLAMP_HOSTNAME` to your name
+for Headlamp:
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1273,7 +1300,10 @@ Run this if you want CPU, memory and network charts on Headlamp's pages for pods
 deployments: the Prometheus plugin shows them only when the Prometheus add-on is in the cluster.
 This installs Broadcom's Prometheus add-on, without its Alertmanager and Pushgateway, which the
 plugin does not use. Headlamp notices it and restarts within a minute with the Prometheus plugin;
-the plugin finds Prometheus by itself. `PROMETHEUS_STORAGE` is the size of Prometheus's disk (the
+the plugin finds Prometheus by itself. The block first makes your Supervisor login
+(`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
+that stays after the block. Run it again and it skips an installed Prometheus. Set `VKS_NAMESPACE`
+and `VKS_CLUSTER` as in step 2, and `PROMETHEUS_STORAGE` to the size of Prometheus's disk (the
 add-on's own default is 150Gi).
 
 <details>
@@ -1376,22 +1406,23 @@ itself ("Error fetching prometheus info"): in that browser, **Settings** → **P
 
 ![Deployment hello: memory over the last hour](img/headlamp/18-prometheus-chart.png)
 
-**If not:** a pod `Pending`: the workers lack CPU or memory (about 450m CPU and 800 MiB with
-one worker), or the storage class has no room for `PROMETHEUS_STORAGE`. No charts in Headlamp: the account
-needs `headlamp-prometheus-query` (step 11.3, with `PROMETHEUS_QUERY="yes"`).
+**If not:** a pod `Pending`: the workers lack CPU or memory (about 450m CPU and 800 MiB with one
+worker), or the storage class has no room for `PROMETHEUS_STORAGE`. No charts in Headlamp: the
+account needs `headlamp-prometheus-query` (step 11.3, with `PROMETHEUS_QUERY="yes"`).
 
 ### 11.2 Kubescape
 
 Run this only if you want Headlamp's Kubescape pages (security scan results, vulnerabilities,
-compliance): the plugin shows them only when Kubescape runs in the cluster.
-Kubescape scans the cluster for weak settings and its images for known vulnerabilities. It is
-upstream (the Kubescape project), not a Broadcom add-on, and Broadcom does not support it, nor its
-plugin. This installs it with Helm ([HELM.md](HELM.md)) into the namespace `kubescape`, and adds
-cluster-wide object types (CRDs); six of them stay after a Helm uninstall (step 12).
-Its node agent runs on every worker and needs access to it, so the namespace's pod security is
-`privileged`. It asks for about 450m CPU and 2 GiB
-of memory with the requests below, lowered from the chart's own (about 800m), and keeps its results
-on a 5Gi volume.
+compliance): the plugin shows them only when Kubescape runs in the cluster. Kubescape scans the
+cluster for weak settings and its images for known vulnerabilities. It is upstream (the Kubescape
+project), not a Broadcom add-on, and Broadcom does not support it, nor its plugin. This installs it
+with Helm ([HELM.md](HELM.md)) into the namespace `kubescape` (a namespace inside the VKS cluster),
+and adds cluster-wide object types (CRDs); six of them stay after a Helm uninstall (step 12). Its
+node agent runs on every worker and needs access to it, so the namespace's pod security is
+`privileged`. It asks for about 450m CPU and 2 GiB of memory with the requests below, lowered from
+the chart's own (about 800m), and keeps its results on a 5Gi volume. Run it again and Helm sets
+Kubescape to this block's chart version and settings; with the same ones, nothing changes. Next:
+step 9, as the text below the block says. Set `VKS_CLUSTER` to the cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1458,10 +1489,10 @@ then run.
 `ErrImagePull` means the nodes cannot reach `quay.io`.
 
 Then run step 9 with `KUBESCAPE_PLUGIN="yes"`, keeping the `HEADLAMP_HOSTNAME` and `CERT_WITH_IP`
-you used before. Vulnerability results appear by themselves within
-about 15 minutes. The configuration scan runs once a day (`kubectl --kubeconfig <the VKS kubeconfig>
--n kubescape get cronjob kubescape-scheduler` shows when, in UTC); to run it now:
-`kubectl --kubeconfig <the VKS kubeconfig> -n kubescape create job --from=cronjob/kubescape-scheduler kubescape-first-scan`.
+you used before. Vulnerability results appear by themselves within about 15 minutes. The
+configuration scan runs once a day (`kubectl --kubeconfig <the VKS kubeconfig> -n kubescape get
+cronjob kubescape-scheduler` shows when, in UTC); to run it now: `kubectl --kubeconfig <the VKS
+kubeconfig> -n kubescape create job --from=cronjob/kubescape-scheduler kubescape-first-scan`.
 
 Kubescape's pages show the whole cluster: an account limited to one namespace sees them empty.
 
@@ -1471,10 +1502,7 @@ Kubescape's pages show the whole cluster: an account limited to one namespace se
 
 ### 11.3 Let an account read the plugins' data (cluster administrator)
 
-Run this for each account from step 8.1 that should see Prometheus charts, or (an account for every
-namespace) Kubescape results: without it, the account sees neither.
-This gives an account from step 8.1 what the plugins read. Giving the same to a person who logs
-in with their own SSO user (step 6.2) is not covered here.
+The two roles this step gives:
 
 - `headlamp-kubescape-reports`: Kubescape's results in every namespace. Given only to an account
   with an empty `ACCESS_NAMESPACE`, when Kubescape is in the cluster: the plugin's pages read the
@@ -1484,8 +1512,13 @@ in with their own SSO user (step 6.2) is not covered here.
   and in them the names of all pods, images and Secrets. Give it only to accounts allowed to see
   that.
 
-`ACCOUNT` and `ACCESS_NAMESPACE`: as in step 8.1 (empty: every namespace). `PROMETHEUS_QUERY`: `yes`
-adds the whole cluster's metrics.
+Run this for each account from step 8.1 that should see Prometheus charts, or (an account for every
+namespace) Kubescape results: without it, the account sees neither. This gives an account from step
+8.1 what the plugins read: the roles above that apply. Afterwards it sees those plugins' data in
+Headlamp. Giving the same to a person who logs in with their own SSO user (step 6.2) is not covered
+here. Run the block again and it changes nothing. Set `VKS_CLUSTER` to the cluster's name, `ACCOUNT`
+and `ACCESS_NAMESPACE` as in step 8.1 (empty: every namespace), and `PROMETHEUS_QUERY` to `yes` to
+add the whole cluster's metrics.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1578,14 +1611,16 @@ metrics when a page opens; reload the page.
 
 ## 12. Remove Headlamp, its accounts and tokens (optional, cluster administrator)
 
-Run this when the cluster should no longer have Headlamp, or when step 3 shows that Headlamp
-answers without a login.
-This removes the Headlamp add-on, which takes the namespace `headlamp` with it: Headlamp, its
-certificate, the accounts of step 8.1 (their tokens stop working) and step 10's HTTPProxy. It then
-deletes what this guide gave those accounts elsewhere: their bindings, and the roles
-`headlamp-namespace-lister`, `headlamp-prometheus-query` and `headlamp-kubescape-reports`. cert-manager, Prometheus, Contour
-and Kubescape stay; the lines after the block remove them. SSO tokens from step 6 keep working until
-they end.
+Run this when the cluster should no longer have Headlamp, or when step 3 shows that Headlamp answers
+without a login. This removes the Headlamp add-on, which takes the namespace `headlamp` with it:
+Headlamp, its certificate, the accounts of step 8.1 (their tokens stop working) and step 10's
+HTTPProxy. It then deletes what this guide gave those accounts elsewhere: their bindings, and the
+roles `headlamp-namespace-lister`, `headlamp-prometheus-query` and `headlamp-kubescape-reports`.
+cert-manager, Prometheus, Contour and Kubescape stay; the lines after the block remove them. SSO
+tokens from step 6 keep working until they end. When it ends with `NOT YET`, run it again in a few
+minutes; a second run goes on where the first stopped. The block first makes your Supervisor login
+(`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
+that stays after the block. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 2.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1671,8 +1706,9 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 **Expect:** `Addon 'headlamp' installed in the cluster … has been deleted`, `… deleted` lines for
 each binding and role this guide made, and `removed: namespace headlamp is gone`. The namespaces
 step 8.1 made for the accounts stay, with whatever runs in them. `kept: … still used`: a binding you
-made yourself, for example for an SSO user, still names that role; delete that binding first if you want it gone. A second run prints
-`Error: clusterAddon for addon headlamp … not found`, `(not deleted; …)`, and `removed: …` again.
+made yourself, for example for an SSO user, still names that role; delete that binding first if you
+want it gone. A second run prints `Error: clusterAddon for addon headlamp … not found`, `(not
+deleted; …)`, and `removed: …` again.
 
 **If not:** `NOT YET: …`: the add-on is still being removed; run the block again. An error about
 the login at the first line: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
@@ -1681,9 +1717,10 @@ To remove the rest, each only if nothing else in the cluster uses it:
 
 - Kubescape: `helm --kubeconfig <the VKS kubeconfig> uninstall kubescape -n kubescape`, then
   `kubectl --kubeconfig <the VKS kubeconfig> delete namespace kubescape`, then the definitions Helm
-  keeps: `kubectl --kubeconfig <the VKS kubeconfig> delete crd clustersecurityexceptions.kubescape.io
-  operatorcommands.kubescape.io rules.kubescape.io runtimerulealertbindings.kubescape.io
-  securityexceptions.kubescape.io servicesscanresults.kubescape.io`.
+  keeps: `kubectl --kubeconfig <the VKS kubeconfig> delete crd
+  clustersecurityexceptions.kubescape.io operatorcommands.kubescape.io rules.kubescape.io
+  runtimerulealertbindings.kubescape.io securityexceptions.kubescape.io
+  servicesscanresults.kubescape.io`.
 - Prometheus, Contour, cert-manager: `vcf addon install delete <prometheus|contour|cert-manager>
   --cluster-name <cluster> -n <namespace> -y`. Remove cert-manager last.
 - The files this guide saved: `~/.config/vks-guides/headlamp` (PowerShell:

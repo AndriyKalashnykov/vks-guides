@@ -7,8 +7,8 @@
 > - [Helm releases](https://github.com/helm/helm/releases) (versions and checksums)
 > - [Helm 3 End of Life](https://helm.sh/blog/helm-v3-end-of-life) (why this guide installs Helm 4)
 
-Helm installs ready-made app packages (*charts*) into a VKS cluster;
-[MONITORING.md](MONITORING.md) and other guides use it.
+Helm is a program on your machine that installs ready-made app packages (*Helm charts*) into a VKS
+cluster; [MONITORING.md](MONITORING.md) and other guides use it.
 
 ## Prerequisites
 
@@ -22,10 +22,15 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 ## 1. Download and install helm
 
-Run this once on each machine where a guide uses `helm`. It downloads the official `helm` program,
-checks that it arrived whole (its SHA-256 checksum) and copies it into `INSTALL_DIR`. If that
+Run this once on each machine where a guide uses `helm`, before that guide's Helm steps. It
+downloads the official `helm` program, checks that it arrived whole (its SHA-256 checksum) and
+copies it into a folder for programs on this machine; it changes nothing in any cluster. If that
 folder needs `sudo` and `sudo` would ask for a password, it uses `~/.local/bin` instead (see
-[PREREQS.md](PREREQS.md#sudo-optional)). On Windows it also adds the folder to your PATH.
+[PREREQS.md](PREREQS.md#sudo-optional)). On Windows it also adds the folder to your PATH. You then
+have `helm`, and it prints its version; go back to the guide that sent you here. Running it again
+replaces `helm` in that folder. Set `HELM_VERSION` to the Helm release (keep `v4.3.1` unless a
+guide says otherwise) and `INSTALL_DIR` to the folder (as given: `/usr/local/bin`; Windows:
+`%LOCALAPPDATA%\Programs\vks-tools`).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

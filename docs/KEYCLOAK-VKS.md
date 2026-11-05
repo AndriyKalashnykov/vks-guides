@@ -12,8 +12,8 @@ Keycloak is an open-source OpenID Connect (OIDC) identity provider: it keeps use
 signs people in. It is the example provider in these guides; with your own OIDC provider, skip this
 guide. Keycloak and PostgreSQL are upstream; Broadcom does not support them.
 This runs Keycloak, with a PostgreSQL database for its data, in its own VKS cluster, gives it an
-HTTPS certificate and a name, and sets up a realm that VKS clusters can use for logins
-([KEYCLOAK.md](KEYCLOAK.md)).
+HTTPS certificate and a name, and sets up a realm (a set of users and groups with its own sign-in
+page) that VKS clusters can use for logins ([KEYCLOAK.md](KEYCLOAK.md)).
 
 > [!NOTE]
 > **Why plain manifests, not Helm or the Keycloak Operator.** Keycloak publishes no Helm chart for
@@ -59,7 +59,7 @@ The cluster for Keycloak:
    ([KEYCLOAK.md](KEYCLOAK.md)). To change its size later, see
    [CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional).
 3. Save its kubeconfig as `~/.kube/<cluster name>.kubeconfig`
-   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)); it is `<file>` in the **If not:** lines.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 [its other hosts](PREREQS.md#registry-hosts-for-a-firewall)):
@@ -77,8 +77,12 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 
 ## 1. Check the cluster
 
-This checks that the nodes are ready, that the cluster has a default storage class, and how much
-memory the workers can give pods. Keycloak and PostgreSQL ask for about 1.5 GB of it.
+Run this first, to see whether the cluster can hold Keycloak before you install anything. It only
+reads: it checks that the nodes are ready, that the cluster has a default storage class (the
+setting that gives pods, the containers that run in the cluster, their disks from vSphere storage)
+and whether the namespace `keycloak` (a namespace inside the VKS cluster) exists already. You get
+one line per worker with the memory it can give pods: Keycloak and PostgreSQL ask for about 1.5 GB
+of it. Set `VKS_CLUSTER` to the name of Keycloak's cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -136,11 +140,15 @@ already`: Keycloak may be installed; steps 3 to 5 keep what exists.
 
 ## 2. Install cert-manager
 
-Keycloak's HTTPS certificate (step 4) comes from cert-manager, a Broadcom add-on of the VKS
-cluster ([what add-ons are](ADDONS.md)). Run this once per cluster, before step 4: it installs
-cert-manager with the VCF CLI when the cluster does not have it, and waits until it accepts
-certificate requests. When the add-on is there already (for example from
-[HEADLAMP.md](HEADLAMP.md)), it changes nothing.
+Run this once per cluster, before step 4: Keycloak's HTTPS certificate (step 4) comes from
+cert-manager, a Broadcom add-on of the VKS cluster that makes and renews certificates ([what add-ons
+are](ADDONS.md)). It makes your Supervisor login (`SUPERVISOR_CONTEXT`) the active one for the VCF
+CLI and in its kubeconfig file, and that stays after the block; it installs cert-manager with the
+VCF CLI when the cluster does not have it, and waits until it accepts certificate requests. You get
+cert-manager ready in the cluster. When the add-on is there already (for example from
+[HEADLAMP.md](HEADLAMP.md)), it changes nothing. Set `VKS_NAMESPACE` to the cluster's vSphere
+Namespace, `VKS_CLUSTER` to its name, and `SUPERVISOR_CONTEXT` to the name of your Supervisor login
+from [LOGIN.md](LOGIN.md) (`supervisor` unless you chose another).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -237,22 +245,26 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 `cert-manager: already installed`.
 
 **If not:**
-- `MISSING: …`: install that tool. `FAILED: the VCF CLI …`: log in to the Supervisor again ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)),
-  and check `VKS_NAMESPACE` and `VKS_CLUSTER`.
+- `MISSING: …`: install that tool. `FAILED: the VCF CLI …`: log in to the Supervisor again
+  ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)), and check `VKS_NAMESPACE` and `VKS_CLUSTER`.
 - `STOPPED: … not the add-on`: someone installed cert-manager another way. Use that cert-manager
   for step 4 at your own judgement, or remove it and run this block again.
 - `FAILED: cert-manager does not accept requests yet`: wait a few minutes, then go on with step 4;
   if step 4 says `failed calling webhook`, wait and run step 4 again.
 - `timed out waiting for the condition`: the nodes cannot pull from `projects.packages.broadcom.com`
-  (see the table above); `kubectl -n cert-manager get pods` shows the reason.
+  (see the table above); `kubectl --kubeconfig <file> -n cert-manager get pods` shows the reason.
 
 ## 3. Create the namespace and the passwords
 
-This creates the namespace `keycloak` (a namespace inside the VKS cluster, not a vSphere Namespace;
+Run this once, before PostgreSQL and Keycloak start (step 5): they read their passwords from here.
+It creates the namespace `keycloak` (a namespace inside the VKS cluster, not a vSphere Namespace;
 it is not listed under Supervisor Management → Namespaces), which allows only pods that follow the
-`restricted` Pod Security Standard, and two Secrets with random passwords: one for PostgreSQL and
-one for Keycloak's first administrator, `admin`. Nothing prints a password. A Secret that exists is
-kept: PostgreSQL keeps the password it was first given.
+`restricted` Pod Security Standard (Kubernetes' strictest rules for what a container may do), and
+two Secrets (a Secret is a store for passwords and keys inside the cluster) with random passwords:
+one for PostgreSQL and one for Keycloak's first administrator, `admin`. You get the namespace with
+its two passwords; nothing prints a password (step 12 shows `admin`'s). Run again, it keeps a
+Secret that exists: PostgreSQL keeps the password it was first given. Set `VKS_CLUSTER` to the
+name of Keycloak's cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -313,12 +325,13 @@ foreach ($S in @(@('keycloak-db', 'keycloak'), @('keycloak-admin', 'admin'))) {
 
 ## 4. Make Keycloak's certificate
 
-This makes a CA (certificate authority) of your own with cert-manager, valid for 10 years, and from
-it a certificate for `KEYCLOAK_HOST`, the DNS name Keycloak will have (step 7), and for its name
-inside the cluster. cert-manager renews the certificate before it ends; Keycloak picks the new one
-up within an hour. The CA itself is renewed with a new key after about 6.5 years: then hand out the
-new CA (step 6) again, as for a new Keycloak, and, if Keycloak is registered on the Supervisor
-(step 11), have the vCenter administrator edit the provider there and give it the new CA.
+Run this after steps 2 and 3, so that Keycloak answers over HTTPS with a certificate that browsers
+and clusters can trust. It makes a CA (certificate authority: it signs the certificate, and browsers
+and clusters that trust it, steps 6 and 8, trust Keycloak) of your own with cert-manager, valid for
+10 years, and from it a certificate for `KEYCLOAK_HOST`, the DNS name Keycloak will have (step 7),
+and for its name inside the cluster. You get the CA and the certificate in the namespace `keycloak`,
+for steps 5 and 6. Run again, it keeps the CA. Set `VKS_CLUSTER` to the name of Keycloak's cluster
+and `KEYCLOAK_HOST` to Keycloak's DNS name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -450,13 +463,21 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak wait
 - `no matches for kind "Issuer"`: step 2 did not finish.
 - `failed calling webhook "webhook.cert-manager.io"`: cert-manager is still starting. Wait a minute
   and run this block again.
-- `timed out`: `kubectl -n keycloak describe certificate keycloak-tls` shows why.
+- `timed out`: `kubectl --kubeconfig <file> -n keycloak describe certificate keycloak-tls` shows
+  why.
+
+**Renewal:** cert-manager renews the certificate before it ends; Keycloak picks the new one up
+within an hour. The CA itself is renewed with a new key after about 6.5 years: then hand out the
+new CA (step 6) again, as for a new Keycloak, and, if Keycloak is registered on the Supervisor
+(step 11), have the vCenter administrator edit the provider there and give it the new CA.
 
 ## 5. Run PostgreSQL and Keycloak
 
-This runs PostgreSQL with a 2 GB volume, waits until it is ready, then runs Keycloak in front of it
-and gives Keycloak a load balancer address on port 443. It takes about a minute. PostgreSQL uses
-about 70 MB of its volume with a few people in it, and Keycloak about 180 MB of the node's disk.
+Run this after step 4 to start Keycloak. It runs PostgreSQL (the database where Keycloak keeps its
+users and settings) with a 2 GB volume (a disk from the default storage class), waits until it is
+ready, then runs Keycloak in front of it and gives Keycloak a load balancer address on port 443.
+It takes about a minute. You get Keycloak's address, printed at the end: step 7's DNS record points
+at it. Run again, it keeps PostgreSQL's data. Set `VKS_CLUSTER` and `KEYCLOAK_HOST` as in step 4.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -884,7 +905,8 @@ if ($LASTEXITCODE -eq 0) { "Keycloak's address: $(kubectl --kubeconfig $VKS_KUBE
 rolled out`, then `Keycloak's address:` and an IP address.
 
 **If not:**
-- `FAILED: PostgreSQL did not start` or a timeout: `kubectl -n keycloak describe pod -l app=postgres`
+- `FAILED: PostgreSQL did not start` or a timeout:
+  `kubectl --kubeconfig <file> -n keycloak describe pod -l app=postgres`
   (or `-l app=keycloak`) shows the reason. `ImagePullBackOff`: the nodes cannot reach `quay.io` or
   `docker.io` (see the table above). `Pending` with `Insufficient memory`: the worker is too small
   (see the Prerequisites).
@@ -902,11 +924,16 @@ rolled out`, then `Keycloak's address:` and an IP address.
   **Virtual IP Address Range(s)**. With NSX or Avi, the range is in that load balancer's own
   settings.
 
+**Disk use:** PostgreSQL uses about 70 MB of its volume with a few people in it, and Keycloak about
+180 MB of the node's disk.
+
 ## 6. Save Keycloak's CA
 
-This saves the CA from step 4 as `keycloak-ca.pem` in your home folder and prints its fingerprint.
-Everyone who signs in needs this file to trust Keycloak (step 7), and [KEYCLOAK.md](KEYCLOAK.md)
-needs it as `KEYCLOAK_CA`.
+Run this after step 4, to get the file that browsers and clusters trust Keycloak with. It saves the
+CA from step 4 as `keycloak-ca.pem` in your home folder (it holds no secret) and prints its
+fingerprint. You get `keycloak-ca.pem`: everyone who signs in needs this file to trust Keycloak
+(steps 7 and 8), and [KEYCLOAK.md](KEYCLOAK.md) needs it as `KEYCLOAK_CA`. Run again, it saves the
+same CA again. Set `VKS_CLUSTER` to the name of Keycloak's cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -951,14 +978,20 @@ if ($LASTEXITCODE -eq 0 -and $B) {
 
 </details>
 
-**Expect:** a `subject=` line with `Keycloak CA`, a `sha256 Fingerprint=…` line, then `saved …/keycloak-ca.pem`.
+**Expect:** a `subject=` line with `Keycloak CA`, a `sha256 Fingerprint=…` line, then `saved
+…/keycloak-ca.pem`.
 
 ## 7. Give Keycloak its name
 
 Create a DNS record (type A) for `KEYCLOAK_HOST` with Keycloak's address from step 5, in the DNS
 that the people who sign in, the control-plane nodes of the clusters that trust Keycloak and, for
 step 11, the Supervisor use.
-Then this checks the name, the certificate and the address it answers with (its issuer).
+
+Run this once the record exists, to check that Keycloak answers by its name. It asks Keycloak at
+`https://<KEYCLOAK_HOST>` for its OpenID Connect settings, checks its certificate with
+`keycloak-ca.pem`, and changes nothing. You get Keycloak's issuer (the address that names Keycloak
+in every login), which clusters and the Supervisor are given later. Set `KEYCLOAK_HOST` to
+Keycloak's DNS name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -988,8 +1021,8 @@ if ($LASTEXITCODE -eq 0) { "issuer: $((ConvertFrom-Json ($J | Out-String)).issue
 - `SSL certificate problem`: `KEYCLOAK_HOST` is not the name in step 4, or `KEYCLOAK_CA` is not the
   file from step 6.
 - `Connection refused` or a timeout: this machine cannot reach Keycloak's address on port 443.
-- `CERT_TRUST_REVOCATION_STATUS_UNKNOWN` (Windows): `curl.exe` without `--ssl-no-revoke`; a CA of your
-  own publishes no revocation list.
+- `CERT_TRUST_REVOCATION_STATUS_UNKNOWN` (Windows): `curl.exe` without `--ssl-no-revoke`; a CA of
+  your own publishes no revocation list.
 
 ## 8. Trust Keycloak's CA (each person, once)
 
@@ -997,9 +1030,11 @@ People sign in to Keycloak in a browser, which must trust Keycloak's CA. Give ea
 `keycloak-ca.pem` from step 6 (it holds no secret), and each person adds it once on the machine
 whose browser they sign in with. Do it on your own machine too, before step 12.
 
-**Linux:** Chrome uses its own certificate database in your home. This adds the CA there (it needs
-`certutil`: `sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on
-AlmaLinux, `sudo tdnf install -y nss` on Photon OS).
+**Linux:** run this so that Chrome trusts Keycloak; Chrome uses its own certificate database in
+your home. This adds the CA to that database (it needs `certutil`:
+`sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on AlmaLinux,
+`sudo tdnf install -y nss` on Photon OS). You get Keycloak's pages in Chrome with no certificate
+warning.
 
 ```sh
 mkdir -p "$HOME/.pki/nssdb"
@@ -1011,14 +1046,17 @@ certutil -d "sql:$HOME/.pki/nssdb" -A -t "C,," -n "Keycloak CA" -i "$HOME/keyclo
 Firefox keeps its own list: **Settings** → **Privacy & Security** → **View Certificates** →
 **Authorities** → **Import**, then tick *Trust this CA to identify websites*.
 
-**macOS:** Safari and Chrome use your login keychain. macOS asks for your password:
+**macOS:** run this so that Safari and Chrome trust Keycloak. It adds the CA to your login
+keychain, which they use. You get Keycloak's pages with no certificate warning. macOS asks for
+your password:
 
 ```sh
 security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychain-db" "$HOME/keycloak-ca.pem"
 ```
 
-**WSL:** the browser runs on Windows. This copies the file to your Windows home folder; then run
-the Windows line in PowerShell:
+**WSL:** run this first, because the browser runs on Windows and the CA must go there. This copies
+`keycloak-ca.pem` to your Windows home folder. You get the file where the Windows line below finds
+it; then run that line in PowerShell:
 
 ```sh
 P="$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')"
@@ -1026,8 +1064,9 @@ W="$([ -n "$P" ] && wslpath "$P" 2>/dev/null)"
 if [ -n "$W" ] && [ -d "$W" ] && cp ~/keycloak-ca.pem "$W/"; then echo "copied to $W"; else echo "FAILED: no Windows home folder found"; fi
 ```
 
-**Windows (PowerShell):** Edge and Chrome use your user's trusted root CAs. Windows asks you to
-confirm with **Yes**:
+**Windows (PowerShell):** run this so that Edge and Chrome trust Keycloak. It adds the CA to your
+user's trusted root CAs, which they use. You get Keycloak's pages with no certificate warning.
+Windows asks you to confirm with **Yes**:
 
 ```powershell
 Import-Certificate -FilePath "$HOME\keycloak-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
@@ -1046,11 +1085,14 @@ the browser opens Keycloak's address with no certificate warning (restart the br
 
 ## 9. Create the realm and the client
 
-A realm is a set of users and groups with its own sign-in page. This creates the realm `REALM`
-with the client `kubernetes-device` that kubelogin signs in through, a groups mapper (so tokens
-carry the person's groups), and the groups in `KEYCLOAK_GROUPS`. It runs Keycloak's admin command line
-inside the Keycloak pod, as the administrator from step 3, whose password never leaves the pod.
-It skips what exists, so you can run it again to add groups.
+Run this once to set up Keycloak for VKS cluster logins, and again to add groups. A realm is a set
+of users and groups with its own sign-in page; a client is an application that may ask Keycloak to
+sign people in. This creates the realm with the client `kubernetes-device`, through which
+kubelogin (kubectl's sign-in plugin) signs people in, a groups mapper (so the token Keycloak gives
+at sign-in carries the person's groups), and the groups. You get a realm ready for people (step 10)
+and for [KEYCLOAK.md](KEYCLOAK.md). It skips what exists. Set `VKS_CLUSTER` to the name of
+Keycloak's cluster, `REALM` to your realm's name and `KEYCLOAK_GROUPS` to its groups, separated by
+spaces.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1161,6 +1203,9 @@ each group (`exists` for what was there), with a `Created new …` line from Key
 `keycloak-admin` was changed after Keycloak's first start (Keycloak keeps the first password), or
 the administrator `admin` was deleted or got another password in the admin console.
 
+**How it signs in:** it runs Keycloak's admin command line inside the Keycloak pod, as the
+administrator from step 3, whose password never leaves the pod.
+
 In the admin console (step 12), the realm's **Clients** list shows `kubernetes-device`; its
 **Capability config** has **Client authentication** off and **OAuth 2.0 Device Authorization Grant**
 on; and under **Client scopes**, `kubernetes-device-dedicated`, the mapper `groups` has **Full
@@ -1174,11 +1219,13 @@ group path** off and **Add to ID token** on.
 
 ## 10. Add a person
 
-This adds a person to the realm with their name, email address and a temporary password, which
-they change at their first sign in, and puts them in a group. Keycloak requires the first name,
-last name and email address; without them it stops the person's first sign in at **Update Account
-Information**. With `OTP="yes"` they also set up a one-time-code app (such as
-Google Authenticator) at their first sign in. First type the temporary password, on its own:
+Run this for each person who signs in through Keycloak. It adds the person to the realm with their
+name, email address and a temporary password, which they change at their first sign in, and puts
+them in a group. You get the person's account, ready for their first sign in. In the second block,
+set `VKS_CLUSTER` to the name of Keycloak's cluster, `REALM` and the person's username, names, email
+address (Keycloak requires them, or stops the first sign in at **Update Account Information**) and
+group; `OTP="yes"` adds a one-time-code app (such as Google Authenticator) at the first sign in.
+First type the temporary password, on its own:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1287,8 +1334,9 @@ Under **Groups**, a group's **Members** tab lists the people added to it.
 ## 11. Register Keycloak with the Supervisor (optional)
 
 This lets people sign in to every VKS cluster of a Supervisor with their Keycloak account, through
-the Supervisor: the group way of [ACCESS.md](ACCESS.md#a-group-from-an-external-identity-provider-through-the-supervisor).
-Skip it if people sign in only to clusters made with [KEYCLOAK.md](KEYCLOAK.md). Who does what:
+the Supervisor: the group way of
+[ACCESS.md](ACCESS.md#a-group-from-an-external-identity-provider-through-the-supervisor). Skip it if
+people sign in only to clusters made with [KEYCLOAK.md](KEYCLOAK.md). Who does what:
 
 - you, the Keycloak administrator: the client `supervisor` in the realm (11.2), then you send the
   vCenter administrator its secret, `keycloak-ca.pem` (step 6) and the issuer
@@ -1322,10 +1370,14 @@ In the admin console (step 12), in the realm `REALM`:
    Claim Name** `groups`, **Full group path** off, **Add to ID token** on.
 5. **Credentials** tab: copy the **Client Secret** for the vCenter administrator.
 
-Or with Keycloak's admin command line, as in step 9: this makes the client with the default
-scopes `basic`, `email` and `profile` only, or, when `supervisor` exists, sets its redirect to
-`CALLBACK` (and prints what it was) and those default scopes. It prints the secret
-only with `SHOW_SECRET="yes"`; then clear the terminal once you have sent it.
+Run this instead of the clicks above, to make the client from a terminal with Keycloak's admin
+command line, as in step 9. It makes the client `supervisor` with the default client scopes
+`basic`, `email` and `profile` only (a client scope decides which details about the person a token
+carries), or, when `supervisor` exists, sets its redirect to `CALLBACK` (and prints what it was)
+and those default scopes. You get the client ready for the vCenter administrator (11.3). Set
+`VKS_CLUSTER` to the name of Keycloak's cluster, `REALM` to step 9's realm and `CALLBACK` to the
+Callback URL from 11.1. It prints the secret only with `SHOW_SECRET="yes"`; then clear the
+terminal once you have sent it.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1469,10 +1521,11 @@ fi
 
 </details>
 
-**Expect:** `Logging into https://keycloak.keycloak.svc as user admin of realm master`, then
-a `Created new client …` line and `client supervisor: created, redirect https://…/wcp/pinniped/callback`
-(or `exists, redirect …`), `client supervisor: default client scopes basic, profile, email`,
-then `client secret: not shown …` (the secret with `SHOW_SECRET="yes"`).
+**Expect:** `Logging into https://keycloak.keycloak.svc as user admin of realm master`, then a
+`Created new client …` line and `client supervisor: created, redirect
+https://…/wcp/pinniped/callback` (or `exists, redirect …`), `client supervisor: default client
+scopes basic, profile, email`, then `client secret: not shown …` (the secret with
+`SHOW_SECRET="yes"`).
 
 **If not:**
 - `STOPPED: CALLBACK is not a Callback URL …`: copy it again from the Identity Providers page
@@ -1492,8 +1545,9 @@ then `client secret: not shown …` (the secret with `SHOW_SECRET="yes"`).
 already, you must remove it first, and then:
 
 - every sign-in through that provider stops at once;
-- the roles its groups have on vSphere Namespaces ([ACCESS.md step 2](ACCESS.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator))
-  no longer apply: after this registration, run that step again for each group;
+- the roles its groups have on vSphere Namespaces ([ACCESS.md step
+  2](ACCESS.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator)) no longer
+  apply: after this registration, run that step again for each group;
 - every VKS cluster of the Supervisor takes the change;
 - vCenter SSO logins keep working, so you can always get back in.
 
@@ -1535,9 +1589,11 @@ values above. To check a sign-in, run the
 
 ## 12. Open the admin console (optional)
 
-Keycloak's web page for administrators is `https://<KEYCLOAK_HOST>/admin`; your browser must trust
-Keycloak's CA (step 8). This prints the password of the administrator `admin` from step 3. Clear
-the terminal after you have signed in.
+Run this when you want to work in Keycloak's admin console, its web page for administrators at
+`https://<KEYCLOAK_HOST>/admin` (your browser must trust Keycloak's CA, step 8). It prints the
+password of the administrator `admin` from step 3 and changes nothing. You get the password to sign
+in with; clear the terminal after you have signed in. Set `VKS_CLUSTER` to the name of Keycloak's
+cluster.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1579,12 +1635,14 @@ and hands people a kubeconfig for it. Its values come from this guide:
 
 ## 14. Remove Keycloak (optional)
 
-This deletes the namespace `keycloak` with Keycloak, PostgreSQL, the users and the CA, then waits
-until PostgreSQL's volume is gone. Clusters that trust this Keycloak no longer accept its logins,
-nor does the Supervisor (remove the provider there, step 11); a new CA made by step 4 is a
-different CA. cert-manager stays. To delete Keycloak's cluster too, run
-this first and [CLUSTER.md step 8](CLUSTER.md#8-delete-the-cluster-optional) after it: a volume
-still in use when the cluster goes is left behind in the vSphere Namespace and stops its removal.
+Run this when you no longer need Keycloak; to delete Keycloak's cluster too, run this first and
+[CLUSTER.md step 8](CLUSTER.md#8-delete-the-cluster-optional) after it: a volume still in use when
+the cluster goes is left behind in the vSphere Namespace and stops its removal. It deletes the
+namespace `keycloak` with Keycloak, PostgreSQL, the users and the CA, then waits until
+PostgreSQL's volume is gone. You get the cluster without Keycloak; cert-manager stays. Clusters
+that trust this Keycloak no longer accept its logins, nor does the Supervisor (remove the provider
+there, step 11); a new CA made by step 4 is a different CA. Set `VKS_CLUSTER` to the name of
+Keycloak's cluster.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1626,7 +1684,8 @@ if (-not $V) { "Keycloak's volume is gone" } else { "STILL THERE: $V" }
 seconds. Run again, it prints `namespaces "keycloak" not found` first.
 
 **If not:** `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not
-delete the cluster until it is gone. `STILL THERE: (the check failed …)`: log in to the Supervisor
-again ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)) and run the block again.
+delete the cluster until it is gone. `STILL THERE: (the check failed …)`: kubectl could not read the
+cluster; the error above says why (`Unauthorized`: the file has expired, [get it
+again](LOGIN.md#get-the-vks-clusters-kubeconfig)). Then run the block again.
 
 Back to [README](../README.md).

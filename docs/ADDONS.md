@@ -89,11 +89,15 @@ for that reason.
 
 ## 1. See the catalog
 
-Run this before you choose an add-on, to see which ones your Supervisor offers. It lists the
-add-ons in your Supervisor's catalog, with a short description of each; it switches the VCF CLI to
-your Supervisor login and changes nothing on the Supervisor or the cluster. You then have the
-add-on names, such as `cert-manager`, that the other guides install. It needs the
-[VCF CLI](VCF.md) and a [Supervisor login](LOGIN.md).
+Run this before you choose an add-on, to see which ones your Supervisor offers. It makes your
+Supervisor login the active one for the VCF CLI and in its kubeconfig file (it stays active
+after the block; see [what each `vcf context` command
+changes](KUBECONFIG.md#what-each-vcf-context-command-changes)), then lists the add-ons in the
+Supervisor's catalog, with a short description of each; it changes nothing on the Supervisor or in
+any VKS cluster. You then have the add-on names, such as `cert-manager`, that the guides in [Add-ons
+in these guides](#add-ons-in-these-guides) install; running it again only lists them again. Set
+`SUPERVISOR_CONTEXT` to the name of your Supervisor login from [LOGIN.md](LOGIN.md) (`supervisor`
+unless you chose another name).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -129,12 +133,16 @@ has ended; [renew it](LOGIN.md#renew-the-supervisor-login) and run this again.
 
 ## 2. See what a cluster has
 
-Run this before you install an add-on that a guide needs, to see whether the cluster already has
-it, and again after, to see that it is ready. Set `VKS_NAMESPACE` and `VKS_CLUSTER` to your
-vSphere Namespace and VKS cluster; the block lists the add-ons installed in that cluster beyond its
-core add-ons. It switches the VCF CLI to your Supervisor login and changes nothing on the
-Supervisor or the cluster. You then have a row per add-on: whether it is ready, and whether you
-may remove or upgrade it with `vcf addon`.
+Run this before you install an add-on that a guide needs, to see whether the cluster already has it,
+and again after, to see that it is ready. It makes your Supervisor login the active one for the VCF
+CLI and in its kubeconfig file (it stays active after the block), then asks the Supervisor which
+add-ons one VKS cluster has, beyond the core add-ons every cluster has; it changes nothing on the
+Supervisor or in the cluster. You then have a row per add-on: whether it is ready, and whether you
+may remove or upgrade it with `vcf addon`; if an add-on a guide needs is not listed, that guide
+installs it. Set `VKS_NAMESPACE` to the vSphere Namespace that holds the cluster (its name in
+vCenter), `VKS_CLUSTER` to the VKS cluster's name, and `SUPERVISOR_CONTEXT` to the name of your
+Supervisor login from [LOGIN.md](LOGIN.md) (`supervisor` unless you chose another name). For a
+second cluster, change `VKS_CLUSTER` and `VKS_NAMESPACE` and run it again.
 
 **Linux, macOS, WSL (bash or zsh):**
 

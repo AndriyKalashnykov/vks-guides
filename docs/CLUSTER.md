@@ -110,9 +110,10 @@ quota set for the namespace*.
 Never reuse a cluster's name in the same namespace: a new cluster under an old name can get the
 old cluster's address and never become available. After `dev-1`, take `dev-2`.
 
-Run this before you create the cluster, with the name you chose. It checks that nothing in the
-namespace holds the name, neither a cluster nor its address entry, and changes nothing. You then
-know whether the name is free to use now.
+Run this before you create the cluster, with the name you chose. It checks that nothing in your
+vSphere Namespace holds the name, neither a cluster nor its address entry (the load-balancer entry
+that gives a cluster its address), and changes nothing. You then know whether the name is free to
+use now. Set `VKS_NAMESPACE` to your vSphere Namespace and `VKS_CLUSTER` to the name you chose.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -228,7 +229,8 @@ Available**, **Age** `< 1 min`.
 Creating the cluster takes a few minutes, and you can use it only once it is available. Watch its
 row in the vSphere Client (the refresh arrow reloads the list), or run this block after **FINISH**
 (or step 9): it shows the cluster and each of its machines (the virtual machines that become its
-nodes), with their state, and changes nothing. Run it again until the cluster is available.
+nodes), with their state, and changes nothing. Run it again until the cluster is available. Set
+`VKS_NAMESPACE` to your vSphere Namespace and `VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -266,7 +268,7 @@ vCenter downloads its node image.
 Run this first when the cluster stays `False`: a cluster can get stuck on an address left over
 from an older cluster of the same name. It prints the address the cluster uses and the address its
 load balancer got, and changes nothing. If the two addresses are the same, the address is not
-the cause.
+the cause. Set `VKS_NAMESPACE` to your vSphere Namespace and `VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -296,12 +298,14 @@ if ($LASTEXITCODE -eq 0) { "cluster address: $(if ($E) { $E } else { 'none' }), 
 ```
 
 **Expect:** the same address twice. `none`, or `NotFound` for the virtual machine service (the
-load-balancer entry that gives the cluster its address): wait, the address comes first. Two different addresses: the cluster kept an old address; delete it
-(step 8) and create it again under a new name.
+load-balancer entry that gives the cluster its address): wait, the address comes first. Two
+different addresses: the cluster kept an old address; delete it (step 8) and create it again under
+a new name.
 
 Run this next if the two addresses match, to learn why the cluster waits. It describes the cluster
 and changes nothing. Read the `Conditions` (the cluster's state checks) and the `Events` (what
-happened to it) at the end of its output.
+happened to it) at the end of its output. Set `VKS_NAMESPACE` to your vSphere Namespace and
+`VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -327,7 +331,8 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE describe clusters.
 
 Run this last if no event says why the cluster waits. It checks, for each machine of the cluster,
 whether vSphere could make its virtual machine, and changes nothing. You get one line per machine,
-with vSphere's reason when it could not.
+with vSphere's reason when it could not. Set `VKS_NAMESPACE` to your vSphere Namespace and
+`VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -361,8 +366,8 @@ if ($LASTEXITCODE -eq 0) {
 **If not:**
 - `False` and a message that ends in `insufficient storage quota`: the vSphere Namespace's storage
   limit is full. A cluster of one control-plane node and two best-effort-small workers in one node
-  pool needs about 72 GB, and about 128 GB while it changes to `best-effort-medium` (step 2). Free storage in the namespace,
-  or ask your vCenter administrator to raise its limit.
+  pool needs about 72 GB, and about 128 GB while it changes to `best-effort-medium` (step 2).
+  Free storage in the namespace, or ask your vCenter administrator to raise its limit.
 - Nothing printed: check `VKS_NAMESPACE` and `VKS_CLUSTER`, or wait until the first block of this
   step lists machines.
 - `Forbidden`: ask your vCenter administrator to run it.
@@ -373,11 +378,14 @@ Never switch the cluster's virtual machines on or off in the vSphere Client: VKS
 
 Get the cluster's kubeconfig (the file that lets kubectl reach the cluster), in the vSphere
 Client ([Download the VKS cluster's kubeconfig from the vSphere Client](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client))
-or with the VCF CLI ([Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig)),
-and run [Match kubectl to the cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
+or with the VCF CLI ([Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig)):
+either way it is saved as `~/.kube/<cluster>.kubeconfig`. Then run
+[Match kubectl to the cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
+
 Then run this once the cluster is available, to check that every node is ready for apps. It reads
-the cluster with that kubeconfig and changes nothing. It lists the nodes and names the storage
-class an app's disk gets when the app names none.
+the cluster with `~/.kube/<VKS_CLUSTER>.kubeconfig` and changes nothing. It lists the nodes and
+names the storage class an app's disk gets when the app names none. Set `VKS_CLUSTER` to the
+cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -431,12 +439,13 @@ First run the block in [Check that the name is free](#check-that-the-name-is-fre
 your cluster's name.
 
 **Expect:** `in use:`, then `cluster.cluster.x-k8s.io/<name>` and
-`virtualmachineservice.vmoperator.vmware.com/<name>` (the cluster and its address entry). If it says `none now` or `unknown`, stop:
-the name is wrong, or you may not read it.
+`virtualmachineservice.vmoperator.vmware.com/<name>` (the cluster and its address entry). If it
+says `none now` or `unknown`, stop: the name is wrong, or you may not read it.
 
 Then run this before the delete, to know which disks the cluster's apps made: they outlive the
 cluster. It lists them, first as the cluster sees them, then as they sit in the vSphere Namespace,
-and changes nothing. Keep the list to compare with after the delete.
+and changes nothing. Keep the list to compare with after the delete. Set `VKS_NAMESPACE` to your
+vSphere Namespace and `VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -467,9 +476,10 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get persistentvolu
 **Expect:** `No resources found` twice, or the disks listed. Each disk listed stays after the
 delete and keeps its storage; the optional last block of this step deletes them all.
 
-Then run this, with the disk list kept, to delete the cluster. It deletes the cluster and its virtual
-machines, and returns at once without waiting. Once the delete finishes, the cluster is gone, and
-the disks listed above stay.
+Then run this, with the disk list kept, to delete the cluster. It deletes the cluster and its
+virtual machines, and returns at once without waiting. Once the delete finishes, the cluster is
+gone, and the disks listed above stay. Set `VKS_NAMESPACE` to your vSphere Namespace and
+`VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -495,9 +505,9 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete clusters.cl
 
 **Expect:** `cluster.cluster.x-k8s.io "<name>" deleted` (newer kubectl: `… deleted from <your
 namespace> namespace`). Then run the block in
-[Check that the name is free](#check-that-the-name-is-free) again until it says `none now`, and the disk block
-above: its first command now fails (the cluster is gone); its second list shows the disks the
-cluster left behind.
+[Check that the name is free](#check-that-the-name-is-free) again until it says `none now`, and
+the disk block above: its first command now fails (the cluster is gone); its second list shows the
+disks the cluster left behind.
 
 **If not:** `Forbidden`: your role on the namespace cannot delete clusters; ask for the
 **Namespaces Edit** role.
@@ -505,7 +515,8 @@ cluster left behind.
 Optional: run this after the delete, when nobody needs the data on the deleted cluster's disks:
 they still use the vSphere Namespace's storage. **This deletes them (the second list of the disk
 block above) and what they hold, for good.** It deletes nothing while a cluster of that name
-exists. Afterwards the second list of the disk block is empty.
+exists. Afterwards the second list of the disk block is empty. Set `VKS_NAMESPACE` to your
+vSphere Namespace and `VKS_CLUSTER` to the deleted cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -552,7 +563,7 @@ steps 1 and 2 first.
 1. Run this before you write the file, to know which values your Supervisor and namespace accept.
    It lists the Kubernetes releases you may use, the newest cluster class, and the namespace's VM
    classes and storage classes, and changes nothing. You copy its values into the file in the
-   next step.
+   next step. Set `VKS_NAMESPACE` to your vSphere Namespace.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -682,7 +693,8 @@ Leave `class: node-pool` (the node pool type the cluster class defines), `servic
 
 3. Run this once the file is saved, to create the cluster from it. It first checks the file on
    the Supervisor without creating anything (`--dry-run=server`), and creates the cluster only if
-   that check passes. Afterwards the cluster is being created, as after **FINISH** in step 5.
+   that check passes. Afterwards the cluster is being created, as after **FINISH** in step 5. Set
+   `VKS_NAMESPACE` to the vSphere Namespace in the file's `metadata.namespace`.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -765,7 +777,8 @@ While the nodes are replaced, the cluster's status shows an ⓘ, and its YAML's 
 Run this after **SAVE**, to follow the change and know when it is done. It shows the VM class the
 cluster asks for, the class of each node, and whether all nodes are up to date, and changes
 nothing. Run it again until every node is of the new class (or the number of workers is the one you
-set), `PoweredOn`, and both lines say `True`: then the resize is done.
+set), `PoweredOn`, and both lines say `True`: then the resize is done. Set `VKS_NAMESPACE` to your
+vSphere Namespace and `VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -805,14 +818,14 @@ if ($LASTEXITCODE -eq 0) {
 ```
 
 **Expect:** `the cluster asks for:` the new class; during the change, a new node for the control
-plane and for each node pool next to the old ones; at the end, every node of the new class, `PoweredOn`,
-and `control plane up to date: True`, `workers up to date: True`.
+plane and for each node pool next to the old ones; at the end, every node of the new class,
+`PoweredOn`, and `control plane up to date: True`, `workers up to date: True`.
 
 **If not:**
 - After 20 minutes still a node of the old class, or a node that never powers on: the `describe`
-  block in [step 6](#6-wait-for-the-cluster)'s **If not** names the reason. A namespace storage limit without room for the new nodes
-  ([step 2](#check-the-namespaces-storage-limit)) stops the change. Fix the cause, or set the value
-  back, and save again.
+  block in [step 6](#6-wait-for-the-cluster)'s **If not** names the reason. A namespace storage
+  limit without room for the new nodes ([step 2](#check-the-namespaces-storage-limit)) stops the
+  change. Fix the cause, or set the value back, and save again.
 - Nodes of the old class after the change finished: the cluster has a `vmClass` under `overrides`
   too (step 2 above).
 - Pods `Pending` with `Insufficient memory` after the change: the new class is too small for what

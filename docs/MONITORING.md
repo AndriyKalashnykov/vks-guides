@@ -15,7 +15,11 @@ This installs kube-prometheus-stack 92.13.1 into a VKS cluster: Prometheus 3.15.
 kube-state-metrics 2.20.0. The chart is upstream (prometheus-community); Broadcom does not
 support it. Broadcom's supported metrics option is the Prometheus add-on, which has no Grafana.
 
-Steps 4 and 5 install with Helm; step 9 installs with ArgoCD instead.
+Prometheus collects and stores the cluster's metrics (CPU, memory, disk and more, over time);
+Grafana shows them as graphs, in dashboards; Alertmanager sends Prometheus's alerts. Helm installs
+software into a cluster from a package, a Helm chart; each install is a Helm release, with a name,
+that Helm can upgrade or remove. Steps 4 and 5 install with Helm; step 9 installs with ArgoCD
+([ARGOCD.md](ARGOCD.md): it installs what you describe and keeps it installed) instead.
 
 The blocks keep their files in `~/.config/vks-guides/monitoring` (PowerShell:
 `$HOME\.config\vks-guides\monitoring`).
@@ -42,12 +46,16 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 1. Check the cluster
 
-This checks that the cluster is ready for this guide:
+Run this first, before you install anything, to see that the cluster is ready for this guide. It
+reads the cluster through its kubeconfig from LOGIN.md (`~/.kube/<VKS_CLUSTER>.kubeconfig`) and
+changes nothing. Set `VKS_CLUSTER` to the VKS cluster's name. It shows whether:
 
 - its nodes are up;
 - it has a default storage class, which gives Prometheus a disk for its data;
 - it runs no Prometheus yet, which would clash with this one. VCF Operations' own monitoring
   add-on runs no full Prometheus, so it is fine.
+
+You go on to step 2 when all three are as **Expect** says.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -107,11 +115,14 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 2. Create the namespace
 
-This creates the namespace `monitoring` (a namespace inside the VKS cluster, not a vSphere
-Namespace; it is not listed under Supervisor Management → Namespaces), which holds everything this
-guide installs. One part, node-exporter, reads each node's own CPU, memory and disk figures; that
-needs extra rights, so this namespace is `privileged`: Kubernetes' pod security checks are off for
-every pod in it.
+Run this after step 1, so that everything this guide installs has one place in the cluster. It
+creates the namespace `monitoring` (a namespace inside the VKS cluster, not a vSphere Namespace; it
+is not listed under Supervisor Management → Namespaces), which holds everything this guide installs.
+One part, node-exporter, reads each node's own CPU, memory and disk figures; that needs extra
+rights, so this namespace is `privileged`: Kubernetes' pod security checks are off for every pod
+(the smallest thing Kubernetes runs: one or more containers) in it. You then have the namespace for
+steps 3 to 5 (or 9); running it again keeps the namespace and what is in it. Set `VKS_CLUSTER` as in
+step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -156,8 +167,10 @@ metadata:
 
 ## 3. Set Grafana's admin password
 
-**Type the password.** Choose the password you will log in to Grafana with, as `admin` (step 7).
-Paste this line on its own, then type it; nothing is shown as you type (PowerShell shows `*`).
+**Type the password.** Grafana needs an admin password, so choose the one you will log in to
+Grafana with, as `admin` (step 7). This line asks for it and keeps it only in this terminal, for
+the next block; nothing is saved. Paste this line on its own, then type it; nothing is shown as
+you type (PowerShell shows `*`).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -172,9 +185,10 @@ $GRAFANA_PASSWORD = Read-Host -AsSecureString 'Grafana admin password'
 ```
 
 **Save it in the cluster.** Grafana reads its admin password from the cluster, so this stores it
-there as `grafana-admin`, a Kubernetes Secret (an object that holds private data in the cluster).
-It replaces any earlier one, then forgets the password in this terminal. The password never
-appears on a command line, where other users of this machine could see it.
+in the namespace `monitoring` as `grafana-admin`, a Kubernetes Secret (an object that holds
+private data in the cluster). It replaces any earlier one, then forgets the password in this
+terminal. You then have the Secret that step 4's settings point Grafana to. Run it in the same
+terminal as the line above, with `VKS_CLUSTER` set as in step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -230,13 +244,14 @@ run).
   block again.
 - `namespaces "monitoring" not found`: run step 2 first.
 
-Grafana's login name is `admin`. Anyone who can read Secrets in `monitoring` can read the
-password.
+Grafana's login name is `admin`. The password never appears on a command line, where other users
+of this machine could see it. Anyone who can read Secrets in `monitoring` can read the password.
 
 ## 4. Download the chart and write the values
 
-This gets the installer for Prometheus and Grafana (a Helm chart) and writes the settings step 5
-installs it with. It:
+Run this after step 3, to get what step 5 installs. It gets the installer for Prometheus and Grafana
+(a Helm chart) and writes the settings step 5 installs it with; it changes nothing in the cluster.
+It:
 
 - downloads the chart and checks that the file is exactly the one published;
 - writes `values.yaml`, in which:
@@ -247,6 +262,9 @@ installs it with. It:
     as errors;
   - names and network settings are changed to work beside VCF Operations' own monitoring and
     through the VKS node firewall.
+
+You get two files in `~/.config/vks-guides/monitoring`, the chart and `values.yaml`; running it
+again replaces both. Set `PROMETHEUS_STORAGE` to the disk size for Prometheus's data.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -381,7 +399,8 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 
 **Run this first.** An older version of this guide created permissions that VCF Operations' own
 monitoring may now use. This finds them and marks them, so the install below does not delete
-them. On most clusters it prints `nothing to keep` and changes nothing.
+them. On most clusters it prints `nothing to keep` and changes nothing. Set `VKS_CLUSTER` as in
+step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -423,9 +442,13 @@ annotated` and the same for the `clusterrolebinding`.
 **If not:** `FAILED: cannot read the cluster`: run
 [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
-This installs Prometheus, Grafana and the rest with Helm, under the name `prometheus`. It waits
-until Prometheus and Alertmanager (which sends alerts) run, then lists the pods and Prometheus's
-disk. The first run takes a few minutes, while the nodes download the images.
+Then run this, to install the monitoring. It installs Prometheus, Grafana and the rest in the
+namespace `monitoring` with Helm, as the Helm release `prometheus`, from the files of step 4. It
+waits until Prometheus and Alertmanager run, then lists the pods (the running parts) and
+Prometheus's disk. The first run takes a few minutes, while the nodes download the images. You then
+have Prometheus collecting; step 6 checks it, step 7 opens Grafana. Running it again updates the
+install to the current `values.yaml` (a new `PROMETHEUS_STORAGE` does not resize the disk). Set
+`VKS_CLUSTER` as in step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -505,8 +528,10 @@ follow.
 
 ## 6. Check that Prometheus collects
 
-This checks that Prometheus collects metrics: it asks Prometheus how many of the things it
-measures (nodes, pods, cluster services) answer, and names any that do not.
+Run this after step 5 (or 9), to see that Prometheus really collects metrics. It asks Prometheus
+how many of the things it measures (nodes, pods, cluster services) answer, and names any that do
+not; it changes nothing. You get a count to compare with **Expect**. Set `VKS_CLUSTER` as in
+step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -537,9 +562,11 @@ and run this again.
 
 ## 7. Open Grafana
 
-Grafana runs inside the cluster and has no address you can open. This connects it to
-<http://localhost:3000> on your machine while the command runs. Leave it running while you use
-Grafana; press **Ctrl+C** to stop.
+Run this whenever you want to see the graphs. Grafana runs inside the cluster and has no address you
+can open, so this makes a port-forward: kubectl carries what you open at <http://localhost:3000> on
+your machine through the cluster's API address to Grafana, while the command runs; it changes
+nothing in the cluster. You then have Grafana at <http://localhost:3000>. Set `VKS_CLUSTER` as in
+step 1. Leave it running while you use Grafana; press **Ctrl+C** to stop.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -574,12 +601,14 @@ graphs for the cluster.
 
 ## 8. Uninstall with Helm (optional)
 
-This removes what step 5 installed. **It deletes Prometheus's data and the Grafana password.** For
-an install with ArgoCD, use step 10. First run the first block of step 5 again, so the permissions
-VCF Operations' monitoring uses are not deleted too. This block removes the Helm install, one item
-it leaves in `kube-system`, and the namespace `monitoring`. The new object types the chart added
-stay; the next block removes them. If you did [OBSERVABILITY.md](OBSERVABILITY.md), do its step 12
-first: it restarts Grafana in `monitoring`, and Loki, Jaeger and the sample app stay otherwise.
+Run this when you no longer want what step 5 installed with Helm; for an install with ArgoCD, use
+step 10. First run the first block of step 5 again, so the permissions VCF Operations' monitoring
+uses are not deleted too. If you did [OBSERVABILITY.md](OBSERVABILITY.md), do its step 12 first:
+it restarts Grafana in `monitoring`, and Loki, Jaeger and the sample app stay otherwise. This
+block removes the Helm release `prometheus`, one Service (a network name) it leaves in
+`kube-system`, and the namespace `monitoring` with everything in it. **It deletes Prometheus's
+data and the Grafana password.** You then have a cluster without this monitoring; the new object
+types the chart added stay, and the next block removes them. Set `VKS_CLUSTER` as in step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -610,8 +639,8 @@ deleted` and `namespace "monitoring" deleted`.
 
 **Delete the Prometheus object types.** The chart added new kinds of objects to the cluster
 (CRDs), such as ServiceMonitor, and they stay after the uninstall. This deletes them, and every
-object of those kinds in the cluster. Run it only if step 1 printed
-`Prometheus Operator CRDs: 0`; otherwise something else in the cluster uses them.
+object of those kinds in the cluster. You then have none of them left. Run it only if step 1
+printed `Prometheus Operator CRDs: 0`; otherwise something else in the cluster uses them.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -645,9 +674,11 @@ need that guide's steps 1 to 4 and 7 (the VKS cluster added to ArgoCD), this gui
 older version of this guide was installed, VCF Operations' monitoring may lose some permissions
 for up to 10 minutes; it then restores them.
 
-This makes sure the names this step uses are free, so you do not overwrite someone else's
-install: the ArgoCD project `monitoring`, the ArgoCD Application `prometheus`, and a Helm install
-named `prometheus` in the cluster.
+Run this first, to make sure the names this step uses are free, so you do not overwrite someone
+else's install. It looks for the ArgoCD project `monitoring` and the ArgoCD Application
+`prometheus` on the Supervisor, and for a Helm release named `prometheus` in the cluster; it
+changes nothing. You then know whether you may go on to the next block. Set `ARGOCD_NAMESPACE`
+to the vSphere Namespace that runs ArgoCD, and `VKS_CLUSTER` as in step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -685,16 +716,18 @@ namespace.`
 - A Secret is listed: the chart is installed with Helm (step 5). Use that, or remove it with
   step 8 first.
 
-This tells ArgoCD to install Prometheus and Grafana in your VKS cluster. It creates:
+Then run this, to have ArgoCD install Prometheus and Grafana in your VKS cluster. It creates, on
+the Supervisor:
 
-- the ArgoCD project `monitoring`, which limits what ArgoCD may create there (the namespaces
-  `monitoring` and `kube-system`, and the chart's cluster-wide objects);
+- the ArgoCD project `monitoring`, which limits what ArgoCD may create in the VKS cluster (the
+  namespaces `monitoring` and `kube-system`, and the chart's cluster-wide objects);
 - the ArgoCD Application `prometheus`: the install itself, with the settings of step 4.
 
 ArgoCD starts at once and puts back anything later changed or deleted in the cluster; to change
 a setting, edit it here and run the block again. Anyone who can edit the Application can still
-change anything in the cluster. Set `ARGOCD_DESTINATION` to the VKS cluster's name in ArgoCD
-(**Settings** → **Clusters**; `<cluster>-<namespace>` after [ARGOCD.md](ARGOCD.md) step 7).
+change anything in the cluster. Set `ARGOCD_NAMESPACE` as above, and `ARGOCD_DESTINATION` to the
+VKS cluster's name in ArgoCD (**Settings** → **Clusters**; `<cluster>-<namespace>` after
+[ARGOCD.md](ARGOCD.md) step 7).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -907,8 +940,10 @@ spec:
 [ARGOCD.md](ARGOCD.md) step 6). `configured` or `unchanged` on your first run: someone else made
 them; stop and ask them.
 
-This shows the Application, then waits until Prometheus and Alertmanager are running. Run it a
-minute after the block above; the first install takes a few minutes.
+Run this a minute after the block above, to see that ArgoCD has installed everything; the first
+install takes a few minutes. It shows the Application's state, then waits until Prometheus and
+Alertmanager are running, and changes nothing. You then have the same monitoring as step 5. Set
+`ARGOCD_NAMESPACE` and `VKS_CLUSTER` as above.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -966,11 +1001,13 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 10. Uninstall with ArgoCD (optional)
 
-**This deletes Prometheus's data and the Grafana password.** It deletes the Application (and with it
-what ArgoCD installed) and the project, then a Service the Prometheus Operator left in
-`kube-system`, and the namespace. The chart's CRDs stay; to delete them, see step 8. If you did
-[OBSERVABILITY.md](OBSERVABILITY.md), do its step 12 first: it restarts Grafana in `monitoring`, and
-Loki, Jaeger and the sample app stay otherwise.
+Run this when you no longer want what step 9 installed with ArgoCD. **This deletes Prometheus's
+data and the Grafana password.** It deletes the Application (and with it what ArgoCD installed)
+and the project on the Supervisor, then a Service the Prometheus Operator left in `kube-system`,
+and the namespace `monitoring`. You then have a cluster without this monitoring; the chart's CRDs
+stay; to delete them, see step 8. Set `ARGOCD_NAMESPACE` and `VKS_CLUSTER` as in step 9. If you
+did [OBSERVABILITY.md](OBSERVABILITY.md), do its step 12 first: it restarts Grafana in
+`monitoring`, and Loki, Jaeger and the sample app stay otherwise.
 
 **Linux, macOS, WSL (bash or zsh):**
 

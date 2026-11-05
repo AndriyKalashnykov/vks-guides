@@ -20,17 +20,16 @@ others use. If you open a new terminal, run the first block again.
 
 - docker 29.5 or newer ([PREREQS.md](PREREQS.md#podman-and-docker-optional)), `curl`,
   `openssl` and [kubectl](KUBECTL.md);
-- a Harbor project and a robot account that may push to it
-  ([HARBOR.md step 10](HARBOR.md#10-create-a-project-and-a-robot-account)), and
-  [HARBOR.md step 11](HARBOR.md#11-check-that-a-vks-cluster-can-pull-from-harbor) passed on this
-  cluster (done by you or your Harbor administrator);
+- a Harbor project and a robot account (a Harbor login for programs, not a person) that may push to
+  it ([HARBOR.md step 10](HARBOR.md#10-create-a-project-and-a-robot-account)), and [HARBOR.md step
+  11](HARBOR.md#11-check-that-a-vks-cluster-can-pull-from-harbor) passed on this cluster (done by
+  you or your Harbor administrator);
 - for a private project, also a robot that may only pull: in Harbor's web page, as in HARBOR.md
   step 10, *In Harbor's web page*, with only **Repository** → **Pull** ticked. Its name is
   `robot$` and the name you type;
-- `kubectl` pointed at your VKS cluster in this terminal: download its kubeconfig in the vSphere
-  Client ([LOGIN.md](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)) or
-  with the VCF CLI ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), then
-  [make it the default in this terminal](LOGIN.md#make-it-the-default-in-this-terminal);
+- your VKS cluster's kubeconfig, `~/.kube/<cluster>.kubeconfig`: download it in the vSphere Client
+  ([LOGIN.md](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)) or get it
+  with the VCF CLI ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
 - one free load-balancer address, for the app (step 6).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
@@ -47,14 +46,12 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 0. Set your values
 
-Run this first: it sets the values the other blocks use, creates the folder `~/image-simple`
-for the downloaded files, and moves this terminal into it. Change the values to your own. The two
-robot accounts:
-
-- `HARBOR_ROBOT` (push): used on your machine in step 4 to upload the image. It may push and pull.
-- `HARBOR_PULL_ROBOT` (pull): used only for a private project, in step 5. Its login becomes the
-  Secret `harbor-pull` inside the VKS cluster, so the nodes can download the image. It may only
-  pull, so whoever can read that Secret cannot change your images.
+Run this first, and again in any new terminal: the other blocks use the values it sets. Set them to
+your own: your Harbor and project, the two robot accounts (below the block), the app's namespace
+inside your VKS cluster (a separate area for the app, not a vSphere Namespace), and `VKS_CLUSTER`,
+your VKS cluster's name. `VKS_KUBECONFIG` is that cluster's kubeconfig from LOGIN.md (the file with
+its address and your login), which every `kubectl` command below uses. The block also creates the
+folder `~/image-simple` for the downloaded files and moves this terminal into it.
 
 ```sh
 HARBOR_FQDN="harbor.env1.lab.test"
@@ -62,12 +59,21 @@ HARBOR_PROJECT="my-project"
 HARBOR_ROBOT='robot$my-project+push'
 HARBOR_PULL_ROBOT='robot$my-project-pull'
 APP_NAMESPACE="harbor-demo"
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 IMAGE="$HARBOR_FQDN/$HARBOR_PROJECT/test-web-apps:v1"
 IMAGE_PLATFORM="linux/amd64"
 SRC="https://raw.githubusercontent.com/AndriyKalashnykov/vks-guides/666cba94ba517ac79d1c2ec505226192962477a3/argocd/test-web-apps"
 mkdir -p "$HOME/image-simple"
 cd "$HOME/image-simple"
 ```
+
+The two robot accounts:
+
+- `HARBOR_ROBOT` (push): used on your machine in step 4 to upload the image. It may push and pull.
+- `HARBOR_PULL_ROBOT` (pull): used only for a private project, in step 5. Its login becomes the
+  Secret `harbor-pull` inside the VKS cluster, so the nodes can download the image. It may only
+  pull, so whoever can read that Secret cannot change your images.
 
 Keep `HARBOR_ROBOT` in single quotes: the `$` is part of the name. `IMAGE_PLATFORM` is
 `linux/amd64` because the VKS cluster's nodes are x86-64 machines. `APP_NAMESPACE` is a
@@ -78,9 +84,10 @@ GitHub serves single files there, not folders.
 
 ## 1. Get Harbor's CA
 
-Harbor signs its own certificate with its own CA, which your machine does not know. This downloads
-that CA and prints its fingerprint. Compare the fingerprint with the one your Harbor administrator
-gives you.
+docker can push to Harbor only once your machine trusts Harbor's certificate, and Harbor signs it
+with its own CA (certificate authority), which your machine does not know. This downloads that CA
+into the file `harbor-ca.crt` in this folder and prints its fingerprint. Compare the fingerprint
+with the one your Harbor administrator gives you; step 2 then installs the file.
 
 ```sh
 curl -fsSk -o harbor-ca.crt "https://$HARBOR_FQDN/api/v2.0/systeminfo/getcert"
@@ -96,8 +103,9 @@ administrator and save it in this folder.
 
 ## 2. Trust Harbor's CA
 
-docker refuses to talk to Harbor until it trusts this CA. This puts the CA where docker looks for
-it. It asks for your password (`sudo`); run it as a block of its own.
+docker refuses to talk to Harbor until it trusts this CA. This copies `harbor-ca.crt` into the
+folder where docker looks for Harbor's CA. Afterwards docker on this machine trusts your Harbor.
+It asks for your password (`sudo`); run it as a block of its own.
 
 ```sh
 sudo install -D -m 0644 harbor-ca.crt "/etc/docker/certs.d/$HARBOR_FQDN/ca.crt"
@@ -109,8 +117,10 @@ sudo install -D -m 0644 harbor-ca.crt "/etc/docker/certs.d/$HARBOR_FQDN/ca.crt"
 
 ## 3. Build the image
 
-This downloads the app's two files, changes its page so that you can tell your image from the
-original, and builds the image for the cluster's nodes.
+You build your own copy of the app here, so that you have an image to push. This downloads the
+app's two files (`Dockerfile`, the build recipe, and `index.html`, its page), changes the page so
+that you can tell your image from the original, and builds the image for the cluster's nodes. You
+get the image on this machine, named as `IMAGE` says, ready for step 4.
 
 ```sh
 curl -sSO "$SRC/Dockerfile"
@@ -123,8 +133,9 @@ docker build --platform "$IMAGE_PLATFORM" -t "$IMAGE" .
 
 ## 4. Push it to Harbor
 
-Log in to Harbor as the robot account. docker asks for the robot's secret: paste it and press
-Enter (nothing is shown). Run this line on its own.
+To upload the image, docker must first log in to Harbor as the push robot (`HARBOR_ROBOT`). This
+logs in: docker asks for the robot's secret: paste it and press Enter (nothing is shown). Run
+this line on its own. docker keeps the login until the next block logs out.
 
 ```sh
 docker login -u "$HARBOR_ROBOT" "$HARBOR_FQDN"
@@ -133,8 +144,9 @@ docker login -u "$HARBOR_ROBOT" "$HARBOR_FQDN"
 **Expect:** `Login Succeeded` (docker without a credential helper first warns that the login is stored unencrypted;
 the logout below removes it).
 
-Then upload the image to your project and log out, so the robot's login does not stay on this
-machine:
+Run this right after the login, in the same terminal. It uploads the image to your project, then
+logs out, so the robot's login does not stay on this machine. Afterwards the image is in Harbor,
+where the cluster's nodes pull it from in step 6:
 
 ```sh
 docker push "$IMAGE"
@@ -150,10 +162,10 @@ Skip this for a public project: anyone may pull from it, so the cluster needs no
 project needs a robot that may pull, and the cluster must keep its login as a Secret, the
 cluster's way to store a password.
 
-First log in as the pull robot. docker asks for that robot's secret. `--config` makes docker save
-this login in a new file, `~/image-simple/pull/config.json`, instead of your usual
-`~/.docker/config.json`: that file then holds only this robot's login, which is what the cluster
-needs. Run this line on its own.
+First log in as the pull robot (`HARBOR_PULL_ROBOT`), to get a file that holds its login. docker
+asks for that robot's secret: paste it and press Enter. `--config` makes docker save this login in
+a new file, `~/image-simple/pull/config.json`, instead of your usual `~/.docker/config.json`: that
+file then holds only this robot's login, which is what the cluster needs. Run this line on its own.
 
 ```sh
 docker --config "$HOME/image-simple/pull" login -u "$HARBOR_PULL_ROBOT" "$HARBOR_FQDN"
@@ -166,14 +178,16 @@ docker --config "$HOME/image-simple/pull" login -u "$HARBOR_PULL_ROBOT" "$HARBOR
 `config.json` holds no login for the cluster. Create the Secret as
 [IMAGE.md step 5](IMAGE.md#5-only-for-a-private-project-let-the-cluster-pull-from-it) does instead.
 
-Then create the app's namespace, copy `config.json` into it as the Secret `harbor-pull`, and
-delete the file, which holds the robot's secret unencrypted:
+Run this right after that login. It creates the app's namespace in the VKS cluster
+(`APP_NAMESPACE`), copies `config.json` into it as the Secret `harbor-pull`, and deletes the file,
+which holds the robot's secret unencrypted. Afterwards the cluster holds the pull robot's login,
+and step 6 tells the app to use it:
 
 ```sh
 curl -sSO "$SRC/namespace.yaml"
 sed -i "s|^  name: test-web-apps$|  name: $APP_NAMESPACE|" namespace.yaml
-kubectl apply -f namespace.yaml
-kubectl -n "$APP_NAMESPACE" create secret generic harbor-pull --type=kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson="$HOME/image-simple/pull/config.json"
+kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f namespace.yaml
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" create secret generic harbor-pull --type=kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson="$HOME/image-simple/pull/config.json"
 rm -r "$HOME/image-simple/pull"
 ```
 
@@ -185,7 +199,7 @@ To run the app, the cluster needs its three Kubernetes files. This downloads the
 `namespace.yaml` (a separate area in the cluster for the app), `deployment.yaml` (the app: five
 copies, called pods, of your image) and `service.yaml` (the app's network address). It puts your
 values into them: the namespace's name and your image from Harbor. The last line shows the lines
-that changed.
+that changed. Nothing changes in the cluster yet.
 
 ```sh
 curl -sSO "$SRC/namespace.yaml"
@@ -201,8 +215,9 @@ grep -H "^  name:\|namespace:\|image:" namespace.yaml deployment.yaml service.ya
 and `image: <your Harbor name>/<your project>/test-web-apps:v1`. The `name: test-web-apps` lines
 are the app's own name and stay as they are.
 
-**Only for a private project:** this adds the Secret from step 5 to the app, so its pods log
-in to Harbor when they pull the image.
+**Only for a private project:** run this when your project is private, after step 5. It adds the
+Secret `harbor-pull` from step 5 to `deployment.yaml`, so the app's pods log in to Harbor when they
+pull the image. The last line shows the added lines.
 
 ```sh
 sed -i 's|^      automountServiceAccountToken: false$|&\n      imagePullSecrets:\n        - name: harbor-pull|' deployment.yaml
@@ -212,29 +227,32 @@ grep -A1 imagePullSecrets deployment.yaml
 **Expect:** `imagePullSecrets:` and `- name: harbor-pull`.
 
 Now send the three files to the cluster and wait until the app's five pods run. This creates the
-app's namespace, starts five pods from your Harbor image, and asks the load balancer for an
-address:
+app's namespace (unless step 5 did), starts five pods from your Harbor image, and asks the load
+balancer for an address. Afterwards the app runs in your VKS cluster, and step 7 opens it:
 
 ```sh
-kubectl apply -f namespace.yaml -f deployment.yaml -f service.yaml
-kubectl -n "$APP_NAMESPACE" rollout status deployment/test-web-apps
+kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f namespace.yaml -f deployment.yaml -f service.yaml
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" rollout status deployment/test-web-apps
 ```
 
 **Expect:** `namespace/harbor-demo`, `deployment.apps/test-web-apps` and `service/test-web-apps`
 lines, then `deployment "test-web-apps" successfully rolled out`.
 
-**If not:** the wait does not end: run `kubectl -n "$APP_NAMESPACE" get events`. `x509` means the
-nodes do not trust Harbor (HARBOR.md step 11); `unauthorized` or `not found` means the project is
-private and step 5 is missing, or the image name is wrong.
+**If not:** `… .kubeconfig: no such file or directory`: set `VKS_CLUSTER` in the first block and
+run it again. The wait does not end: run
+`kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" get events`.
+`x509` means the nodes do not trust Harbor (HARBOR.md step 11); `unauthorized` or `not found`
+means the project is private and step 5 is missing, or the image name is wrong.
 
 ## 7. Open the app
 
-The Service gives the app an address on your network. This waits until it has one (up to 2
-minutes), prints it, and asks the app for its page.
+Run this to see your image run. The Service (from `service.yaml`) gives the app an address on
+your network. This waits until it has one (up to 2 minutes), prints it, and asks the app for its
+page. You get the address to open in a browser.
 
 ```sh
-kubectl -n "$APP_NAMESPACE" wait service/test-web-apps --for=jsonpath='{.status.loadBalancer.ingress}' --timeout=120s
-APP_IP="$(kubectl -n "$APP_NAMESPACE" get service test-web-apps -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" wait service/test-web-apps --for=jsonpath='{.status.loadBalancer.ingress}' --timeout=120s
+APP_IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" get service test-web-apps -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
 echo "http://$APP_IP/"
 curl -s "http://$APP_IP/" | grep h1
 ```
@@ -249,17 +267,20 @@ left; see [IMAGE.md step 7](IMAGE.md#7-open-the-app), **If not**.
 
 ## 8. Remove it (optional)
 
-This deletes the app and its namespace from the VKS cluster, the image from this machine, and the
-folder with the downloaded files.
+Run this when you no longer need the app. It deletes the app and its namespace from the VKS
+cluster, the image from this machine, and the folder with the downloaded files. Harbor's CA stays
+trusted (the next block) and the image stays in Harbor (below).
 
 ```sh
-kubectl delete namespace "$APP_NAMESPACE"
+kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace "$APP_NAMESPACE"
 docker rmi "$IMAGE"
 cd "$HOME"
 rm -r "$HOME/image-simple"
 ```
 
-To stop trusting Harbor's CA (asks for your password; run it on its own):
+Run this only if this machine will not use this Harbor with docker again. It removes Harbor's CA
+from the folder where docker looks for it (it asks for your password; run it on its own). Afterwards
+docker refuses to talk to this Harbor until you do step 2 again:
 
 ```sh
 sudo rm -r "/etc/docker/certs.d/$HARBOR_FQDN"

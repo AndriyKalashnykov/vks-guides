@@ -15,14 +15,16 @@
 > - [Uninstall a Supervisor Service from a Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/uninstall-a-supervisor-service-version-from-a-supervisor.html)
 > - [Delete a Supervisor Service](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/delete-a-vsphere-service.html)
 
-ArgoCD keeps what is in a Git folder applied to a destination. On a Supervisor it is the ArgoCD
+ArgoCD is a program that reads a folder in Git and applies what it describes to a place it may
+deploy to (a *destination*): a vSphere Namespace or a VKS cluster. On a Supervisor it is the ArgoCD
 Service: a vCenter administrator installs the service once, then a vSphere Namespace runs its own
 ArgoCD (an *instance*). In this guide ArgoCD creates a VKS cluster from the chart in
 [`argocd/guest-cluster`](../argocd/guest-cluster), then deploys the app in
-[`argocd/test-web-apps`](../argocd/test-web-apps) into that cluster and keeps it in sync.
+[`argocd/test-web-apps`](../argocd/test-web-apps) into that cluster and keeps it in sync: if someone
+changes or deletes the app on the cluster, ArgoCD puts it back.
 
-`ARGOCD_NAMESPACE` is the vSphere Namespace that runs ArgoCD, `VKS_NAMESPACE` the one that holds
-the VKS cluster. They can be the same namespace.
+You choose two vSphere Namespaces: one that runs ArgoCD (you set it as `ARGOCD_NAMESPACE` in the
+blocks) and one that holds the VKS cluster (`VKS_NAMESPACE`). They can be the same namespace.
 
 ## Prerequisites
 
@@ -53,9 +55,12 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 1. Check for an ArgoCD you have
 
-This checks what is already there, so you can skip the steps that are done: whether the ArgoCD
-Service is installed on the Supervisor, whether your vSphere Namespace already runs its own ArgoCD,
-and whether ArgoCD's first `admin` password can still be read.
+Run this first, so you can skip the steps that are already done. It only reads, with your
+Supervisor login from LOGIN.md, and changes nothing: it checks whether the ArgoCD Service is
+installed on the Supervisor, whether your vSphere Namespace already runs its own ArgoCD, and
+whether ArgoCD's first `admin` password can still be read. You get one line for each thing found,
+and **Expect** says which step to go to. Set `ARGOCD_NAMESPACE` to the vSphere Namespace that runs
+ArgoCD, or will.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -112,8 +117,9 @@ Supervisors**.
      disconnected/airgapped VCF 9.1*): from `projects.packages.broadcom.com`. For a Supervisor
      without a depot.
 
-Before you upload the file, check that it arrived whole. This prints its checksum (SHA-256) to
-compare with the **SHA2** value on the download page. Set `MANIFEST` to the file you downloaded.
+Before you upload the file, check that it arrived whole. This prints its checksum (SHA-256) and
+changes nothing. You compare the checksum with the **SHA2** value on the download page, then go on
+with item 2 below. Set `MANIFEST` to the file you downloaded.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -186,7 +192,10 @@ checksum: delete the file and download it again; do not use it.
 
 ## 3. Create the ArgoCD instance
 
-This lists the ArgoCD versions the service offers. You pick one of them in the next block.
+Do this step if step 1 found no ArgoCD instance in your namespace. An instance is your own ArgoCD,
+which the ArgoCD Service runs in your vSphere Namespace, in the ArgoCD version you choose. This
+lists the ArgoCD versions the service offers and changes nothing. You get one line per version, and
+you pick one of them in the next block.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -210,8 +219,10 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get argocdversion argocd-supported-v
 
 **If not:** `the server doesn't have a resource type "argocdversion"`: step 2 is not finished.
 
-This starts your own ArgoCD, the instance `argocd-1`, in the vSphere Namespace `ARGOCD_NAMESPACE`.
-Set `ARGOCD_VERSION` to the first *Recommended* version from the list above.
+Run this to get your own ArgoCD. It creates the instance `argocd-1` in the vSphere Namespace
+`ARGOCD_NAMESPACE`, and the Supervisor starts ArgoCD there on one of your free load-balancer
+addresses. You get ArgoCD's address, which step 1's block shows once ArgoCD is ready. Set
+`ARGOCD_VERSION` to the first *Recommended* version from the list above.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -262,16 +273,17 @@ every half minute until it shows `Ready` and an address: one to two minutes.
 
 ## 4. Log in to the ArgoCD web page
 
-This prints what you need to log in to ArgoCD's web page:
+Run this once step 1 shows your instance `Ready`: in ArgoCD's web page you watch and start what
+ArgoCD deploys. This only reads, and prints what you need to log in there:
 
 - its address;
 - the fingerprint of its certificate. Unless you gave ArgoCD one in `argocd-server-tls`, ArgoCD
-  made the certificate itself, so your browser cannot check it and warns. Comparing the fingerprint shows that you reached your ArgoCD;
-- the first password of the user `admin`.
+  made the certificate itself, so your browser cannot check it and warns. Comparing the
+  fingerprint shows that you reached your ArgoCD;
+- the first password of the user `admin`, to log in with.
 
-Set `ARGOCD_INSTANCE` to the instance's name from step 1, or `argocd-1` if you created it in step
-3. Clear the terminal afterwards: the
-password stays on the screen.
+Set `ARGOCD_INSTANCE` to the instance's name from step 1, or `argocd-1` if you created it in
+step 3. Clear the terminal afterwards: the password stays on the screen.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -338,12 +350,17 @@ page.
 `VKS_NAMESPACE`**: create and delete VKS clusters and VMs, and read every VKS cluster's
 kubeconfig. Give both only to people who may do that.
 
-ArgoCD can create a VKS cluster only in a vSphere Namespace it may change. This allows it in
-`VKS_NAMESPACE`:
+ArgoCD can create a VKS cluster only in a vSphere Namespace it may change. Run this once for the
+vSphere Namespace that will hold the VKS cluster (set `VKS_NAMESPACE` to it). It allows ArgoCD in
+there:
 
-- ArgoCD's account `argocd-k8s-sa` gets the `edit` role there;
+- ArgoCD's account `argocd-k8s-sa` (a login for the ArgoCD program, not a person) gets the `edit`
+  role there, the same rights as **Namespaces Edit**;
 - the namespace becomes a *destination*, a place ArgoCD may deploy to, named after the namespace,
-  for the project `vks-clusters` that step 6 creates.
+  for the project `vks-clusters` that step 6 creates. The ArgoCD Service keeps it as the
+  ManagedEntity `ns-<namespace>`, its record of one destination.
+
+Afterwards ArgoCD may create VKS clusters in that namespace, which step 6 does.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -429,7 +446,8 @@ spec:
 created` (`unchanged` on a second run). `configured` or `unchanged` on your first run: someone
 else made them; stop and ask them.
 
-This checks that ArgoCD accepted the namespace as a destination:
+Run this right after the block above, to see that ArgoCD accepted the namespace as a destination.
+It only reads, and changes nothing. You get the destination `ns-<namespace>` and its state:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -462,10 +480,11 @@ namespace> get managedentity ns-<namespace> -o yaml` shows, under `conditions`, 
 
 ## 6. Create a VKS cluster with ArgoCD
 
-In ArgoCD, an *Application* is a folder in Git that ArgoCD applies to a destination, and a project
-sets limits for a group of Applications. This creates the project `vks-clusters`, so that the
-cluster's Application below can only read this repository, deploy only to `VKS_NAMESPACE`, and
-create only VKS clusters.
+In ArgoCD, an *Application* is a folder in Git that ArgoCD applies to a destination; to *sync* it
+is to apply it now. A *project* sets limits for a group of Applications. Run this once, before the
+cluster's Application below. It creates the project `vks-clusters` in ArgoCD and nothing else.
+You get a project in which the cluster's Application can only read this repository, deploy only
+to `VKS_NAMESPACE`, and create only VKS clusters.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -527,8 +546,9 @@ spec:
 
 **Expect:** `appproject.argoproj.io/vks-clusters created`.
 
-This lists the choices your vSphere Namespace offers for a new VKS cluster. You copy one from each
-list into the Application block below:
+The cluster's Application needs four values. This lists the choices for a new VKS cluster in
+`VKS_NAMESPACE`, and changes nothing. You get four lists, and you copy one value from each list into
+the Application block below:
 
 - Kubernetes versions, written as the cluster needs them (without the `-vkr.N` ending);
 - cluster classes: VMware's templates for a cluster;
@@ -592,9 +612,11 @@ if ($LASTEXITCODE -eq 0) {
 
 **If not:** an empty list or `Forbidden`: run [Check the namespace](NAMESPACE.md#8-check-the-namespace).
 
-Choose a name no cluster in `VKS_NAMESPACE` has: lower-case letters, digits and `-`, starting with
-a letter. ArgoCD would take over an existing cluster of that name, and deleting the Application
-would delete it. This checks that nothing has the name now:
+Choose a name for the new VKS cluster that no cluster in `VKS_NAMESPACE` has: lower-case letters,
+digits and `-`, starting with a letter. ArgoCD would take over an existing cluster of that name,
+and deleting the Application would delete it. This checks that neither a VKS cluster nor an
+Application has the name now, and changes nothing. You get two `NotFound` lines when the name is
+free. Set `VKS_CLUSTER` to the name:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -626,10 +648,12 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get application
 
 **If not:** a cluster or Application is listed: choose another `VKS_CLUSTER`.
 
-This creates the Application for your VKS cluster: it points ArgoCD at the folder
-`argocd/guest-cluster` of this repository, with your cluster's name and the four values from the
-lists above. Nothing is created yet: ArgoCD shows what it would create, and creates the cluster
-only when you click **SYNC** below.
+Run this once the name is free. It creates the Application for your VKS cluster in ArgoCD: it points
+ArgoCD at the folder `argocd/guest-cluster` of this repository, with your cluster's name and the
+four values from the lists above. No VKS cluster is created yet: ArgoCD shows what it would create,
+and creates the cluster only when you click **SYNC** below. Set `VKS_CLUSTER` to the name, and
+`K8S_VERSION`, `CLUSTER_CLASS`, `VM_CLASS` and `STORAGE_CLASS` to a value from each list (for a VM
+class, its first column).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -743,8 +767,9 @@ Now look at it, then sync:
 
    ![The SYNC panel: SYNCHRONIZE at the top, the pinned revision, and the Cluster ticked under SYNCHRONIZE RESOURCES](img/argocd/08-sync.png)
 
-This shows whether ArgoCD has finished (`Synced  Healthy`) and whether the VKS cluster is ready
-(`AVAILABLE` `True`). VKS builds the cluster in 5 to 10 minutes: run it again every few minutes.
+Run this after the sync, to follow the build of the VKS cluster. It only reads: it shows whether
+ArgoCD has finished (`Synced  Healthy`) and whether the VKS cluster is ready (`AVAILABLE` `True`).
+VKS builds the cluster in 5 to 10 minutes: run it again every few minutes.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -786,8 +811,8 @@ elsewhere. To use the cluster, run [Get the VKS cluster's kubeconfig](LOGIN.md#g
 
 ## 7. Add the VKS cluster to ArgoCD
 
-So far ArgoCD can only create VKS clusters. To deploy apps into the VKS cluster, it needs the
-cluster's login. This:
+So far ArgoCD can only create VKS clusters. To deploy apps into a VKS cluster, it needs that
+cluster's login. Run this once per VKS cluster, when step 6 shows it `AVAILABLE`. This:
 
 - lets ArgoCD's account `argocd-k8s-sa` read VKS clusters and their logins (the
   role `argocd-manage-vks`, which the ArgoCD Service installs on the Supervisor);
@@ -795,7 +820,8 @@ cluster's login. This:
   [MONITORING.md](MONITORING.md)'s and [CICD.md](CICD.md)'s alike. Each app's project says what it
   may deploy there.
 
-Nothing is installed on the cluster.
+Nothing is installed on the cluster. Set `VKS_CLUSTER` to the cluster's name. Afterwards ArgoCD
+may deploy apps to the cluster, as step 8 does.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -897,11 +923,10 @@ created`.
   the destination (`kubectl --kubeconfig <Supervisor kubeconfig> -n <ArgoCD namespace> delete
   managedentity vks-<namespace>-<cluster>`) and run the block again.
 
-This checks that the cluster was added, and shows when ArgoCD's login to it ends; after that date
-ArgoCD cannot deploy to it. That login is the VKS cluster's administrator certificate, which
-ArgoCD keeps in a Secret (a Kubernetes object that holds a login or password) in
-`ARGOCD_NAMESPACE`. Anyone who may read Secrets there, or log in to this ArgoCD as `admin`, can use
-the cluster as its administrator until that certificate ends.
+Run this after the block above, and again now and then. It only reads: it checks that the cluster
+was added, and shows when ArgoCD's login to it ends; after that date ArgoCD cannot deploy to it.
+That login is the VKS cluster's administrator certificate, which ArgoCD keeps in a Secret (a
+Kubernetes object that holds a login or password) in `ARGOCD_NAMESPACE`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -965,10 +990,13 @@ if (-not $D) {
 - `secrets "cls-vks-…" not found`: `kubectl --kubeconfig <Supervisor kubeconfig> -n <ArgoCD
   namespace> get secret -l argocd.argoproj.io/secret-type=cluster` lists the stored destinations.
 
+**Who can use ArgoCD's login:** anyone who may read Secrets in `ARGOCD_NAMESPACE`, or log in to
+this ArgoCD as `admin`, can use the cluster as its administrator until that certificate ends.
+
 ArgoCD's certificate is a copy of the one in the VKS cluster's kubeconfig, made when the cluster
-was added. When its end date (`notAfter`) is near, run this. It prints the end date of the
-kubeconfig's certificate as the Supervisor holds it now; a later date means that adding the
-cluster again gives ArgoCD a newer certificate:
+was added. When its end date (`notAfter`) is near, run this. It only reads, and prints the end
+date of the kubeconfig's certificate as the Supervisor holds it now; a later date means that
+adding the cluster again gives ArgoCD a newer certificate:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1009,10 +1037,12 @@ administrator.
 
 ### Add every VKS cluster of a namespace (optional)
 
-Instead of one ManagedEntity per cluster, this asks the ArgoCD Service to add every VKS cluster in
-`VKS_NAMESPACE`, also the ones created later once they are ready, the same way as the block above:
-the same destination `<cluster>-<namespace>` and the same Secret, so step 8 and the check above work
-unchanged. A cluster already added with the block above stays as it is.
+Use this instead of step 7's first block when ArgoCD should deploy to every VKS cluster of a
+vSphere Namespace. Instead of one ManagedEntity (the ArgoCD Service's record of one destination)
+per cluster, it creates a policy that asks the ArgoCD Service to add every VKS cluster in
+`VKS_NAMESPACE`, also the ones created later once they are ready, the same way as step 7's first
+block. You get the same destination `<cluster>-<namespace>` and the same Secret, so step 8 and the
+checks above work unchanged. A cluster already added with step 7's first block stays as it is.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1107,7 +1137,8 @@ spec:
   `VKS_NAMESPACE`, as step 5 describes.
 - `Forbidden`: as for the block above.
 
-This shows what the policy decided for each cluster:
+Run this after the policy block, to see that the policy added your clusters. It only reads, and
+changes nothing. You get what the policy decided for each cluster, then the destinations it made:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1147,17 +1178,17 @@ or the policy changes; to add it at once, delete the policy and run the policy b
 
 ## 8. Deploy the test app
 
-This has ArgoCD deploy a small test web server (nginx) into your VKS cluster from the folder
-[`argocd/test-web-apps`](../argocd/test-web-apps), which shows that ArgoCD can run apps there. It
-creates:
+Run this once step 7 shows the VKS cluster `Ready`, to prove that ArgoCD can run apps there. It
+has ArgoCD deploy a small test web server (nginx) into your VKS cluster from the folder
+[`argocd/test-web-apps`](../argocd/test-web-apps). It creates in ArgoCD:
 
 - the project `test-web-apps`, which limits ArgoCD to this one app on this cluster;
 - the Application `test-web-apps`, which ArgoCD deploys at once.
 
 On the cluster you get the namespace `test-web-apps` (inside the VKS cluster, not a vSphere
-Namespace), five copies (pods) of the web server, and a
-Service: an address you can open from your machine. If someone changes or deletes them on the
-cluster, ArgoCD puts them back.
+Namespace), five copies (pods) of the web server, and a Service: an address you can open from
+your machine. If someone changes or deletes them on the cluster, ArgoCD puts them back. Set
+`VKS_CLUSTER` to the cluster from step 6.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1279,8 +1310,9 @@ ArgoCD is older than 3.3. Delete the line `name: test-web-apps` under `kind: Nam
 again (the Application then shows `unchanged`); the project may then create a namespace with any
 name.
 
-This shows that the app runs: ArgoCD's status for it, how many of the five pods are ready, and
-whether its address answers. It needs the VKS cluster's kubeconfig from
+Run this after the block above, to see the app run. It only reads, and shows ArgoCD's status for
+the app, how many of the five pods are ready, and whether its address answers. It needs the VKS
+cluster's kubeconfig file `~/.kube/<cluster>.kubeconfig` from
 [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig). Run it again until
 it shows `5/5`: a minute or two.
 
@@ -1345,7 +1377,10 @@ If you installed monitoring with ArgoCD, run [MONITORING.md](MONITORING.md) step
 these in order: an Application can be deleted only while ArgoCD still reaches its
 destination, and deleting an Application deletes what it created.
 
-This deletes the test app and its namespace on the VKS cluster, then its project in ArgoCD:
+Run this first, while ArgoCD still reaches the VKS cluster. It deletes the Application
+`test-web-apps`, which makes ArgoCD delete the test app and its namespace on the VKS cluster, then
+the project `test-web-apps` in ArgoCD. Afterwards the test app is gone; the VKS cluster itself
+stays:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1377,9 +1412,9 @@ namespace` to each `deleted` line.
 **If not:** `timed out waiting`: ArgoCD cannot reach the VKS cluster (step 7's certificate ended,
 or the cluster is gone). In the ArgoCD page, delete the Application with **Non-cascading**.
 
-This removes the VKS cluster from ArgoCD's destinations and takes back ArgoCD's access to it.
-Then it deletes the cluster's Application, which makes ArgoCD delete the VKS cluster itself; that
-takes a few minutes:
+Run this next, only when you no longer need the VKS cluster or any app on it. It removes the VKS
+cluster from ArgoCD's destinations and takes back ArgoCD's access to it. Then it deletes the
+cluster's Application, which makes ArgoCD delete the VKS cluster itself; that takes a few minutes:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1412,9 +1447,11 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applicat
 **Expect:** three `… deleted` lines. Then run the name check of step 6 every few minutes until it
 prints two `NotFound` lines.
 
-This deletes the project, the namespace destination, ArgoCD's role in `VKS_NAMESPACE` and step 7's
-policy. Run it only if steps 5 and 6 printed `created` for them (and step 7 for the policy). It deletes nothing while an Application of the
-project is left.
+Run this once the cluster is gone, to take back ArgoCD's rights in your vSphere Namespace. It
+deletes the project `vks-clusters`, the namespace destination, ArgoCD's `edit` role in
+`VKS_NAMESPACE` and step 7's policy. Run it only if steps 5 and 6 printed `created` for them (and
+step 7 for the policy). It deletes nothing while an Application of the project is left.
+Afterwards ArgoCD may no longer create VKS clusters in `VKS_NAMESPACE`.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1461,8 +1498,9 @@ else {
 **If not:** `Nothing deleted: these Applications …`: a cluster Application is still being
 deleted; run step 6's name check until it prints two `NotFound` lines, then this block again.
 
-This deletes the instance `argocd-1`, then what it leaves behind: two Secrets, one of them the
-first `admin` password, and its project `default`. Run it only if step 3 printed `created`.
+Run this last, when nobody uses this ArgoCD any more. It deletes the instance `argocd-1`, then what
+it leaves behind: two Secrets, one of them the first `admin` password, and its project `default`.
+Run it only if step 3 printed `created`. Afterwards ArgoCD's web page and address are gone.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1502,8 +1540,9 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 10. Remove the ArgoCD Service (vCenter administrator)
 
-Only if step 2 installed it, and only when no ArgoCD instance is left on the Supervisor. This
-lists them:
+Do this step only if step 2 installed the service, and only when no ArgoCD instance is left on the
+Supervisor: removing the service removes the instances with it. This lists the instances in every
+vSphere Namespace, and changes nothing. You get `No resources found` when none is left:
 
 **Linux, macOS, WSL (bash or zsh):**
 
