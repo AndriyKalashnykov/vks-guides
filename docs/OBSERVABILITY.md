@@ -78,11 +78,15 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 1. Check the cluster
 
-This checks two things the later steps depend on:
+Run this first, to see that the cluster is ready for this guide. It reads the cluster through its
+kubeconfig from LOGIN.md (`~/.kube/<VKS_CLUSTER>.kubeconfig`) and changes nothing. Set
+`VKS_CLUSTER` to the VKS cluster's name. It checks two things the later steps depend on:
 
 - Grafana from MONITORING.md runs with its helper that loads new data sources (step 8 uses it
   to add Loki and Jaeger);
 - whether Fluent Bit is already installed (LOGGING.md); step 5 then updates it.
+
+You then know whether you can go on, and whether step 5 installs Fluent Bit or updates it.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -112,9 +116,11 @@ nothing after it, or `daemonset.apps/fluent-bit` if you did [LOGGING.md](LOGGING
 
 ## 2. Create the namespaces
 
+Run this after step 1, so that Loki, Jaeger and the sample app each have a place in the cluster.
 This creates two namespaces (inside the VKS cluster, not vSphere Namespaces; they are not listed
 under Supervisor Management → Namespaces): `observability` for Loki and Jaeger, and `podinfo` for
-the sample app. Both keep the cluster's strictest default security for pods (`restricted`).
+the sample app. Both keep the cluster's strictest default security for pods (`restricted`). You
+then have the namespaces for steps 3 to 6. Set `VKS_CLUSTER` as in step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -142,10 +148,13 @@ kubectl --kubeconfig $VKS_KUBECONFIG create namespace podinfo
 
 ## 3. Install Loki
 
-This installs Loki, which stores the cluster's logs so Grafana can search them. It downloads
-Loki's installer (a Helm chart), checks that the file is exactly the one published, writes the
-settings file `loki-values.yaml`, and installs Loki as one pod with a disk of `LOKI_STORAGE`.
-Loki deletes logs older than `LOKI_RETENTION` (`168h`: 7 days).
+Run this after step 2, so the logs of step 5 have a place to go. It installs Loki, which stores
+the cluster's logs so Grafana can search them. It downloads Loki's installer (a Helm chart),
+checks that the file is exactly the one published, writes the settings file `loki-values.yaml`,
+and installs Loki in the namespace `observability` as the Helm release `loki`: one pod with a disk
+of `LOKI_STORAGE`. Loki deletes logs older than `LOKI_RETENTION` (`168h`: 7 days). You then have
+Loki running, ready for step 5; running it again updates Loki to the current settings. Set
+`VKS_CLUSTER` as in step 1, and `LOKI_STORAGE` and `LOKI_RETENTION` if you want other values.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -340,10 +349,13 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 
 ## 4. Install Jaeger
 
-This installs Jaeger, which stores traces: a record of each request's path through the app and
-how long each part took. It downloads Jaeger's chart, checks it, writes `jaeger-values.yaml` and
-installs Jaeger 2.20.0 as one pod. Jaeger keeps the last 10,000 traces in memory, so a restart
-empties it. Keep this version: Grafana cannot read Jaeger 2.21 or later.
+Run this after step 3, so the sample app of step 6 has a place to send its traces. It installs
+Jaeger, which stores traces: a record of each request's path through the app and how long each
+part took. It downloads Jaeger's chart, checks it, writes `jaeger-values.yaml` and installs Jaeger
+2.20.0 in the namespace `observability` as the Helm release `jaeger`, one pod. Jaeger keeps the
+last 10,000 traces in memory, so a restart empties it. You then have Jaeger running, ready for
+step 6; running it again updates Jaeger to the current settings. Set `VKS_CLUSTER` as in step 1.
+Keep this version: Grafana cannot read Jaeger 2.21 or later.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -532,10 +544,15 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 
 ## 5. Send the logs to Loki
 
-This makes Broadcom's Fluent Bit add-on send every container's logs to Loki, tagged with their
-namespace, pod, container and node, so you can filter by them in Grafana. It writes
-`fluent-bit-values.yaml`, then installs Fluent Bit, or, if [LOGGING.md](LOGGING.md) installed
-it, updates and restarts it. Set first:
+Run this after step 3, so the cluster's logs reach Loki. Fluent Bit is a small program, on every
+node, that collects the logs of every container and sends them on; Broadcom packages it as an
+add-on, which the Supervisor installs into the cluster ([ADDONS.md](ADDONS.md)). This makes
+Fluent Bit send every container's logs to Loki, tagged with their namespace, pod, container and
+node, so you can filter by them in Grafana. It writes `fluent-bit-values.yaml`, then installs
+Fluent Bit, or, if [LOGGING.md](LOGGING.md) installed it, updates and restarts it. It switches the
+VCF CLI's current context to your Supervisor (`SUPERVISOR_CONTEXT`), and the VCF CLI stays on it
+after the block. You then have the logs in Loki; step 7 checks them. Set `VKS_NAMESPACE` to the
+cluster's vSphere Namespace and `VKS_CLUSTER` as in step 1, and also:
 
 - `FLUENT_BIT_RELEASE`: as in LOGGING.md step 1;
 - `LOGS_FQDN`: if you did LOGGING.md, Log Management's DNS name from its step 3, so logs keep
@@ -755,16 +772,17 @@ after it, with `LOGS_FQDN` set.
 
 ## 6. Run the sample app
 
-This starts a small sample app, podinfo 6.15.0, so you have metrics, logs and traces to look
-at. It creates:
+Run this after steps 4 and 5. It starts a small sample app, podinfo 6.15.0, in the namespace
+`podinfo`, so you have metrics, logs and traces to look at. Set `VKS_CLUSTER` as in step 1. It
+creates:
 
 - podinfo, which writes a log line for each request and sends the request's trace to Jaeger;
   each log line carries the trace's ID, which links the two;
 - a ServiceMonitor, which tells Prometheus to collect podinfo's metrics;
-- a second pod that, every two seconds, calls podinfo twice: one call that works and one that
-  fails, so the graphs show both.
+- a second pod (a pod is a running part of an app) that, every two seconds, calls podinfo
+  twice: one call that works and one that fails, so the graphs show both.
 
-It waits until both pods run.
+It waits until both pods run. You then have podinfo making all three signals; step 7 checks them.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1019,7 +1037,8 @@ both deployments `successfully rolled out`.
 
 Wait two minutes after step 6. This checks that all three signals from podinfo arrived, before
 you look in Grafana: it asks Prometheus for its metrics, Loki for its logs and Jaeger for its
-traces.
+traces, and changes nothing. You get a count or a list per signal, to compare with **Expect**.
+Set `VKS_CLUSTER` as in step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1060,9 +1079,11 @@ $R = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "$P/observability/services/j
 
 ## 8. Add Loki and Jaeger to Grafana
 
-This tells Grafana where Loki and Jaeger are (its data sources), so you can search logs and
-traces in Grafana. It also links them: from a log line you can open its trace, and from a trace
-its log lines. Grafana picks this up within a minute, without a restart.
+Run this after step 7, so you can search logs and traces in Grafana. It tells Grafana where Loki
+and Jaeger are (its data sources), in the ConfigMap `observability-datasources` (an object that
+holds settings) in the namespace `monitoring`. It also links them: from a log line you can open
+its trace, and from a trace its log lines. Grafana picks this up within a minute, without a
+restart; you then look in Grafana in step 9. Set `VKS_CLUSTER` as in step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1256,10 +1277,12 @@ For this step you need:
 
 ### 11.1 Check the Supervisor
 
-This checks whether your Supervisor already runs the Metrics Aggregator. If it does not, the
-block saves a note on this machine saying so. Step 12 uses that note, so you only remove a
-Metrics Aggregator you installed. It then lists the VKS clusters and whether VCF Operations'
-collection is on for each.
+Run this first, before you change anything on the Supervisor. It checks whether your Supervisor
+already runs the Metrics Aggregator, through your Supervisor kubeconfig
+(`~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig`). If it does not, the block saves a note on this
+machine saying so. Step 12 uses that note, so you only remove a Metrics Aggregator you installed.
+It then lists the VKS clusters and whether VCF Operations' collection is on for each. You then
+know whether to do steps 11.2 to 11.4, or skip to 11.5; running it again keeps the first note.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1349,8 +1372,10 @@ Take the manifest with **legacy** in its name: it downloads the service from
 `projects.packages.broadcom.com`. The other one needs a VCF Software Depot. Do not put the file
 into a Git repository; it is licensed to your Broadcom account.
 
-This checks that you have the right file and that it arrived whole: it prints the file's
-checksum, a code that must match the one below.
+This checks that you have the right file and that it arrived whole, before you upload it in the
+next step: it prints the file's checksum, a code that must match the one below. It changes
+nothing; when the codes match, you have the right file for step 11.3. Set
+`METRICS_AGGREGATOR_MANIFEST` to the file's path if it is not in `Downloads`.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1453,10 +1478,13 @@ Services. An error naming the YAML: you chose the wrong file.
 
 ### 11.5 Turn it on for your VKS cluster
 
-This turns on VCF Operations' collection for your VKS cluster. It marks the cluster `enabled` on
-the Supervisor; the Supervisor then installs Broadcom's Telegraf and Prometheus add-ons in the
-cluster, which send its metrics to VCF Operations. The block waits until both run. It stops
-first if the cluster has an older install of MONITORING.md, which would clash with them.
+Run this after step 11.4, to turn on VCF Operations' collection for your VKS cluster. It marks
+the cluster `enabled` on the Supervisor, with a label (a tag on the cluster's object); the
+Supervisor then installs Broadcom's Telegraf and Prometheus add-ons in the cluster, which send its
+metrics to VCF Operations. The block waits until both run. It stops first if the cluster has an
+older install of MONITORING.md, which would clash with them. You then have the cluster sending
+metrics; step 11.6 checks them. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace and
+`VKS_CLUSTER` as in step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1577,8 +1605,11 @@ that it works.
 
 ## 12. Uninstall (optional)
 
-**This deletes the logs in Loki and the traces in Jaeger.** It removes the sample app, the data
-sources (Grafana restarts to drop them), Jaeger, Loki and its volume, and the namespaces.
+Run this when you no longer want this guide's logs, traces and sample app. **This deletes the
+logs in Loki and the traces in Jaeger.** It removes the sample app, the data sources (Grafana
+restarts to drop them), Jaeger, Loki and its volume, and the namespaces. You then have
+MONITORING.md's Prometheus and Grafana as before; Fluent Bit stays (see below). Set
+`VKS_CLUSTER` as in step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1618,8 +1649,10 @@ add-on with LOGGING.md step 8.
 
 ### Turn off VCF Operations' collection (if you did step 11)
 
-This sets your cluster's label to `disabled`, waits a minute, and checks that the add-ons left
-the cluster.
+Run this when the cluster should stop sending metrics to VCF Operations. It sets your cluster's
+label to `disabled` on the Supervisor, waits a minute, and checks that the add-ons left the
+cluster. You then have the cluster without Broadcom's Telegraf and Prometheus add-ons. Set
+`VKS_NAMESPACE` and `VKS_CLUSTER` as in step 11.5.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1661,8 +1694,9 @@ was `disabled`), then `namespaces "tanzu-system-telegraf" not found` and the sam
 ### Remove the Metrics Aggregator (vCenter administrator)
 
 **Only remove a Metrics Aggregator you installed, once no VKS cluster uses it.** This tells you
-whether you may. Run it on the machine that ran step 11.1: it reads that step's note, lists the
-VKS clusters still `enabled`, and prints `MAY UNINSTALL` or `DO NOT UNINSTALL`.
+whether you may, and changes nothing. Run it on the machine that ran step 11.1: it reads that
+step's note, lists the VKS clusters still `enabled`, and prints `MAY UNINSTALL` or
+`DO NOT UNINSTALL`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1762,6 +1796,7 @@ stop (see above).
 Certificate and two Secrets named `telegraf-<cluster>…` for each VKS cluster in each vSphere
 Namespace, and the Certificates keep trying to renew from an issuer that is gone. Run this only
 after the uninstall above: it removes them in every vSphere Namespace, then lists what is left.
+You then have no `telegraf` objects left in the vSphere Namespaces.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1860,8 +1895,9 @@ kubectl: `… deleted from <namespace> namespace`), or `nothing to remove`; then
   --kubeconfig <your Supervisor kubeconfig> -n <namespace> delete secret <name>`.
 - `left in <namespace>:` with another name: it is not the Metrics Aggregator's; leave it.
 
-**Remove step 11.1's note.** This deletes it. Otherwise a later run of the block above could
-treat someone else's new install as yours and say it is safe to remove.
+**Remove step 11.1's note.** Run this last, so that a later run of the block above cannot treat
+someone else's new install as yours and say it is safe to remove. It deletes the note step 11.1
+saved on this machine for this Supervisor; you then have no note left.
 
 **Linux, macOS, WSL (bash or zsh):**
 
