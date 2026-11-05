@@ -113,9 +113,9 @@ fi
 $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
-$global:LASTEXITCODE = $null
-if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $global:LASTEXITCODE = 1 }
-elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (LOGIN.md)"; $global:LASTEXITCODE = 1 }
+$global:LASTEXITCODE = $null; $MISS = $false
+if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
+elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
 else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
 if ($LASTEXITCODE -eq 0) { $J = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) {
@@ -124,7 +124,7 @@ if ($LASTEXITCODE -eq 0) {
   kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' -o 'custom-columns=WORKER:.metadata.name,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory'
   kubectl --kubeconfig $VKS_KUBECONFIG get namespace keycloak 2>$null
   if ($LASTEXITCODE -eq 0) { "NOTE: namespace keycloak exists already" }
-} else {
+} elseif (-not $MISS) {
   "FAILED: cannot read the cluster (see the error above)"
 }
 ```
