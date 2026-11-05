@@ -54,9 +54,10 @@ images are for amd64 nodes only, and need about 8 GiB of the worker's image disk
 
 The cluster for Octopus:
 
-1. Its vSphere Namespace offers a VM class with at least 2 CPUs and 8 GB, such as `best-effort-medium`
-   ([NAMESPACE.md step 8](NAMESPACE.md#8-check-the-namespace) lists them under `VM classes:`; a
-   vCenter administrator adds one with [NAMESPACE.md step 6](NAMESPACE.md#6-add-the-vm-classes)).
+1. Its vSphere Namespace offers a VM class with at least 2 CPUs and 8 GB, such as
+   `best-effort-medium` ([NAMESPACE.md step 8](NAMESPACE.md#8-check-the-namespace) lists them under
+   `VM classes:`; a vCenter administrator adds one with [NAMESPACE.md step
+   6](NAMESPACE.md#6-add-the-vm-classes)).
 2. Create the cluster with
    [CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), with that
    `vmClass`, one control-plane node and one worker (`replicas: 1` for both). Octopus's volumes take
@@ -200,11 +201,11 @@ disk free.
 ## 2. Install cert-manager
 
 The certificate for Octopus's web page (step 5) comes from cert-manager, a Broadcom add-on of the
-VKS cluster ([what add-ons are](ADDONS.md)). Run
-[KEYCLOAK-VKS.md step 2](KEYCLOAK-VKS.md#2-install-cert-manager) once, with `VKS_CLUSTER` changed
-from `my-keycloak-cluster` to Octopus's cluster and `VKS_NAMESPACE` to its vSphere Namespace.
-When the add-on is there already, it changes nothing. That block switches the VCF CLI's current
-context to the Supervisor, and it stays there.
+VKS cluster ([what add-ons are](ADDONS.md)). Run [KEYCLOAK-VKS.md step
+2](KEYCLOAK-VKS.md#2-install-cert-manager) once, with `VKS_CLUSTER` changed from
+`my-keycloak-cluster` to Octopus's cluster and `VKS_NAMESPACE` to its vSphere Namespace. When the
+add-on is there already, it changes nothing. That block makes your Supervisor login the active one
+for the VCF CLI and in its kubeconfig file, and that stays after it.
 
 **Expect:** as in that step: `condition met` for the three cert-manager deployments, or
 `cert-manager: already installed`.
@@ -884,11 +885,11 @@ prints `service/sql unchanged`, `statefulset.apps/sql configured` (nothing chang
 running) and the same two lines.
 
 **If not:**
-- `CrashLoopBackOff` with `sqlservr: Operation not permitted` in `kubectl --kubeconfig <file> -n octopus logs sql-0`:
-  the container lacks `NET_BIND_SERVICE`; run this block as it is.
-- `ImagePullBackOff`: the nodes cannot reach or cannot download from `mcr.microsoft.com` (the
-  image is about 640 MB; `kubectl --kubeconfig <file> -n octopus describe pod sql-0` shows the error; see the table
-  above).
+- `CrashLoopBackOff` with `sqlservr: Operation not permitted` in `kubectl --kubeconfig <file> -n
+  octopus logs sql-0`: the container lacks `NET_BIND_SERVICE`; run this block as it is.
+- `ImagePullBackOff`: the nodes cannot reach or cannot download from `mcr.microsoft.com` (the image
+  is about 640 MB; `kubectl --kubeconfig <file> -n octopus describe pod sql-0` shows the error; see
+  the table above).
 - `Pending` with `Insufficient memory`: the worker is too small (see the Prerequisites).
 - `FAILED: SQL Server does not accept logins`: the log shows why; a `sa` password SQL Server
   refuses stops it at start (step 3 makes one it accepts).
@@ -1286,19 +1287,20 @@ objects`, then `configmap/octopus-proxy created`, `deployment.apps/octopus-proxy
 prints `unchanged` for nginx and keeps Octopus's data and keys.
 
 **If not:**
-- `FAILED: Octopus is not ready`: `kubectl --kubeconfig <file> -n octopus describe pod octopus-octopus-deploy-0` and
-  `kubectl --kubeconfig <file> -n octopus logs octopus-octopus-deploy-0` show why. `ImagePullBackOff`: the nodes cannot
-  reach `docker.io`. `CreateContainerConfigError`: a Secret of step 3 is missing; run step 3 (for `ca-bundle`:
-  the ConfigMap of step 11; run step 11, or delete `~/.config/vks-guides/octopus/values-ca.yaml` if
-  you no longer use Nexus, then run step 7 again).
-  A log line about the database: step 6 did not finish. The pod `Running` but `0/1` with only
-  `Startup probe failed` events: Octopus is still starting; run step 7 again.
+- `FAILED: Octopus is not ready`: `kubectl --kubeconfig <file> -n octopus describe pod
+  octopus-octopus-deploy-0` and `kubectl --kubeconfig <file> -n octopus logs
+  octopus-octopus-deploy-0` show why. `ImagePullBackOff`: the nodes cannot reach `docker.io`.
+  `CreateContainerConfigError`: a Secret of step 3 is missing; run step 3 (for `ca-bundle`: the
+  ConfigMap of step 11; run step 11, or delete `~/.config/vks-guides/octopus/values-ca.yaml` if you
+  no longer use Nexus, then run step 7 again). A log line about the database: step 6 did not finish.
+  The pod `Running` but `0/1` with only `Startup probe failed` events: Octopus is still starting;
+  run step 7 again.
 - The pod still in `CrashLoopBackOff` after step 7 ran with the fix: running step 7 again does not
   replace it; run `kubectl --kubeconfig <file> -n octopus delete pod octopus-octopus-deploy-0`, then
   step 7 again.
 - `Error: … oci://ghcr.io/…`: this machine cannot reach `ghcr.io`.
-- `secret "octopus-tls" not found` in `kubectl --kubeconfig <file> -n octopus describe pod -l app=octopus-proxy`:
-  step 5 did not finish.
+- `secret "octopus-tls" not found` in `kubectl --kubeconfig <file> -n octopus describe pod -l
+  app=octopus-proxy`: step 5 did not finish.
 
 **How Octopus runs:** as a non-root user with a read-only file system, and without
 Docker-in-Docker (so steps cannot run in containers on Octopus's built-in worker).
@@ -1389,7 +1391,8 @@ gRPC port keeps Octopus's own certificate.
   passing traffic to nginx yet; wait a minute and run step 8 again.
 - `SSL certificate problem`: step 5 ran with another address; run steps 5 and 8 again.
 - `CertGetNameString() failed to match` (Windows): the certificate is older than step 5's
-  `octopus-web.octopus.svc` name; run step 5, wait 6 minutes for nginx to load it, then run step 8 again.
+  `octopus-web.octopus.svc` name; run step 5, wait 6 minutes for nginx to load it, then run step 8
+  again.
 - No `gRPC certificate:` line: this machine cannot reach `octopus-grpc`'s address on port 8443.
 
 ## 9. Sign in
@@ -1501,9 +1504,9 @@ and `Users 1/10`; from the terminal, `version: 2026.3.16049`, `licence compliant
 `limits: Spaces 1, Projects 10, Targets 10, Tasks 5, Tenants 10, Users 10, …`.
 
 **If not:**
-- `Projects 0` (or `Projects 0/0`): Octopus started without a licence; check
-  `octopus-license.xml`, delete the Secret with `kubectl --kubeconfig <file> -n octopus delete secret
-  octopus-licensekey`, run step 3 again, then restart Octopus with `kubectl --kubeconfig <file> -n octopus delete pod
+- `Projects 0` (or `Projects 0/0`): Octopus started without a licence; check `octopus-license.xml`,
+  delete the Secret with `kubectl --kubeconfig <file> -n octopus delete secret octopus-licensekey`,
+  run step 3 again, then restart Octopus with `kubectl --kubeconfig <file> -n octopus delete pod
   octopus-octopus-deploy-0`.
 - `Invalid username or password` (browser) or `FAILED: sign-in refused`: the password is the one in
   step 3's Secret; a password changed in Octopus's web page goes back to it when the pod restarts.
@@ -1782,8 +1785,8 @@ octopus:
 </details>
 
 **Expect:** `configmap/nexus-ca created` and `wrote …/values-ca.yaml: now run step 7 again`; after
-step 7, `Octopus is ready`, and `kubectl --kubeconfig <file> -n octopus logs octopus-octopus-deploy-0 -c ca-bundle`
-prints the number of CAs in the bundle (about 150).
+step 7, `Octopus is ready`, and `kubectl --kubeconfig <file> -n octopus logs
+octopus-octopus-deploy-0 -c ca-bundle` prints the number of CAs in the bundle (about 150).
 
 Then add Nexus in the web page: **External Feeds** (under **Manage**) → **Add Feed** → **Feed
 type** **Docker Container Registry**, **Feed name** `nexus`, **Feed url** `https://<NEXUS_REGISTRY>`

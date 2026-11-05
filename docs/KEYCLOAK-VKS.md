@@ -142,13 +142,13 @@ already`: Keycloak may be installed; steps 3 to 5 keep what exists.
 
 Run this once per cluster, before step 4: Keycloak's HTTPS certificate (step 4) comes from
 cert-manager, a Broadcom add-on of the VKS cluster that makes and renews certificates ([what add-ons
-are](ADDONS.md)). It switches the VCF CLI's current context to the Supervisor, and the switch stays
-after the block; it installs cert-manager with the VCF CLI when the cluster does not have it, and
-waits until it accepts certificate requests. You get cert-manager ready in the cluster. When the
-add-on is there already (for example from [HEADLAMP.md](HEADLAMP.md)), it changes nothing. Set
-`VKS_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to its name, and
-`SUPERVISOR_CONTEXT` to the name of your Supervisor login from [LOGIN.md](LOGIN.md) (`supervisor`
-unless you chose another).
+are](ADDONS.md)). It makes your Supervisor login (`SUPERVISOR_CONTEXT`) the active one for the VCF
+CLI and in its kubeconfig file, and that stays after the block; it installs cert-manager with the
+VCF CLI when the cluster does not have it, and waits until it accepts certificate requests. You get
+cert-manager ready in the cluster. When the add-on is there already (for example from
+[HEADLAMP.md](HEADLAMP.md)), it changes nothing. Set `VKS_NAMESPACE` to the cluster's vSphere
+Namespace, `VKS_CLUSTER` to its name, and `SUPERVISOR_CONTEXT` to the name of your Supervisor login
+from [LOGIN.md](LOGIN.md) (`supervisor` unless you chose another).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -245,8 +245,8 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 `cert-manager: already installed`.
 
 **If not:**
-- `MISSING: …`: install that tool. `FAILED: the VCF CLI …`: log in to the Supervisor again ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)),
-  and check `VKS_NAMESPACE` and `VKS_CLUSTER`.
+- `MISSING: …`: install that tool. `FAILED: the VCF CLI …`: log in to the Supervisor again
+  ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)), and check `VKS_NAMESPACE` and `VKS_CLUSTER`.
 - `STOPPED: … not the add-on`: someone installed cert-manager another way. Use that cert-manager
   for step 4 at your own judgement, or remove it and run this block again.
 - `FAILED: cert-manager does not accept requests yet`: wait a few minutes, then go on with step 4;
@@ -978,7 +978,8 @@ if ($LASTEXITCODE -eq 0 -and $B) {
 
 </details>
 
-**Expect:** a `subject=` line with `Keycloak CA`, a `sha256 Fingerprint=…` line, then `saved …/keycloak-ca.pem`.
+**Expect:** a `subject=` line with `Keycloak CA`, a `sha256 Fingerprint=…` line, then `saved
+…/keycloak-ca.pem`.
 
 ## 7. Give Keycloak its name
 
@@ -1020,8 +1021,8 @@ if ($LASTEXITCODE -eq 0) { "issuer: $((ConvertFrom-Json ($J | Out-String)).issue
 - `SSL certificate problem`: `KEYCLOAK_HOST` is not the name in step 4, or `KEYCLOAK_CA` is not the
   file from step 6.
 - `Connection refused` or a timeout: this machine cannot reach Keycloak's address on port 443.
-- `CERT_TRUST_REVOCATION_STATUS_UNKNOWN` (Windows): `curl.exe` without `--ssl-no-revoke`; a CA of your
-  own publishes no revocation list.
+- `CERT_TRUST_REVOCATION_STATUS_UNKNOWN` (Windows): `curl.exe` without `--ssl-no-revoke`; a CA of
+  your own publishes no revocation list.
 
 ## 8. Trust Keycloak's CA (each person, once)
 
@@ -1333,8 +1334,9 @@ Under **Groups**, a group's **Members** tab lists the people added to it.
 ## 11. Register Keycloak with the Supervisor (optional)
 
 This lets people sign in to every VKS cluster of a Supervisor with their Keycloak account, through
-the Supervisor: the group way of [ACCESS.md](ACCESS.md#a-group-from-an-external-identity-provider-through-the-supervisor).
-Skip it if people sign in only to clusters made with [KEYCLOAK.md](KEYCLOAK.md). Who does what:
+the Supervisor: the group way of
+[ACCESS.md](ACCESS.md#a-group-from-an-external-identity-provider-through-the-supervisor). Skip it if
+people sign in only to clusters made with [KEYCLOAK.md](KEYCLOAK.md). Who does what:
 
 - you, the Keycloak administrator: the client `supervisor` in the realm (11.2), then you send the
   vCenter administrator its secret, `keycloak-ca.pem` (step 6) and the issuer
@@ -1519,10 +1521,11 @@ fi
 
 </details>
 
-**Expect:** `Logging into https://keycloak.keycloak.svc as user admin of realm master`, then
-a `Created new client …` line and `client supervisor: created, redirect https://…/wcp/pinniped/callback`
-(or `exists, redirect …`), `client supervisor: default client scopes basic, profile, email`,
-then `client secret: not shown …` (the secret with `SHOW_SECRET="yes"`).
+**Expect:** `Logging into https://keycloak.keycloak.svc as user admin of realm master`, then a
+`Created new client …` line and `client supervisor: created, redirect
+https://…/wcp/pinniped/callback` (or `exists, redirect …`), `client supervisor: default client
+scopes basic, profile, email`, then `client secret: not shown …` (the secret with
+`SHOW_SECRET="yes"`).
 
 **If not:**
 - `STOPPED: CALLBACK is not a Callback URL …`: copy it again from the Identity Providers page
@@ -1542,8 +1545,9 @@ then `client secret: not shown …` (the secret with `SHOW_SECRET="yes"`).
 already, you must remove it first, and then:
 
 - every sign-in through that provider stops at once;
-- the roles its groups have on vSphere Namespaces ([ACCESS.md step 2](ACCESS.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator))
-  no longer apply: after this registration, run that step again for each group;
+- the roles its groups have on vSphere Namespaces ([ACCESS.md step
+  2](ACCESS.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator)) no longer
+  apply: after this registration, run that step again for each group;
 - every VKS cluster of the Supervisor takes the change;
 - vCenter SSO logins keep working, so you can always get back in.
 

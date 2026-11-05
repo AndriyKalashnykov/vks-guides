@@ -59,7 +59,8 @@ The blocks keep their files in `~/.config/vks-guides/observability` (PowerShell:
   add-on;
 - [kubectl](KUBECTL.md), [curl and jq](PREREQS.md);
 - 10 GiB more storage for Loki, inside the vSphere Namespace's storage limit, if one is set;
-- for step 11, what [its list](#11-let-vcf-operations-collect-the-clusters-kubernetes-metrics-optional) names.
+- for step 11, what [its
+  list](#11-let-vcf-operations-collect-the-clusters-kubernetes-metrics-optional) names.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
@@ -551,9 +552,10 @@ add-on, which the Supervisor installs into the cluster ([ADDONS.md](ADDONS.md)).
 Bit send every container's logs to Loki, tagged with their namespace, pod, container and node, so
 you can filter by them in Grafana. It writes `fluent-bit-values.yaml`, then installs Fluent Bit, or,
 if it is already installed (by [LOGGING.md](LOGGING.md) or an earlier run of this step), updates and
-restarts it. It switches the VCF CLI's current context to your Supervisor (`SUPERVISOR_CONTEXT`),
-and the VCF CLI stays on it after the block. You then have the logs in Loki; step 7 checks them. Set
-`VKS_NAMESPACE` to the cluster's vSphere Namespace and `VKS_CLUSTER` as in step 1, and also:
+restarts it. It makes your Supervisor login (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI
+and in its kubeconfig file, and that stays after the block. You then have the logs in Loki; step 7
+checks them. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace and `VKS_CLUSTER` as in step 1,
+and also:
 
 - `FLUENT_BIT_RELEASE`: as in LOGGING.md step 1;
 - `LOGS_FQDN`: if you did LOGGING.md, Log Management's DNS name from its step 3, so logs keep
@@ -749,8 +751,8 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 </details>
 
-**Expect:** `Addon 'fluent-bit' is being installed in the cluster …` (on an update:
-`Addon 'fluent-bit' in the cluster … is being updated` and `daemonset.apps/fluent-bit restarted`), then
+**Expect:** `Addon 'fluent-bit' is being installed in the cluster …` (on an update: `Addon
+'fluent-bit' in the cluster … is being updated` and `daemonset.apps/fluent-bit restarted`), then
 `daemon set "fluent-bit" successfully rolled out`.
 
 **If not:**
@@ -1355,8 +1357,8 @@ if ($LASTEXITCODE -ne 0 -or -not $SUP) {
 with an empty `AUTOMATED-MONITORING` column, or `disabled`.
 
 **If not:**
-- `FAILED: …` above `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
-  Above `Forbidden`: log in as a vCenter administrator.
+- `FAILED: …` above `Unauthorized`: run [Renew the Supervisor
+  login](LOGIN.md#renew-the-supervisor-login). Above `Forbidden`: log in as a vCenter administrator.
 - `namespace/svc-metrics-aggregator-…` and `recorded: nothing …`: the service is already
   installed. Skip to step 11.5.
 
@@ -1639,8 +1641,8 @@ kubectl --kubeconfig $VKS_KUBECONFIG delete namespace observability --ignore-not
 ```
 
 **Expect:** `namespace "podinfo" deleted`, `configmap "observability-datasources" deleted …`,
-`deployment.apps/prometheus-grafana restarted`, `release "jaeger" uninstalled`, `release "loki" uninstalled` and
-`namespace "observability" deleted`.
+`deployment.apps/prometheus-grafana restarted`, `release "jaeger" uninstalled`, `release "loki"
+uninstalled` and `namespace "observability" deleted`.
 
 **If not:** `Release not loaded`: it was already uninstalled.
 

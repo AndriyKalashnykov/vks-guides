@@ -54,9 +54,9 @@ Only for the Kubescape plugin (step 11):
 ## 1. Choose the Headlamp release (cluster administrator)
 
 Run this first: step 2 needs the name of a Headlamp release, and this lists the ones your Supervisor
-offers. The block first switches the VCF CLI's current context (the Supervisor login it uses) to
-your Supervisor, `SUPERVISOR_CONTEXT` from LOGIN.md; the switch stays after the block. It changes
-nothing else. Copy the release you choose for step 2.
+offers. The block first makes your Supervisor login (`SUPERVISOR_CONTEXT` from LOGIN.md) the active
+one for the VCF CLI and in its kubeconfig file, and that stays after the block. It changes nothing
+else. Copy the release you choose for step 2.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -95,14 +95,14 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 ## 2. Install cert-manager and Headlamp (cluster administrator)
 
-Run this once, after step 1, to install Headlamp in the cluster.
-Headlamp's add-on gets its HTTPS certificate from cert-manager, another add-on, so this installs
-cert-manager first when the cluster does not have it. It switches the VCF CLI's current context to
-your Supervisor as step 1 does (the switch stays), and reads the cluster with its administrator
-kubeconfig (the file kubectl reads to reach the cluster), `~/.kube/<cluster>.kubeconfig`.
-The block waits until Headlamp runs, then shows its address; run it again and it skips what is
-already installed. Next: step 3. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace,
-`VKS_CLUSTER` to the cluster's name, and `HEADLAMP_RELEASE` to the release from step 1.
+Run this once, after step 1, to install Headlamp in the cluster. Headlamp's add-on gets its HTTPS
+certificate from cert-manager, another add-on, so this installs cert-manager first when the cluster
+does not have it. It makes your Supervisor login the active one for the VCF CLI and in its
+kubeconfig file, as step 1 does (that stays), and reads the cluster with its administrator
+kubeconfig (the file kubectl reads to reach the cluster), `~/.kube/<cluster>.kubeconfig`. The block
+waits until Headlamp runs, then shows its address; run it again and it skips what is already
+installed. Next: step 3. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to
+the cluster's name, and `HEADLAMP_RELEASE` to the release from step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -926,9 +926,9 @@ The three settings of the add-on that this guide uses:
 Run this only when you need one of its changes: a DNS name in Headlamp's certificate (step 10),
 Headlamp's address in the certificate (`CERT_WITH_IP`), or the Kubescape plugin (step 11.2). Each
 change gives the add-on all of its settings at once: a setting left out goes back to its default. So
-this block always writes the three in the table above. The block first switches the VCF CLI's
-current context (the Supervisor login it uses) to your Supervisor, `SUPERVISOR_CONTEXT` from
-LOGIN.md; the switch stays after the block. It writes the three settings to
+this block always writes the three in the table above. The block first makes your Supervisor login
+(`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
+that stays after the block. It writes the three settings to
 `~/.config/vks-guides/headlamp/addon-values.yaml` and gives them to the add-on. A new certificate is
 made when the name or address changes; Headlamp reads it only when it starts, so the block then
 restarts it (some seconds away), and prints the certificate's names and fingerprint. The browser
@@ -1080,12 +1080,12 @@ Contour's address.
 
 ### 10.1 Install Contour
 
-Run this first, because the DNS record in 10.2 needs Contour's address.
-This installs the Contour add-on with its own load balancer address, and turns off the ports it
-would otherwise open on every node. A Contour that is already installed is left as it is, so you may
-run it again. The block first switches the VCF CLI's current context (the Supervisor login it uses)
-to your Supervisor, `SUPERVISOR_CONTEXT` from LOGIN.md; the switch stays after the block. It prints
-Contour's address for step 10.2. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 2.
+Run this first, because the DNS record in 10.2 needs Contour's address. This installs the Contour
+add-on with its own load balancer address, and turns off the ports it would otherwise open on every
+node. A Contour that is already installed is left as it is, so you may run it again. The block first
+makes your Supervisor login (`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and
+in its kubeconfig file, and that stays after the block. It prints Contour's address for step 10.2.
+Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 2.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1300,11 +1300,11 @@ Run this if you want CPU, memory and network charts on Headlamp's pages for pods
 deployments: the Prometheus plugin shows them only when the Prometheus add-on is in the cluster.
 This installs Broadcom's Prometheus add-on, without its Alertmanager and Pushgateway, which the
 plugin does not use. Headlamp notices it and restarts within a minute with the Prometheus plugin;
-the plugin finds Prometheus by itself. The block first switches the VCF CLI's current context (the
-Supervisor login it uses) to your Supervisor, `SUPERVISOR_CONTEXT` from LOGIN.md; the switch stays
-after the block. Run it again and it skips an installed Prometheus. Set `VKS_NAMESPACE` and
-`VKS_CLUSTER` as in step 2, and `PROMETHEUS_STORAGE` to the size of Prometheus's disk (the add-on's
-own default is 150Gi).
+the plugin finds Prometheus by itself. The block first makes your Supervisor login
+(`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
+that stays after the block. Run it again and it skips an installed Prometheus. Set `VKS_NAMESPACE`
+and `VKS_CLUSTER` as in step 2, and `PROMETHEUS_STORAGE` to the size of Prometheus's disk (the
+add-on's own default is 150Gi).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1618,9 +1618,9 @@ HTTPProxy. It then deletes what this guide gave those accounts elsewhere: their 
 roles `headlamp-namespace-lister`, `headlamp-prometheus-query` and `headlamp-kubescape-reports`.
 cert-manager, Prometheus, Contour and Kubescape stay; the lines after the block remove them. SSO
 tokens from step 6 keep working until they end. When it ends with `NOT YET`, run it again in a few
-minutes; a second run goes on where the first stopped. The block first switches the VCF CLI's
-current context (the Supervisor login it uses) to your Supervisor, `SUPERVISOR_CONTEXT` from
-LOGIN.md; the switch stays after the block. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 2.
+minutes; a second run goes on where the first stopped. The block first makes your Supervisor login
+(`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
+that stays after the block. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 2.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

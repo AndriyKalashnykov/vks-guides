@@ -155,11 +155,11 @@ A's pods ask for about 400m in all, B's for 200m, each at most 100m on one worke
 
 For B, skip to step 3.
 
-For A, run this first, to find the Tekton add-on release your Supervisor offers. The block
-switches the VCF CLI's current context to the Supervisor, and the switch stays after the block. It
-then lists the Tekton add-on releases and changes nothing. You get the release name the next block
-needs; no release means your VKS is older than 3.8. Set `SUPERVISOR_CONTEXT` to your Supervisor's
-name from [LOGIN.md](LOGIN.md).
+For A, run this first, to find the Tekton add-on release your Supervisor offers. The block makes
+your Supervisor login (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and in its kubeconfig
+file, and that stays after the block. It then lists the Tekton add-on releases and changes nothing.
+You get the release name the next block needs; no release means your VKS is older than 3.8. Set
+`SUPERVISOR_CONTEXT` to your Supervisor's name from [LOGIN.md](LOGIN.md).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -195,15 +195,15 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   or `no current context set`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
 Run this next, to install the Tekton Operator on your cluster: a program that installs and manages
-Tekton for you (Tekton itself comes in the next block). The block switches the VCF CLI's current
-context to the Supervisor, and the switch stays. It writes `addon-values.yaml` to
-`~/.config/vks-guides/tekton` and asks the Supervisor to install the add-on, or to update it when
-it is already there. The add-on's web exposure is turned off: it needs cert-manager and a Gateway,
-which this guide does not set up. The block stops if the cluster already has another Tekton, and
-waits until the operator's two pods run in the namespace `tekton-operator` (a namespace inside the
-VKS cluster, not a vSphere Namespace). Set `VKS_NAMESPACE` to the cluster's vSphere Namespace,
-`VKS_CLUSTER` to its name, `TEKTON_RELEASE` to the release name above, and `SUPERVISOR_CONTEXT`
-as in the block above.
+Tekton for you (Tekton itself comes in the next block). The block makes your Supervisor login
+(`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and in its kubeconfig file, and that stays
+after the block. It writes `addon-values.yaml` to `~/.config/vks-guides/tekton` and asks the
+Supervisor to install the add-on, or to update it when it is already there. The add-on's web
+exposure is turned off: it needs cert-manager and a Gateway, which this guide does not set up. The
+block stops if the cluster already has another Tekton, and waits until the operator's two pods run
+in the namespace `tekton-operator` (a namespace inside the VKS cluster, not a vSphere Namespace).
+Set `VKS_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to its name, `TEKTON_RELEASE`
+to the release name above, and `SUPERVISOR_CONTEXT` as in the block above.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1315,12 +1315,12 @@ outside `tekton-demo` exists, and stops otherwise. Run step 6 first.
 
 ### With the VKS add-on (A)
 
-Run this to remove Tekton when you installed it with A. The block switches the VCF CLI's current
-context to the Supervisor, and the switch stays. It turns Pipelines and Triggers off and waits
-until they are gone, then removes the add-on from the Supervisor and deletes
-the namespace `tekton-operator`. Last, it prints how many Tekton object types (CRDs) are left: 0
-means Tekton is gone. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to
-its name, and `SUPERVISOR_CONTEXT` as in step 2.
+Run this to remove Tekton when you installed it with A. The block makes your Supervisor login
+(`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and in its kubeconfig file, and that stays
+after the block. It turns Pipelines and Triggers off and waits until they are gone, then removes the
+add-on from the Supervisor and deletes the namespace `tekton-operator`. Last, it prints how many
+Tekton object types (CRDs) are left: 0 means Tekton is gone. Set `VKS_NAMESPACE` to the cluster's
+vSphere Namespace, `VKS_CLUSTER` to its name, and `SUPERVISOR_CONTEXT` as in step 2.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
