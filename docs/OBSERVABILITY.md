@@ -1699,7 +1699,7 @@ was `disabled`), then `namespaces "tanzu-system-telegraf" not found` and the sam
 **Only remove a Metrics Aggregator you installed, once no VKS cluster uses it.** This tells you
 whether you may, and changes nothing. Run it on the machine that ran step 11.1: it reads that
 step's note, lists the VKS clusters still `enabled`, and prints `MAY UNINSTALL` or
-`DO NOT UNINSTALL`.
+`DO NOT UNINSTALL` (`NOTHING TO UNINSTALL` when this Supervisor has no Metrics Aggregator).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1711,6 +1711,10 @@ OBSERVABILITY_DIR="$HOME/.config/vks-guides/observability"
 
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
   echo "FAILED: cannot read the Supervisor (see the error above)"
+elif ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=metrics-aggregator -o name)"; then
+  echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
+elif [ -z "$M" ]; then
+  echo "NOTHING TO UNINSTALL: this Supervisor has no Metrics Aggregator"
 elif ! ON="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get clusters.cluster.x-k8s.io -A \
        -l addons.kubernetes.vmware.com/automated-monitoring=enabled \
        -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}')"; then
@@ -1739,6 +1743,10 @@ $global:LASTEXITCODE = $null
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 if ($LASTEXITCODE -ne 0 -or -not $SUP) {
   "FAILED: cannot read the Supervisor (see the error above)"
+} elseif (-not ($M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=metrics-aggregator -o name) -and $LASTEXITCODE -ne 0) {
+  "FAILED: cannot list the Supervisor's namespaces (see the error above)"
+} elseif (-not $M) {
+  "NOTHING TO UNINSTALL: this Supervisor has no Metrics Aggregator"
 } else {
   $ON = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get clusters.cluster.x-k8s.io -A -l addons.kubernetes.vmware.com/automated-monitoring=enabled -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{''\n''}{end}' | Where-Object { $_ })
   if ($LASTEXITCODE -ne 0) {
@@ -1761,6 +1769,8 @@ only what step 11.1 saw, not who installed the Metrics Aggregator there now; if 
 it is yours, ask the other vCenter administrators first.
 
 **If not:**
+- `NOTHING TO UNINSTALL`: there is no Metrics Aggregator on this Supervisor; skip the vSphere
+  Client steps below.
 - `DO NOT UNINSTALL: this machine has no record …`: stop. It was there when you began, or you
   ran step 11.1 on another machine.
 - `DO NOT UNINSTALL yet` with `still enabled:` lines: those clusters still send to VCF
