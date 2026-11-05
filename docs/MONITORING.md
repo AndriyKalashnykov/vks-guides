@@ -436,8 +436,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 ```
 
-**Expect:** `nothing to keep`, or `clusterrole.rbac.authorization.k8s.io/prometheus-kube-state-metrics
-annotated` and the same for the `clusterrolebinding`.
+**Expect:** `nothing to keep`, or
+`clusterrole.rbac.authorization.k8s.io/prometheus-kube-state-metrics annotated` and the same for the
+`clusterrolebinding`.
 
 **If not:** `FAILED: cannot read the cluster`: run
 [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
@@ -566,7 +567,8 @@ Run this whenever you want to see the graphs. Grafana runs inside the cluster an
 can open, so this makes a port-forward: kubectl carries what you open at <http://localhost:3000> on
 your machine through the cluster's API address to Grafana, while the command runs; it changes
 nothing in the cluster. You then have Grafana at <http://localhost:3000>. Set `VKS_CLUSTER` as in
-step 1. Leave it running while you use Grafana; press **Ctrl+C** to stop.
+step 1. Leave it running while you use Grafana; press **Ctrl+C** to stop. On a jump box over SSH,
+first connect as **From a jump box over SSH** (below) says.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -594,10 +596,21 @@ graphs for the cluster.
 
 **If not:**
 - `address already in use`, or no `127.0.0.1` line: another program uses port 3000; change both
-  `3000`s (`3001:80`) and open that port.
+  `3000`s (`3001:80`) and open that port (on a jump box, also both `3000`s of the `ssh -L`).
 - The login fails after you set a new password in step 3: Grafana reads it when it starts. Run
-  `kubectl --kubeconfig <the VKS kubeconfig> -n monitoring rollout restart deployment/prometheus-grafana`,
-  then log in again.
+  `kubectl --kubeconfig <the VKS kubeconfig> -n monitoring rollout restart
+  deployment/prometheus-grafana`, then log in again.
+
+**From a jump box over SSH:** the address opens only on the jump box. From your laptop, connect to
+the jump box with `ssh -o ExitOnForwardFailure=yes -L 127.0.0.1:3000:127.0.0.1:3000 <user>@<jump
+box>` (macOS, Linux, or Windows PowerShell with the OpenSSH client), run the block in that session,
+and open the address in your laptop's browser.
+- `Could not request local forwarding`: a program on your laptop uses port 3000; stop it, and
+  connect again.
+- `open failed: connect failed: Connection refused` in that SSH session: the block is not
+  running on the jump box; run it again.
+- `ssh` is not found on Windows: add the optional feature **OpenSSH Client** (needs an
+  administrator).
 
 ## 8. Uninstall with Helm (optional)
 
@@ -1047,11 +1060,12 @@ if ($LASTEXITCODE -eq 0) {
 deleted`, `service "prometheus-kube-prometheus-kubelet" deleted` and `namespace "monitoring"
 deleted`. Newer kubectl adds `from <namespace> namespace` to each `deleted` line.
 
-**If not:** `timed out waiting`: ArgoCD cannot reach the VKS cluster. In the ArgoCD page, delete
-the Application with **Non-cascading**. If the VKS cluster is gone, stop here. Otherwise run this
-block again, then delete what the chart left outside the namespace:
-`kubectl --kubeconfig <the VKS kubeconfig> delete clusterrole,clusterrolebinding,mutatingwebhookconfiguration,validatingwebhookconfiguration -l app.kubernetes.io/instance=prometheus`
-and
-`kubectl --kubeconfig <the VKS kubeconfig> -n kube-system delete service -l app.kubernetes.io/instance=prometheus`.
+**If not:** `timed out waiting`: ArgoCD cannot reach the VKS cluster. In the ArgoCD page, delete the
+Application with **Non-cascading**. If the VKS cluster is gone, stop here. Otherwise run this block
+again, then delete what the chart left outside the namespace: `kubectl --kubeconfig <the VKS
+kubeconfig> delete
+clusterrole,clusterrolebinding,mutatingwebhookconfiguration,validatingwebhookconfiguration -l
+app.kubernetes.io/instance=prometheus` and `kubectl --kubeconfig <the VKS kubeconfig> -n kube-system
+delete service -l app.kubernetes.io/instance=prometheus`.
 
 Back to [README](../README.md).
