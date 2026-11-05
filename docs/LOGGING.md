@@ -29,6 +29,12 @@ The blocks keep their files in `~/.config/vks-guides/logging` (PowerShell:
   VCF Operations administrator;
 - ingestion authentication not enforced in Log Management (the default).
 
+**The VKS cluster to make.** Any VKS cluster that runs your apps ([CLUSTER.md](CLUSTER.md)):
+Fluent Bit runs one pod on every node, and with the release 5.1.2-vmware.1-vks.1 each reserves
+0.2 CPU and 256 MiB of memory, so each node needs that much free. Measured on a VKS 3.8 cluster,
+sending every container's logs to Loki ([OBSERVABILITY.md](OBSERVABILITY.md)): each Fluent Bit pod
+used under 0.03 CPU and at most 15 MiB.
+
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 

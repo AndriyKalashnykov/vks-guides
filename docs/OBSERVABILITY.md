@@ -62,6 +62,21 @@ The blocks keep their files in `~/.config/vks-guides/observability` (PowerShell:
 - for step 11, what [its
   list](#11-let-vcf-operations-collect-the-clusters-kubernetes-metrics-optional) names.
 
+**The VKS cluster to make.** The cluster from [MONITORING.md](MONITORING.md), one control-plane
+node of `best-effort-small` and one worker of `best-effort-medium` (2 CPUs, 8 GB), is enough for
+this guide and its sample app. This guide's pods reserve about 0.4 CPU and 0.7 GiB of memory on the
+worker, Fluent Bit's 0.2 CPU and 256 MiB included; Fluent Bit reserves the same on the
+control-plane node (none of Fluent Bit's share, on either node, if [LOGGING.md](LOGGING.md)
+installed it already). Measured on a
+VKS 3.8 cluster with one `best-effort-medium` worker, ten minutes after this guide's steps 1 to 7
+with MONITORING.md installed: the worker had about 60% of its CPU and 30% of its memory reserved,
+VKS's own pods included (43% and 14% before), which leaves about 0.7 CPU for other apps; about 10%
+of its CPU and 36% of its memory were in use. Add a worker
+([CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)) if the cluster also runs other
+apps. Broadcom says not to use a small or xsmall class for workers that run apps, and to use a
+guaranteed class for production
+([KB 446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html)).
+
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
