@@ -9,10 +9,12 @@
 > - Git: [Install](https://git-scm.com/install/), [gitcredentials](https://git-scm.com/docs/gitcredentials) (why the push turns the credential helper off)
 > - Kubernetes: [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/), [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
 
-This runs Gitea 28.2.0, a Git server with a web page, in a VKS cluster: one pod, its data in
-SQLite on a 5 GiB volume. Gitea is upstream; Broadcom does not support it. You reach it through
-`kubectl port-forward`; step 8 also lets other machines (such as ArgoCD on the Supervisor) clone
-from it over plain HTTP. Upgrades and backups are not covered.
+This runs Gitea 28.2.0, a Git server (it stores your teams' code and its history, with a web
+page) in a VKS cluster: one pod (Kubernetes' unit of a running program: one or more containers),
+its data in SQLite on a 5 GiB volume. Gitea is upstream; Broadcom does not support it. You reach
+it through `kubectl port-forward` (a tunnel from your machine into the cluster, step 6); step 8
+also lets other machines (such as ArgoCD on the Supervisor) clone from it over plain HTTP.
+Upgrades and backups are not covered.
 
 The blocks keep their files in `~/.config/vks-guides/gitea` (PowerShell:
 `$HOME\.config\vks-guides\gitea`).
@@ -37,9 +39,13 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 1. Check the cluster
 
-This checks that you can use the cluster before you install anything. It shows that git is
-installed, that kubectl reaches your VKS cluster and its nodes are `Ready`, which storage class the
-cluster uses by default (Gitea's volume comes from it), and that no `gitea` namespace exists yet.
+Run this first, to check that you can use the cluster before you install anything; it changes
+nothing. It shows that git is installed on your machine, that kubectl reaches your VKS cluster and
+its nodes (the cluster's VMs) are `Ready`, which storage class the cluster uses by default (the
+vSphere storage policy that Gitea's volume comes from), and that the cluster has no `gitea`
+namespace yet (a namespace inside the VKS cluster, which step 2 creates). Set `VKS_CLUSTER` to your
+VKS cluster's name; the block reads its kubeconfig from `.kube` in your home folder
+([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -100,10 +106,12 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 2. Create the namespace
 
-This creates the namespace `gitea`, a separate area of the cluster for everything Gitea needs (a
-namespace inside the VKS cluster, not a vSphere Namespace; it is not listed under Supervisor
-Management → Namespaces). Gitea does not need root, so the namespace accepts only pods that run
-without admin rights (the `restricted` level).
+Run this once, before Gitea's keys and Gitea go in. It creates the namespace `gitea`, a separate
+area of the cluster for everything Gitea needs (a namespace inside the VKS cluster, not a vSphere
+Namespace; it is not listed under Supervisor Management → Namespaces). Gitea does not need root,
+so the namespace accepts only pods that run without admin rights (the `restricted` level). You get
+an empty namespace; steps 3 and 4 put Gitea in it. Running it again changes nothing. Set
+`VKS_CLUSTER` to your VKS cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -148,10 +156,11 @@ metadata:
 
 ## 3. Create Gitea's keys
 
-Gitea needs two random keys: one to encrypt what it stores, one for its own internal calls. This
-makes both and stores them in the cluster as the Secret `gitea-keys` (a Kubernetes object that
-holds sensitive values). It never replaces them: with new keys, Gitea could not read what it
-stored.
+Run this once, before step 4: Gitea needs two random keys, one to encrypt what it stores, one for
+its own internal calls. This makes both and stores them in the cluster as the Secret `gitea-keys`
+(a Kubernetes object that holds sensitive values), then prints their lengths. You get the Secret
+that step 4 hands to Gitea. Running it again never replaces the keys: with new keys, Gitea could
+not read what it stored. Set `VKS_CLUSTER` to your VKS cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -213,8 +222,9 @@ Install Gitea one of two ways, A or B; steps 5 to 9 are the same for both. Both 
 with the same settings and the keys from step 3. To switch from one to the other later, run step 9,
 then steps 2 and 3, first: they keep their data differently, and nothing carries over.
 
-Both blocks read the cluster's Service address range, so that Gitea may call build tools inside the
-cluster later ([CICD.md](CICD.md) step 7). On a cluster older than Kubernetes v1.33, which cannot
+Both blocks read the cluster's Service address range (the internal addresses the cluster gives
+its Services), so that Gitea may call build tools inside the cluster later ([CICD.md](CICD.md)
+step 7). On a cluster older than Kubernetes v1.33, which cannot
 show it, set `SERVICE_RANGE` to the range the cluster was created with (CLUSTER.md:
 `10.96.0.0/12`).
 
@@ -226,16 +236,19 @@ show it, set `SERVICE_RANGE` to the range the cluster was created with (CLUSTER.
 > switch off, and Gitea reads its settings from the manifest at every start, so a changed setting
 > takes effect when you run this block again.
 
-This starts Gitea in your VKS cluster. It creates:
+Run this once, after step 3, to start Gitea in your VKS cluster, in the namespace `gitea`. It
+creates:
 
-- a 5 GiB volume, so your repositories survive a restart;
+- a 5 GiB volume (a virtual disk from the default storage class), so your repositories survive a
+  restart;
 - Gitea itself: one pod that uses the keys from step 3;
 - a Service: a fixed address for Gitea that only the cluster reaches (step 6 opens it to your
   machine).
 
-It then waits until Gitea answers.
-
-`SERVICE_RANGE`: leave it empty to read it from the cluster.
+It then waits until Gitea answers, and shows the volume and the pod. You get a running Gitea with
+no users yet; step 5 makes its administrator. Running it again applies a changed setting and
+keeps your repositories. Set `VKS_CLUSTER` to your VKS cluster's name, and leave `SERVICE_RANGE`
+empty to read it from the cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -513,11 +526,6 @@ spec:
 
 ### B. With Gitea's Helm chart
 
-This installs Gitea with its own Helm chart, 12.7.0, and values that make it the same Gitea as A.
-It needs [Helm](HELM.md). The block writes the values to
-`~/.config/vks-guides/gitea/values.yaml`, downloads the chart and checks its SHA-256, then installs
-and waits for Gitea to answer.
-
 > [!NOTE]
 > **Limits of the Helm way:**
 > - Chart 12.7.0 is built for Gitea 1.27; these values run Gitea 28.2.0, the image A uses.
@@ -530,7 +538,14 @@ and waits for Gitea to answer.
 > - Without these values the chart also installs a PostgreSQL cluster, a cache cluster and an
 >   administrator with a published password; keep `-f values.yaml` on every run.
 
-`SERVICE_RANGE`: leave it empty to read it from the cluster.
+Run this instead of A, once after step 3, if you install your applications with Helm. It installs
+Gitea from its own Helm chart, 12.7.0 (a package of Kubernetes objects that Helm installs and
+upgrades as one release), with values that make it the same Gitea as A. It needs
+[Helm](HELM.md). The block writes the values to `~/.config/vks-guides/gitea/values.yaml`,
+downloads the chart and checks its SHA-256, then installs and waits for Gitea to answer. You get
+the same running Gitea as with A, as the Helm release `gitea`; step 5 makes its administrator.
+Running it again applies a changed value (see the limits above). Set `VKS_CLUSTER` to your VKS
+cluster's name, and leave `SERVICE_RANGE` empty to read it from the cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -845,9 +860,12 @@ and one pod `1/1 Running`.
 
 ## 5. Create the administrator
 
-This makes the user `gitea-admin` with a random password, printed once. Gitea asks for a new
-password at the first login (step 6). Set `GITEA_ADMIN_EMAIL` to your email address; Gitea needs
-one but sends no mail. Clear the terminal after step 6.
+Gitea starts with no users; run this once, after step 4, to make its administrator. It runs
+Gitea's own command inside the Gitea pod and makes the user `gitea-admin` with a random password,
+printed once. You get the administrator's first password; Gitea asks for a new one at the first
+sign-in (step 6). Running it again changes nothing: it says `gitea-admin` exists already. Set
+`VKS_CLUSTER` to your VKS cluster's name, and `GITEA_ADMIN_EMAIL` to your email address; Gitea
+needs one but sends no mail. Clear the terminal after step 6.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -922,9 +940,11 @@ created!` (`gitea-admin exists already` on a second run).
 
 ## 6. Open Gitea
 
-Gitea has no address outside the cluster yet. This connects port 3300 on your machine to Gitea, so
-you can open its web page at <http://localhost:3300>. It runs until you press **Ctrl+C**; keep it
-running for steps 7 and 8.
+Gitea has no address outside the cluster yet; run this to reach it from your machine. It opens a
+port-forward: a tunnel from port 3300 on your machine, through the cluster's API address, to
+Gitea's Service. You can then open Gitea's web page at <http://localhost:3300> and sign in (below).
+It runs until you press **Ctrl+C**; keep it running for steps 7 and 8, and run it again whenever
+you need Gitea's web page. Set `VKS_CLUSTER` to your VKS cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -958,10 +978,13 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitea port-forward service/gitea-http 33
 
 ## 7. Create a repository by pushing to it
 
-Run this in a second terminal while step 6 runs. It makes a local repository with a README in
-`~/.config/vks-guides/gitea/hello` and pushes it; Gitea creates the private repository
-`gitea-admin/hello`. Git asks for the password you set in step 6. `credential.helper=` stops git
-from saving it.
+Run this in a second terminal while step 6 runs, to put a first repository (a project's files and
+their history) in Gitea. It makes a local repository with a README in
+`~/.config/vks-guides/gitea/hello` and pushes it (sends it to Gitea); Gitea creates the private
+repository `gitea-admin/hello`. You get a repository that only `gitea-admin` sees; step 8 can make
+it public for ArgoCD. Running it again pushes nothing new. Git asks for the password you set in
+step 6; `credential.helper=` stops git from saving it. Set `GITEA_ADMIN_EMAIL` to the address from
+step 5; it labels the commit.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1018,9 +1041,12 @@ step 6's `localhost:3300` for that.
 
 1. Make the repository public: at <http://localhost:3300/gitea-admin/hello/settings>, under
    **Danger Zone**, click **Make Public**, then **Make Public** in the dialog.
-2. This gives Gitea the Service `gitea-public`, an address outside the cluster on port 3000. It
-   waits for the address, prints the clone address, then lists `hello` without a login, which
-   shows that other machines can clone it:
+2. So that ArgoCD and other machines can clone, run the block below. It gives Gitea the Service
+   `gitea-public`: an address outside the cluster on port 3000, from the Supervisor's load
+   balancer. It waits for the address, prints the clone address, then lists `hello` without a
+   login, which shows that other machines can clone it. Give that clone address to ArgoCD or the
+   machines that clone. Running it again keeps the same address. Set `VKS_CLUSTER` to your VKS
+   cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1120,8 +1146,10 @@ characters, ending in `HEAD` and `refs/heads/main`.
 **This deletes every repository in this Gitea.** Delete first any ArgoCD Application that clones
 from it.
 
-This deletes the namespace `gitea`, with Gitea, its keys and its volume. It then waits until the
-cluster has removed the volume, and prints how many volumes are left.
+Run this when you no longer need this Gitea, or to switch between A and B in step 4. It deletes
+the namespace `gitea`, with Gitea, its keys and its volume. It then waits until the cluster has
+removed the volume, and prints how many volumes are left: 0 means Gitea is gone from the cluster.
+Running it again changes nothing. Set `VKS_CLUSTER` to your VKS cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

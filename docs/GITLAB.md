@@ -9,11 +9,13 @@
 > - Git: [Install](https://git-scm.com/install/), [gitcredentials](https://git-scm.com/docs/gitcredentials) (why the push turns the credential helper off)
 > - Kubernetes: [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/), [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
 
-This runs GitLab Community Edition 19.5.1, a Git server with CI/CD, in a VKS cluster: one pod with
-its own database, on a 20 GiB volume, and a GitLab Runner that runs each CI job as a pod. GitLab
-CE is free; Broadcom does not support it. You reach it through `kubectl port-forward`; step 7 also
-lets other machines (such as ArgoCD on the Supervisor) clone from it over plain HTTP. Upgrades and
-backups are not covered.
+This runs GitLab Community Edition 19.5.1, a Git server (it stores your teams' code and its
+history) with CI/CD (it builds and tests the code on every push), in a VKS cluster: one pod
+(Kubernetes' unit of a running program: one or more containers) with its own database, on a
+20 GiB volume, and a GitLab Runner (the program that runs CI jobs) that runs each CI job as a pod.
+GitLab CE is free; Broadcom does not support it. You reach it through `kubectl port-forward` (a
+tunnel from your machine into the cluster, step 5); step 7 also lets other machines (such as
+ArgoCD on the Supervisor) clone from it over plain HTTP. Upgrades and backups are not covered.
 
 > [!IMPORTANT]
 > **One pod is for tests and demos.** GitLab supports its Docker image on a Docker host and, on
@@ -50,9 +52,13 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 1. Check the cluster
 
-This checks that the cluster can hold GitLab before you install it. It shows git's version, that
-each node is `Ready`, the free memory and image disk on each worker, the default storage class
-(GitLab's volume comes from it), and that no `gitlab` namespace exists yet.
+Run this first, to check that the cluster can hold GitLab before you install it; it changes
+nothing. It shows git's version on your machine, that each node (one of the cluster's VMs) is
+`Ready`, the free memory and image disk (where a node keeps container images) on each worker node,
+the default storage class (the vSphere storage policy that GitLab's volume comes from), and that
+the cluster has no `gitlab` namespace yet (a namespace inside the VKS cluster, which step 2
+creates). Set `VKS_CLUSTER` to your VKS cluster's name; the block reads its kubeconfig from
+`.kube` in your home folder ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -143,10 +149,12 @@ one CI job need a worker with at least 6 GiB memory and 8 GiB image disk free; a
 
 ## 2. Create the namespace
 
-This creates the namespace `gitlab`, a separate area of the cluster for GitLab (a namespace inside
-the VKS cluster, not a vSphere Namespace; it is not listed under Supervisor Management →
-Namespaces). GitLab's image runs as root, so the namespace allows that (the `baseline` level), and
-warns about anything that would fail the stricter `restricted` level.
+Run this once, before GitLab goes in. It creates the namespace `gitlab`, a separate area of the
+cluster for GitLab (a namespace inside the VKS cluster, not a vSphere Namespace; it is not listed
+under Supervisor Management → Namespaces). GitLab's image runs as root, so the namespace allows
+that (the `baseline` level), and warns about anything that would fail the stricter `restricted`
+level. You get an empty namespace; step 3 puts GitLab in it. Running it again changes nothing. Set
+`VKS_CLUSTER` to your VKS cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -191,16 +199,21 @@ metadata:
 
 ## 3. Install GitLab
 
-This starts GitLab in your VKS cluster. It creates:
+Run this once, after step 2, to start GitLab in your VKS cluster, in the namespace `gitlab`. It
+creates:
 
-- a 20 GiB volume for GitLab's database and repositories;
-- GitLab itself: one pod, set to use less memory;
+- a 20 GiB volume (a virtual disk from the default storage class) for GitLab's database and
+  repositories;
+- GitLab itself: one pod, `gitlab-0`, set to use less memory (a StatefulSet: Kubernetes keeps
+  that one pod running, under that fixed name);
 - a Service: a fixed address for GitLab that only the cluster reaches. Step 5 opens it to your
   machine; the runner in step 8 uses it directly, as `http://gitlab.gitlab.svc.cluster.local`.
 
-When GitLab answers, the block turns off sign-up, so only users you create can log in. The first
-start downloads a 1.7 GB image, which takes about 6 GB of the node's disk, and sets up the
-database; it takes a few minutes.
+When GitLab answers, the block turns off sign-up, so only users you create can log in, and shows
+the volume and the pod. You get a running GitLab whose administrator's password no one knows yet;
+step 4 sets it. Running it again keeps your projects. The first start downloads a 1.7 GB image,
+which takes about 6 GB of the node's disk, and sets up the database; it takes a few minutes. Set
+`VKS_CLUSTER` to your VKS cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -433,9 +446,11 @@ baseline allows it), `persistentvolumeclaim/gitlab-data created`,
 
 ## 4. Set the root password
 
-GitLab's administrator is `root`, and no one knows its password yet. This asks you for one, twice,
-inside the GitLab pod; it is not shown, saved, or put on a command line. Use at least 8 characters
-that are not a common word.
+GitLab's administrator is `root`, and no one knows its password yet; run this to set it. It runs
+GitLab's own password tool inside the GitLab pod, which asks you for the password twice; it is not
+shown, saved, or put on a command line. You can then sign in as `root` in step 5. Run this again
+at any time to set a new root password. Use at least 8 characters that are not a common word. Set
+`VKS_CLUSTER` to your VKS cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -467,13 +482,13 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -it gitlab-0 -- gitlab-rake 
 - `Unable to use a TTY - input is not a terminal`: the password would show as you type. Press
   **Ctrl+C**, and run this from a terminal window (not PowerShell ISE or an editor's output pane).
 
-You can run this again at any time to set a new root password.
-
 ## 5. Open GitLab
 
-GitLab has no address outside the cluster yet. This connects port 3400 on your machine to GitLab,
-so you can open it at <http://localhost:3400>. It runs until you press **Ctrl+C**; keep it running
-for steps 6 to 9.
+GitLab has no address outside the cluster yet; run this to reach it from your machine. It opens a
+port-forward: a tunnel from port 3400 on your machine, through the cluster's API address, to
+GitLab's Service. You can then open GitLab at <http://localhost:3400> and sign in (below). It
+runs until you press **Ctrl+C**; keep it running for steps 6 to 9, and run it again whenever you
+need GitLab's web page. Set `VKS_CLUSTER` to your VKS cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -509,10 +524,12 @@ page has no **Register now** link.
 
 ## 6. Create a project by pushing to it
 
-Run this in a second terminal while step 5 runs. It makes a local repository with a README in
-`~/.config/vks-guides/gitlab/hello` and pushes it; GitLab creates the private project
-`root/hello`. Git asks for the root password. `credential.helper=` stops git from saving it. Set
-`GITLAB_EMAIL` to your email address; it only labels the commit.
+Run this in a second terminal while step 5 runs, to put a first project (a repository: a
+project's files and their history) in GitLab. It makes a local repository with a README in
+`~/.config/vks-guides/gitlab/hello` and pushes it (sends it to GitLab); GitLab creates the private
+project `root/hello`. You get a project that steps 7 to 9 use. Running it again pushes nothing new.
+Git asks for the root password; `credential.helper=` stops git from saving it. Set `GITLAB_EMAIL`
+to your email address; it only labels the commit.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -569,9 +586,12 @@ Use it for test projects only. Never sign in, push or send a token through it; u
 1. Make the project public: at <http://localhost:3400/root/hello/edit>, expand **Visibility,
    project features, permissions**, set **Project visibility** to **Public**, and click **Save
    changes**.
-2. This gives GitLab the Service `gitlab-public`, an address outside the cluster on port 80. It
-   waits for the address, prints the clone address, then lists `root/hello` without a login, which
-   shows that other machines can clone it:
+2. So that ArgoCD and other machines can clone, run the block below. It gives GitLab the Service
+   `gitlab-public`: an address outside the cluster on port 80, from the Supervisor's load
+   balancer. It waits for the address, prints the clone address, then lists `root/hello` without
+   a login, which shows that other machines can clone it. Give that clone address to ArgoCD or the
+   machines that clone. Running it again keeps the same address. Set `VKS_CLUSTER` to your VKS
+   cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -667,15 +687,17 @@ ending in `HEAD` and `refs/heads/main`.
 
 ## 8. Install a runner
 
-GitLab runs CI jobs on runners. This installs one, GitLab Runner 19.5.1, in the namespace
-`gitlab-runner`; it starts each job as a pod there. The runner takes only jobs from the project
-`root/hello` that carry the tag `vks`.
+GitLab runs CI jobs (the build and test steps a project lists in its `.gitlab-ci.yml`) on runners
+(programs that pick up the jobs and run them). This installs one, GitLab Runner 19.5.1, in the
+namespace `gitlab-runner` (a second namespace inside the VKS cluster); it starts each job as a pod
+there. The runner takes only jobs from the project `root/hello` that carry the tag `vks`.
 
 1. In GitLab, open <http://localhost:3400/root/hello/-/runners/new>. Under **Tags** type `vks`,
    leave **Run untagged jobs** cleared, and click **Create runner**.
 2. GitLab shows a **Runner authentication token** that starts with `glrt-`, once. Copy it.
-3. In the terminal you will install from, run this and paste the token at the prompt (it is not
-   shown):
+3. To hand the token to the block in 4 without putting it on a command line or in a file, run
+   this in the terminal you will install from. It asks for the token: paste it at the prompt (it
+   is not shown). You get the token kept in this terminal only, for the block in 4:
 
    **Linux, macOS, WSL (bash or zsh):**
 
@@ -691,11 +713,14 @@ GitLab runs CI jobs on runners. This installs one, GitLab Runner 19.5.1, in the 
 
    **Expect:** a new prompt. The token stays in this terminal until the next block stores it.
 
-4. In the same terminal, run the block below. It installs the runner: it creates the namespace
+4. In the same terminal, run the block below to install the runner. It creates the namespace
    `gitlab-runner`, where CI jobs run, stores your token there as the Secret
-   `gitlab-runner-token`, downloads the runner's Helm chart and checks it, installs it, and waits
-   until the runner runs. If your GitLab is not the one from this guide's step 3, set `GITLAB_URL`
-   to its address.
+   `gitlab-runner-token` (a Kubernetes object that holds sensitive values), downloads the runner's
+   Helm chart (a package of Kubernetes objects that Helm installs as one release) and checks it,
+   installs it, and waits until the runner runs. You get a runner that GitLab shows online; step 9
+   gives it a job. Run again without 3, it keeps the token stored before. Set `VKS_CLUSTER` to
+   your VKS cluster's name. If your GitLab is not the one from this guide's step 3, set
+   `GITLAB_URL` to its address.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -914,9 +939,12 @@ dot (online). Run without 3, the block says `no token typed: using the one store
 
 ## 9. Run a pipeline
 
-This adds a `.gitlab-ci.yml` with one job to `root/hello` and pushes it; GitLab starts a pipeline
-and the runner runs the job as a pod. Run it in the second terminal, with step 5 running. Git asks
-for the root password.
+Run this to see the runner work, in the second terminal, with step 5 running. It adds a
+`.gitlab-ci.yml` (the file that lists a project's CI jobs) with one job to `root/hello` and
+pushes it; GitLab starts a pipeline (one run of the project's jobs) and the runner runs the job as
+a pod. You get a passed pipeline on GitLab's pipelines page, with the job's output. Running it
+again pushes nothing new. Git asks for the root password. Set `GITLAB_EMAIL` to the address from
+step 6; it only labels the commit.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -973,8 +1001,9 @@ GitLab's address), under **Runners**.
 
 ### The runner
 
-This deletes the namespace `gitlab-runner`, with the runner and any CI job pods in it. GitLab
-itself stays.
+Run this when you no longer need the runner, and before you uninstall GitLab. It deletes the
+namespace `gitlab-runner`, with the runner and any CI job pods in it. GitLab itself stays, with
+your projects. Running it again changes nothing. Set `VKS_CLUSTER` to your VKS cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1001,8 +1030,10 @@ kubectl --kubeconfig $VKS_KUBECONFIG delete namespace gitlab-runner --ignore-not
 **This deletes every project in this GitLab.** Delete first any ArgoCD Application that clones
 from it.
 
-This deletes the namespace `gitlab`, with GitLab and its volume. It then waits until the cluster
-has removed the volume, and prints how many volumes are left.
+Run this when you no longer need this GitLab, after the runner. It deletes the namespace `gitlab`,
+with GitLab and its volume. It then waits until the cluster has removed the volume, and prints how
+many volumes are left: 0 means GitLab is gone from the cluster. Running it again changes nothing.
+Set `VKS_CLUSTER` to your VKS cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
