@@ -27,9 +27,10 @@ others use. If you open a new terminal, run the first block again.
 - for a private project, also a robot that may only pull: in Harbor's web page, as in HARBOR.md
   step 10, *In Harbor's web page*, with only **Repository** → **Pull** ticked. Its name is
   `robot$` and the name you type;
-- your VKS cluster's kubeconfig, `~/.kube/<cluster>.kubeconfig`: download it in the vSphere Client
-  ([LOGIN.md](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)) or get it
-  with the VCF CLI ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+- `kubectl` pointed at your VKS cluster in this terminal: download its kubeconfig in the vSphere
+  Client ([LOGIN.md](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)) or
+  with the VCF CLI ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), then
+  [make it the default in this terminal](LOGIN.md#make-it-the-default-in-this-terminal);
 - one free load-balancer address, for the app (step 6).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
@@ -48,10 +49,8 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 Run this first, and again in any new terminal: the other blocks use the values it sets. Set them to
 your own: your Harbor and project, the two robot accounts (below the block), the app's namespace
-inside your VKS cluster (a separate area for the app, not a vSphere Namespace), and `VKS_CLUSTER`,
-your VKS cluster's name. `VKS_KUBECONFIG` is that cluster's kubeconfig from LOGIN.md (the file with
-its address and your login), which every `kubectl` command below uses. The block also creates the
-folder `~/image-simple` for the downloaded files and moves this terminal into it.
+inside your VKS cluster (a separate area for the app, not a vSphere Namespace). The block also
+creates the folder `~/image-simple` for the downloaded files and moves this terminal into it.
 
 ```sh
 HARBOR_FQDN="harbor.env1.lab.test"
@@ -59,8 +58,6 @@ HARBOR_PROJECT="my-project"
 HARBOR_ROBOT='robot$my-project+push'
 HARBOR_PULL_ROBOT='robot$my-project-pull'
 APP_NAMESPACE="harbor-demo"
-VKS_CLUSTER="my-vks-cluster"
-VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 IMAGE="$HARBOR_FQDN/$HARBOR_PROJECT/test-web-apps:v1"
 IMAGE_PLATFORM="linux/amd64"
 SRC="https://raw.githubusercontent.com/AndriyKalashnykov/vks-guides/666cba94ba517ac79d1c2ec505226192962477a3/argocd/test-web-apps"
@@ -195,15 +192,17 @@ and step 6 tells the app to use it:
 ```sh
 curl -sSO "$SRC/namespace.yaml"
 sed -i "s|^  name: test-web-apps$|  name: $APP_NAMESPACE|" namespace.yaml
-kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f namespace.yaml
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" create secret generic harbor-pull --type=kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson="$HOME/image-simple/pull/config.json"
+kubectl apply -f namespace.yaml
+kubectl -n "$APP_NAMESPACE" create secret generic harbor-pull --type=kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson="$HOME/image-simple/pull/config.json"
 rm -r "$HOME/image-simple/pull"
 ```
 
 **Expect:** `namespace/harbor-demo created` and `secret/harbor-pull created`.
 
-**If not:** `… .kubeconfig: no such file or directory`: set `VKS_CLUSTER` in the first block and run
-it, then the login line above and this block again.
+**If not:** `localhost:8080` and `connection refused`, or another cluster's name in the output:
+kubectl is not pointed at your VKS cluster; [make its kubeconfig the default in this
+terminal](LOGIN.md#make-it-the-default-in-this-terminal), then run the login line above and this
+block again.
 
 ## 6. Deploy the app
 
@@ -243,18 +242,19 @@ app's namespace (unless step 5 did), starts five pods from your Harbor image, an
 balancer for an address. Afterwards the app runs in your VKS cluster, and step 7 opens it:
 
 ```sh
-kubectl --kubeconfig "$VKS_KUBECONFIG" apply -f namespace.yaml -f deployment.yaml -f service.yaml
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" rollout status deployment/test-web-apps
+kubectl apply -f namespace.yaml -f deployment.yaml -f service.yaml
+kubectl -n "$APP_NAMESPACE" rollout status deployment/test-web-apps
 ```
 
 **Expect:** `namespace/harbor-demo`, `deployment.apps/test-web-apps` and `service/test-web-apps`
 lines, then `deployment "test-web-apps" successfully rolled out`.
 
-**If not:** `… .kubeconfig: no such file or directory`: set `VKS_CLUSTER` in the first block and
-run it again. The wait does not end: run
-`kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" get events`.
-`x509` means the nodes do not trust Harbor (HARBOR.md step 11); `unauthorized` or `not found`
-means the project is private and step 5 is missing, or the image name is wrong.
+**If not:** `localhost:8080` and `connection refused`: kubectl is not pointed at your VKS
+cluster; [make its kubeconfig the default in this
+terminal](LOGIN.md#make-it-the-default-in-this-terminal) and run this again. The wait does not
+end: run `kubectl -n "$APP_NAMESPACE" get events`. `x509` means the nodes do not trust Harbor
+(HARBOR.md step 11); `unauthorized` or `not found` means the project is private and step 5 is
+missing, or the image name is wrong.
 
 ## 7. Open the app
 
@@ -263,8 +263,8 @@ your network. This waits until it has one (up to 2 minutes), prints it, and asks
 page. You get the address to open in a browser.
 
 ```sh
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" wait service/test-web-apps --for=jsonpath='{.status.loadBalancer.ingress}' --timeout=120s
-APP_IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" get service test-web-apps -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+kubectl -n "$APP_NAMESPACE" wait service/test-web-apps --for=jsonpath='{.status.loadBalancer.ingress}' --timeout=120s
+APP_IP="$(kubectl -n "$APP_NAMESPACE" get service test-web-apps -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
 echo "http://$APP_IP/"
 curl -s "http://$APP_IP/" | grep h1
 ```
@@ -284,7 +284,7 @@ cluster, the image from this machine, and the folder with the downloaded files. 
 trusted (the next block) and the image stays in Harbor (below).
 
 ```sh
-kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace "$APP_NAMESPACE"
+kubectl delete namespace "$APP_NAMESPACE"
 docker rmi "$IMAGE"
 cd "$HOME"
 rm -r "$HOME/image-simple"

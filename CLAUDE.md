@@ -13,8 +13,8 @@ blocks; there is nothing to build.
 - No Makefile, mise, env file or helper script. Each block sets the variables it uses at its top
   and works on its own; never rely on a variable from an earlier block. The one exception is
   IMAGE-DOCKER.md (owner's choice): a short docker-on-Linux walkthrough whose blocks share the
-  values of its first block, run in one terminal, with no error handling, no block labels and no
-  download timeouts.
+  values of its first block, run in one terminal, with no error handling, no block labels, no
+  download timeouts, and plain `kubectl` (the terminal's default kubeconfig, no `--kubeconfig`).
 - Every shell block is POSIX sh, besides `IFS= read -rs` for a typed password (bash and zsh
   only; dash rejects `-s`), and runs in bash and zsh, labeled in bold
   `**Linux, macOS, WSL (bash or zsh):**`. Where Windows applies, a
