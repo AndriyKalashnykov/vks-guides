@@ -467,8 +467,8 @@ Everyone with a vCenter SSO login to the cluster pastes that login's token into 
 then has exactly that user's rights. You hold **Can edit** or **Owner** (Prerequisites), so you use
 6.1, and skip steps 1 and 3 of [ACCESS.md, "The person's own SSO
 account"](ACCESS.md#the-persons-own-sso-account). People with narrower rights from that section use
-6.2: send them steps 5, 6.2 and 7, with the address and the fingerprint from step 4 (they need
-kubectl and jq: PREREQS.md).
+6.2: send them steps 5, 6.2 and 7, with the address and the fingerprint from step 4, and the name
+of their namespace (ACCESS.md step 3); they need kubectl and jq (PREREQS.md).
 
 First log in to the cluster with your SSO user, as in
 [ACCESS.md](ACCESS.md#the-persons-own-sso-account) step 2a (VCF CLI) or steps 2b to 2d (kubectl
@@ -697,8 +697,9 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
 </details>
 
 **Expect:** `NOTE: in Headlamp, add <namespace> under Settings > Cluster > Allowed namespaces`
-(do that in step 7), `token for sso:<user>@<domain>:`, the token, and `it ends:` 10 hours after
-the login (UTC). Paste it in step 7, then clear the terminal.
+when your login cannot list namespaces (do that in step 7), then `token for sso:<user>@<domain>:`,
+the token, and `it ends:` 10 hours after the login (UTC). Paste it in step 7, then clear the
+terminal.
 
 **If not:**
 - `STOPPED: this SSO user is an administrator …`: use step 6.1.
@@ -718,12 +719,13 @@ The person icon at the top right shows who you are logged in as, and logs you ou
 
 ![The account menu: Log out: lab-tester, hl-c1](img/headlamp/04-logged-in-as.png)
 
-**If your administrator gave you one namespace** (for example `team-a`; step 6.2 prints a `NOTE`
-for it): tell Headlamp its name once, in **Settings** (the gear at the top right) → **Cluster** →
-**Allowed namespaces**: type the name and click **+**. Headlamp then offers it under **Namespaces**
-and shows what is in it. It keeps this in this browser only; set it again in another browser. The
-start page (**Overview** and **Events**) still says *You don't have permissions to view this
-resource*: it reads the whole cluster, so that is expected.
+**If step 6.2 printed a `NOTE`** (you may work in one namespace, such as `team-a`, and Headlamp
+cannot list the others): tell Headlamp its name once, in **Settings** (the gear at the top right) →
+**Cluster** → **Allowed namespaces**: type the name and click **+**. Headlamp then offers it under
+**Namespaces** and shows what is in it. Headlamp keeps this in this browser, for this cluster, and
+for everyone who opens this cluster's Headlamp in it (an administrator who logs in there afterwards
+sees only that namespace too): remove the name there to see every namespace again. In another
+browser, set it again.
 
 ![Cluster Settings: Allowed namespaces with headlamp-demo](img/headlamp/16-allowed-namespaces.png)
 
