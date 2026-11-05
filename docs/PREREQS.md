@@ -30,6 +30,21 @@ any other guide. The sections marked optional are needed only where a guide says
 [Registry hosts, for a firewall](#registry-hosts-for-a-firewall) lists the hosts a firewall must
 also allow for each image registry.
 
+## Prerequisites
+
+- No other guide first: this is the first one.
+- A machine where you may install software: on Linux `sudo` (or `root`), on Windows an
+  administrator for WSL, on macOS [Homebrew](https://brew.sh).
+
+The connections this guide needs, for a firewall (all TCP, besides DNS):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine (laptop or jump box) | your OS's package repositories (as set on the machine: apt, dnf, tdnf, pacman, Homebrew) | 443 (80 for a repository set to `http://`) | the tools, podman and docker |
+| your machine (laptop or jump box) | `download.docker.com` | 443 | docker on Debian, Ubuntu and AlmaLinux |
+| your machine (laptop or jump box) | `github.com`, `release-assets.githubusercontent.com` | 443 | kubelogin (optional) |
+| your machine (Windows) | Microsoft's and podman's download servers | 443 | `wsl --install` and the podman machine |
+
 ## Linux (Debian / Ubuntu)
 
 Run this once on Debian or Ubuntu: it installs the five tools with apt
