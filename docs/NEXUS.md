@@ -1584,7 +1584,8 @@ certificate:
 [KB 448189](https://knowledge.broadcom.com/external/article/448189/ssltls-server-certificates-specified-in.html));
 the cluster does not change yet. You get the Secret that the cluster's setting (below) points at.
 It needs the **Namespaces Edit** role on the vSphere Namespace. Set `VKS_NAMESPACE` to the
-cluster's vSphere Namespace and `VKS_CLUSTER` to the pulling cluster's name. Set `SUPERVISOR_CONTEXT` to the name of your Supervisor login from LOGIN.md.
+cluster's vSphere Namespace and `VKS_CLUSTER` to the pulling cluster's name. Set
+`SUPERVISOR_CONTEXT` to the name of your Supervisor login from LOGIN.md.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
