@@ -259,6 +259,8 @@ fi
 
 **Expect:** `podman trusts <your Harbor name>`.
 
+**If not:** `FAILED: no …-ca.crt`: do step 1 with the same `HARBOR_FQDN`.
+
 #### docker
 
 Run this on Linux if you use docker, after step 1. It copies Harbor's CA into
@@ -274,6 +276,8 @@ sudo install -D -m 0644 "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt" "/etc/docker/certs.d/
 
 **Expect:** `docker trusts <your Harbor name>`.
 
+**If not:** `cannot stat '…-ca.crt'`: do step 1 with the same `HARBOR_FQDN`.
+
 ### macOS
 
 Run this first on a Mac, after step 1: podman and Docker Desktop read Harbor's CA from your login
@@ -286,6 +290,11 @@ HARBOR_FQDN="harbor.example.test"
 IMAGE_DIR="$HOME/.config/vks-guides/image"
 security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychain-db" "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt"
 ```
+
+**Expect:** no output, after macOS asks for your password.
+
+**If not:** an error instead: check that step 1 wrote `<HARBOR_FQDN>-ca.crt` in
+`~/.config/vks-guides/image`, with the same `HARBOR_FQDN`.
 
 #### podman
 
@@ -309,6 +318,9 @@ Let the podman machine import the keychain's CAs: `podman machine stop`, then
   ```
 
   **Expect:** `docker (Colima) trusts <your Harbor name>`.
+
+  **If not:** an error instead: check that step 1 wrote `<HARBOR_FQDN>-ca.crt` in
+  `~/.config/vks-guides/image`, with the same `HARBOR_FQDN`.
 - With Docker Desktop: quit it and start it again, so that it reads the keychain.
 
 ### Windows
@@ -573,6 +585,8 @@ lists the repository `test-web-apps`.
   has expired.
 - `denied: requested access to the resource is denied` (podman) or `insufficient_scope` (docker):
   the robot may not push to this project.
+- `FAILED: no robot secret in this terminal`: type it again (the line above the block), then run
+  the block in the same terminal.
 
 ## 5. Only for a private project: let the cluster pull from it
 
@@ -690,7 +704,8 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 **If not:** `FAILED: the namespace … was not made` with `Unauthorized` above it: the login in the
 cluster's kubeconfig has expired; save it again
 ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), type the pull robot's secret again (the line
-above the block) and run this block again.
+above the block) and run this block again. `FAILED: no pull robot secret in this terminal`: type
+it again, then run the block in the same terminal.
 
 
 ## 6. Deploy the app
@@ -911,6 +926,10 @@ if ($LASTEXITCODE -eq 0) { Remove-Item -Recurse -Force -ErrorAction SilentlyCont
 ```
 
 **Expect:** `namespace "harbor-demo" deleted`, then `deleted harbor-demo and …`.
+
+**If not:** no `deleted harbor-demo and …` line: kubectl failed and the folder was kept. With
+`Unauthorized`, the login in the cluster's kubeconfig has expired: save it again
+([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) and run this again.
 
 The image built in step 3 stays on this machine: remove it with
 `podman rmi <your Harbor name>/<your project>/test-web-apps:v1-podman` (docker:

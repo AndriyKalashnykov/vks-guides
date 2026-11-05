@@ -323,6 +323,11 @@ foreach ($S in @(@('keycloak-db', 'keycloak'), @('keycloak-admin', 'admin'))) {
 **Expect:** `namespace/keycloak labeled` (or `not labeled` when run again), then
 `secret/keycloak-db created` and `secret/keycloak-admin created` (or `exists, kept`).
 
+**If not:**
+- `MISSING: kubectl`: install it ([KUBECTL.md](KUBECTL.md)), then run the block again.
+- `FAILED: no password made for …`: install `openssl` ([PREREQS.md](PREREQS.md)), then run the
+  block again.
+
 ## 4. Make Keycloak's certificate
 
 Run this after steps 2 and 3, so that Keycloak answers over HTTPS with a certificate that browsers
@@ -981,6 +986,9 @@ if ($LASTEXITCODE -eq 0 -and $B) {
 **Expect:** a `subject=` line with `Keycloak CA`, a `sha256 Fingerprint=…` line, then `saved
 …/keycloak-ca.pem`.
 
+**If not:** `FAILED: no CA read`: the error above it says why. Run step 4 first (it makes the
+Secret `keycloak-tls`), and check that `VKS_CLUSTER` is Keycloak's cluster.
+
 ## 7. Give Keycloak its name
 
 Create a DNS record (type A) for `KEYCLOAK_HOST` with Keycloak's address from step 5, in the DNS
@@ -1615,6 +1623,11 @@ $B = kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak get secret keycloak-admin 
 if ($LASTEXITCODE -eq 0 -and $B) { "admin password: $([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B)))" }
 else { "FAILED: no password read (see the error above)" }
 ```
+
+**Expect:** `admin password: ` and the password.
+
+**If not:** an error from kubectl, or `FAILED: no password read` (Windows): the error says why.
+Step 3 makes the Secret `keycloak-admin`; check that `VKS_CLUSTER` is Keycloak's cluster.
 
 ![Keycloak's sign-in page for the admin console: Username or email, Password, Sign In](img/keycloak-vks/01-admin-signin.jpg)
 

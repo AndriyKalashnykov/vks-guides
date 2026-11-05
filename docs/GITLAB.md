@@ -1040,6 +1040,9 @@ kubectl --kubeconfig $VKS_KUBECONFIG delete namespace gitlab-runner --ignore-not
 
 **Expect:** `namespace "gitlab-runner" deleted` (nothing on a second run).
 
+**If not:** `timed out waiting for the condition`: the cluster is still removing what the namespace
+holds; wait a few minutes and run this again.
+
 ### GitLab
 
 **This deletes every project in this GitLab.** Delete first any ArgoCD Application that clones

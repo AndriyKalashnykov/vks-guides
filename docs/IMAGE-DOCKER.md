@@ -68,6 +68,8 @@ mkdir -p "$HOME/image-simple"
 cd "$HOME/image-simple"
 ```
 
+**Expect:** no output; the terminal is now in `~/image-simple`.
+
 The two robot accounts:
 
 - `HARBOR_ROBOT` (push): used on your machine in step 4 to upload the image. It may push and pull.
@@ -131,6 +133,9 @@ docker build --platform "$IMAGE_PLATFORM" -t "$IMAGE" .
 
 **Expect:** the build's steps, then `naming to <your Harbor name>/<your project>/test-web-apps:v1`.
 
+**If not:** a `curl:` error or a failed base-image pull: this machine must reach
+`raw.githubusercontent.com` and `docker.io` (Prerequisites).
+
 ## 4. Push it to Harbor
 
 To upload the image, docker must first log in to Harbor as the push robot (`HARBOR_ROBOT`). This
@@ -141,8 +146,10 @@ this line on its own. docker keeps the login until the next block logs out.
 docker login -u "$HARBOR_ROBOT" "$HARBOR_FQDN"
 ```
 
-**Expect:** `Login Succeeded` (docker without a credential helper first warns that the login is stored unencrypted;
-the logout below removes it).
+**Expect:** `Login Succeeded` (docker without a credential helper first warns that the login is
+stored unencrypted; the logout below removes it).
+
+**If not:** `x509: …`: do step 2. `unauthorized`: the robot's name or secret is wrong.
 
 Run this right after the login, in the same terminal. It uploads the image to your project, then
 logs out, so the robot's login does not stay on this machine. Afterwards the image is in Harbor,
@@ -155,6 +162,8 @@ docker logout "$HARBOR_FQDN"
 
 **Expect:** the image's layers, `v1: digest: sha256:…`, then `Removing login credentials for …`.
 In Harbor's web page, your project now lists `test-web-apps`.
+
+**If not:** `insufficient_scope`: the robot may not push to this project.
 
 ## 5. Only for a private project: let the cluster pull from it
 
@@ -192,6 +201,9 @@ rm -r "$HOME/image-simple/pull"
 ```
 
 **Expect:** `namespace/harbor-demo created` and `secret/harbor-pull created`.
+
+**If not:** `… .kubeconfig: no such file or directory`: set `VKS_CLUSTER` in the first block and run
+it, then the login line above and this block again.
 
 ## 6. Deploy the app
 
@@ -278,6 +290,8 @@ cd "$HOME"
 rm -r "$HOME/image-simple"
 ```
 
+**Expect:** `namespace "harbor-demo" deleted`, then docker's lines for the removed image.
+
 Run this only if this machine will not use this Harbor with docker again. It removes Harbor's CA
 from the folder where docker looks for it (it asks for your password; run it on its own). Afterwards
 docker refuses to talk to this Harbor until you do step 2 again:
@@ -285,6 +299,8 @@ docker refuses to talk to this Harbor until you do step 2 again:
 ```sh
 sudo rm -r "/etc/docker/certs.d/$HARBOR_FQDN"
 ```
+
+**Expect:** no output.
 
 The image stays in Harbor: delete it in Harbor's web page (**Projects** → your project →
 **Repositories**, tick `test-web-apps` → **DELETE**).

@@ -163,6 +163,9 @@ Move-Item -Force "$CA_FILE.new" $CA_FILE; if ($?) { "kept $CA_FILE" }
 
 **Expect:** `kept …`.
 
+**If not:** an error naming `….pem.new`: there is no file to keep. Run the first block of this step
+again (it ends with `saved as …`).
+
 With a second vCenter, run step 1 again with `CA_FILE` set in both blocks to a file of its own
 (such as `$HOME/.kube/vcenter2-ca.pem`), and use that file as `SUPERVISOR_CA` when you log in to
 its Supervisor.
@@ -189,6 +192,9 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 **Expect:** a new prompt. The password stays in this terminal until you close it or run
 [Log out](#log-out); in a new terminal, run this line again.
+
+**If not:** the next block prints `FAILED: no password in this terminal`: run this line again, in
+the terminal where you run that block.
 
 <a id="create-the-context"></a>**3. Create the context**
 
@@ -338,6 +344,9 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 **Expect:** a new prompt. The password stays in this terminal until you close it or run
 [Log out](#log-out); in a new terminal, run this line again.
+
+**If not:** the next block prints `FAILED: no password in this terminal`: run this line again, in
+the terminal where you run that block.
 
 **2. Create the context**
 
@@ -791,6 +800,10 @@ kubectl config current-context
 **Expect:** a context named after your cluster. In a new terminal, run this block again. In this
 terminal your other kubeconfigs (`~/.kube/config`, or the files your `KUBECONFIG` listed) are not
 read; a new terminal has them back.
+
+**If not:** `error: current-context is not set`: `~/.kube/<VKS_CLUSTER>.kubeconfig` is missing or
+has no context. Check `VKS_CLUSTER`, or run
+[Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig) again.
 
 ### Name the kubeconfig in each command
 

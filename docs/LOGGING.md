@@ -250,6 +250,9 @@ fluent_bit:
 
 **Expect:** `values: …values.yaml (Host <your Log Management name>)`.
 
+**If not:** `NOT WRITTEN: …`: `LOGS_FQDN` is empty, still `logs.example.test`, or holds more than
+lower-case letters, digits, `.` and `-`. Set it to Log Management's DNS name and run it again.
+
 ## 4. Install the add-on
 
 Run this after step 3, to put Fluent Bit in your VKS cluster. It asks the Supervisor to install

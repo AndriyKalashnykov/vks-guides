@@ -181,8 +181,8 @@ Harbor; the vSphere Client lists it with the vSphere Namespaces), then
 you need.
 
 **If not:**
-- `FAILED: …` above `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
-  Above `Forbidden`: log in as a vCenter administrator.
+- `FAILED: …` under `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+  Under `Forbidden`: log in as a vCenter administrator.
 - `namespace/svc-harbor-…` and `recorded: nothing …`: this Supervisor already runs a Harbor that
   you did not install. Use it, and do not install a second one.
 - `FAILED: … belongs to another Supervisor (…)`:
@@ -403,6 +403,9 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get storageclass -o custom-columns=N
 ```
 
 **Expect:** one name per line, for example `wcp-vmfs`.
+
+**If not:** `error: You must be logged in to the server (Unauthorized)`: run [Renew the
+Supervisor login](LOGIN.md#renew-the-supervisor-login), then the block again.
 
 ### Write the file
 
@@ -944,7 +947,7 @@ if ($LASTEXITCODE -ne 0 -or -not $SUP) {
 **Expect:** `copied to the clipboard`.
 
 **If not:**
-- `FAILED: …` above `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+- `FAILED: …` under `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
   `FAILED: … has no supervisor-uid …`: run step 1 first. `FAILED: … belongs to another
   Supervisor (…)`: see step 1's **If not**. Nothing was copied.
 - `No clipboard program here: …`: on a Debian or Ubuntu desktop install one (`sudo apt-get
@@ -1160,6 +1163,13 @@ else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n ($NS[0] -replace '^namespa
 ```
 
 **Expect:** every pod `Running` or `Completed`, and five volumes `Bound`.
+
+**If not:**
+- `FAILED: cannot list …` under `Unauthorized`: run [Renew the Supervisor
+  login](LOGIN.md#renew-the-supervisor-login), then the block again.
+- `FAILED: Harbor namespaces …: ''`: the service is not installed (step 6); two names: see *Fix
+  common problems*.
+- A volume that stays `Pending`: as in the list above the block.
 
 ### Get a DNS record
 
@@ -1887,6 +1897,10 @@ then `Removed login credentials for <your Harbor name>` (docker:
 - `unauthorized` (podman: `invalid username/password`) as `admin`: see *Log in as admin*. As the
   robot: its name or secret is wrong, or it has expired. A robot made in Harbor's web page is
   `robot$<the name you typed>`.
+- `FAILED: harbor-data-values.yml or secrets.env is missing …`: run steps 3 and 4 with the same
+  `SUPERVISOR_CONTEXT`.
+- `FAILED: no …harbor-data-values.yml, or no robot secret …`: run step 4, or type the secret
+  again (the line above the block), then run the block in the same terminal.
 
 To build an image, push it to this project and run it in a VKS cluster, see [IMAGE.md](IMAGE.md).
 

@@ -675,7 +675,10 @@ kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name | Where-Object { $_ -cmatch
 ```
 
 **Expect:** ten `customresourcedefinition.apiextensions.k8s.io "….monitoring.coreos.com" deleted`
-lines.
+lines (nothing when run again).
+
+**If not:** `Unauthorized`: the VKS cluster's kubeconfig has expired;
+[get it again](LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 ## 9. Install with ArgoCD (instead of steps 4 and 5)
 
@@ -952,6 +955,10 @@ spec:
 `application.argoproj.io/prometheus created`, after a `Warning:` about the finalizer name (as in
 [ARGOCD.md](ARGOCD.md) step 6). `configured` or `unchanged` on your first run: someone else made
 them; stop and ask them.
+
+**If not:** `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login),
+then this block again. `Forbidden`: your SSO user has no **Namespaces Edit** role on
+`ARGOCD_NAMESPACE`.
 
 Run this a minute after the block above, to see that ArgoCD has installed everything; the first
 install takes a few minutes. It shows the Application's state, then waits until Prometheus and

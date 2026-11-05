@@ -30,6 +30,25 @@ any other guide. The sections marked optional are needed only where a guide says
 [Registry hosts, for a firewall](#registry-hosts-for-a-firewall) lists the hosts a firewall must
 also allow for each image registry.
 
+## Prerequisites
+
+- No other guide first: this is the first one.
+- A machine where you may install software: on Linux `sudo` (or `root`), on Windows an
+  administrator for WSL, on macOS [Homebrew](https://brew.sh).
+
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also the
+hosts in [Registry hosts](#registry-hosts-for-a-firewall)):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine (laptop or jump box) | your OS's package repositories and the mirrors they hand out, as set on the machine (apt, dnf, tdnf, pacman) | 80 and 443 (Ubuntu's and Debian's default repositories, and the mirrors AlmaLinux's mirror list hands out, use 80) | the tools, podman and docker |
+| your machine (macOS) | `formulae.brew.sh`, `ghcr.io` | 443 | Homebrew: jq, podman, Colima, docker |
+| your machine (laptop or jump box) | `download.docker.com` | 443 | docker on Debian, Ubuntu and AlmaLinux |
+| your machine (laptop or jump box) | `github.com`, `release-assets.githubusercontent.com` | 443 | kubelogin (optional); on macOS Colima's virtual machine; on Windows the podman installer |
+| your machine (macOS, Windows) | `quay.io` | 443 | `podman machine init` (podman's virtual machine) |
+| your machine (Windows) | the Microsoft Store, `raw.githubusercontent.com`, `releases.ubuntu.com` (Arm: `cdimages.ubuntu.com`) | 443 | `wsl --install` |
+| your machine (Windows) | `desktop.docker.com` | 443 | Docker Desktop |
+
 ## Linux (Debian / Ubuntu)
 
 Run this once on Debian or Ubuntu: it installs the five tools with apt
@@ -125,6 +144,9 @@ only when it is missing; afterwards all five tools are there:
 command -v jq >/dev/null 2>&1 || brew install jq
 ```
 
+**Expect:** no output when `jq` is there, otherwise Homebrew's lines for installing `jq`. Then run
+[Check](#check).
+
 **If not:** `brew: command not found` — install Homebrew first ([brew.sh](https://brew.sh)), then
 run the block again.
 
@@ -171,6 +193,9 @@ Pick one:
 
    **Expect:** a path like `/mnt/c/Users/<you>/Downloads`. Use it as `DOWNLOAD_DIR` in
    [Install the VCF CLI](VCF.md).
+
+   **If not:** an `ls` error instead of a path: run this in the Ubuntu terminal of step 2, or find
+   the folder under `/mnt/c/Users/`.
 
 ## Check
 
@@ -244,6 +269,9 @@ echo "PATH set in $RC"
 
 **Expect:** `PATH set in …`. New terminals, including SSH sessions, find the tools.
 
+**If not:** a new terminal still does not find the tools: run this block again in the shell your
+terminals open (bash or zsh); it writes the startup file of the shell it runs in.
+
 ## podman and docker (optional)
 
 Only for [IMAGE.md](IMAGE.md) (building app images and uploading them to Harbor, the image
@@ -264,6 +292,10 @@ packages; then run [Check podman and docker](#check-podman-and-docker).
 ```sh
 sudo apt-get update && sudo apt-get install -y podman
 ```
+
+**Expect:** the prompt returns with no `E:` line.
+
+**If not:** `sudo: command not found`: run it as `root`, without `sudo`.
 
 docker, to build and push images with docker: Ubuntu's own docker is too old to push to Harbor,
 so this installs Docker's own packages from Docker's repository. It first removes Ubuntu's docker
@@ -309,6 +341,11 @@ then run [Check podman and docker](#check-podman-and-docker).
 sudo dnf install -y podman
 ```
 
+**Expect:** `Complete!`.
+
+**If not:** `sudo: command not found` or `… is not in the sudoers file`: run it as `root`, without
+`sudo`.
+
 docker, to build and push images with docker: this adds Docker's own repository (AlmaLinux has no
 docker package), installs and starts docker, and adds you to the `docker` group. Afterwards, once
 you log out and back in, you run docker without `sudo`:
@@ -351,6 +388,11 @@ system; then run [Check podman and docker](#check-podman-and-docker).
 sudo pacman -Syu --needed --noconfirm podman
 ```
 
+**Expect:** `installing …` lines for what was missing, or `… is up to date -- skipping` and
+`there is nothing to do`, with no `error:` line.
+
+**If not:** as under [Arch Linux](#arch-linux).
+
 docker, to build and push images with docker: this installs and starts docker and its build
 plugin, and adds you to the `docker` group. Afterwards, once you log out and back in, you run docker
 without `sudo`:
@@ -381,6 +423,9 @@ podman info >/dev/null 2>&1 || podman machine start
 **Expect:** the last lines say the machine `started successfully`, or nothing if it was already
 running.
 
+**If not:** `brew: command not found`: install Homebrew first ([brew.sh](https://brew.sh)), then
+run the block again.
+
 docker, to build and push images with docker: use [Colima](https://github.com/abiosoft/colima),
 which runs docker in a small Linux virtual machine (Docker Desktop also works; larger companies
 need a paid subscription for it). This installs Colima, docker and its build plugin, starts
@@ -395,6 +440,9 @@ docker context use colima
 ```
 
 **Expect:** `Current context is now "colima"`.
+
+**If not:** `brew: command not found`: install Homebrew first ([brew.sh](https://brew.sh)), then
+run the block again.
 
 ### podman and docker on Windows
 
@@ -419,6 +467,10 @@ podman machine start
 ```
 
 **Expect:** `Machine "podman-machine-default" started successfully`.
+
+**If not:** PowerShell does not know `podman`: open a new **Windows PowerShell** after the install,
+then run the block again. An error about WSL: install it as above, restart Windows if it asks, then
+run the block again.
 
 ### Check podman and docker
 

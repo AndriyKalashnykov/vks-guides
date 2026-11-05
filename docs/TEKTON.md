@@ -1305,7 +1305,11 @@ kubectl --kubeconfig $VKS_KUBECONFIG delete clusterrole tekton-demo-listener --i
 ```
 
 **Expect:** `namespace "tekton-demo" deleted`, `clusterrolebinding… "tekton-demo-listener"
-deleted` and `clusterrole… "tekton-demo-listener" deleted`.
+deleted` and `clusterrole… "tekton-demo-listener" deleted`. Nothing on a second run.
+
+**If not:** `timed out waiting for the condition`: run
+`kubectl --kubeconfig <the VKS kubeconfig> describe namespace tekton-demo` to see what holds it,
+then this block again.
 
 ## 7. Uninstall Tekton (optional)
 
