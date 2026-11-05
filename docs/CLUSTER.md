@@ -297,10 +297,13 @@ if ($LASTEXITCODE -eq 0) { $A = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $
 if ($LASTEXITCODE -eq 0) { "cluster address: $(if ($E) { $E } else { 'none' }), load balancer address: $(if ($A) { $A } else { 'none' })" }
 ```
 
-**Expect:** the same address twice. `none`, or `NotFound` for the virtual machine service (the
-load-balancer entry that gives the cluster its address): wait, the address comes first. Two
-different addresses: the cluster kept an old address; delete it (step 8) and create it again under
-a new name.
+**Expect:** the same address twice.
+
+**If not:**
+- `none`, or `NotFound` for the virtual machine service (the load-balancer entry that gives the
+  cluster its address): wait, the address comes first.
+- Two different addresses: the cluster kept an old address; delete it (step 8) and create it again
+  under a new name.
 
 Run this next if the two addresses match, to learn why the cluster waits. It describes the cluster
 and changes nothing. Read the `Conditions` (the cluster's state checks) and the `Events` (what
@@ -328,6 +331,12 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE describe clusters.cluster.x-k8s.io $VKS_CLUSTER
 ```
+
+**Expect:** the cluster's description, ending in its `Conditions` and `Events`.
+
+**If not:**
+- `NotFound`: check `VKS_NAMESPACE` and `VKS_CLUSTER`.
+- No event says why the cluster waits: run the block below.
 
 Run this last if no event says why the cluster waits. It checks, for each machine of the cluster,
 whether vSphere could make its virtual machine, and changes nothing. You get one line per machine,
@@ -476,6 +485,9 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get persistentvolu
 **Expect:** `No resources found` twice, or the disks listed. Each disk listed stays after the
 delete and keeps its storage; the optional last block of this step deletes them all.
 
+**If not:** the first list fails under `no such file or directory` (Windows: `cannot find the file
+specified`): get the kubeconfig first (step 7).
+
 Then run this, with the disk list kept, to delete the cluster. It deletes the cluster and its
 virtual machines, and returns at once without waiting. Once the delete finishes, the cluster is
 gone, and the disks listed above stay. Set `VKS_NAMESPACE` to your vSphere Namespace and
@@ -551,6 +563,13 @@ else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete pers
 ```
 
 **Expect:** a `persistentvolumeclaim "<id>" deleted` line for each disk, or `No resources found`.
+
+**If not:**
+- `Nothing deleted: … still exists`: the cluster's delete has not finished. Run the block in
+  [Check that the name is free](#check-that-the-name-is-free) until it says `none now`, then this
+  block again.
+- `Nothing deleted: cannot read the clusters`: the error above says why; under `Unauthorized`,
+  run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this block again.
 
 Do not create the next cluster under the same name. The cluster's kubeconfig stays in
 `~/.kube`; delete it yourself.

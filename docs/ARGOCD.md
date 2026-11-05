@@ -446,6 +446,11 @@ spec:
 created` (`unchanged` on a second run). `configured` or `unchanged` on your first run: someone
 else made them; stop and ask them.
 
+**If not:**
+- `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
+  block again.
+- `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
+
 Run this right after the block above, to see that ArgoCD accepted the namespace as a destination.
 It only reads, and changes nothing. You get the destination `ns-<namespace>` and its state:
 
@@ -545,6 +550,11 @@ spec:
 </details>
 
 **Expect:** `appproject.argoproj.io/vks-clusters created`.
+
+**If not:**
+- `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
+  block again.
+- `Forbidden`: your SSO user has no **Namespaces Edit** role on `ARGOCD_NAMESPACE`.
 
 The cluster's Application needs four values. This lists the choices for a new VKS cluster in
 `VKS_NAMESPACE`, and changes nothing. You get four lists, and you copy one value from each list into
@@ -1035,6 +1045,11 @@ destination is back):
 vks-<namespace>-<cluster>`, then the registration block above. The same date: ask a vCenter
 administrator.
 
+**If not:**
+- `secrets "<cluster>-kubeconfig" not found`: check `VKS_CLUSTER` and `VKS_NAMESPACE`.
+- `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
+  block again.
+
 ### Add every VKS cluster of a namespace (optional)
 
 Use this instead of step 7's first block when ArgoCD should deploy to every VKS cluster of a
@@ -1446,6 +1461,12 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applicat
 
 **Expect:** three `… deleted` lines. Then run the name check of step 6 every few minutes until it
 prints two `NotFound` lines.
+
+**If not:**
+- `Error from server (NotFound)` for the Application: it is already gone, or `VKS_CLUSTER` is not
+  its name.
+- `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
+  block again. `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
 
 Run this once the cluster is gone, to take back ArgoCD's rights in your vSphere Namespace. It
 deletes the project `vks-clusters`, the namespace destination, ArgoCD's `edit` role in

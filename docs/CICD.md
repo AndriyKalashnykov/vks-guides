@@ -280,6 +280,9 @@ metadata:
 **Expect:** `namespace/cicd-demo created` and `namespace/cicd-ci created` (with GitLab,
 `namespace/gitlab-runner unchanged`; `unchanged` on a second run).
 
+**If not:** `Unauthorized`: the VKS cluster's kubeconfig has expired;
+[get it again](LOGIN.md#get-the-vks-clusters-kubeconfig).
+
 ## 3. Give the cluster two Harbor robots
 
 Run this after step 2. The build must push images to Harbor, and the app must pull them, so this
