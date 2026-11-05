@@ -2733,7 +2733,8 @@ every VKS cluster on this Supervisor** again.
 
 **Only uninstall a Harbor you installed.** Run this before *Uninstall it*. It looks for the note
 that step 1 left on this machine, and changes nothing. You get `MAY UNINSTALL` only if this
-Supervisor had no Harbor when you began; otherwise `DO NOT UNINSTALL`.
+Supervisor had no Harbor when you began; otherwise `DO NOT UNINSTALL` (`NOTHING TO UNINSTALL`
+when this Supervisor has no Harbor).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2746,6 +2747,10 @@ HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null | tr -d '\r')"
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
   echo "FAILED: cannot read the Supervisor (see the error above)"
+elif ! H="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace -l appplatform.vmware.com/serviceId=harbor -o name)"; then
+  echo "FAILED: cannot list the Supervisor's namespaces (see the error above)"
+elif [ -z "$H" ]; then
+  echo "NOTHING TO UNINSTALL: this Supervisor has no Harbor"
 elif [ -z "$REC" ]; then
   echo "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
 elif [ "$REC" != "$SUP" ]; then
@@ -2771,6 +2776,8 @@ $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 if ($LASTEXITCODE -ne 0 -or -not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
+elseif (-not ($H = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name) -and $LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
+elseif (-not $H) { "NOTHING TO UNINSTALL: this Supervisor has no Harbor" }
 elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
 elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
 elseif (Test-Path "$HARBOR_DIR\none-before-$SUP") { "MAY UNINSTALL: this Supervisor had no Harbor when you began" }
@@ -2782,6 +2789,7 @@ else { "DO NOT UNINSTALL: this machine has no record that this Supervisor had no
 **Expect:** `MAY UNINSTALL: this Supervisor had no Harbor when you began`.
 
 **If not:**
+- `NOTHING TO UNINSTALL`: there is no Harbor on this Supervisor; skip *Uninstall it*.
 - `DO NOT UNINSTALL: …`: stop. A Harbor was there when you began, or you began on another
   machine.
 - `FAILED: … belongs to another Supervisor (…)` or `… has no supervisor-uid …`: stop; this

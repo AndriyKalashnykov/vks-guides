@@ -1769,8 +1769,9 @@ only what step 11.1 saw, not who installed the Metrics Aggregator there now; if 
 it is yours, ask the other vCenter administrators first.
 
 **If not:**
-- `NOTHING TO UNINSTALL`: there is no Metrics Aggregator on this Supervisor; skip the vSphere
-  Client steps below.
+- `NOTHING TO UNINSTALL`: there is no Metrics Aggregator on this Supervisor. Skip steps 1 and 2
+  below; do step 3 only if you registered it in step 11.3; then run the two blocks below (the
+  leftovers, then the removal of step 11.1's note).
 - `DO NOT UNINSTALL: this machine has no record …`: stop. It was there when you began, or you
   ran step 11.1 on another machine.
 - `DO NOT UNINSTALL yet` with `still enabled:` lines: those clusters still send to VCF
