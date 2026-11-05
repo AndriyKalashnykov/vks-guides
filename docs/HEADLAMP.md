@@ -33,11 +33,11 @@ read-only token can look, not change.
 **The VKS cluster to make.** Choose the row with everything you will install and make the cluster
 with that many workers ([CLUSTER.md](CLUSTER.md)), or add workers to a running cluster
 ([CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)). One control-plane node of
-`best-effort-small` is enough in every row. For workers, Broadcom recommends `best-effort-medium`
-(2 CPUs, 8 GB) or larger, and a guaranteed class for production
+`best-effort-small` is enough in every row. Broadcom says not to use a small or xsmall class for
+workers that run apps, and to use a guaranteed class for production
 ([KB 446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html)).
 
-| Headlamp with | workers (`best-effort-medium`) |
+| Headlamp with | workers (`best-effort-medium`, 2 CPUs, 8 GB) |
 |---|---|
 | nothing else (steps 1 to 9) | 1 |
 | one of Contour (step 10), the Prometheus plugin (step 11.1) or the Kubescape plugin (step 11.2) | 1 |
