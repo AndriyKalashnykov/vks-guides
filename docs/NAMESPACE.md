@@ -15,7 +15,9 @@
 > - [Create and Configure a Self-Service Namespace Template](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/configuring-and-managing-vsphere-namespaces/provision-a-self-service-namespace/create-and-configure-a-self-service-namespace.html) (step 10, the Namespace Service)
 > - [Create a Self-Service Namespace](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/configuring-and-managing-vsphere-namespaces/provision-a-self-service-namespace/create-a-self-service-namespace.html) and [Delete a Self-Service Namespace](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/configuring-and-managing-vsphere-namespaces/provision-a-self-service-namespace/delete-a-self-service-namespace.html) (step 10, kubectl)
 
-You create the namespace in the vSphere Client, give users a role in it, and add a storage
+A vSphere Namespace (in this guide: the namespace) is the place on the Supervisor where your users
+create VKS clusters and VMs, with the users who may work there and the storage and VM sizes they
+may use. You create the namespace in the vSphere Client, give users a role in it, and add a storage
 policy and VM classes. Steps 2 to 7 are clicks. The names are those of the vSphere Client for
 VCF 9.1.1, on a Supervisor with vSphere Distributed Switch networking. The screenshots show example
 names; yours differ.
@@ -75,7 +77,8 @@ Run this once, before you hand out the Supervisor's address, because LOGIN.md's
 [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca) asks your users to
 compare their download with these CAs. It prints each CA's fingerprint, a short code that
 identifies it, and changes nothing on your machine. You then have the fingerprints to give your
-users. Trust them only if your browser showed no certificate warning for vCenter.
+users. Trust them only if your browser showed no certificate warning for vCenter. Set `CA_ZIP`
+to the saved `download.zip` if the browser did not save it in `Downloads`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -262,7 +265,8 @@ again.
 
 Run this before you create a VKS cluster, in a namespace you made or one someone gave you. It
 checks that the namespace exists and that your user may create VKS clusters in it, and changes
-nothing. Two answers, your namespace and `yes`, mean you may go on.
+nothing. Two answers, your namespace and `yes`, mean you may go on. Set `VKS_NAMESPACE` to the
+namespace's name, and `SUPERVISOR_CONTEXT` to your login's name for the Supervisor.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -300,7 +304,8 @@ Run this next, still before you create a VKS cluster, to see whether the namespa
 a cluster needs. It lists what the namespace offers a cluster: VM classes, storage classes,
 Kubernetes releases (the Kubernetes versions a cluster can run) and cluster classes (Broadcom's
 templates for a cluster). It changes nothing. You then know which VM classes and storage
-classes you can choose in [CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values).
+classes you can choose in [CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values). Set
+`VKS_NAMESPACE` and `SUPERVISOR_CONTEXT` as in the block above.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -401,7 +406,8 @@ you to confirm says the same.
 
 Run this right before you remove the namespace, so that you do not delete work someone still
 uses. It lists the VKS clusters, VMs, volumes and pods (running containers) left in it, and
-changes nothing. An empty list means the namespace may go:
+changes nothing. An empty list means the namespace may go, in the vSphere Client below. Set
+`VKS_NAMESPACE` to the namespace's name:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -519,7 +525,7 @@ with `vmware-system-` or `svc-`. It cannot be changed later.
 4. Run this once the file is saved, to create the namespace. It first checks the file on the
    Supervisor without creating anything (`--dry-run=server`), then creates the namespace. You
    then have a namespace with the template's storage policy, network and VM classes, and a role
-   on it.
+   on it. Set `NAMESPACE_YAML` to the file if you saved it elsewhere.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -562,7 +568,8 @@ In the vSphere Client the namespace is listed under **Supervisor Management** â†
 
 When you no longer need a namespace you created with this step, first run the block in step 9 to
 check that it is empty. Then this deletes the namespace from the Supervisor. Afterwards the
-vSphere Client's Namespaces tab shows it as Removing until it is gone:
+vSphere Client's Namespaces tab shows it as Removing until it is gone. Set `VKS_NAMESPACE` to the
+namespace's name:
 
 **Linux, macOS, WSL (bash or zsh):**
 

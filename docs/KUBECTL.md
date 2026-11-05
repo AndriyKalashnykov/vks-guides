@@ -39,12 +39,13 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 ## From dl.k8s.io
 
 Run this before you log in, when this machine can reach dl.k8s.io: the other guides'
-blocks run `kubectl`. It downloads the official
-program, checks that it arrived whole (its SHA-256 checksum) and copies it into `INSTALL_DIR`. If
-that folder needs `sudo` and `sudo` would ask for a password, it uses `~/.local/bin` instead (see
-[PREREQS.md](PREREQS.md#sudo-optional)). On Windows it also adds the folder to your PATH.
-Afterwards you can type `kubectl` in this terminal, and the block prints its version.
-Leave `KUBECTL_VERSION` empty for the latest stable release, or set one such as `v1.37.1`.
+blocks run `kubectl`. It downloads the official program, checks that it arrived whole (its
+SHA-256 checksum) and copies it into `INSTALL_DIR`, a folder for programs: `/usr/local/bin`
+(`~/.local/bin` when that needs a `sudo` password: see [PREREQS.md](PREREQS.md#sudo-optional)),
+or on Windows `%LOCALAPPDATA%\Programs\vks-tools`, which it adds to your PATH. Afterwards you can
+type `kubectl` in this terminal, and the block prints its version; running it again replaces
+`kubectl` with the version you set. Leave `KUBECTL_VERSION` empty for the latest stable release,
+or set one such as `v1.37.1`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -144,13 +145,7 @@ Remove-Item -Recurse -Force $TMP
 
 ## From the Supervisor (dl.k8s.io blocked)
 
-If this machine cannot reach dl.k8s.io, get `kubectl` from the Supervisor instead. This downloads
-the Supervisor's tool package, takes `kubectl` out of it and installs it like the block above. It
-works for amd64 Linux, macOS and Windows only. Afterwards you can type `kubectl` in this terminal,
-and the block prints its version. This `kubectl` has the Supervisor's version, which
-may be too old for your VKS cluster.
-
-Before you run it:
+Before you run the block below, once on this machine:
 
 - The download checks the Supervisor's certificate against the vCenter CA, so first do step 1 of
   [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca), including its
@@ -161,10 +156,15 @@ Before you run it:
 - On Apple silicon this kubectl runs through Rosetta. If you have not installed Rosetta, do it
   first: `softwareupdate --install-rosetta --agree-to-license`.
 
+If this machine cannot reach dl.k8s.io, get `kubectl` from the Supervisor instead. This downloads
+the Supervisor's tool package, takes `kubectl` out of it and installs it like the block above. It
+works for amd64 Linux, macOS and Windows only. Afterwards you can type `kubectl` in this terminal,
+and the block prints its version. This `kubectl` has the Supervisor's version, which may be too old
+for your VKS cluster: after you log in,
+[match it to your cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
 Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name
-([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca), step 1). For a
-Supervisor of another vCenter, use that vCenter's CA file (LOGIN.md, step 1) as `SUPERVISOR_CA`, and on
-Windows as `Import-Certificate`'s `-FilePath`.
+([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca), step 1). Do the steps
+above first.
 
 <details>
 <summary><b>Linux amd64, macOS, WSL amd64 (bash or zsh)</b></summary>
@@ -258,5 +258,8 @@ Remove-Item -Recurse -Force $TMP
 - `bad CPU type in executable` (Apple silicon): install Rosetta with
   `softwareupdate --install-rosetta --agree-to-license`, then run the block again.
 - `note: …` and `WARNING: …` lines: as in [From dl.k8s.io](#from-dlk8sio).
+
+**Another vCenter's Supervisor:** use that vCenter's CA file (LOGIN.md, step 1) as
+`SUPERVISOR_CA`, and on Windows as `Import-Certificate`'s `-FilePath`.
 
 Back to [README](../README.md).
