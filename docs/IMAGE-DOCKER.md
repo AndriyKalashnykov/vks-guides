@@ -334,8 +334,8 @@ rm -r "$HOME/image-simple"
 
 **Expect:** `namespace "harbor-demo" deleted`, then docker's lines for the removed image.
 
-**If not:** `namespaces "harbor-demo" not found`: the app is already gone from this cluster; the
-other lines still run.
+**If not:** `namespaces "harbor-demo" not found`, `No such image` or `No such file or directory`:
+that part was removed before (this is a second run); nothing is wrong.
 
 Run this only if this machine will not use this Harbor with docker again. It removes Harbor's CA
 from the folder where docker looks for it (it asks for your password; run it on its own). Afterwards

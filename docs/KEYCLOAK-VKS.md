@@ -174,10 +174,10 @@ else
   elif [ "$N" = 1 ]; then
     echo "cert-manager: already installed"
   elif ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io -o name 2>&1)" \
-       && ! printf '%s\n' "$C" | grep -q NotFound; then
+       && ! printf '%s\n' "$C" | grep -qF '"certificates.cert-manager.io" not found'; then
     printf '%s\n' "$C"
     echo "FAILED: cannot read the cluster (see the error above)"
-  elif ! printf '%s\n' "$C" | grep -q NotFound; then
+  elif ! printf '%s\n' "$C" | grep -qF '"certificates.cert-manager.io" not found'; then
     echo "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
   elif vcf addon install create cert-manager --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
     OK=""
@@ -223,7 +223,7 @@ if ($M) {
     "FAILED: the VCF CLI (see the error above)"
   } elseif (@(ConvertFrom-Json $L | ForEach-Object { $_ } | ForEach-Object { $_.addonName }) -contains 'cert-manager') {
     "cert-manager: already installed"
-  } elseif (($C = (kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io -o name 2>&1 | ForEach-Object { "$_" }) -join "`n") -and $LASTEXITCODE -ne 0 -and $C -notmatch 'NotFound') {
+  } elseif ($($C = (kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io -o name 2>&1 | ForEach-Object { "$_" }) -join "`n"; $LASTEXITCODE -ne 0) -and $C -notmatch '"certificates\.cert-manager\.io" not found') {
     $C
     "FAILED: cannot read the cluster (see the error above)"
   } elseif ($LASTEXITCODE -eq 0) {

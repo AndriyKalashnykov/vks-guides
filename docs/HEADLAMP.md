@@ -147,7 +147,15 @@ else
     OK=1
     if [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "cert-manager")] | length')" = 1 ]; then
       echo "cert-manager: already installed"
-    elif kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io >/dev/null 2>&1; then
+    elif ! command -v kubectl >/dev/null 2>&1; then
+      echo "MISSING: kubectl (KUBECTL.md)"
+      OK=""
+    elif ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io -o name 2>&1)" \
+         && ! printf '%s\n' "$C" | grep -qF '"certificates.cert-manager.io" not found'; then
+      printf '%s\n' "$C"
+      echo "FAILED: cannot read the cluster (see the error above)"
+      OK=""
+    elif ! printf '%s\n' "$C" | grep -qF '"certificates.cert-manager.io" not found'; then
       echo "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
       OK=""
     else
@@ -205,7 +213,14 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
     $OK = $true
     if ($A -contains 'cert-manager') {
       "cert-manager: already installed"
-    } elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io 2>$null) -and $LASTEXITCODE -eq 0) {
+    } elseif (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) {
+      "MISSING: kubectl (KUBECTL.md)"
+      $OK = $false
+    } elseif ($($C = (kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io -o name 2>&1 | ForEach-Object { "$_" }) -join "`n"; $LASTEXITCODE -ne 0) -and $C -notmatch '"certificates\.cert-manager\.io" not found') {
+      $C
+      "FAILED: cannot read the cluster (see the error above)"
+      $OK = $false
+    } elseif ($LASTEXITCODE -eq 0) {
       "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
       $OK = $false
     } else {
@@ -247,6 +262,11 @@ installed in the cluster …`, `deployment.apps/headlamp condition met`, then th
 `EXTERNAL-IP` and port `443`. About two minutes in all.
 
 **If not:**
+- `MISSING: kubectl`: install it ([KUBECTL.md](KUBECTL.md)), then run the block again; nothing was
+  installed.
+- `FAILED: cannot read the cluster`: kubectl could not read the VKS cluster; the error above says
+  why (`Unauthorized`: [get its kubeconfig again](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+  Nothing was installed.
 - `STOPPED: … not the add-on`: someone installed cert-manager another way; use another cluster.
 - `FAILED: Headlamp did not reach the cluster` or `did not start`: `vcf addon install list
   --cluster-name <cluster> -n <namespace>` shows `READY`; with `False`, `vcf addon install get
