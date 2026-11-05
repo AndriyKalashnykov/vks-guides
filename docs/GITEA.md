@@ -27,14 +27,14 @@ The blocks keep their files in `~/.config/vks-guides/gitea` (PowerShell:
   step 4 option B [Helm](HELM.md);
 - for step 8, one free load-balancer address.
 
-**The VKS cluster to make.** One control-plane node of `best-effort-small` and one worker of
-`best-effort-medium` (2 CPUs, 8 GB) are enough for Gitea ([CLUSTER.md](CLUSTER.md)). Gitea
-reserves 0.1 CPU and 256 MiB and may use up to 1 CPU and 1 GiB. Measured on a VKS 3.8 cluster
-with one `best-effort-small` worker: with no repositories, Gitea used under 0.01 CPU and about
-90 MiB. Add a worker ([CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)) if the
-cluster also runs other apps, such as the builds of [TEKTON.md](TEKTON.md). Broadcom says not to
-use a small or xsmall class for workers that run apps, and to use a guaranteed class for production
-([KB 446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html)).
+**The VKS cluster to make.** One control-plane node and one worker, both `best-effort-medium` (2
+CPUs, 8 GB; [CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)), are enough for Gitea.
+Gitea reserves 0.1 CPU and 256 MiB and may use up to 1 CPU and 1 GiB. Measured on a VKS 3.8 cluster
+with one `best-effort-small` worker: with no repositories, Gitea used under 0.01 CPU and about 90
+MiB. Add a worker ([CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)) if the cluster
+also runs other apps, such as the builds of [TEKTON.md](TEKTON.md). Broadcom says not to use a
+small or xsmall class for workers that run apps, and to use a guaranteed class for production ([KB
+446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html)).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
