@@ -725,7 +725,8 @@ cannot list the others): tell Headlamp its name once, in **Settings** (the gear 
 **Namespaces** and shows what is in it. Headlamp keeps this in this browser, for this cluster, and
 for everyone who opens this cluster's Headlamp in it (an administrator who logs in there afterwards
 sees only that namespace too): remove the name there to see every namespace again. In another
-browser, set it again.
+browser, set it again. The **Overview** page still shows *You don't have permissions to view this
+resource* for the cluster's summary; its **Events** list shows your namespace.
 
 ![Cluster Settings: Allowed namespaces with headlamp-demo](img/headlamp/16-allowed-namespaces.png)
 
