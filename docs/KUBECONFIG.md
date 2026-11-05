@@ -34,8 +34,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl to a VKS cluster ([Use a file](#2-use-a-file), [Merge files](#4-merge-files-into-kubeconfig-optional)) |
-| your machine | the Supervisor's address | 443 | kubectl to the Supervisor, and the sign-in of files that run `vcf` |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl to a VKS cluster ([Use a file](#2-use-a-file), [Merge files](#4-merge-files-into-kubeconfig-optional)) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl to the Supervisor, and the sign-in of files that run `vcf` |
 | your browser (kubelogin: your machine) | Keycloak | 443 | the sign-in of files that run `vcf` or kubelogin |
 
 ## The files the guides make

@@ -66,9 +66,9 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | `github.com`, `release-assets.githubusercontent.com` | 443 | the Loki and Jaeger charts (steps 3, 4) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (steps 1 to 9, 11.5, 12) |
-| your machine | the Supervisor's address | 443 | the VCF CLI (step 5), kubectl (steps 11, 12) |
+| your machine (laptop or jump box) | `github.com`, `release-assets.githubusercontent.com` | 443 | the Loki and Jaeger charts (steps 3, 4) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (steps 1 to 9, 11.5, 12) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | the VCF CLI (step 5), kubectl (steps 11, 12) |
 | the cluster's nodes | `docker.io`, `ghcr.io` | 443 | the Loki, Jaeger and sample app images |
 | the cluster's nodes | `projects.packages.broadcom.com`, or your own copy of it ([ADDONS.md](ADDONS.md)) | 443 | the Fluent Bit add-on; the Telegraf and Prometheus add-ons (step 11) |
 | Fluent Bit, on every node | Log Management's DNS name | 9543 | only if you set `LOGS_FQDN` (step 5) |

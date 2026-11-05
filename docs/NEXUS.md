@@ -72,13 +72,13 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the Supervisor's address | 443 | the VCF CLI (step 2), kubectl with the Supervisor kubeconfig (step 11) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 1 to 8, 12 and 13) |
-| your machine | each pulling VKS cluster's API address (its kubeconfig) | 6443 | the Secret and the test pod (step 11) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | the VCF CLI (step 2), kubectl with the Supervisor kubeconfig (step 11) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 1 to 8, 12 and 13) |
+| your machine (laptop or jump box) | each pulling VKS cluster's API address (its kubeconfig) | 6443 | the Secret and the test pod (step 11) |
 | the cluster's nodes | `projects.packages.broadcom.com` | 443 | the cert-manager add-on (step 2) |
 | the cluster's nodes | `docker.io` | 443 | the Nexus, PostgreSQL and TLS proxy images (step 6) |
-| your machine | Nexus's address (step 4) | 443 | Nexus's REST API (steps 7 to 9), login and push (step 10) |
-| your machine | `docker.io` | 443 | the test image (step 10) |
+| your machine (laptop or jump box) | Nexus's address (step 4) | 443 | Nexus's REST API (steps 7 to 9), login and push (step 10) |
+| your machine (laptop or jump box) | `docker.io` | 443 | the test image (step 10) |
 | the nodes of the VKS clusters that pull from Nexus | Nexus's address | 443 | pulling images (step 11) |
 
 ## 1. Check the cluster

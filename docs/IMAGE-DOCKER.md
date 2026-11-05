@@ -38,10 +38,10 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | Harbor's address | 443 | Harbor's CA (step 1), login and push (steps 4, 5) |
-| your machine | `raw.githubusercontent.com` | 443 | the app's files (steps 3, 5, 6) |
-| your machine | `docker.io` | 443 | the app's base image (step 3) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 5 to 8) |
+| your machine (laptop or jump box) | Harbor's address | 443 | Harbor's CA (step 1), login and push (steps 4, 5) |
+| your machine (laptop or jump box) | `raw.githubusercontent.com` | 443 | the app's files (steps 3, 5, 6) |
+| your machine (laptop or jump box) | `docker.io` | 443 | the app's base image (step 3) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 5 to 8) |
 | the VKS cluster's nodes | Harbor's address | 443 | pulling the app's image (step 6) |
 | your machine and your browser | the app's address (step 7) | 80 | opening the app (step 7) |
 

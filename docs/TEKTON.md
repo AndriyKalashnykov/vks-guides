@@ -40,11 +40,11 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (all steps), and the port-forward to the EventListener (step 5) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (all steps), and the port-forward to the EventListener (step 5) |
 | the cluster's nodes | `cgr.dev` | 443 | the pipeline's step image (step 4), Tekton's shell image |
-| your machine | the Supervisor's address | 443 | A: the VCF CLI (steps 2, 7) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | A: the VCF CLI (steps 2, 7) |
 | the cluster's nodes | `projects.packages.broadcom.com`, or your own copy of it ([ADDONS.md](ADDONS.md)) | 443 | A: the Tekton Operator and Tekton's images |
-| your machine | `github.com`, `release-assets.githubusercontent.com` | 443 | B: Tekton's release files (step 3) |
+| your machine (laptop or jump box) | `github.com`, `release-assets.githubusercontent.com` | 443 | B: Tekton's release files (step 3) |
 | the cluster's nodes | `ghcr.io`, `pkg-containers.githubusercontent.com` | 443 | B: Tekton's images |
 
 ## 1. Check the cluster

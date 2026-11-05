@@ -33,8 +33,8 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the Supervisor's address | 443 | the VCF CLI (steps 1, 2, 9 to 12) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (all steps) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | the VCF CLI (steps 1, 2, 9 to 12) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (all steps) |
 | the cluster's nodes | `projects.packages.broadcom.com`, or your own copy of it ([ADDONS.md](ADDONS.md)) | 443 | the add-ons: Headlamp, cert-manager, and Contour and Prometheus if you use them |
 | each person's browser, and your machine | Headlamp's address (step 2), or your DNS name for it with Contour (step 10) | 443 | Headlamp |
 | your browser | vCenter (the vSphere Client) | 443 | Headlamp's address (step 4) |
@@ -44,7 +44,7 @@ Only for the Kubescape plugin (step 11):
 | from | to | port | for |
 |---|---|---|---|
 | Headlamp, in the cluster | `artifacthub.io`, `github.com`, `release-assets.githubusercontent.com` | 443 | downloading the plugin when Headlamp starts |
-| your machine | `kubescape.github.io`, `github.com`, `release-assets.githubusercontent.com` | 443 | Kubescape's Helm chart |
+| your machine (laptop or jump box) | `kubescape.github.io`, `github.com`, `release-assets.githubusercontent.com` | 443 | Kubescape's Helm chart |
 | the cluster's nodes | `quay.io` | 443 | Kubescape's images |
 | Kubescape, in the cluster | `github.com`, `release-assets.githubusercontent.com` | 443 | its scan rules, at every scan |
 | Kubescape, in the cluster | `grype.anchore.io` | 443 | its vulnerability database |

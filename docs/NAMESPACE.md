@@ -50,7 +50,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 | from | to | port | for |
 |---|---|---|---|
 | your browser | vCenter (`https://<your vCenter>/ui`) | 443 | the vSphere Client (steps 1 to 7, 9, 10) |
-| your machine | the Supervisor's address | 443 | kubectl (steps 8 to 10) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl (steps 8 to 10) |
 
 ## 1. Find the Supervisor's address and vCenter's CA
 

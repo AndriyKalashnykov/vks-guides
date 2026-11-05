@@ -42,10 +42,10 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps), and the port-forward to GitLab (steps 5 to 9) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps), and the port-forward to GitLab (steps 5 to 9) |
 | the cluster's nodes | `docker.io` | 443 | GitLab's image (step 3), the CI job image (step 9) |
 | the cluster's nodes | `registry.gitlab.com` | 443 | the runner and its helper image (steps 8, 9) |
-| your machine | `gitlab-charts.s3.amazonaws.com` | 443 | the runner's Helm chart (step 8) |
+| your machine (laptop or jump box) | `gitlab-charts.s3.amazonaws.com` | 443 | the runner's Helm chart (step 8) |
 | ArgoCD, your machine, other machines that clone | GitLab's load-balancer address (step 7) | 80 | cloning over plain HTTP |
 
 ## 1. Check the cluster

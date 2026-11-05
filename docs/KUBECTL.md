@@ -32,9 +32,9 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | `dl.k8s.io` | 443 | From dl.k8s.io |
-| your machine | vCenter | 443 | From the Supervisor: the vCenter CA ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca), step 1) |
-| your machine | the Supervisor's address | 443 | From the Supervisor |
+| your machine (laptop or jump box) | `dl.k8s.io` | 443 | From dl.k8s.io |
+| your machine (laptop or jump box) | vCenter | 443 | From the Supervisor: the vCenter CA ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca), step 1) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | From the Supervisor |
 
 ## From dl.k8s.io
 

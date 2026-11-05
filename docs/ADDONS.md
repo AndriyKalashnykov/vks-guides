@@ -38,7 +38,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the Supervisor's address | 443 | the VCF CLI (steps [1](#1-see-the-catalog) and [2](#2-see-what-a-cluster-has)) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | the VCF CLI (steps [1](#1-see-the-catalog) and [2](#2-see-what-a-cluster-has)) |
 
 ## Why use an add-on instead of installing the software yourself
 

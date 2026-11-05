@@ -40,8 +40,8 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the Supervisor's address | 443 | kubectl with the Supervisor login (steps 1, 3 to 10) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (step 8) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl with the Supervisor login (steps 1, 3 to 10) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (step 8) |
 | your browser | `support.broadcom.com` | 443 | downloading the service manifest (step 2) |
 | your browser | vCenter (the vSphere Client) | 443 | steps 2 and 10 |
 | the Supervisor | `projects.packages.broadcom.com` | 443 | ArgoCD's images, with the `legacy` manifest (steps 2, 3) |
@@ -49,7 +49,7 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 | ArgoCD, on the Supervisor | `github.com` | 443 | reading this repository (steps 6, 8) |
 | ArgoCD, on the Supervisor | the VKS cluster's API address | 6443 | deploying the test app (steps 7, 8) |
 | the VKS cluster's nodes | `docker.io` | 443 | the test app's image (step 8) |
-| your machine | the test app's address (step 8) | 80 | checking that the app answers |
+| your machine (laptop or jump box) | the test app's address (step 8) | 80 | checking that the app answers |
 
 ## 1. Check for an ArgoCD you have
 

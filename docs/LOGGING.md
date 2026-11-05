@@ -31,9 +31,9 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the Supervisor's address | 443 | the VCF CLI (steps 1, 4, 7, 8) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 5 to 7) |
-| your machine | Log Management's DNS name | 9543 | checking its certificate (step 2) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | the VCF CLI (steps 1, 4, 7, 8) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 5 to 7) |
+| your machine (laptop or jump box) | Log Management's DNS name | 9543 | checking its certificate (step 2) |
 | the cluster's nodes | `projects.packages.broadcom.com`, or your own copy of it ([ADDONS.md](ADDONS.md)) | 443 | the Fluent Bit add-on |
 | Fluent Bit, on every node | Log Management's DNS name | 9543 | sending the logs |
 | the cluster's nodes | `docker.io` | 443 | the test pod's image (step 6) |
