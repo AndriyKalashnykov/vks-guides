@@ -425,9 +425,10 @@ kubectl and jq: PREREQS.md).
 
 First log in to the cluster with your SSO user, as in
 [ACCESS.md](ACCESS.md#the-persons-own-sso-account) step 2a (VCF CLI) or steps 2b to 2d (kubectl
-vSphere plugin), so that `~/.kube/<cluster>-sso.kubeconfig` holds the login. The token works only
-for this cluster and ends 10 hours after that login; the length cannot be changed, and the block
-prints when it ends.
+vSphere plugin), so that `~/.kube/<cluster>-<SSO_USER>.kubeconfig` holds the login. Set `SSO_USER`
+in the blocks below to the name that login used, letter for letter as in ACCESS.md step 2a. The
+token works only for this cluster and ends 10 hours after that login; the length cannot be changed,
+and the block prints when it ends.
 
 ### 6.1 As the cluster administrator
 
@@ -449,25 +450,29 @@ administrator. It changes nothing.
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
-VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
-T="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
+SSO_USER="alice@vsphere.local"
+VKS_USER_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
+case "$SSO_USER" in */*|*\\*|*:*) SSO_USER_OK="" ;; *@*) SSO_USER_OK="yes" ;; *) SSO_USER_OK="" ;; esac
+T="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
 C="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | . + ("=" * ((4 - length % 4) % 4)) | @base64d | fromjson | select(.exp|type=="number") | "\(.exp|floor) \([.aud] | flatten | map(select(type=="string" and startswith("vmware-tes:vc:vns:k8s:"))) | .[0] // "")"' 2>/dev/null)"
 E="${C%% *}"
 AUD="${C#* }"
-ALL="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)"
-if ! command -v jq >/dev/null 2>&1; then
+ALL="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)"
+if [ -z "$SSO_USER_OK" ]; then
+  printf '%s\n' "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: $SSO_USER"
+elif ! command -v jq >/dev/null 2>&1; then
   echo "MISSING: jq (PREREQS.md)"
 elif [ -z "$T" ] || [ -z "$E" ]; then
-  echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_SSO_KUBECONFIG}; log in first (ACCESS.md)"
+  echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_USER_KUBECONFIG}; log in first (ACCESS.md)"
 elif [ "$E" -le "$(date +%s)" ]; then
   echo "ENDED: that login has ended; log in again (ACCESS.md)"
 elif [ "${AUD#vmware-tes:vc:vns:k8s:}" = "$AUD" ] || [ -z "${AUD#vmware-tes:vc:vns:k8s:}" ]; then
   echo "FAILED: this login is for the Supervisor, not ${VKS_CLUSTER}; log in to the cluster again (ACCESS.md)"
 elif [ "$ALL" != yes ] && [ "${ALL#no}" = "$ALL" ]; then
-  echo "FAILED: the cluster did not answer with this login (${ALL:-no answer}); kubectl --kubeconfig ${VKS_SSO_KUBECONFIG} get pods shows why"
+  echo "FAILED: the cluster did not answer with this login (${ALL:-no answer}); kubectl --kubeconfig ${VKS_USER_KUBECONFIG} get pods shows why"
 else
   END="$(printf '%s' "$E" | jq -r 'tonumber | todate')"
-  U="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
+  U="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
   if [ "$ALL" = yes ]; then
     echo "WARNING: ${U} is an administrator of the whole cluster. Until the token ends (${END}),"
     echo "anyone who holds it, Headlamp and its plugins included, can change and delete anything in the cluster."
@@ -486,22 +491,25 @@ fi
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
-$VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
-$T = kubectl --kubeconfig $VKS_SSO_KUBECONFIG config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>$null
+$SSO_USER = "alice@vsphere.local"
+$VKS_USER_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
+$T = kubectl --kubeconfig $VKS_USER_KUBECONFIG config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>$null
 $E = $null; $AUD = ""
 if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $J = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json; if ($J.exp -is [int] -or $J.exp -is [long] -or $J.exp -is [decimal] -or $J.exp -is [double]) { $E = $J.exp }; $AUD = "$(@($J.aud) | Where-Object { "$_".StartsWith('vmware-tes:vc:vns:k8s:') } | Select-Object -First 1)" } catch { } }
-$ALL = "$(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth can-i '*' '*' -A 2>$null)"
-if (-not $T -or -not $E) {
-  "FAILED: no SSO login for $VKS_CLUSTER in $VKS_SSO_KUBECONFIG; log in first (ACCESS.md)"
+$ALL = "$(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth can-i '*' '*' -A 2>$null)"
+if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
+  "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: ${SSO_USER}"
+} elseif (-not $T -or -not $E) {
+  "FAILED: no SSO login for $VKS_CLUSTER in $VKS_USER_KUBECONFIG; log in first (ACCESS.md)"
 } elseif ($E -le [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) {
   "ENDED: that login has ended; log in again (ACCESS.md)"
 } elseif (-not $AUD.StartsWith('vmware-tes:vc:vns:k8s:') -or $AUD.Length -le 'vmware-tes:vc:vns:k8s:'.Length) {
   "FAILED: this login is for the Supervisor, not $VKS_CLUSTER; log in to the cluster again (ACCESS.md)"
 } elseif ($ALL -ne 'yes' -and -not $ALL.StartsWith('no')) {
-  "FAILED: the cluster did not answer with this login ($(if ($ALL) { $ALL } else { 'no answer' })); kubectl --kubeconfig $VKS_SSO_KUBECONFIG get pods shows why"
+  "FAILED: the cluster did not answer with this login ($(if ($ALL) { $ALL } else { 'no answer' })); kubectl --kubeconfig $VKS_USER_KUBECONFIG get pods shows why"
 } else {
   $END = [DateTimeOffset]::FromUnixTimeSeconds($E).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ')
-  $U = kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}'
+  $U = kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}'
   if ($ALL -eq 'yes') {
     "WARNING: $U is an administrator of the whole cluster. Until the token ends ($END),"
     "anyone who holds it, Headlamp and its plugins included, can change and delete anything in the cluster."
@@ -520,9 +528,12 @@ the token, and `it ends:` 10 hours after the login (UTC). Paste it in step 7, th
 terminal; log out of Headlamp when you are done.
 
 **If not:**
+- `STOPPED: SSO_USER is …`: set `SSO_USER` to the full name with `@` and the domain, as in ACCESS.md
+  step 2a.
 - `FAILED: this login is for the Supervisor …`: the file's current login is the Supervisor's; log in
   to the cluster again (ACCESS.md step 2a, or 2b to 2d).
 - `FAILED: the cluster did not answer …`: the command it names shows why.
+- `FAILED: no SSO login …`: check that `SSO_USER` is letter for letter as in ACCESS.md step 2a.
 - `FAILED: no SSO login …` or `ENDED: …`: run the login in ACCESS.md again. A login through an
   external identity provider (ACCESS.md, `vcf pinniped-auth`) keeps no token in the file: use step 8.
 
@@ -541,26 +552,30 @@ token, and this prints it for step 7. It changes nothing.
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
-VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
-T="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
+SSO_USER="alice@vsphere.local"
+VKS_USER_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
+case "$SSO_USER" in */*|*\\*|*:*) SSO_USER_OK="" ;; *@*) SSO_USER_OK="yes" ;; *) SSO_USER_OK="" ;; esac
+T="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
 C="$(printf '%s' "$T" | jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | . + ("=" * ((4 - length % 4) % 4)) | @base64d | fromjson | select(.exp|type=="number") | "\(.exp|floor) \([.aud] | flatten | map(select(type=="string" and startswith("vmware-tes:vc:vns:k8s:"))) | .[0] // "")"' 2>/dev/null)"
 E="${C%% *}"
 AUD="${C#* }"
-ALL="$(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)"
-if ! command -v jq >/dev/null 2>&1; then
+ALL="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)"
+if [ -z "$SSO_USER_OK" ]; then
+  printf '%s\n' "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: $SSO_USER"
+elif ! command -v jq >/dev/null 2>&1; then
   echo "MISSING: jq (PREREQS.md)"
 elif [ -z "$T" ] || [ -z "$E" ]; then
-  echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_SSO_KUBECONFIG}; log in first (ACCESS.md)"
+  echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_USER_KUBECONFIG}; log in first (ACCESS.md)"
 elif [ "$E" -le "$(date +%s)" ]; then
   echo "ENDED: that login has ended; log in again (ACCESS.md)"
 elif [ "${AUD#vmware-tes:vc:vns:k8s:}" = "$AUD" ] || [ -z "${AUD#vmware-tes:vc:vns:k8s:}" ]; then
   echo "FAILED: this login is for the Supervisor, not ${VKS_CLUSTER}; log in to the cluster again (ACCESS.md)"
 elif [ "$ALL" != yes ] && [ "${ALL#no}" = "$ALL" ]; then
-  echo "FAILED: the cluster did not answer with this login (${ALL:-no answer}); kubectl --kubeconfig ${VKS_SSO_KUBECONFIG} get pods shows why"
+  echo "FAILED: the cluster did not answer with this login (${ALL:-no answer}); kubectl --kubeconfig ${VKS_USER_KUBECONFIG} get pods shows why"
 elif [ "$ALL" = yes ]; then
   echo "STOPPED: this SSO user is an administrator of the cluster; use step 6.1"
 else
-  echo "token for $(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}'):"
+  echo "token for $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}'):"
   echo "$T"
   echo "it ends: $(printf '%s' "$E" | jq -r 'tonumber | todate')"
 fi
@@ -573,23 +588,26 @@ fi
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
-$VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
-$T = kubectl --kubeconfig $VKS_SSO_KUBECONFIG config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>$null
+$SSO_USER = "alice@vsphere.local"
+$VKS_USER_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
+$T = kubectl --kubeconfig $VKS_USER_KUBECONFIG config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>$null
 $E = $null; $AUD = ""
 if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $J = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json; if ($J.exp -is [int] -or $J.exp -is [long] -or $J.exp -is [decimal] -or $J.exp -is [double]) { $E = $J.exp }; $AUD = "$(@($J.aud) | Where-Object { "$_".StartsWith('vmware-tes:vc:vns:k8s:') } | Select-Object -First 1)" } catch { } }
-$ALL = "$(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth can-i '*' '*' -A 2>$null)"
-if (-not $T -or -not $E) {
-  "FAILED: no SSO login for $VKS_CLUSTER in $VKS_SSO_KUBECONFIG; log in first (ACCESS.md)"
+$ALL = "$(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth can-i '*' '*' -A 2>$null)"
+if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
+  "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: ${SSO_USER}"
+} elseif (-not $T -or -not $E) {
+  "FAILED: no SSO login for $VKS_CLUSTER in $VKS_USER_KUBECONFIG; log in first (ACCESS.md)"
 } elseif ($E -le [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) {
   "ENDED: that login has ended; log in again (ACCESS.md)"
 } elseif (-not $AUD.StartsWith('vmware-tes:vc:vns:k8s:') -or $AUD.Length -le 'vmware-tes:vc:vns:k8s:'.Length) {
   "FAILED: this login is for the Supervisor, not $VKS_CLUSTER; log in to the cluster again (ACCESS.md)"
 } elseif ($ALL -ne 'yes' -and -not $ALL.StartsWith('no')) {
-  "FAILED: the cluster did not answer with this login ($(if ($ALL) { $ALL } else { 'no answer' })); kubectl --kubeconfig $VKS_SSO_KUBECONFIG get pods shows why"
+  "FAILED: the cluster did not answer with this login ($(if ($ALL) { $ALL } else { 'no answer' })); kubectl --kubeconfig $VKS_USER_KUBECONFIG get pods shows why"
 } elseif ($ALL -eq 'yes') {
   "STOPPED: this SSO user is an administrator of the cluster; use step 6.1"
 } else {
-  "token for $(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}'):"
+  "token for $(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}'):"
   $T
   "it ends: $([DateTimeOffset]::FromUnixTimeSeconds($E).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
 }
@@ -601,7 +619,7 @@ if (-not $T -or -not $E) {
 (UTC). Paste it in step 7, then clear the terminal.
 
 **If not:**
-- `STOPPED: …`: this user is an administrator; use step 6.1.
+- `STOPPED: this SSO user is an administrator …`: use step 6.1.
 - The `FAILED: …` and `ENDED: …` lines: as in step 6.1.
 - In Headlamp the user sees nothing: the cluster administrator has not given that name rights yet
   (ACCESS.md step 3). An empty Namespaces list in Headlamp: as in step 7, **If not**.
