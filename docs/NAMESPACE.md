@@ -406,8 +406,8 @@ you to confirm says the same.
 
 Run this right before you remove the namespace, so that you do not delete work someone still
 uses. It lists the VKS clusters, VMs, volumes and pods (running containers) left in it, and
-changes nothing. An empty list means the namespace may go, in the vSphere Client below. Set
-`VKS_NAMESPACE` to the namespace's name:
+changes nothing. An empty list means you may remove the namespace in the vSphere Client, below. Set
+`VKS_NAMESPACE` to the namespace's name, and `SUPERVISOR_CONTEXT` as in step 8:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -484,7 +484,8 @@ namespaces, do not use this step.
 
 2. Log in to the Supervisor ([LOGIN.md](LOGIN.md)). Run this before you write the YAML file, to
    learn whether the Namespace Service lets your user create namespaces. It asks the Supervisor
-   and changes nothing. The answer `yes` means you may go on to the file.
+   and changes nothing. The answer `yes` means you may go on to the file. Set `SUPERVISOR_CONTEXT`
+   as in step 8.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -525,7 +526,8 @@ with `vmware-system-` or `svc-`. It cannot be changed later.
 4. Run this once the file is saved, to create the namespace. It first checks the file on the
    Supervisor without creating anything (`--dry-run=server`), then creates the namespace. You
    then have a namespace with the template's storage policy, network and VM classes, and a role
-   on it. Set `NAMESPACE_YAML` to the file if you saved it elsewhere.
+   on it. Set `NAMESPACE_YAML` to the file if you saved it elsewhere, and `SUPERVISOR_CONTEXT` as
+   in step 8.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -569,7 +571,7 @@ In the vSphere Client the namespace is listed under **Supervisor Management** â†
 When you no longer need a namespace you created with this step, first run the block in step 9 to
 check that it is empty. Then this deletes the namespace from the Supervisor. Afterwards the
 vSphere Client's Namespaces tab shows it as Removing until it is gone. Set `VKS_NAMESPACE` to the
-namespace's name:
+namespace's name, and `SUPERVISOR_CONTEXT` as in step 8:
 
 **Linux, macOS, WSL (bash or zsh):**
 

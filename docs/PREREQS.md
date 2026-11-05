@@ -468,10 +468,11 @@ foreach ($e in 'podman', 'docker') {
 ## kubelogin (optional)
 
 Only for [KEYCLOAK.md](KEYCLOAK.md): run this once for each person who logs in to a VKS
-cluster with Keycloak, on the machine they log in from. kubelogin is the kubectl add-on that does
-that Keycloak login for kubectl. This downloads kubelogin v1.36.4 (`KUBELOGIN_VERSION`) from
-GitHub, checks it against its published checksum, and installs it as `kubectl-oidc_login`, the
-name under which kubectl runs it as `kubectl oidc-login`. Install [kubectl](KUBECTL.md) first.
+cluster with Keycloak, on the machine they log in from. kubelogin is a kubectl plugin (an extra
+command for kubectl) that does that Keycloak login for kubectl. This downloads kubelogin v1.36.4
+(`KUBELOGIN_VERSION`) from GitHub, checks it against its published checksum, and installs it as
+`kubectl-oidc_login`, the name under which kubectl runs it as `kubectl oidc-login`. Install
+[kubectl](KUBECTL.md) first.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

@@ -253,8 +253,8 @@ cluster.
   `Move-Item -Force $HOME\.kube\config.before-merge $HOME\.kube\config`); if you had no
   `~/.kube/config` before, delete it instead. A second merge replaces `config.before-merge`.
 
-**A new file for a merged cluster:** the copy does not follow later changes to a file. After a new
-file for the same cluster, delete the old entries the block names
+**A new file for a merged cluster:** `~/.kube/config` does not follow later changes to a merged
+file. After a new file for the same cluster, delete the old entries the block names
 (`kubectl config delete-context <name>`, `delete-cluster`, `delete-user`;
 `kubectl config get-contexts` shows which contexts use them) and merge again.
 
@@ -386,10 +386,10 @@ Run the block below only if you logged in with `KUBECONFIG` not set: `kubectl` w
 `~/.kube/config` as `~/.kube/config.before-cleanup`, makes your own context the current one again,
 and removes the Supervisor's contexts, cluster and user from the file. Afterwards `kubectl` without
 `--kubeconfig` talks to your own cluster again, and you log in again as [LOGIN.md](LOGIN.md)
-shows. Run it in a new terminal (not one where you ran *Make it the default in this terminal*),
-unchanged first: it lists your contexts and stops at the switch, removing nothing. Then set
-`MY_CONTEXT` to your old context from that list and `SUPERVISOR_CONTEXT` to the name you logged in
-with, and run it again.
+shows. Run it in a new terminal (not one where you ran *Make it the default in this terminal*: there
+`KUBECONFIG` names a VKS cluster's file), unchanged first: it lists your contexts and stops at the
+switch (`my-old-context` does not exist), removing nothing. Then set `MY_CONTEXT` to your old
+context from that list and `SUPERVISOR_CONTEXT` to the name you logged in with, and run it again.
 
 **Linux, macOS, WSL (bash or zsh):**
 

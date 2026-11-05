@@ -378,14 +378,14 @@ Never switch the cluster's virtual machines on or off in the vSphere Client: VKS
 
 Get the cluster's kubeconfig (the file that lets kubectl reach the cluster), in the vSphere
 Client ([Download the VKS cluster's kubeconfig from the vSphere Client](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client))
-or with the VCF CLI ([Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig)),
-and run
+or with the VCF CLI ([Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig)):
+either way it is saved as `~/.kube/<cluster>.kubeconfig`. Then run
 [Match kubectl to the cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
-Both save the file as `~/.kube/<cluster>.kubeconfig`.
 
 Then run this once the cluster is available, to check that every node is ready for apps. It reads
-the cluster with that kubeconfig and changes nothing. It lists the nodes and names the storage
-class an app's disk gets when the app names none. Set `VKS_CLUSTER` to the cluster's name.
+the cluster with `~/.kube/<VKS_CLUSTER>.kubeconfig` and changes nothing. It lists the nodes and
+names the storage class an app's disk gets when the app names none. Set `VKS_CLUSTER` to the
+cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -825,8 +825,7 @@ plane and for each node pool next to the old ones; at the end, every node of the
 - After 20 minutes still a node of the old class, or a node that never powers on: the `describe`
   block in [step 6](#6-wait-for-the-cluster)'s **If not** names the reason. A namespace storage
   limit without room for the new nodes ([step 2](#check-the-namespaces-storage-limit)) stops the
-  change. Fix the cause, or set the value
-  back, and save again.
+  change. Fix the cause, or set the value back, and save again.
 - Nodes of the old class after the change finished: the cluster has a `vmClass` under `overrides`
   too (step 2 above).
 - Pods `Pending` with `Insufficient memory` after the change: the new class is too small for what
