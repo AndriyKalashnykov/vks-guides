@@ -54,7 +54,10 @@ The blocks keep their files in `~/.config/vks-guides/cicd` (PowerShell:
   steps that use the cluster on it. Adding the disk to an existing cluster was not tested.
 - the Git server's port-forward running in its own terminal ([GITEA.md](GITEA.md) step 6, or
   [GITLAB.md](GITLAB.md) step 5) and its load-balancer address ([GITEA.md](GITEA.md) step 8, or
-  [GITLAB.md](GITLAB.md) step 7). Run this guide's blocks in one other terminal.
+  [GITLAB.md](GITLAB.md) step 7). On a jump box over SSH, start that port-forward in the `ssh -L`
+  session its step's **From a jump box over SSH** describes; with GitLab, steps 6 and 8 open its
+  pages in your laptop's browser through it. Run this guide's blocks in one other terminal (on a
+  jump box: a plain `ssh`, without `-L`).
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md) and git;
 - one free load-balancer address, for the app (step 5).
 

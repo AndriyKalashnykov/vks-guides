@@ -943,7 +943,8 @@ Gitea has no address outside the cluster yet; run this to reach it from your mac
 port-forward: a tunnel from port 3300 on your machine, through the cluster's API address, to the
 Gitea pod behind its Service. You can then open Gitea's web page at <http://localhost:3300> and sign
 in (below). It runs until you press **Ctrl+C**; keep it running for steps 7 and 8, and run it again
-whenever you need Gitea's web page. Set `VKS_CLUSTER` to your VKS cluster's name.
+whenever you need Gitea's web page. Set `VKS_CLUSTER` to your VKS cluster's name. On a jump box over
+SSH, connect first as **From a jump box over SSH** (below the block) says.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -974,6 +975,18 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitea port-forward service/gitea-http 33
   expect it); stop it and run this again.
 - `Username or password is incorrect`: use the line under step 5's **If not**.
 - `error: lost connection to pod`: Gitea restarted; run this block again.
+
+**From a jump box over SSH:** <http://localhost:3300> opens only on the jump box. From your laptop
+(Linux, macOS, or Windows PowerShell with the OpenSSH client), connect to the jump box with
+`ssh -o ExitOnForwardFailure=yes -L 127.0.0.1:3300:127.0.0.1:3300 <user>@<jump-box>`, run the block
+in that session, and open the address in your laptop's browser. Keep 3300 on both sides: Gitea's
+links expect it. Open the second terminal of steps 7 and 8 with a plain `ssh <user>@<jump-box>`.
+- `Could not request local forwarding`: a program on your laptop uses port 3300 (also an earlier
+  `ssh -L` with 3300); stop it, and connect again.
+- `open failed: connect failed: Connection refused` in that SSH session: the block is not
+  running on the jump box; run it again.
+- `ssh` is not found on Windows: add the optional feature **OpenSSH Client** (needs an
+  administrator).
 
 ## 7. Create a repository by pushing to it
 
