@@ -28,7 +28,33 @@ read-only token can look, not change.
   and the edit or owner role on the cluster's vSphere Namespace;
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md);
 - for the Kubescape plugin only (step 11): [Helm](HELM.md);
-- about 250m CPU and 400 MiB of memory free on the workers, for Headlamp and cert-manager.
+- a VKS cluster with the workers in the table below.
+
+**The VKS cluster to make.** Choose the row with every part you will install and make the cluster
+with that many workers ([CLUSTER.md](CLUSTER.md)), or add workers to a running cluster
+([CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)). One control-plane node of
+`best-effort-small` is enough in every row. Broadcom recommends `best-effort-medium` (2 CPUs, 8 GB)
+or larger for workers that run apps (KB 446139).
+
+| Headlamp with | workers (`best-effort-medium`) |
+|---|---|
+| nothing else (steps 1 to 9) | 1 |
+| the Prometheus plugin (step 11.1), or Contour (step 10) | 1 |
+| Contour and the Prometheus plugin | 2 |
+| the Kubescape plugin (step 11.2), with or without Prometheus | 2 |
+| Contour, Prometheus and Kubescape | 2 |
+
+Measured on a VKS 3.8 cluster with `best-effort-small` workers (2 CPUs, 4 GB): VKS's own pods take
+about 0.9 CPU and 0.8 GB of the first worker; Headlamp and cert-manager about 0.13 CPU and 0.3 GB
+(0.23 CPU and 0.45 GB while step 9 restarts Headlamp); Prometheus about 0.4 CPU and 0.7 GB; Contour
+about 0.4 CPU and 0.8 GB, plus 0.14 CPU and 0.27 GB on every further worker; Kubescape about 0.35
+CPU and 2 GB, plus 0.05 CPU and 0.18 GB on every further worker, and its scanner uses more memory
+than it asks for (1.3 GB measured). `best-effort-medium` adds memory, not CPU: it has the same 2
+CPUs as `best-effort-small` (`best-effort-large` has 4 CPUs and 16 GB), so where CPU runs short, add
+a worker. With Contour and
+Prometheus on one worker, 95% of its CPU was requested, which leaves no room for the extra pod that
+step 9's restart starts; with all three plugins, two `best-effort-small` workers had 91% of their
+memory requested.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
