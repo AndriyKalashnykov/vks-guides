@@ -30,7 +30,21 @@ The blocks keep their files in `~/.config/vks-guides/monitoring` (PowerShell:
   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) and [Helm](HELM.md), or for step 9 the
   ArgoCD of [ARGOCD.md](ARGOCD.md) and your [Supervisor login](LOGIN.md);
 - [kubectl](KUBECTL.md), [curl and jq](PREREQS.md);
-- 20 GiB of storage for Prometheus, inside the vSphere Namespace's storage limit, if one is set.
+- 20 GiB of storage for Prometheus, inside the vSphere Namespace's storage limit if one is set,
+  beside what the cluster's nodes take from it ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values));
+- a VKS cluster with the workers below.
+
+**The VKS cluster to make.** One control-plane node of `best-effort-small` and one worker of
+`best-effort-medium` (2 CPUs, 8 GB) are enough for this guide ([CLUSTER.md](CLUSTER.md)). Add a
+worker ([CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)) if the cluster also runs
+other apps. For workers, Broadcom recommends `best-effort-medium` or larger, and a guaranteed
+class for production
+([KB 446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html)).
+
+Measured on a VKS 3.8 cluster with one `best-effort-medium` worker, an hour after the install: the
+stack used about 0.7 GB of memory (Grafana 0.4 GB, Prometheus 0.2 GB), with the worker at 8% CPU
+and 22% memory in use. The stack reserves no CPU or memory, so it shares the worker with your
+other apps, and Prometheus uses more memory as the cluster gets more nodes and pods.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
