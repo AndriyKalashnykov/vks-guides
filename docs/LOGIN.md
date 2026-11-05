@@ -58,7 +58,7 @@ The login checks that it talks to your real Supervisor, using vCenter's CA.
 
 **1. Get the vCenter CA**
 
-Run this once on this machine, before your first login: the Supervisor proves who it is with a
+Run this before your first login to a Supervisor of this vCenter: the Supervisor proves who it is with a
 certificate, by default signed by vCenter's own CA (certificate authority), which this machine does
 not know yet. This downloads vCenter's CAs, so that the login can check that it talks to your real
 Supervisor. It saves them as
@@ -142,7 +142,8 @@ ignoring colons and upper/lower case.
 
 When every fingerprint matches one from your administrator, run this to keep the file. It renames
 `vcenter-ca.pem.new` to `vcenter-ca.pem`, the file the login in step 3 reads as `SUPERVISOR_CA`.
-The CA is then in place for every later login and renewal on this machine.
+With a second vCenter, set `CA_FILE` in both blocks of step 1 to a file of its own (such as
+`$HOME/.kube/vcenter2-ca.pem`), and use that file as `SUPERVISOR_CA` for its Supervisor.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -164,10 +165,10 @@ Move-Item -Force "$CA_FILE.new" $CA_FILE; if ($?) { "kept $CA_FILE" }
 
 **2. Type your SSO password**
 
-Run this before you create the context, and again in every new terminal: the login reads the
-password from this terminal, so it is never on a command line or in your shell history. Paste this
-line on its own, then type the password; nothing is shown as you type (PowerShell shows `*`).
-Afterwards the password waits in this terminal for the next block.
+Run this right before you create the context (or, in a new terminal, before a renewal): the login
+reads the password from this terminal, so it is never on a command line or in your shell history.
+Paste this line on its own, then type the password; nothing is shown as you type (PowerShell shows
+`*`). Afterwards the password waits in this terminal for the next block.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -308,10 +309,10 @@ check for this login.
 
 **1. Type your SSO password**
 
-Run this before you create the context, and again in every new terminal: the login reads the
-password from this terminal, so it is never on a command line or in your shell history. Paste this
-line on its own, then type the password; nothing is shown as you type (PowerShell shows `*`).
-Afterwards the password waits in this terminal for the next block.
+Run this right before you create the context (or, in a new terminal, before a renewal): the login
+reads the password from this terminal, so it is never on a command line or in your shell history.
+Paste this line on its own, then type the password; nothing is shown as you type (PowerShell shows
+`*`). Afterwards the password waits in this terminal for the next block.
 
 **Linux, macOS, WSL (bash or zsh):**
 

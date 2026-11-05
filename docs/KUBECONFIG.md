@@ -9,7 +9,8 @@
 A kubeconfig is the file kubectl reads to find a cluster and log in to it: the cluster's address,
 its CA (so kubectl knows it is the real server), and a login. The login decides what the file is
 worth: some files carry a key that works for anyone holding a copy, others only tell kubectl which
-program to run for a sign-in. The steps:
+program to run for a sign-in. [The files the guides make](#the-files-the-guides-make) lists each file
+and whether it may be sent. The steps:
 
 1. [See what a file holds](#1-see-what-a-file-holds): you, before you use or send a file.
 2. [Use a file](#2-use-a-file): you, or the person you gave it to.
@@ -115,9 +116,8 @@ file, never by email, chat or a shared folder; then delete your copy. The person
 `.kube` folder.
 
 The person who received the file runs this once after saving it, so that no other user of their
-machine can read it. It makes the file readable and writable only by them (Windows: it leaves only
-their user on the file) and changes nothing else. Afterwards the file is theirs alone, ready for
-[Use a file](#2-use-a-file):
+machine can read it. It makes the file readable and writable only by them (Windows: only their user
+stays on the file) and changes nothing else. Afterwards it is ready for [Use a file](#2-use-a-file):
 
 **Linux, macOS, WSL (bash or zsh):**
 

@@ -296,11 +296,11 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
   **Namespaces Edit** role on the namespace (step 4).
 - `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
-Run this next, still before you create a VKS cluster, to see whether the namespace has all a
-cluster needs. It lists what the namespace offers a cluster: VM classes, storage classes,
+Run this next, still before you create a VKS cluster, to see whether the namespace offers what
+a cluster needs. It lists what the namespace offers a cluster: VM classes, storage classes,
 Kubernetes releases (the Kubernetes versions a cluster can run) and cluster classes (Broadcom's
-templates for a cluster). It changes nothing. You then know which values to choose in
-[CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values).
+templates for a cluster). It changes nothing. You then know which VM classes and storage
+classes you can choose in [CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -562,7 +562,7 @@ In the vSphere Client the namespace is listed under **Supervisor Management** â†
 
 When you no longer need a namespace you created with this step, first run the block in step 9 to
 check that it is empty. Then this deletes the namespace from the Supervisor. Afterwards the
-namespace is gone from the Supervisor and from the vSphere Client's Namespaces tab:
+vSphere Client's Namespaces tab shows it as Removing until it is gone:
 
 **Linux, macOS, WSL (bash or zsh):**
 
