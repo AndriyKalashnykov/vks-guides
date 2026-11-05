@@ -10,9 +10,11 @@
 > - Tekton: [EventListeners](https://tekton.dev/docs/triggers/eventlisteners/), [TriggerBindings](https://tekton.dev/docs/triggers/triggerbindings/), [TriggerTemplates](https://tekton.dev/docs/triggers/triggertemplates/)
 > - Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/), [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
 
-This installs Tekton, a CI/CD engine that runs each step of a build as a pod, into a VKS cluster.
-It then runs a two-task pipeline, and starts it again from an HTTP request through an
-EventListener. Tekton's own `tkn` program is not needed.
+This installs Tekton into a VKS cluster. Tekton is a CI/CD engine: it runs each step of a build
+as a pod (one or more containers that Kubernetes runs together on a worker node). It then runs a
+pipeline (tasks, or build steps, run in order) with two tasks, and starts it again from an HTTP
+request, as a Git server does on a push, through an EventListener (a small web service in the
+cluster that starts a run). Tekton's own `tkn` program is not needed.
 
 Install Tekton one of two ways; a cluster has one or the other:
 
@@ -49,9 +51,11 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 1. Check the cluster
 
-This checks that the cluster is ready for Tekton. It shows that each node is `Ready`, how much CPU
-each worker has free (A needs about 400m, B about 200m), and whether some Tekton is already
-installed.
+Run this first, before you install Tekton, to see whether the cluster is ready for it. It only
+reads the cluster and changes nothing. It shows that each node (a VM of the cluster) is `Ready`,
+how much CPU each worker has free (1000m is one CPU; A needs about 400m, B about 200m), and
+whether some Tekton is already installed; the `Tekton:` line tells you which step comes next. Set
+`VKS_CLUSTER` to your cluster's name; the block uses its kubeconfig in `~/.kube`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -147,8 +151,13 @@ A's pods ask for about 400m in all, B's for 200m, each at most 100m on one worke
 
 ## 2. Install Tekton with the VKS add-on (A)
 
-Skip to step 3 for B. This lists the Tekton add-on releases your Supervisor offers. The next block
-needs the release name; no release means your VKS is older than 3.8.
+For B, skip to step 3.
+
+For A, run this first, to find the Tekton add-on release your Supervisor offers. The block
+switches the VCF CLI's current context to the Supervisor, and the switch stays after the block. It
+then lists the Tekton add-on releases and changes nothing. You get the release name the next block
+needs; no release means your VKS is older than 3.8. Set `SUPERVISOR_CONTEXT` to your Supervisor's
+name from [LOGIN.md](LOGIN.md).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -183,11 +192,16 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 - `Unable to read password from terminal` (Windows: `The handle is invalid`), `provide credentials`
   or `no current context set`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
-Set `TEKTON_RELEASE` to the release name above. This asks the Supervisor to install the Tekton
-Operator on your cluster: a program that installs and manages Tekton for you. Tekton itself comes
-in the next block. The add-on's web exposure is turned off: it needs cert-manager and a Gateway,
+Run this next, to install the Tekton Operator on your cluster: a program that installs and manages
+Tekton for you (Tekton itself comes in the next block). The block switches the VCF CLI's current
+context to the Supervisor, and the switch stays. It writes `addon-values.yaml` to
+`~/.config/vks-guides/tekton` and asks the Supervisor to install the add-on, or to update it when
+it is already there. The add-on's web exposure is turned off: it needs cert-manager and a Gateway,
 which this guide does not set up. The block stops if the cluster already has another Tekton, and
-waits until the operator's two pods run.
+waits until the operator's two pods run in the namespace `tekton-operator` (a namespace inside the
+VKS cluster, not a vSphere Namespace). Set `VKS_NAMESPACE` to the cluster's vSphere Namespace,
+`VKS_CLUSTER` to its name, `TEKTON_RELEASE` to the release name above, and `SUPERVISOR_CONTEXT`
+as in the block above.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -326,12 +340,15 @@ then two `deployment.apps/… condition met` lines and the pods `tekton-operator
 - `FAILED: the add-on` with `Forbidden`: you need the edit or owner role on the vSphere Namespace.
 - `FAILED: the VCF CLI`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
-This tells the operator which Tekton parts to install: Pipelines, which runs builds, and Triggers,
-which starts them from a web request. They go in the namespace `tekton-pipelines` (a namespace
-inside the VKS cluster, not a vSphere Namespace; it is not listed under Supervisor Management →
-Namespaces), and add cluster-wide object types (CRDs) and webhooks. It also makes the containers
-Tekton adds to each run safe enough for step 4's namespace. The operator may take a few minutes to
-accept this, so the block retries, then waits until Tekton runs.
+Run this after the add-on block, to install Tekton itself. It writes `tektonconfig.yaml` to
+`~/.config/vks-guides/tekton` and gives it to the operator, to tell it which Tekton parts to
+install: Pipelines, which runs builds, and Triggers, which starts them from a web request. They go
+in the namespace `tekton-pipelines` (a namespace inside the VKS cluster, not a vSphere Namespace;
+it is not listed under Supervisor Management → Namespaces), and add cluster-wide object types
+(CRDs) and webhooks (programs the cluster calls to check each new Tekton object). It also makes the
+containers Tekton adds to each run safe enough for step 4's namespace. The operator may take a few
+minutes to accept this, so the block retries, then waits until Tekton runs. Set `VKS_CLUSTER` as
+in step 1. You get Tekton's pods running; then go to step 4.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -433,9 +450,10 @@ Triggers controller, webhook and core interceptors. Go to step 4.
 
 ## 3. Install Tekton from its release files (B)
 
-This downloads Tekton's three install files (Pipelines, Triggers and Triggers' interceptors) to
-`~/.config/vks-guides/tekton` and checks each one. The next block installs from them, and step 7
-needs them to uninstall.
+For B, run this first. It downloads Tekton's three install files (Pipelines, Triggers and
+Triggers' interceptors) to `~/.config/vks-guides/tekton` and checks each one against its known
+checksum; a file replaces an earlier copy only when it checks out. It changes nothing in the
+cluster. The next block installs from these files, and step 7 needs them to uninstall.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -501,13 +519,14 @@ foreach ($F in $FILES) {
 - `FAILED: checksum mismatch …`: the download arrived damaged, or the release was rebuilt. Do not
   install it; run the block again.
 
-This installs Tekton from those files: first Pipelines, which runs builds, then Triggers, which
-starts them from a web request. They go in the namespaces `tekton-pipelines` and
-`tekton-pipelines-resolvers` (namespaces inside the VKS cluster, not vSphere Namespaces; they are
-not listed under Supervisor Management → Namespaces), and add cluster-wide object types (CRDs) and
-webhooks. Each part must finish starting before the next is accepted, so the block retries and
-waits. It stops if the cluster already has the add-on (A). It can take several minutes while the
-nodes pull the images.
+Run this after the download, to install Tekton from those files: first Pipelines, which runs
+builds, then Triggers, which starts them from a web request. They go in the namespaces
+`tekton-pipelines` and `tekton-pipelines-resolvers` (namespaces inside the VKS cluster, not vSphere
+Namespaces; they are not listed under Supervisor Management → Namespaces), and add cluster-wide
+object types (CRDs) and webhooks (programs the cluster calls to check each new Tekton object). Each
+part must finish starting before the next is accepted, so the block retries and waits. It stops if
+the cluster already has the add-on (A). It can take several minutes while the nodes pull the
+images. Set `VKS_CLUSTER` as in step 1. You get Tekton's pods running; then go to step 4.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -610,13 +629,17 @@ controller, webhook and core interceptors.
 
 ## 4. Run a pipeline
 
-This runs a small pipeline to show that Tekton works. It creates:
+Run this after step 2 or 3, to see that Tekton works: it runs a small pipeline. It creates:
 
-- the namespace `tekton-demo`, to keep the demo apart;
-- two Tasks (build steps): `say-hello` makes a greeting, `show-it` prints what it gets;
+- the namespace `tekton-demo` (a namespace inside the VKS cluster, not a vSphere Namespace), to
+  keep the demo apart; only pods that meet Kubernetes' strictest pod rules (`restricted`) run there;
+- two Tasks (build steps, each run as its own pod): `say-hello` makes a greeting, `show-it` prints
+  what it gets;
 - the Pipeline `hello`, which runs the two in order and hands the greeting to the second.
 
-It then runs the pipeline once, waits for it to finish, and prints the second Task's output.
+It then starts one run of the pipeline (a PipelineRun), waits for it to finish, and prints the
+second Task's output. Set `VKS_CLUSTER` as in step 1. Each time you run the block it starts a new
+run, `hello-run-…`; the earlier runs stay.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -892,12 +915,15 @@ Every run stays, with its pods, until you delete it:
 
 ## 5. Start the pipeline from an HTTP request
 
-This lets a web request start the pipeline, as a Git server does on a push. It creates an
-EventListener: a small web service in `tekton-demo` that reads a name from the request and starts
-`hello` with it. It gives the listener only the permissions it needs; two of the objects are
-cluster-wide, the ClusterRole and ClusterRoleBinding `tekton-demo-listener`, which let it read
-Tekton's cluster interceptors and cluster trigger bindings. It blocks requests from other pods,
-so only your machine (next block) reaches it. The block waits until the listener runs.
+Run this after step 4, to let a web request start the pipeline, as a Git server's webhook (a call
+it sends on every push) does. It creates an EventListener: a small web service in `tekton-demo`
+that reads a name from the request and starts `hello` with it. It gives the listener a login of
+its own (a ServiceAccount: a login for a program, not a person) with only the permissions it needs;
+two of the objects are cluster-wide, the ClusterRole and ClusterRoleBinding `tekton-demo-listener`
+(a set of permissions, and its grant to the listener), which let it read Tekton's cluster
+interceptors and cluster trigger bindings. It blocks requests from other pods, so only your
+machine (next block) reaches it. The block waits until the listener runs. Set `VKS_CLUSTER` as in
+step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1135,8 +1161,10 @@ run), then
 - `clusterroles.rbac.authorization.k8s.io "tekton-triggers-eventlistener-roles" not found`: Tekton's
   install (step 2 or 3) did not finish.
 
-**Open the listener to your machine.** This connects port 8180 on your machine to the listener, so
-the next block can send it a request. Keep it running, in a terminal of its own, until step 6.
+**Open the listener to your machine.** Run this once the listener runs, so the next block can
+send it a request. It starts a port-forward: a tunnel that kubectl keeps open from port 8180 on
+your machine, through the cluster's API address, to the listener. It changes nothing in the
+cluster. Keep it running, in a terminal of its own, until step 6.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1160,8 +1188,10 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo port-forward service/el-hell
 
 **If not:** `address already in use`: another program uses port 8180; stop it and run this again.
 
-**Send a request.** In a second terminal, this sends `{"who": "Tekton Triggers"}`, waits for the
-run it starts and shows its output.
+**Send a request.** Run this in a second terminal while the port-forward runs, to start the
+pipeline as a Git server would. It writes `{"who": "Tekton Triggers"}` to `request.json` in
+`~/.config/vks-guides/tekton`, sends it to the listener, waits for the run it starts and shows its
+output. Each request starts one more run.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1245,8 +1275,9 @@ if ($LASTEXITCODE -ne 0) {
 
 ## 6. Remove the demo (optional)
 
-Stop the port-forward with **Ctrl+C** first. This deletes the namespace `tekton-demo`, with every
-run and pod in it, and the demo's cluster role and binding.
+Run this when you are done with the demo; stop the port-forward with **Ctrl+C** first. It deletes
+the namespace `tekton-demo`, with every run and pod in it, and the demo's ClusterRole and
+ClusterRoleBinding `tekton-demo-listener`. Tekton itself stays; step 7 removes it.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1281,9 +1312,12 @@ outside `tekton-demo` exists, and stops otherwise. Run step 6 first.
 
 ### With the VKS add-on (A)
 
-This turns Pipelines and Triggers off and waits until they are gone, then removes the add-on from
-the Supervisor and deletes the namespace `tekton-operator`. Last, it prints how many Tekton object
-types (CRDs) are left.
+Run this to remove Tekton when you installed it with A. The block switches the VCF CLI's current
+context to the Supervisor, and the switch stays. It turns Pipelines and Triggers off and waits
+until they are gone, then removes the add-on from the Supervisor and deletes
+the namespace `tekton-operator`. Last, it prints how many Tekton object types (CRDs) are left: 0
+means Tekton is gone. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to
+its name, and `SUPERVISOR_CONTEXT` as in step 2.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1474,8 +1508,10 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 ### From the release files (B)
 
-This deletes what step 3's files installed, so it needs those files on this machine. It waits
-until Tekton's namespaces are gone, then prints how many Tekton object types (CRDs) are left.
+Run this to remove Tekton when you installed it with B. It deletes what step 3's files installed,
+so it needs those files on this machine. It waits until Tekton's namespaces are gone, then prints
+how many Tekton object types (CRDs) are left: 0 means Tekton is gone. Set `VKS_CLUSTER` as in
+step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

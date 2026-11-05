@@ -96,9 +96,13 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 1. Check what is in place
 
-This checks that the other guides' parts are in place. It shows whether Harbor answers, which of
-the namespaces `gitea`, `gitlab`, `gitlab-runner` and `cicd-demo` exist, whether Tekton Triggers is
-installed, and which clusters ArgoCD on the Supervisor can deploy to.
+Run this first, to see that the other guides' parts are in place before you build on them. It
+only reads, and changes nothing. It checks that HARBOR.md's files on this machine belong to this
+Supervisor, then shows whether Harbor answers, which of the namespaces `gitea`, `gitlab`,
+`gitlab-runner` and `cicd-demo` (namespaces inside the VKS cluster) exist, whether Tekton Triggers
+is installed, and which clusters ArgoCD on the Supervisor can deploy to. Set `SUPERVISOR_CONTEXT`
+to the Supervisor that Harbor runs on, `ARGOCD_NAMESPACE` to the vSphere Namespace that runs
+ArgoCD, and `VKS_CLUSTER` to your cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -198,12 +202,16 @@ Namespace>` among the names.
 
 ## 2. Create the namespaces
 
-This creates two namespaces (namespaces inside the VKS cluster, not vSphere Namespaces; they are not
-listed under Supervisor Management → Namespaces):
+Run this after step 1, to make the places where the app and the build run. It creates two
+namespaces (namespaces inside the VKS cluster, not vSphere Namespaces; they are not listed under
+Supervisor Management → Namespaces):
 
 - `cicd-demo`, where the app runs; it accepts only pods without admin rights;
 - the build namespace: `cicd-ci` with Gitea and Tekton, GITLAB.md's `gitlab-runner` with GitLab.
   It allows root, because the build runs the app's Dockerfile as root.
+
+Set `VKS_CLUSTER` to your cluster's name, and `GIT_SERVER` to `gitlab` with GitLab. You get both
+namespaces; a second run changes nothing.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -274,15 +282,21 @@ metadata:
 
 ## 3. Give the cluster two Harbor robots
 
-The build must push images to Harbor, and the app must pull them. This gives each its own Harbor
-login. It signs in to Harbor as `admin` (password from HARBOR.md's `secrets.env`) and creates:
+Run this after step 2. The build must push images to Harbor, and the app must pull them, so this
+gives each its own Harbor login. It signs in to Harbor as `admin` (password from HARBOR.md's
+`secrets.env`) and creates:
 
 - the private Harbor project `cicd-demo`, for the app's images;
 - two robot accounts, logins for programs, valid for 90 days: `push` for the build, `pull` for the
   app;
-- in the cluster, the Secrets `harbor-push` (build namespace) and `harbor-pull` (`cicd-demo`) with
-  those logins; they go straight from Harbor into the Secrets and are never shown;
-- the ConfigMap `harbor-ca` with Harbor's certificate, so the build trusts Harbor.
+- in the cluster, the Secrets (objects that hold a password or token) `harbor-push` (build
+  namespace) and `harbor-pull` (`cicd-demo`) with those logins; they go straight from Harbor into
+  the Secrets and are never shown;
+- the ConfigMap (an object that holds a file) `harbor-ca` with Harbor's certificate, so the build
+  trusts Harbor.
+
+Set `VKS_CLUSTER` and `GIT_SERVER` as in step 2, and `SUPERVISOR_CONTEXT` as in step 1. A second
+run keeps what is there.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -421,8 +435,9 @@ starts with the stock nginx image; the first build replaces it.
 
 ### With Gitea and Tekton
 
-The next block signs in to Gitea as `gitea-admin`. Type that password first; it stays in this
-terminal only, and is not shown or saved:
+Run this first, in the terminal where you run this guide's blocks: the next block signs in to
+Gitea as `gitea-admin` and needs that password. Type it at the prompt; it stays in this terminal
+only, and is not shown or saved:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -436,15 +451,17 @@ printf 'gitea-admin password: '; IFS= read -rs GITEA_PASSWORD; echo
 $GITEA_PASSWORD = Read-Host 'gitea-admin password' -AsSecureString
 ```
 
-Then, in the same terminal, this creates two repositories in Gitea, through GITEA.md step 6's
-port-forward:
+Then run this, in the same terminal, to give the build its source and ArgoCD its files. It creates
+two repositories in Gitea, through GITEA.md step 6's port-forward (the tunnel from your machine to
+Gitea):
 
 - `app`, with the app's Dockerfile and page;
 - `deploy`, with the files that tell the cluster how to run the app; ArgoCD reads them (step 5).
 
 Copies of the files stay in `~/.config/vks-guides/cicd`. It also creates the user `cicd-bot`, whose
 password no one knows and who may write only to `deploy`, and stores a token for it in the Secret
-`git-writeback` in `cicd-ci`. The build uses that token to write the new image into `deploy`.
+`git-writeback` in `cicd-ci`. The build uses that token to write the new image into `deploy`. Set
+`VKS_CLUSTER` as in step 2. A second run keeps what is there.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -732,17 +749,20 @@ and `422`, and `kept: secret git-writeback in cicd-ci`.
 
 ### With GitLab
 
-This creates, inside GitLab, the public group `cicd` with three projects:
+Run this instead of the Gitea section, to give the build its source and ArgoCD its files. It
+creates, inside GitLab, the public group `cicd` (a folder of projects; each GitLab project is a
+repository) with three projects:
 
 - `app` (public): the app's Dockerfile and page;
 - `deploy` (public): the files that tell the cluster how to run the app; ArgoCD reads them
   (step 5);
 - `ci` (private): the pipeline, `.gitlab-ci.yml`, which `app` builds with.
 
-The pipeline sits apart from `app`, so someone who may push to `app` cannot change it. Give your
-developers the Developer role on `cicd/app` and the Reporter role on `cicd/ci`. Nobody may
+The pipeline sits apart from `app`, so someone who may push to `app` cannot change it. Nobody may
 force-push to a project's `main`. The block runs inside GitLab's pod, so no GitLab token reaches
-this machine; it takes about a minute.
+this machine; it takes about a minute. Set `VKS_CLUSTER` as in step 2 and `SUPERVISOR_CONTEXT` as
+in step 1. A second run keeps what is there. Afterwards, give your developers the Developer role on
+`cicd/app` and the Reporter role on `cicd/ci`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1156,14 +1176,19 @@ second run the group, the projects and their files say `kept`.
 
 ## 5. Let ArgoCD deploy it
 
-This tells ArgoCD on the Supervisor to deploy the app from `deploy`. It creates:
+Run this after step 4, to tell ArgoCD on the Supervisor to deploy the app from `deploy`. It
+creates:
 
-- the ArgoCD project `cicd-demo`: ArgoCD may only read `deploy`, and create only the app and its
-  address in the namespace `cicd-demo` of your VKS cluster;
-- the Application `cicd-demo`, which applies every new commit in `deploy` to that namespace.
+- the ArgoCD project `cicd-demo` (the limits for this app): ArgoCD may only read `deploy`, and
+  create only the app and its address in the namespace `cicd-demo` of your VKS cluster;
+- the Application `cicd-demo` (ArgoCD's record of what to deploy where), which applies every new
+  commit in `deploy` to that namespace.
 
 ArgoCD reads `deploy` through the Git server's load-balancer address. ARGOCD.md's own project and
-app stay as they are.
+app stay as they are. Set `SUPERVISOR_CONTEXT` as in step 1, `ARGOCD_NAMESPACE` to the vSphere
+Namespace that runs ArgoCD, `VKS_NAMESPACE` to the one that holds the VKS cluster, `VKS_CLUSTER`
+to its name and `GIT_SERVER` as in step 2. You get the app running nginx's welcome page; the
+next block checks it.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1305,8 +1330,10 @@ created`, a `Warning:` about the finalizer's name (as in ARGOCD.md step 8), and
 `application.argoproj.io/cicd-demo created` (`unchanged` on a second run). Within about 5 minutes,
 the block below prints `Synced Healthy` and the app's page shows nginx's own welcome page.
 
-This block checks the app. It waits up to 10 minutes for the app's page to show `WANT`, then prints
-ArgoCD's status, the page, the image the app should run, and the image each pod runs. Steps 6 and 8
+Run this after the block above, to see that ArgoCD deployed the app. It only reads: it waits up to
+10 minutes for the app's page to show `WANT` (the text the page should show), then prints ArgoCD's
+status, the page, the image the app should run, and the image each pod runs. Set
+`SUPERVISOR_CONTEXT`, `ARGOCD_NAMESPACE` and `VKS_CLUSTER` as in the block above. Steps 6 and 8
 run it again with another `WANT`.
 
 <details>
@@ -1380,14 +1407,16 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-demo get pods --no-headers -o 'cust
 
 ### With Gitea and Tekton
 
-This sets up the build in `cicd-ci` and runs it once, to show that the whole chain works. The build
-has two parts, each in its own pod:
+Run this after step 5. It sets up the build in `cicd-ci` as a Tekton pipeline
+([TEKTON.md](TEKTON.md)) and runs it once, to show that the whole chain works. The build has two
+parts, each in its own pod:
 
 - `build` gets `app` from Gitea, builds the image with Kaniko (a tool that builds images inside the
   cluster), and pushes it to Harbor with the `push` robot from step 3;
 - `write-back` writes the new image's digest into `deploy` as `cicd-bot`, so ArgoCD rolls it out.
 
 If someone pushed to `app` while the build ran, `write-back` leaves `deploy` to that newer build.
+Set `VKS_CLUSTER` as in step 2 and `SUPERVISOR_CONTEXT` as in step 1. Each run builds again.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1799,7 +1828,9 @@ then within a few minutes `Succeeded: Tasks Completed: 2 (Failed: 0, Cancelled 0
 
 ### With GitLab
 
-This prepares GitLab's runners for the build, then runs the pipeline once:
+Run this after step 5, to show that the whole chain works. It prepares GitLab's runners (the
+programs that run GitLab's pipeline jobs as pods in the cluster) for the build, then runs the
+pipeline once:
 
 - GITLAB.md step 8's runner also takes jobs from `cicd/app`. It is installed again with Helm and
   restarted, so that its jobs get Harbor's certificate and the `push` robot from step 3.
@@ -1808,7 +1839,8 @@ This prepares GitLab's runners for the build, then runs the pipeline once:
 
 GitLab makes the runner and the token itself; they go straight into the cluster and are never shown.
 The block needs the runner chart and `runner-values.yaml` from GITLAB.md step 8. It prints each
-job's result.
+job's result and the digest it wrote. Set `VKS_CLUSTER` as in step 2. A second run keeps the
+tokens and runs the pipeline again.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2103,18 +2135,21 @@ Then run step 5's check with `WANT="test-web-apps v1"`.
 
 ### With Gitea and Tekton
 
-This makes every push to `app` start a build. It creates:
+Run this after step 6, so that every push to `app` starts a build. It creates:
 
-- in `cicd-ci`, a listener that starts the build when Gitea reports a push to `main`, and two
+- in `cicd-ci`, a listener (a Tekton EventListener: a small web service that starts a run) that
+  starts the build when Gitea reports a push to `main`, and two
   cluster-wide objects for it, the ClusterRole and ClusterRoleBinding `cicd-listener`, which let
   it read Tekton's cluster interceptors and cluster trigger bindings;
 - a random shared secret in the Secret `cicd-webhook`; the listener ignores messages not signed
   with it;
 - a rule that lets only Gitea reach the listener;
-- in Gitea, a webhook on `app` that calls the listener on every push.
+- in Gitea, a webhook (a call Gitea sends to an address) on `app` that calls the listener on every
+  push.
 
 Run it in the terminal where you typed the Gitea password in step 4 (or type it again with the
-first block there).
+first block there). Set `VKS_CLUSTER` as in step 2 and `SUPERVISOR_CONTEXT` as in step 1. A second
+run keeps the shared secret and replaces the webhook. Then step 8 pushes a change.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2408,10 +2443,12 @@ Nothing to do: GitLab starts the pipeline on every push to `main` of `cicd/app`.
 
 ## 8. Change the page
 
-This changes the app's page from v1 to v2 and pushes it, to show the chain working on its own. It
-keeps a copy of `app` in `~/.config/vks-guides/cicd/app-gitea` (or `app-gitlab`). The push starts a
-build, the build writes the new image into `deploy`, and ArgoCD rolls it out. Git asks for
-`gitea-admin`'s password (with GitLab, `root`'s).
+Run this after step 7 (with GitLab, after step 6), to see the chain work on its own. It changes the
+app's page from v1 to v2 and pushes it, as a developer would. It keeps a copy of `app` in
+`~/.config/vks-guides/cicd/app-gitea` (or `app-gitlab`). The push starts a build, the build writes
+the new image into `deploy`, and ArgoCD rolls it out. Set `GIT_SERVER` as in step 2, and `EMAIL`
+to your e-mail address for the commit. Git asks for `gitea-admin`'s password (with GitLab,
+`root`'s).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2484,13 +2521,15 @@ digest.
 
 ## 9. Clean up (optional)
 
-This removes what this guide made: the Application (ArgoCD deletes the app with it) and its
+Run this when you no longer need the demo. It removes what this guide made: the Application
+(ArgoCD deletes the app with it) and its
 project, the namespaces, the Harbor project with its robots and images, and the repositories. The
 Git server, Tekton or the runner from the other guides stay. With Gitea it also deletes the user
 `cicd-bot` and the cluster-wide ClusterRole and ClusterRoleBinding `cicd-listener`. **With
 GitLab it deletes the whole GitLab group `cicd`, with every project in it**, and the runner
 `gitlab-writeback`, and puts GITLAB.md's runner back to its step 8 settings. With Gitea, run it
-in the terminal where you typed the Gitea password in step 4.
+in the terminal where you typed the Gitea password in step 4. Set `SUPERVISOR_CONTEXT`,
+`ARGOCD_NAMESPACE` and `VKS_CLUSTER` as in step 1, and `GIT_SERVER` as in step 2.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
