@@ -146,8 +146,8 @@ this line on its own. docker keeps the login until the next block logs out.
 docker login -u "$HARBOR_ROBOT" "$HARBOR_FQDN"
 ```
 
-**Expect:** `Login Succeeded` (docker without a credential helper first warns that the login is stored unencrypted;
-the logout below removes it).
+**Expect:** `Login Succeeded` (docker without a credential helper first warns that the login is
+stored unencrypted; the logout below removes it).
 
 **If not:** `x509: …`: do step 2. `unauthorized`: the robot's name or secret is wrong.
 
@@ -202,7 +202,8 @@ rm -r "$HOME/image-simple/pull"
 
 **Expect:** `namespace/harbor-demo created` and `secret/harbor-pull created`.
 
-**If not:** `… .kubeconfig: no such file or directory`: set `VKS_CLUSTER` in the first block.
+**If not:** `… .kubeconfig: no such file or directory`: set `VKS_CLUSTER` in the first block and run
+it, then the login line above and this block again.
 
 ## 6. Deploy the app
 

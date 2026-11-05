@@ -181,8 +181,8 @@ Harbor; the vSphere Client lists it with the vSphere Namespaces), then
 you need.
 
 **If not:**
-- `FAILED: …` above `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
-  Above `Forbidden`: log in as a vCenter administrator.
+- `FAILED: …` under `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+  Under `Forbidden`: log in as a vCenter administrator.
 - `namespace/svc-harbor-…` and `recorded: nothing …`: this Supervisor already runs a Harbor that
   you did not install. Use it, and do not install a second one.
 - `FAILED: … belongs to another Supervisor (…)`:
@@ -947,7 +947,7 @@ if ($LASTEXITCODE -ne 0 -or -not $SUP) {
 **Expect:** `copied to the clipboard`.
 
 **If not:**
-- `FAILED: …` above `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+- `FAILED: …` under `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
   `FAILED: … has no supervisor-uid …`: run step 1 first. `FAILED: … belongs to another
   Supervisor (…)`: see step 1's **If not**. Nothing was copied.
 - `No clipboard program here: …`: on a Debian or Ubuntu desktop install one (`sudo apt-get

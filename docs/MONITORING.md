@@ -662,9 +662,10 @@ kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name | Where-Object { $_ -cmatch
 ```
 
 **Expect:** ten `customresourcedefinition.apiextensions.k8s.io "….monitoring.coreos.com" deleted`
-lines.
+lines (nothing when run again).
 
-**If not:** no output: no `monitoring.coreos.com` object types are left; there is nothing to delete.
+**If not:** `Unauthorized`: the VKS cluster's kubeconfig has expired;
+[get it again](LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 ## 9. Install with ArgoCD (instead of steps 4 and 5)
 

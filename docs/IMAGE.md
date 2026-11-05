@@ -927,8 +927,8 @@ if ($LASTEXITCODE -eq 0) { Remove-Item -Recurse -Force -ErrorAction SilentlyCont
 
 **Expect:** `namespace "harbor-demo" deleted`, then `deleted harbor-demo and …`.
 
-**If not:** no `deleted …` line: kubectl failed and the folder was kept. With `Unauthorized`, the
-login in the cluster's kubeconfig has expired: save it again
+**If not:** no `deleted harbor-demo and …` line: kubectl failed and the folder was kept. With
+`Unauthorized`, the login in the cluster's kubeconfig has expired: save it again
 ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) and run this again.
 
 The image built in step 3 stays on this machine: remove it with
