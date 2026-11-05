@@ -414,7 +414,11 @@ else
   ( printf 'SSO password: '; IFS= read -rs P; echo
     KUBECONFIG="$VKS_USER_KUBECONFIG" SSL_CERT_FILE="$SUPERVISOR_CA" KUBECTL_VSPHERE_PASSWORD="$P" \
       "$HOME/.local/bin/kubectl-vsphere" login --server "$SUPERVISOR_ENDPOINT" --vsphere-username "$SSO_USER" \
-      --tanzu-kubernetes-cluster-namespace "$VKS_NAMESPACE" --tanzu-kubernetes-cluster-name "$VKS_CLUSTER" ); chmod 600 "$VKS_USER_KUBECONFIG"; kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config use-context "$VKS_CLUSTER" >/dev/null && echo "send this name: $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
+      --tanzu-kubernetes-cluster-namespace "$VKS_NAMESPACE" --tanzu-kubernetes-cluster-name "$VKS_CLUSTER" ) \
+    && chmod 600 "$VKS_USER_KUBECONFIG" \
+    && kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config use-context "$VKS_CLUSTER" >/dev/null \
+    && echo "send this name: $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')" \
+    || echo "FAILED: the login did not work (see the error above); there is no name to send"
 fi
 ```
 
@@ -449,13 +453,19 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
   $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $VKS_USER_KUBECONFIG
   try {
     $env:KUBECTL_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
+    $global:LASTEXITCODE = $null
     kubectl-vsphere login --server $SUPERVISOR_ENDPOINT --vsphere-username $SSO_USER `
       --tanzu-kubernetes-cluster-namespace $VKS_NAMESPACE --tanzu-kubernetes-cluster-name $VKS_CLUSTER
+    $LOGIN_RC = $LASTEXITCODE
   } finally {
     Remove-Item Env:KUBECTL_VSPHERE_PASSWORD -ErrorAction SilentlyContinue; $env:KUBECONFIG = $OLD_KUBECONFIG
   }
-  kubectl --kubeconfig $VKS_USER_KUBECONFIG config use-context $VKS_CLUSTER | Out-Null
-  if ($LASTEXITCODE -eq 0) { "send this name: $(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')" }
+  if ($LOGIN_RC -ne 0) {
+    "FAILED: the login did not work (see the error above); there is no name to send"
+  } else {
+    kubectl --kubeconfig $VKS_USER_KUBECONFIG config use-context $VKS_CLUSTER | Out-Null
+    if ($LASTEXITCODE -eq 0) { "send this name: $(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')" }
+  }
 }
 Remove-Variable SSO_PASSWORD -ErrorAction SilentlyContinue
 ```
@@ -475,8 +485,9 @@ writes the name in its own letter case, for example `sso:Alice@vsphere.local`).
   `VKS_NAMESPACE`. A cluster with the same name as its vSphere Namespace can also hide one of the
   two contexts
   ([Broadcom KB 435635](https://knowledge.broadcom.com/external/article/435635)).
-- Any other login error: check `SSO_USER`, then run this block again (Windows: the password line
-  first) and type the password carefully. Mind the lock-out.
+- `FAILED: the login did not work …`, or any other login error above it: check `SSO_USER`, then run
+  this block again (Windows: the password line first) and type the password carefully. Mind the
+  lock-out. Do not send a name from an earlier login.
 - `send this name:` with `Unauthorized`: the login did not work; see the error above it.
 
 ### 3. Give that name rights (cluster administrator)
