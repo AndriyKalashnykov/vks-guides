@@ -204,7 +204,11 @@ right.
    ![Step 3 Control plane: Replicas 1, OS Image Photon 5, the Overrides switch and NEXT](img/cluster/08-create-control-plane.png)
 
 5. **4. Node pools:** the table holds one pool with **Replicas** `1`. To change the number of
-   workers, open the row's ⋮ menu, choose **Edit** and set **Replicas**. Click **NEXT**.
+   workers, open the row's ⋮ menu, choose **Edit** and set **Replicas**. To give the workers
+   another VM class than the control plane (for example `best-effort-medium` workers with a
+   `best-effort-small` control plane), turn on **Overrides** at the bottom of that window, click
+   **NEXT**, and select the class under **VM Class & Storage Class**; click **NEXT** through the
+   other steps and **FINISH**. The row then shows the pool's class. Click **NEXT**.
 
    ![Step 4 Node pools: ADD NODEPOOL and one pool with Replicas 1, Photon 5, best-effort-small and wcp-vmfs](img/cluster/09-create-node-pool.png)
 
