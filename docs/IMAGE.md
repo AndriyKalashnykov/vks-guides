@@ -16,7 +16,7 @@ cluster starts it as containers. A registry is a server that stores images, and 
 Harbor project is a folder of images with its own access rights. The app's page names the engine
 that built it, so you can tell it from the same app pulled from Docker Hub.
 
-Every step works with podman or docker. Steps 3, 4 and 6 start with `CONTAINER_ENGINE="podman"`:
+Every step works with podman or docker. Steps 3, 4 and 6 set `CONTAINER_ENGINE="podman"`:
 keep it for podman, or change it to `CONTAINER_ENGINE="docker"` for docker. The app runs in its own
 namespace, `harbor-demo` (a namespace inside the VKS cluster, not a vSphere Namespace; it is not
 listed under Supervisor Management → Namespaces): [ARGOCD.md](ARGOCD.md) keeps the same app in
@@ -24,9 +24,9 @@ listed under Supervisor Management → Namespaces): [ARGOCD.md](ARGOCD.md) keeps
 
 ## Prerequisites
 
-- Harbor with a project and a robot account (a Harbor login for tools rather than people) that
-  may push to it ([HARBOR.md](HARBOR.md) steps 1 to 11, done by you or your Harbor administrator; step 11 checks that your VKS cluster can
-  pull from it), and Harbor's CA: step 1 below copies it from
+- Harbor with a project and a robot account (a Harbor login for tools rather than people) that may
+  push to it ([HARBOR.md](HARBOR.md) steps 1 to 11, done by you or your Harbor administrator; step
+  11 checks that your VKS cluster can pull from it), and Harbor's CA: step 1 below copies it from
   [HARBOR.md step 9](HARBOR.md#save-the-ca)
   (`~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>/harbor-ca.crt`) or downloads it, and saves it
   as `~/.config/vks-guides/image/<HARBOR_FQDN>-ca.crt`;
@@ -139,12 +139,12 @@ the CA below. `FAILED: nothing copied`: the error above it says why.
 
 ### Otherwise: download it from Harbor
 
-Run this if you did not run HARBOR.md step 9 on this machine. It downloads Harbor's CA from
-Harbor, saves it as `<HARBOR_FQDN>-ca.crt.new` in `~/.config/vks-guides/image` and prints its
-fingerprint, a short code that identifies it. You get a file to check, not one to use yet: Harbor
-is not trusted yet, so the file could be a fake. Keep it (next block) only if the fingerprint is
-the same as the fingerprint your Harbor administrator got in HARBOR.md step 9. Set `HARBOR_FQDN`
-to your Harbor's name.
+Run this if you did not run HARBOR.md step 9 on this machine (Harbor's web page has the same file:
+see below the block). It downloads Harbor's CA from Harbor, saves it as `<HARBOR_FQDN>-ca.crt.new`
+in `~/.config/vks-guides/image` and prints its fingerprint, a short code that identifies it. You get
+a file to check, not one to use yet: Harbor is not trusted yet, so the file could be a fake. Keep it
+(next block) only if the fingerprint is the same as the fingerprint your Harbor administrator got in
+HARBOR.md step 9. Set `HARBOR_FQDN` to your Harbor's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -560,10 +560,10 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_ROBOT_SECRET
 
 </details>
 
-**Expect:** `Login Succeeded` (docker without a credential helper first warns that the login is stored unencrypted),
-the push, `Removed login credentials for …` (docker: `Removing`), then
-`pushed: <your Harbor name>/<your project>/test-web-apps@sha256:…`. In Harbor's web page the
-project now lists the repository `test-web-apps`.
+**Expect:** `Login Succeeded` (docker without a credential helper first warns that the login is
+stored unencrypted), the push, `Removed login credentials for …` (docker: `Removing`), then `pushed:
+<your Harbor name>/<your project>/test-web-apps@sha256:…`. In Harbor's web page the project now
+lists the repository `test-web-apps`.
 
 **If not:**
 - `x509: certificate signed by unknown authority`: do step 2 for your engine. With docker, a login
@@ -582,10 +582,11 @@ private project only with a robot's login. This step stores that login in the cl
 secret: a Kubernetes Secret (the cluster's way to store a password) named `harbor-pull`, which
 step 6 makes the app use.
 
-Pick the robot the cluster logs in as. Best is one that may only pull: in Harbor's web page, a
-robot with only **Repository** → **Pull** on this project ([HARBOR.md step
+Pick the robot the cluster logs in as. Best is one that may only pull: in Harbor's web page, a robot
+with only **Repository** → **Pull** on this project ([HARBOR.md step
 10](HARBOR.md#create-a-robot-account), *In Harbor's web page*); the push robot also works, but it
-can also push.
+can also push, and anyone who may read Secrets in the namespace `harbor-demo` can read the robot's
+secret.
 
 The next block stores the pull robot's secret in the cluster, so type it first, in this terminal.
 This line asks for it without showing it and keeps it in this terminal only, not in a file. You
@@ -687,11 +688,10 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 (or `configured`).
 
 **If not:** `FAILED: the namespace … was not made` with `Unauthorized` above it: the login in the
-cluster's kubeconfig has expired; save it again ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)),
-type the pull robot's secret again (the line above the block) and run this block again.
+cluster's kubeconfig has expired; save it again
+([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), type the pull robot's secret again (the line
+above the block) and run this block again.
 
-**Who can read it:** anyone who may read Secrets in the namespace `harbor-demo` can read the
-robot's secret.
 
 ## 6. Deploy the app
 
@@ -709,8 +709,9 @@ get the app running in five pods, ready to open in step 7. Running it again with
 replaces the pods with that engine's image.
 
 Set `VKS_CLUSTER` to your cluster's name, and `HARBOR_FQDN` and `HARBOR_PROJECT` as in step 3. The
-first line picks which push to run: `CONTAINER_ENGINE="podman"` runs the image podman pushed,
-`CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) the one docker pushed.
+`CONTAINER_ENGINE` line picks which push to run: `CONTAINER_ENGINE="podman"` runs the image podman
+pushed, `CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) the one docker
+pushed.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -800,9 +801,9 @@ lines, `deployment "test-web-apps" successfully rolled out`, then
 expired; save it again ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), redo step 5 if you
 use the Secret, then run this block again.
 
-The wait ends with `exceeded its progress deadline` or times out: run
-`kubectl --kubeconfig "$HOME/.kube/<cluster>.kubeconfig" -n harbor-demo get events --sort-by=.lastTimestamp`
-and read its last lines.
+The wait ends with `exceeded its progress deadline` or times out: run `kubectl --kubeconfig
+"$HOME/.kube/<cluster>.kubeconfig" -n harbor-demo get events --sort-by=.lastTimestamp` and read its
+last lines.
 - `x509: certificate signed by unknown authority`: the nodes do not trust Harbor; run HARBOR.md
   step 11.
 - `401 Unauthorized`, `no basic auth credentials` or `insufficient_scope`: the project is private
@@ -921,9 +922,9 @@ The image stays in Harbor: delete it in Harbor's web page (**Projects** → your
   - podman: `rm -rf ~/.config/containers/certs.d/<your Harbor name>`;
   - docker, as a block of its own: `sudo rm -rf /etc/docker/certs.d/<your Harbor name>`;
   - if you followed an earlier version of HARBOR.md, Harbor's CA is also in the system's trust
-    store; as a block of its own, on Ubuntu or Debian
-    `sudo rm -f /usr/local/share/ca-certificates/harbor-ca.crt && sudo update-ca-certificates --fresh`,
-    on AlmaLinux `sudo rm -f /etc/pki/ca-trust/source/anchors/harbor-ca.crt && sudo update-ca-trust`.
+    store; as a block of its own, on Ubuntu or Debian `sudo rm -f
+    /usr/local/share/ca-certificates/harbor-ca.crt && sudo update-ca-certificates --fresh`, on
+    AlmaLinux `sudo rm -f /etc/pki/ca-trust/source/anchors/harbor-ca.crt && sudo update-ca-trust`.
 - macOS: remove `Harbor CA` in **Keychain Access**, then:
   - podman: `podman machine stop` and `podman machine start` (it imports the CAs again at start);
   - docker in Colima: `colima ssh -- sudo rm -rf /etc/docker/certs.d/<your Harbor name> </dev/null`;
