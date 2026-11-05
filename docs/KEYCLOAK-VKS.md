@@ -159,9 +159,12 @@ VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 SUPERVISOR_CONTEXT="supervisor"
 
-for T in vcf kubectl jq; do command -v "$T" >/dev/null 2>&1 || echo "MISSING: $T (PREREQS.md, KUBECTL.md, VCF.md)"; done
-VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
-if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+M=""
+for T in vcf kubectl jq; do command -v "$T" >/dev/null 2>&1 || { echo "MISSING: $T (PREREQS.md, KUBECTL.md, VCF.md)"; M=1; }; done
+[ -n "$M" ] || VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if [ -n "$M" ]; then
+  echo "STOPPED: install what is MISSING, then run this again"
+elif ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
   echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 else
@@ -170,7 +173,11 @@ else
     echo "FAILED: the VCF CLI or jq (see the error above)"
   elif [ "$N" = 1 ]; then
     echo "cert-manager: already installed"
-  elif kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io >/dev/null 2>&1; then
+  elif ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd certificates.cert-manager.io -o name 2>&1)" \
+       && ! printf '%s\n' "$C" | grep -qF '"certificates.cert-manager.io" not found'; then
+    printf '%s\n' "$C"
+    echo "FAILED: cannot read the cluster (see the error above)"
+  elif ! printf '%s\n' "$C" | grep -qF '"certificates.cert-manager.io" not found'; then
     echo "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
   elif vcf addon install create cert-manager --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
     OK=""
@@ -201,9 +208,12 @@ $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $SUPERVISOR_CONTEXT = "supervisor"
 
-foreach ($T in 'vcf', 'kubectl') { if (-not (Get-Command $T -ErrorAction SilentlyContinue)) { "MISSING: $T (KUBECTL.md, VCF.md)" } }
-$VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
-if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+$M = $false; $VCF_USE = ''
+foreach ($T in 'vcf', 'kubectl') { if (-not (Get-Command $T -ErrorAction SilentlyContinue)) { "MISSING: $T (KUBECTL.md, VCF.md)"; $M = $true } }
+if (-not $M) { $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n" }
+if ($M) {
+  "STOPPED: install what is MISSING, then run this again"
+} elseif (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
   "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
 } else {
@@ -213,7 +223,10 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
     "FAILED: the VCF CLI (see the error above)"
   } elseif (@(ConvertFrom-Json $L | ForEach-Object { $_ } | ForEach-Object { $_.addonName }) -contains 'cert-manager') {
     "cert-manager: already installed"
-  } elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io 2>$null) -and $LASTEXITCODE -eq 0) {
+  } elseif ($($C = (kubectl --kubeconfig $VKS_KUBECONFIG get crd certificates.cert-manager.io -o name 2>&1 | ForEach-Object { "$_" }) -join "`n"; $LASTEXITCODE -ne 0) -and $C -notmatch '"certificates\.cert-manager\.io" not found') {
+    $C
+    "FAILED: cannot read the cluster (see the error above)"
+  } elseif ($LASTEXITCODE -eq 0) {
     "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
   } else {
     vcf addon install create cert-manager --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
@@ -245,8 +258,12 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 `cert-manager: already installed`.
 
 **If not:**
-- `MISSING: …`: install that tool. `FAILED: the VCF CLI …`: log in to the Supervisor again
+- `MISSING: …` then `STOPPED: install what is MISSING …`: install that tool; nothing changed.
+  `FAILED: the VCF CLI …`: log in to the Supervisor again
   ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)), and check `VKS_NAMESPACE` and `VKS_CLUSTER`.
+- `FAILED: cannot read the cluster`: kubectl could not read Keycloak's cluster; the error above says
+  why (`Unauthorized`: [get its kubeconfig again](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+  Nothing was installed.
 - `STOPPED: … not the add-on`: someone installed cert-manager another way. Use that cert-manager
   for step 4 at your own judgement, or remove it and run this block again.
 - `FAILED: cert-manager does not accept requests yet`: wait a few minutes, then go on with step 4;
@@ -274,21 +291,23 @@ VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
-command -v kubectl >/dev/null 2>&1 || echo "MISSING: kubectl (KUBECTL.md)"
-kc create namespace keycloak --dry-run=client -o yaml | kc apply -f - >/dev/null \
-  && kc label namespace keycloak --overwrite pod-security.kubernetes.io/enforce=restricted \
-       pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
-for S in keycloak-db:keycloak keycloak-admin:admin; do
-  P=
-  if kc -n keycloak get secret "${S%%:*}" >/dev/null 2>&1; then
-    echo "secret ${S%%:*}: exists, kept"
-  elif ! P="$(openssl rand -hex 24)" || [ ${#P} -ne 48 ]; then
-    echo "FAILED: no password made for ${S%%:*}: openssl (PREREQS.md)"
-  else
-    printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: %s\nstringData:\n  username: %s\n  password: %s\n' \
-      "${S%%:*}" "${S#*:}" "$P" | kc -n keycloak create -f -
-  fi
-done
+if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
+else
+  kc create namespace keycloak --dry-run=client -o yaml | kc apply -f - >/dev/null \
+    && kc label namespace keycloak --overwrite pod-security.kubernetes.io/enforce=restricted \
+         pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
+  for S in keycloak-db:keycloak keycloak-admin:admin; do
+    P=
+    if kc -n keycloak get secret "${S%%:*}" >/dev/null 2>&1; then
+      echo "secret ${S%%:*}: exists, kept"
+    elif ! P="$(openssl rand -hex 24)" || [ ${#P} -ne 48 ]; then
+      echo "FAILED: no password made for ${S%%:*}: openssl (PREREQS.md)"
+    else
+      printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: %s\nstringData:\n  username: %s\n  password: %s\n' \
+        "${S%%:*}" "${S#*:}" "$P" | kc -n keycloak create -f -
+    fi
+  done
+fi
 unset P
 ```
 
@@ -302,18 +321,20 @@ $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 function kc { $input | kubectl --kubeconfig $VKS_KUBECONFIG @args }
-if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" }
-kc create namespace keycloak --dry-run=client -o yaml | kc apply -f - | Out-Null
-kc label namespace keycloak --overwrite pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
-foreach ($S in @(@('keycloak-db', 'keycloak'), @('keycloak-admin', 'admin'))) {
-  kc -n keycloak get secret $S[0] 2>$null | Out-Null
-  if ($LASTEXITCODE -eq 0) {
-    "secret $($S[0]): exists, kept"
-  } else {
-    $B = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($B)
-    $P = ($B | ForEach-Object { $_.ToString('x2') }) -join ''
-    @('apiVersion: v1', 'kind: Secret', 'metadata:', "  name: $($S[0])", 'stringData:', "  username: $($S[1])", "  password: $P") | kc -n keycloak create -f -
-    Remove-Variable P
+$global:LASTEXITCODE = $null
+if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" } else {
+  kc create namespace keycloak --dry-run=client -o yaml | kc apply -f - | Out-Null
+  kc label namespace keycloak --overwrite pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
+  foreach ($S in @(@('keycloak-db', 'keycloak'), @('keycloak-admin', 'admin'))) {
+    kc -n keycloak get secret $S[0] 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+      "secret $($S[0]): exists, kept"
+    } else {
+      $B = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($B)
+      $P = ($B | ForEach-Object { $_.ToString('x2') }) -join ''
+      @('apiVersion: v1', 'kind: Secret', 'metadata:', "  name: $($S[0])", 'stringData:', "  username: $($S[1])", "  password: $P") | kc -n keycloak create -f -
+      Remove-Variable P
+    }
   }
 }
 ```

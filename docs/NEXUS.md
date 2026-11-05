@@ -219,18 +219,20 @@ VKS_CLUSTER="my-nexus-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
-command -v kubectl >/dev/null 2>&1 || echo "MISSING: kubectl (KUBECTL.md)"
-kc create namespace nexus --dry-run=client -o yaml | kc apply -f - >/dev/null \
-  && kc label namespace nexus --overwrite pod-security.kubernetes.io/enforce=restricted \
-       pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
-P=
-if kc -n nexus get secret nexus-db >/dev/null 2>&1; then
-  echo "secret nexus-db: exists, kept"
-elif ! P="$(openssl rand -hex 24)" || [ ${#P} -ne 48 ]; then
-  echo "FAILED: no password made: openssl (PREREQS.md)"
+if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
 else
-  printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: nexus-db\nstringData:\n  username: nexus\n  password: %s\n' "$P" \
-    | kc -n nexus create -f -
+  kc create namespace nexus --dry-run=client -o yaml | kc apply -f - >/dev/null \
+    && kc label namespace nexus --overwrite pod-security.kubernetes.io/enforce=restricted \
+         pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
+  P=
+  if kc -n nexus get secret nexus-db >/dev/null 2>&1; then
+    echo "secret nexus-db: exists, kept"
+  elif ! P="$(openssl rand -hex 24)" || [ ${#P} -ne 48 ]; then
+    echo "FAILED: no password made: openssl (PREREQS.md)"
+  else
+    printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: nexus-db\nstringData:\n  username: nexus\n  password: %s\n' "$P" \
+      | kc -n nexus create -f -
+  fi
 fi
 unset P
 ```
@@ -245,17 +247,19 @@ $VKS_CLUSTER = "my-nexus-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 function kc { $input | kubectl --kubeconfig $VKS_KUBECONFIG @args }
-if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" }
-kc create namespace nexus --dry-run=client -o yaml | kc apply -f - | Out-Null
-kc label namespace nexus --overwrite pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
-kc -n nexus get secret nexus-db 2>$null | Out-Null
-if ($LASTEXITCODE -eq 0) {
-  "secret nexus-db: exists, kept"
-} else {
-  $B = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($B)
-  $P = ($B | ForEach-Object { $_.ToString('x2') }) -join ''
-  @('apiVersion: v1', 'kind: Secret', 'metadata:', '  name: nexus-db', 'stringData:', '  username: nexus', "  password: $P") | kc -n nexus create -f -
-  Remove-Variable P
+$global:LASTEXITCODE = $null
+if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" } else {
+  kc create namespace nexus --dry-run=client -o yaml | kc apply -f - | Out-Null
+  kc label namespace nexus --overwrite pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
+  kc -n nexus get secret nexus-db 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) {
+    "secret nexus-db: exists, kept"
+  } else {
+    $B = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($B)
+    $P = ($B | ForEach-Object { $_.ToString('x2') }) -join ''
+    @('apiVersion: v1', 'kind: Secret', 'metadata:', '  name: nexus-db', 'stringData:', '  username: nexus', "  password: $P") | kc -n nexus create -f -
+    Remove-Variable P
+  }
 }
 ```
 

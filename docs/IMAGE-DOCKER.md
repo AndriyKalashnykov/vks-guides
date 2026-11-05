@@ -14,7 +14,9 @@ pushes it to a Harbor project (public, or private with step 5), and runs it in a
 commands.
 
 Run every block in the same terminal, one after the other: the first block sets the values the
-others use. If you open a new terminal, run the first block again.
+others use. If you open a new terminal, first point kubectl at your VKS cluster again with
+LOGIN.md's [Make it the default in this
+terminal](LOGIN.md#make-it-the-default-in-this-terminal), then run the first block again.
 
 ## Prerequisites
 
@@ -47,7 +49,8 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 0. Set your values
 
-Run this first, and again in any new terminal: the other blocks use the values it sets. Set them to
+Run this first, and again in any new terminal (after LOGIN.md's *Make it the default in this
+terminal*): the other blocks use the values it sets. Set them to
 your own: your Harbor and project, the two robot accounts (below the block), the app's namespace
 inside your VKS cluster (a separate area for the app, not a vSphere Namespace). The block also
 creates the folder `~/image-simple` for the downloaded files and moves this terminal into it.
@@ -184,7 +187,20 @@ docker --config "$HOME/image-simple/pull" login -u "$HARBOR_PULL_ROBOT" "$HARBOR
 `config.json` holds no login for the cluster. Create the Secret as
 [IMAGE.md step 5](IMAGE.md#5-only-for-a-private-project-let-the-cluster-pull-from-it) does instead.
 
-Run this right after that login. It creates the app's namespace in the VKS cluster
+Run this line first: it prints which cluster kubectl talks to in this terminal, so that the next
+block does not create the namespace and the Secret in another cluster. It changes nothing.
+
+```sh
+kubectl config current-context
+```
+
+**Expect:** the name of your VKS cluster's context.
+
+**If not:** another cluster's name: stop, and point kubectl at your VKS cluster with LOGIN.md's
+[Make it the default in this terminal](LOGIN.md#make-it-the-default-in-this-terminal). `error:
+current-context is not set`: do that too. Then run this line again.
+
+Run this right after that line. It creates the app's namespace in the VKS cluster
 (`APP_NAMESPACE`), copies `config.json` into it as the Secret `harbor-pull`, and deletes the file,
 which holds the robot's secret unencrypted. Afterwards the cluster holds the pull robot's login,
 and step 6 tells the app to use it:
@@ -199,8 +215,8 @@ rm -r "$HOME/image-simple/pull"
 
 **Expect:** `namespace/harbor-demo created` and `secret/harbor-pull created`.
 
-**If not:** `localhost:8080` and `connection refused`, or another cluster's name in the output:
-kubectl is not pointed at your VKS cluster; [make its kubeconfig the default in this
+**If not:** `localhost:8080` and `connection refused`: kubectl is not pointed at your VKS
+cluster; [make its kubeconfig the default in this
 terminal](LOGIN.md#make-it-the-default-in-this-terminal), then run the login line above and this
 block again.
 
@@ -236,6 +252,19 @@ grep -A1 imagePullSecrets deployment.yaml
 ```
 
 **Expect:** `imagePullSecrets:` and `- name: harbor-pull`.
+
+Run this line first, as in step 5: it prints which cluster kubectl talks to in this terminal, and
+changes nothing.
+
+```sh
+kubectl config current-context
+```
+
+**Expect:** the name of your VKS cluster's context.
+
+**If not:** another cluster's name: stop, and point kubectl at your VKS cluster with LOGIN.md's
+[Make it the default in this terminal](LOGIN.md#make-it-the-default-in-this-terminal). `error:
+current-context is not set`: do that too. Then run this line again.
 
 Now send the three files to the cluster and wait until the app's five pods run. This creates the
 app's namespace (unless step 5 did), starts five pods from your Harbor image, and asks the load
@@ -279,6 +308,19 @@ left; see [IMAGE.md step 7](IMAGE.md#7-open-the-app), **If not**.
 
 ## 8. Remove it (optional)
 
+Run this line first: the block after it deletes a namespace, so check that kubectl talks to your VKS
+cluster in this terminal. It changes nothing.
+
+```sh
+kubectl config current-context
+```
+
+**Expect:** the name of your VKS cluster's context.
+
+**If not:** another cluster's name: stop, and point kubectl at your VKS cluster with LOGIN.md's
+[Make it the default in this terminal](LOGIN.md#make-it-the-default-in-this-terminal). `error:
+current-context is not set`: do that too. Then run this line again.
+
 Run this when you no longer need the app. It deletes the app and its namespace from the VKS
 cluster, the image from this machine, and the folder with the downloaded files. Harbor's CA stays
 trusted (the next block) and the image stays in Harbor (below).
@@ -291,6 +333,9 @@ rm -r "$HOME/image-simple"
 ```
 
 **Expect:** `namespace "harbor-demo" deleted`, then docker's lines for the removed image.
+
+**If not:** `namespaces "harbor-demo" not found`, `No such image` or `No such file or directory`:
+that part was removed before (this is a second run); nothing is wrong.
 
 Run this only if this machine will not use this Harbor with docker again. It removes Harbor's CA
 from the folder where docker looks for it (it asks for your password; run it on its own). Afterwards
