@@ -490,7 +490,7 @@ port-forward: a tunnel from port 3400 on your machine, through the cluster's API
 GitLab pod behind its Service. You can then open GitLab at <http://localhost:3400> and sign in
 (below). It runs until you press **Ctrl+C**; keep it running for steps 6 to 9, and run it again
 whenever you need GitLab's web page. Set `VKS_CLUSTER` to your VKS cluster's name. On a jump box
-over SSH, first connect as **From a jump box over SSH** (below) says.
+over SSH, connect first as **From a jump box over SSH** (below the block) says.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -524,12 +524,13 @@ page has no **Register now** link.
 - `Your account is locked.`: ten wrong passwords lock `root` for 10 minutes; wait, then sign in.
 - `error: lost connection to pod`: GitLab restarted; run this block again.
 
-**From a jump box over SSH:** the address opens only on the jump box. From your laptop, connect to
-the jump box with `ssh -o ExitOnForwardFailure=yes -L 127.0.0.1:3400:127.0.0.1:3400 <user>@<jump
-box>` (macOS, Linux, or Windows PowerShell with the OpenSSH client), run the block in that session,
-and open the address in your laptop's browser.
-- `Could not request local forwarding`: a program on your laptop uses port 3400; stop it, and
-  connect again.
+**From a jump box over SSH:** <http://localhost:3400> opens only on the jump box. From your laptop
+(Linux, macOS, or Windows PowerShell with the OpenSSH client), connect to the jump box with
+`ssh -o ExitOnForwardFailure=yes -L 127.0.0.1:3400:127.0.0.1:3400 <user>@<jump-box>`, run the block
+in that session, and open the address in your laptop's browser. Open the second terminal of steps 6
+to 9 with a plain `ssh <user>@<jump-box>`.
+- `Could not request local forwarding`: a program on your laptop uses port 3400 (also an earlier
+  `ssh -L` with 3400); stop it, and connect again.
 - `open failed: connect failed: Connection refused` in that SSH session: the block is not
   running on the jump box; run it again.
 - `ssh` is not found on Windows: add the optional feature **OpenSSH Client** (needs an

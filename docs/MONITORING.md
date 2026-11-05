@@ -568,7 +568,7 @@ can open, so this makes a port-forward: kubectl carries what you open at <http:/
 your machine through the cluster's API address to Grafana, while the command runs; it changes
 nothing in the cluster. You then have Grafana at <http://localhost:3000>. Set `VKS_CLUSTER` as in
 step 1. Leave it running while you use Grafana; press **Ctrl+C** to stop. On a jump box over SSH,
-first connect as **From a jump box over SSH** (below) says.
+connect first as **From a jump box over SSH** (below the block) says.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -601,12 +601,12 @@ graphs for the cluster.
   `kubectl --kubeconfig <the VKS kubeconfig> -n monitoring rollout restart
   deployment/prometheus-grafana`, then log in again.
 
-**From a jump box over SSH:** the address opens only on the jump box. From your laptop, connect to
-the jump box with `ssh -o ExitOnForwardFailure=yes -L 127.0.0.1:3000:127.0.0.1:3000 <user>@<jump
-box>` (macOS, Linux, or Windows PowerShell with the OpenSSH client), run the block in that session,
-and open the address in your laptop's browser.
-- `Could not request local forwarding`: a program on your laptop uses port 3000; stop it, and
-  connect again.
+**From a jump box over SSH:** <http://localhost:3000> opens only on the jump box. From your laptop
+(Linux, macOS, or Windows PowerShell with the OpenSSH client), connect to the jump box with
+`ssh -o ExitOnForwardFailure=yes -L 127.0.0.1:3000:127.0.0.1:3000 <user>@<jump-box>`, run the block
+in that session, and open the address in your laptop's browser.
+- `Could not request local forwarding`: a program on your laptop uses port 3000 (also an earlier
+  `ssh -L` with 3000); stop it, and connect again.
 - `open failed: connect failed: Connection refused` in that SSH session: the block is not
   running on the jump box; run it again.
 - `ssh` is not found on Windows: add the optional feature **OpenSSH Client** (needs an
