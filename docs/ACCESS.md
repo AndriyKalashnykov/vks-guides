@@ -177,7 +177,7 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 Then run this in the same terminal, once to get the name the cluster knows you by (the cluster
 administrator needs it for step 3), and again whenever kubectl answers `Unauthorized`, 10 hours
 after a login. It logs in to the VKS cluster as `SSO_USER` through the Supervisor, writes the login
-to its own kubeconfig `VKS_SSO_KUBECONFIG`, readable only by you. You then have that
+to its own kubeconfig `VKS_USER_KUBECONFIG`, readable only by you. You then have that
 file, and the name the cluster knows you by: send it, exactly as printed, to the cluster
 administrator.
 
@@ -192,20 +192,23 @@ SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
 SSO_USER="alice@vsphere.local"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
+VKS_USER_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 
-if [ -z "$SSO_PASSWORD" ]; then
+case "$SSO_USER" in */*|*\\*|*:*) SSO_USER_OK="" ;; *@*) SSO_USER_OK="yes" ;; *) SSO_USER_OK="" ;; esac
+if [ -z "$SSO_USER_OK" ]; then
+  printf '%s\n' "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: $SSO_USER"
+elif [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the password line above"
 elif [ ! -f "$SUPERVISOR_CA" ] || [ ! -s "$SUPERVISOR_CA" ]; then
   echo "FAILED: not found: $SUPERVISOR_CA"
-elif mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_SSO_KUBECONFIG" ) && chmod 600 "$VKS_SSO_KUBECONFIG" \
-     && { KUBECONFIG="$VKS_SSO_KUBECONFIG" vcf context delete "${VKS_CLUSTER}-sso" -y --skip-delete-kubeconfig-context </dev/null >/dev/null 2>&1; true; } \
-     && KUBECONFIG="$VKS_SSO_KUBECONFIG" VCF_CLI_VSPHERE_PASSWORD="$SSO_PASSWORD" \
-        vcf context create "${VKS_CLUSTER}-sso" --type k8s --endpoint "https://${SUPERVISOR_ENDPOINT}" \
+elif mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_USER_KUBECONFIG" ) && chmod 600 "$VKS_USER_KUBECONFIG" \
+     && { KUBECONFIG="$VKS_USER_KUBECONFIG" vcf context delete "${VKS_CLUSTER}-${SSO_USER}" -y --skip-delete-kubeconfig-context </dev/null >/dev/null 2>&1; true; } \
+     && KUBECONFIG="$VKS_USER_KUBECONFIG" VCF_CLI_VSPHERE_PASSWORD="$SSO_PASSWORD" \
+        vcf context create "${VKS_CLUSTER}-${SSO_USER}" --type k8s --endpoint "https://${SUPERVISOR_ENDPOINT}" \
           --username "$SSO_USER" --auth-type basic --ca-certificate "$SUPERVISOR_CA" --skip-create-related-contexts \
           --workload-cluster-name "$VKS_CLUSTER" --workload-cluster-namespace "$VKS_NAMESPACE" </dev/null \
-     && kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config use-context "${VKS_CLUSTER}-sso:${VKS_CLUSTER}" >/dev/null; then
-  echo "send this name: $(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
+     && kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config use-context "${VKS_CLUSTER}-${SSO_USER}:${VKS_CLUSTER}" >/dev/null; then
+  echo "send this name: $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
 else
   echo "FAILED: login (see the error above)"
 fi
@@ -223,43 +226,47 @@ $SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"
 $SSO_USER = "alice@vsphere.local"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
+$VKS_USER_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 
-if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
+if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
+  "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: ${SSO_USER}"
+} elseif (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this PowerShell; run the password line above"
 } elseif (-not (Test-Path $SUPERVISOR_CA -PathType Leaf) -or (Get-Item $SUPERVISOR_CA).Length -eq 0) {
   "FAILED: not found: $SUPERVISOR_CA"
 } else {
   New-Item -ItemType Directory -Force -Path "$HOME\.kube" | Out-Null
-  $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $VKS_SSO_KUBECONFIG
+  $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $VKS_USER_KUBECONFIG
   try {
-    $null | vcf context delete "$VKS_CLUSTER-sso" -y --skip-delete-kubeconfig-context 2>&1 | Out-Null
+    $null | vcf context delete "${VKS_CLUSTER}-${SSO_USER}" -y --skip-delete-kubeconfig-context 2>&1 | Out-Null
     $env:VCF_CLI_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
     $global:LASTEXITCODE = $null
-    $null | vcf context create "$VKS_CLUSTER-sso" --type k8s --endpoint "https://$SUPERVISOR_ENDPOINT" `
+    $null | vcf context create "${VKS_CLUSTER}-${SSO_USER}" --type k8s --endpoint "https://$SUPERVISOR_ENDPOINT" `
       --username $SSO_USER --auth-type basic "--ca-certificate=$SUPERVISOR_CA" --skip-create-related-contexts `
       --workload-cluster-name $VKS_CLUSTER --workload-cluster-namespace $VKS_NAMESPACE
     $OK = $LASTEXITCODE -eq 0
   } finally {
     Remove-Item Env:VCF_CLI_VSPHERE_PASSWORD -ErrorAction SilentlyContinue; $env:KUBECONFIG = $OLD_KUBECONFIG
   }
-  Remove-Variable SSO_PASSWORD
   if ($OK) {
-    kubectl --kubeconfig $VKS_SSO_KUBECONFIG config use-context "$VKS_CLUSTER-sso:$VKS_CLUSTER" | Out-Null
-    "send this name: $(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')"
+    kubectl --kubeconfig $VKS_USER_KUBECONFIG config use-context "${VKS_CLUSTER}-${SSO_USER}:${VKS_CLUSTER}" | Out-Null
+    "send this name: $(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')"
   } else {
     "FAILED: login (see the error above)"
   }
 }
+Remove-Variable SSO_PASSWORD -ErrorAction SilentlyContinue
 ```
 
 </details>
 
-**Expect:** `Successfully logged in to Kubernetes cluster <cluster>`, the contexts `<cluster>-sso` and
-`<cluster>-sso:<cluster>`, and `send this name: sso:…` (SSO writes the name in its own letter case,
+**Expect:** `Successfully logged in to Kubernetes cluster <cluster>`, the contexts `<cluster>-<SSO_USER>` and
+`<cluster>-<SSO_USER>:<cluster>`, and `send this name: sso:…` (SSO writes the name in its own letter case,
 for example `sso:Alice@vsphere.local`).
 
 **If not:**
+- `STOPPED: SSO_USER is …`: set `SSO_USER` to the full name with `@` and the domain, then run the
+  password line and this block again.
 - `FAILED: no password …`: run the password line, then this block.
 - `FAILED: not found: …`: save the vCenter CA first
   ([Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca), step 1).
@@ -369,7 +376,7 @@ Remove-Item -Recurse -Force $TMP
 Do this to log in with the plugin: once to get the name the cluster knows you by (the cluster
 administrator needs it for step 3), and again whenever kubectl answers `Unauthorized`, 10 hours
 after a login. **A few failed logins in a row lock the SSO user for some minutes.** It logs in to
-the VKS cluster as `SSO_USER` and writes the login to its own kubeconfig `VKS_SSO_KUBECONFIG`,
+the VKS cluster as `SSO_USER` and writes the login to its own kubeconfig `VKS_USER_KUBECONFIG`,
 readable only by you. On Linux, macOS and WSL it asks for the SSO password. You then have that
 file, and the name the cluster knows you by: send it, exactly as printed, to the cluster
 administrator.
@@ -385,13 +392,18 @@ SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
 SSO_USER="alice@vsphere.local"
 VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
-VKS_SSO_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-sso.kubeconfig"
+VKS_USER_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 
-mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_SSO_KUBECONFIG" ) && chmod 600 "$VKS_SSO_KUBECONFIG"
-( printf 'SSO password: '; IFS= read -rs P; echo
-  KUBECONFIG="$VKS_SSO_KUBECONFIG" SSL_CERT_FILE="$SUPERVISOR_CA" KUBECTL_VSPHERE_PASSWORD="$P" \
-    "$HOME/.local/bin/kubectl-vsphere" login --server "$SUPERVISOR_ENDPOINT" --vsphere-username "$SSO_USER" \
-    --tanzu-kubernetes-cluster-namespace "$VKS_NAMESPACE" --tanzu-kubernetes-cluster-name "$VKS_CLUSTER" ); chmod 600 "$VKS_SSO_KUBECONFIG"; kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" config use-context "$VKS_CLUSTER" >/dev/null && echo "send this name: $(kubectl --kubeconfig "$VKS_SSO_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
+case "$SSO_USER" in */*|*\\*|*:*) SSO_USER_OK="" ;; *@*) SSO_USER_OK="yes" ;; *) SSO_USER_OK="" ;; esac
+if [ -z "$SSO_USER_OK" ]; then
+  printf '%s\n' "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: $SSO_USER"
+else
+  mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_USER_KUBECONFIG" ) && chmod 600 "$VKS_USER_KUBECONFIG"
+  ( printf 'SSO password: '; IFS= read -rs P; echo
+    KUBECONFIG="$VKS_USER_KUBECONFIG" SSL_CERT_FILE="$SUPERVISOR_CA" KUBECTL_VSPHERE_PASSWORD="$P" \
+      "$HOME/.local/bin/kubectl-vsphere" login --server "$SUPERVISOR_ENDPOINT" --vsphere-username "$SSO_USER" \
+      --tanzu-kubernetes-cluster-namespace "$VKS_NAMESPACE" --tanzu-kubernetes-cluster-name "$VKS_CLUSTER" ); chmod 600 "$VKS_USER_KUBECONFIG"; kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config use-context "$VKS_CLUSTER" >/dev/null && echo "send this name: $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
+fi
 ```
 
 </details>
@@ -414,13 +426,15 @@ $SUPERVISOR_ENDPOINT = "10.0.0.10"
 $SSO_USER = "alice@vsphere.local"
 $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
-$VKS_SSO_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-sso.kubeconfig"
+$VKS_USER_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 
-if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
+if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
+  "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: ${SSO_USER}"
+} elseif (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this PowerShell; run the password line above"
 } else {
   New-Item -ItemType Directory -Force -Path "$HOME\.kube" | Out-Null
-  $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $VKS_SSO_KUBECONFIG
+  $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $VKS_USER_KUBECONFIG
   try {
     $env:KUBECTL_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
     kubectl-vsphere login --server $SUPERVISOR_ENDPOINT --vsphere-username $SSO_USER `
@@ -428,10 +442,10 @@ if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   } finally {
     Remove-Item Env:KUBECTL_VSPHERE_PASSWORD -ErrorAction SilentlyContinue; $env:KUBECONFIG = $OLD_KUBECONFIG
   }
-  Remove-Variable SSO_PASSWORD
-  kubectl --kubeconfig $VKS_SSO_KUBECONFIG config use-context $VKS_CLUSTER | Out-Null
-  if ($LASTEXITCODE -eq 0) { "send this name: $(kubectl --kubeconfig $VKS_SSO_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')" }
+  kubectl --kubeconfig $VKS_USER_KUBECONFIG config use-context $VKS_CLUSTER | Out-Null
+  if ($LASTEXITCODE -eq 0) { "send this name: $(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')" }
 }
+Remove-Variable SSO_PASSWORD -ErrorAction SilentlyContinue
 ```
 
 </details>
@@ -440,6 +454,8 @@ if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
 writes the name in its own letter case, for example `sso:Alice@vsphere.local`).
 
 **If not:**
+- `STOPPED: SSO_USER is …`: set `SSO_USER` to the full name with `@` and the domain, then run this
+  block again.
 - `x509: certificate signed by unknown authority`: `SUPERVISOR_CA` is not the vCenter CA (Windows
   and macOS: the CA step above was not done).
 - `FAILED: no password …` (Windows): run the password line, then this block.
@@ -462,7 +478,8 @@ rights.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
+VKS_CLUSTER="my-vks-cluster"
+ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 SSO_NAME="sso:Alice@vsphere.local"
 TEAM_NAMESPACE="team-a"
 
@@ -474,7 +491,8 @@ kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$TEAM_NAMESPACE" create rolebinding
 **Windows (PowerShell):**
 
 ```powershell
-$ADMIN_KUBECONFIG = "$HOME\.kube\my-vks-cluster.kubeconfig"
+$VKS_CLUSTER = "my-vks-cluster"
+$ADMIN_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $SSO_NAME = "sso:Alice@vsphere.local"
 $TEAM_NAMESPACE = "team-a"
 
@@ -484,7 +502,7 @@ kubectl --kubeconfig $ADMIN_KUBECONFIG -n $TEAM_NAMESPACE create rolebinding $B 
 ```
 
 **Expect:** `rolebinding.rbac.authorization.k8s.io/sso-alice-vsphere.local-edit created`. The
-person then gets `yes` from `kubectl --kubeconfig "$HOME/.kube/<cluster>-sso.kubeconfig" -n team-a
+person then gets `yes` from `kubectl --kubeconfig "$HOME/.kube/<cluster>-<SSO_USER>.kubeconfig" -n team-a
 auth can-i create deployments`.
 
 **If not:** `already exists`: a binding of that name is there, perhaps for the name in other letter
@@ -494,7 +512,7 @@ binding and run this again.
 
 ### 4. Use the login and renew it (the person)
 
-Use the file from step 2a or 2d, `~/.kube/<cluster>-sso.kubeconfig`, with `--kubeconfig` or
+Use the file from step 2a or 2d, `~/.kube/<cluster>-<SSO_USER>.kubeconfig`, with `--kubeconfig` or
 `KUBECONFIG` ([KUBECONFIG.md](KUBECONFIG.md#2-use-a-file)), and name the namespace you were given
 in each command (`-n team-a`). It needs no password until the login ends: 10 hours after it,
 kubectl answers `Unauthorized`; log in again (step 2a, or 2d). The rights from step 3 stay.
@@ -687,7 +705,8 @@ namespace `TEAM_NAMESPACE` if it is not there, and a RoleBinding that gives the 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
+VKS_CLUSTER="my-vks-cluster"
+ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 KC_PREFIX="keycloak-sv"
 KC_GROUP="k8s-devs"
 TEAM_NAMESPACE="team-a"
@@ -700,7 +719,8 @@ kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$TEAM_NAMESPACE" create rolebinding
 **Windows (PowerShell):**
 
 ```powershell
-$ADMIN_KUBECONFIG = "$HOME\.kube\my-vks-cluster.kubeconfig"
+$VKS_CLUSTER = "my-vks-cluster"
+$ADMIN_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $KC_PREFIX = "keycloak-sv"
 $KC_GROUP = "k8s-devs"
 $TEAM_NAMESPACE = "team-a"
@@ -953,13 +973,14 @@ tool lets you take each away alone.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
+VKS_CLUSTER="my-vks-cluster"
+ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 TEAM="team-a"
 TEAM_NAMESPACE="team-a"
 SA_NAMESPACE="kubeconfig-access"
 ROLE="edit"
 DAYS="30"
-TEAM_KUBECONFIG="$HOME/${TEAM}.kubeconfig"
+TEAM_KUBECONFIG="$HOME/${VKS_CLUSTER}-${TEAM}.kubeconfig"
 
 adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
 for NS in "$SA_NAMESPACE" "$TEAM_NAMESPACE"; do
@@ -995,13 +1016,14 @@ unset TOKEN
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$ADMIN_KUBECONFIG = "$HOME\.kube\my-vks-cluster.kubeconfig"
+$VKS_CLUSTER = "my-vks-cluster"
+$ADMIN_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $TEAM = "team-a"
 $TEAM_NAMESPACE = "team-a"
 $SA_NAMESPACE = "kubeconfig-access"
 $ROLE = "edit"
 $DAYS = 30
-$TEAM_KUBECONFIG = "$HOME\${TEAM}.kubeconfig"
+$TEAM_KUBECONFIG = "$HOME\${VKS_CLUSTER}-${TEAM}.kubeconfig"
 
 function adm { $input | kubectl --kubeconfig $ADMIN_KUBECONFIG @args }
 foreach ($NS in $SA_NAMESPACE, $TEAM_NAMESPACE) { adm create namespace $NS --dry-run=client -o yaml | adm apply -f - | Out-Null }
@@ -1073,7 +1095,8 @@ software with wider rights.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
+VKS_CLUSTER="my-vks-cluster"
+ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 TEAM="team-a"
 TEAM_NAMESPACE="team-a"
 SA_NAMESPACE="kubeconfig-access"
@@ -1085,7 +1108,8 @@ kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$TEAM_NAMESPACE" delete secret --fi
 **Windows (PowerShell):**
 
 ```powershell
-$ADMIN_KUBECONFIG = "$HOME\.kube\my-vks-cluster.kubeconfig"
+$VKS_CLUSTER = "my-vks-cluster"
+$ADMIN_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $TEAM = "team-a"
 $TEAM_NAMESPACE = "team-a"
 $SA_NAMESPACE = "kubeconfig-access"
@@ -1132,11 +1156,12 @@ person; one ServiceAccount per tool or person lets you take each away alone.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
+VKS_CLUSTER="my-vks-cluster"
+ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 SA_NAME="cluster-admin-ci"
 SA_NAMESPACE="kubeconfig-access"
 DAYS="365"
-SA_KUBECONFIG="$HOME/${SA_NAME}.kubeconfig"
+SA_KUBECONFIG="$HOME/${VKS_CLUSTER}-${SA_NAME}.kubeconfig"
 
 adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
 TOKEN=""
@@ -1187,11 +1212,12 @@ unset TOKEN
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$ADMIN_KUBECONFIG = "$HOME\.kube\my-vks-cluster.kubeconfig"
+$VKS_CLUSTER = "my-vks-cluster"
+$ADMIN_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $SA_NAME = "cluster-admin-ci"
 $SA_NAMESPACE = "kubeconfig-access"
 $DAYS = "365"
-$SA_KUBECONFIG = "$HOME\${SA_NAME}.kubeconfig"
+$SA_KUBECONFIG = "$HOME\${VKS_CLUSTER}-${SA_NAME}.kubeconfig"
 
 function adm { $input | kubectl --kubeconfig $ADMIN_KUBECONFIG @args }
 $TOKEN = $null; $B = $null
@@ -1253,8 +1279,10 @@ and `everything in every namespace: yes`.
 
 Send `SA_KUBECONFIG` as a secret ([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)). The file
 needs no password, no SSO account and no VCF CLI: only [kubectl](KUBECTL.md) and a way to the
-cluster's API address on port 6443 (the file's `server:` line). Save it in your `.kube` folder as
-`cluster-admin-ci.kubeconfig` (Windows: `$HOME\.kube\cluster-admin-ci.kubeconfig`).
+cluster's API address on port 6443 (the file's `server:` line). Save it in your `.kube` folder under
+the name it came with, `<cluster>-<SA_NAME>.kubeconfig` (for example
+`my-vks-cluster-cluster-admin-ci.kubeconfig`; Windows: `$HOME\.kube\…`), and set `VKS_CLUSTER` and
+`SA_NAME` below to the names the cluster administrator used.
 
 Run this once on the machine that received the file, before a tool relies on it. It makes the file
 readable only by you, shows who it acts as, then creates, reads, changes and deletes a test
@@ -1265,7 +1293,9 @@ or `KUBECONFIG` ([KUBECONFIG.md](KUBECONFIG.md#2-use-a-file)).
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-SA_KUBECONFIG="$HOME/.kube/cluster-admin-ci.kubeconfig"
+VKS_CLUSTER="my-vks-cluster"
+SA_NAME="cluster-admin-ci"
+SA_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SA_NAME}.kubeconfig"
 CHECK_NAMESPACE="access-check"
 
 k() { kubectl --kubeconfig "$SA_KUBECONFIG" "$@"; }
@@ -1281,7 +1311,9 @@ k delete namespace "$CHECK_NAMESPACE"
 **Windows (PowerShell):**
 
 ```powershell
-$SA_KUBECONFIG = "$HOME\.kube\cluster-admin-ci.kubeconfig"
+$VKS_CLUSTER = "my-vks-cluster"
+$SA_NAME = "cluster-admin-ci"
+$SA_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-${SA_NAME}.kubeconfig"
 $CHECK_NAMESPACE = "access-check"
 
 function k { $input | kubectl --kubeconfig $SA_KUBECONFIG @args }
@@ -1306,6 +1338,8 @@ k delete namespace $CHECK_NAMESPACE
   reach the cluster without the proxy.
 - `Unauthorized`: the access was taken away, or a token with days has ended; ask for a new file.
 - `already exists`: a test namespace of that name is there; set `CHECK_NAMESPACE` to another name.
+- `No such file` (Windows: `cannot find`): set `VKS_CLUSTER` and `SA_NAME` to the names in the saved
+  file's name.
 
 ### 3. Renew the administrator token (cluster administrator)
 
@@ -1327,10 +1361,11 @@ ServiceAccount, then tries your copy of the file 20 seconds later. Every copy th
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
+VKS_CLUSTER="my-vks-cluster"
+ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 SA_NAME="cluster-admin-ci"
 SA_NAMESPACE="kubeconfig-access"
-SA_KUBECONFIG="$HOME/${SA_NAME}.kubeconfig"
+SA_KUBECONFIG="$HOME/${VKS_CLUSTER}-${SA_NAME}.kubeconfig"
 
 kubectl --kubeconfig "$ADMIN_KUBECONFIG" delete clusterrolebinding "${SA_NAME}-cluster-admin" --ignore-not-found
 kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$SA_NAMESPACE" delete secret "${SA_NAME}-token" --ignore-not-found
@@ -1341,10 +1376,11 @@ sleep 20; kubectl --kubeconfig "$SA_KUBECONFIG" get namespaces
 **Windows (PowerShell):**
 
 ```powershell
-$ADMIN_KUBECONFIG = "$HOME\.kube\my-vks-cluster.kubeconfig"
+$VKS_CLUSTER = "my-vks-cluster"
+$ADMIN_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $SA_NAME = "cluster-admin-ci"
 $SA_NAMESPACE = "kubeconfig-access"
-$SA_KUBECONFIG = "$HOME\${SA_NAME}.kubeconfig"
+$SA_KUBECONFIG = "$HOME\${VKS_CLUSTER}-${SA_NAME}.kubeconfig"
 
 kubectl --kubeconfig $ADMIN_KUBECONFIG delete clusterrolebinding "$SA_NAME-cluster-admin" --ignore-not-found
 kubectl --kubeconfig $ADMIN_KUBECONFIG -n $SA_NAMESPACE delete secret "$SA_NAME-token" --ignore-not-found
@@ -1360,6 +1396,8 @@ Start-Sleep 20; kubectl --kubeconfig $SA_KUBECONFIG get namespaces
   administrator file, or it has expired; get it again and run the block again.
 - The last command lists namespaces: wait a minute and run it again; if it still does, check that
   `SA_NAME` and `SA_NAMESPACE` are what step 1 used.
+- `no such file or directory` on the last line: your copy is gone or has another name; the deletes
+  above did the work.
 
 ## A personal certificate
 
@@ -1381,11 +1419,12 @@ so that you can take it away alone.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
+VKS_CLUSTER="my-vks-cluster"
+ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 PERSON="alice"
 TEAM_NAMESPACE="team-a"
 DAYS="30"
-PERSON_KUBECONFIG="$HOME/${PERSON}.kubeconfig"
+PERSON_KUBECONFIG="$HOME/${VKS_CLUSTER}-${PERSON}.kubeconfig"
 
 adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
 NAME="${PERSON}-$(date +%Y%m%d%H%M%S)"
@@ -1455,7 +1494,8 @@ name rights again. Set `NAME` to the name from step 1's `subject=` line.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
+VKS_CLUSTER="my-vks-cluster"
+ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 NAME="alice-20261029223015"
 TEAM_NAMESPACE="team-a"
 
@@ -1465,7 +1505,8 @@ kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$TEAM_NAMESPACE" delete rolebinding
 **Windows (PowerShell):**
 
 ```powershell
-$ADMIN_KUBECONFIG = "$HOME\.kube\my-vks-cluster.kubeconfig"
+$VKS_CLUSTER = "my-vks-cluster"
+$ADMIN_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $NAME = "alice-20261029223015"
 $TEAM_NAMESPACE = "team-a"
 

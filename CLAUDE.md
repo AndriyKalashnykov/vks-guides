@@ -37,7 +37,7 @@ blocks; there is nothing to build.
   open (the nodes, ArgoCD); registries by name, with a link to PREREQS.md's Registry hosts.
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
 - The Supervisor is named by `SUPERVISOR_CONTEXT="supervisor"` (one name per Supervisor: a-z,
-  0-9 and `-`, not ending in `-sso` or `-keycloak`) and its file by
+  0-9 and `-`, not ending in `-keycloak`) and its file by
   `SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"`; no block writes either
   name out.
 - Passwords are typed (`IFS= read -rs` / `Read-Host -AsSecureString`) and passed only as the
