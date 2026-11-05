@@ -36,14 +36,18 @@ also allow for each image registry.
 - A machine where you may install software: on Linux `sudo` (or `root`), on Windows an
   administrator for WSL, on macOS [Homebrew](https://brew.sh).
 
-The connections this guide needs, for a firewall (all TCP, besides DNS):
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also the
+hosts in [Registry hosts](#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine (laptop or jump box) | your OS's package repositories (as set on the machine: apt, dnf, tdnf, pacman, Homebrew) | 443 (80 for a repository set to `http://`) | the tools, podman and docker |
+| your machine (laptop or jump box) | your OS's package repositories and the mirrors they hand out, as set on the machine (apt, dnf, tdnf, pacman) | 80 and 443 (Ubuntu's and Debian's default repositories, and the mirrors AlmaLinux's mirror list hands out, use 80) | the tools, podman and docker |
+| your machine (macOS) | `formulae.brew.sh`, `ghcr.io` | 443 | Homebrew: jq, podman, Colima, docker |
 | your machine (laptop or jump box) | `download.docker.com` | 443 | docker on Debian, Ubuntu and AlmaLinux |
-| your machine (laptop or jump box) | `github.com`, `release-assets.githubusercontent.com` | 443 | kubelogin (optional) |
-| your machine (Windows) | Microsoft's and podman's download servers | 443 | `wsl --install` and the podman machine |
+| your machine (laptop or jump box) | `github.com`, `release-assets.githubusercontent.com` | 443 | kubelogin (optional); on macOS Colima's virtual machine; on Windows the podman installer |
+| your machine (macOS, Windows) | `quay.io` | 443 | `podman machine init` (podman's virtual machine) |
+| your machine (Windows) | the Microsoft Store, `raw.githubusercontent.com`, `releases.ubuntu.com` (Arm: `cdimages.ubuntu.com`) | 443 | `wsl --install` |
+| your machine (Windows) | `desktop.docker.com` | 443 | Docker Desktop |
 
 ## Linux (Debian / Ubuntu)
 
