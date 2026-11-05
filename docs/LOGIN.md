@@ -58,11 +58,11 @@ The login checks that it talks to your real Supervisor, using vCenter's CA.
 
 **1. Get the vCenter CA**
 
-Run this before your first login to a Supervisor of this vCenter: the Supervisor proves who it is with a
-certificate, by default signed by vCenter's own CA (certificate authority), which this machine does
-not know yet. This downloads vCenter's CAs, so that the login can check that it talks to your real
-Supervisor. It saves them as
-`vcenter-ca.pem.new` and prints each CA's fingerprint, a short code that identifies it. Nothing
+Run this before your first login to a Supervisor of this vCenter: the Supervisor proves who it is
+with a certificate, by default signed by vCenter's own CA (certificate authority), which this
+machine does not know yet. This downloads vCenter's CAs, so that the login can check that it talks
+to your real Supervisor. It saves them as `~/.kube/vcenter-ca.pem.new` and prints each CA's
+fingerprint, a short code that identifies it; run it again and it replaces that file. Nothing
 checks the download itself: keep the file (next block) only when the fingerprints match the ones
 your vCenter administrator gives you; they come from
 [NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca) step 1, and if that is
@@ -142,7 +142,7 @@ ignoring colons and upper/lower case.
 
 When every fingerprint matches one from your administrator, run this to keep the file. It renames
 `vcenter-ca.pem.new` to `vcenter-ca.pem` (an earlier `vcenter-ca.pem` is replaced), the file the
-login in step 3 reads as `SUPERVISOR_CA`.
+login in step 3 reads as `SUPERVISOR_CA`. Then go on to step 2.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -171,7 +171,8 @@ its Supervisor.
 Run this right before you create the context (or, in a new terminal, before a renewal): the login
 reads the password from this terminal, so it is never on a command line or in your shell history.
 Paste this line on its own, then type the password; nothing is shown as you type (PowerShell shows
-`*`). Afterwards the password waits in this terminal for the next block.
+`*`). Afterwards the password waits in this terminal for the next block, which creates the
+context.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -192,14 +193,15 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 Run this once per Supervisor on this machine, after steps 1 and 2, to log in; the later blocks of
 this guide work through this login. It logs you in to the Supervisor with the VCF CLI, as your SSO
-user `SSO_USERNAME` with the password from step 2, and checks the Supervisor's certificate against
+user with the password from step 2, and checks the Supervisor's certificate against
 `SUPERVISOR_CA` (step 1's vCenter CA, or `<SUPERVISOR_CONTEXT>.crt` from the Alternative below).
-Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name, and `SSO_USERNAME` to your
-SSO user. The login is saved in
-`~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig`, a kubeconfig of its own (the file kubectl reads to find
-a cluster and log in to it), as the context (a saved "this server, as this user" entry) named
-`SUPERVISOR_CONTEXT` (`supervisor`). Your other kubeconfigs are not changed. **A few failed logins
-in a row lock the SSO user for some minutes**, so type the password carefully.
+The login is saved in `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig`, a kubeconfig of its own (the file
+kubectl reads to find a cluster and log in to it), as the context (a saved "this server, as this
+user" entry) named `SUPERVISOR_CONTEXT` (`supervisor`). Your other kubeconfigs are not changed.
+Next: [Check your vSphere Namespace](#check-your-vsphere-namespace). Run it again with the same
+name and it stops: [Log out](#log-out) first. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP
+address or DNS name, and `SSO_USERNAME` to your SSO user. **A few failed logins in a row lock the
+SSO user for some minutes**, so type the password carefully.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -318,7 +320,8 @@ check for this login.
 Run this right before you create the context (or, in a new terminal, before a renewal): the login
 reads the password from this terminal, so it is never on a command line or in your shell history.
 Paste this line on its own, then type the password; nothing is shown as you type (PowerShell shows
-`*`). Afterwards the password waits in this terminal for the next block.
+`*`). Afterwards the password waits in this terminal for the next block, which creates the
+context.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -339,13 +342,14 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 Run this once per Supervisor on this machine, after step 1, to log in when you have no CA; the
 later blocks of this guide work through this login. It logs you in to the Supervisor with the VCF
-CLI, as your SSO user `SSO_USERNAME` with the password from step 1, without checking the
-Supervisor's certificate. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name,
-and `SSO_USERNAME` to your SSO user. The login is saved in
-`~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig`, a kubeconfig of its own (the file kubectl reads to find
-a cluster and log in to it), as the context (a saved "this server, as this user" entry) named
-`SUPERVISOR_CONTEXT` (`supervisor`). Your other kubeconfigs are not changed. **A few failed logins
-in a row lock the SSO user for some minutes**, so type the password carefully.
+CLI, as your SSO user with the password from step 1, without checking the Supervisor's
+certificate. The login is saved in `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig`, a kubeconfig of its
+own (the file kubectl reads to find a cluster and log in to it), as the context (a saved "this
+server, as this user" entry) named `SUPERVISOR_CONTEXT` (`supervisor`). Your other kubeconfigs are
+not changed. Next: [Check your vSphere Namespace](#check-your-vsphere-namespace). Run it again
+with the same name and it stops: [Log out](#log-out) first. Set `SUPERVISOR_ENDPOINT` to the
+Supervisor's IP address or DNS name, and `SSO_USERNAME` to your SSO user. **A few failed logins in
+a row lock the SSO user for some minutes**, so type the password carefully.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -452,9 +456,10 @@ Later logins are checked against the Supervisor's certificate, fetched once. Its
 
 Run this when you cannot get vCenter's CA but your vCenter administrator can give you the
 Supervisor certificate's fingerprint. It downloads the Supervisor's own certificate, saves it as
-`~/.kube/<SUPERVISOR_CONTEXT>.crt` and prints its fingerprint. Compare the fingerprint with your
-vCenter administrator's before you log in with it. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP
-address or DNS name.
+`~/.kube/<SUPERVISOR_CONTEXT>.crt` and prints its fingerprint; run it again (after the certificate
+is renewed) and it replaces that file. Compare the fingerprint with your vCenter administrator's
+before you log in with it in step 3 below. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address
+or DNS name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -529,8 +534,9 @@ step 1).
 
 Run this block right after you log in, to check that your Supervisor login works: it checks that
 your SSO user can see your vSphere Namespace, and lists the VKS clusters in it
-(`clusters.cluster.x-k8s.io`, the Supervisor's list of VKS clusters). It changes nothing. The
-`NAME` column gives the cluster name that the next steps ask for as `VKS_CLUSTER`. Set
+(`clusters.cluster.x-k8s.io`, the Supervisor's list of VKS clusters). It changes nothing, so you
+may run it again at any time. The `NAME` column gives the cluster name that the next steps ask for
+as `VKS_CLUSTER`; next, get that cluster's kubeconfig (one of the next two sections). Set
 `VKS_NAMESPACE` to your vSphere Namespace's name.
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -602,8 +608,10 @@ the VCF CLI or a Supervisor login on this machine; you need only kubectl afterwa
 Run this after the download, because the browser saves the file as `<cluster>-kubeconfig.yaml`
 in your downloads folder, readable by other users of this machine. It moves the file to
 `~/.kube/<cluster>.kubeconfig`, readable only by you, then lists the cluster's nodes (its VMs:
-control plane and workers) to show it works. Set `DOWNLOADED` to where the browser saved it;
-on WSL, a browser on Windows saves it under `/mnt/c/Users/<you>/Downloads`.
+control plane and workers) to show it works. When the file expires, download it again and run
+this again: it replaces the old file. Next: [Use the VKS cluster](#use-the-vks-cluster). Set
+`VKS_CLUSTER` to the cluster's name and `DOWNLOADED` to where the browser saved the file; on WSL, a
+browser on Windows saves it under `/mnt/c/Users/<you>/Downloads`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -667,12 +675,13 @@ if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFI
 ## Get the VKS cluster's kubeconfig
 
 Or, with kubectl and your Supervisor login: run this instead of the vSphere Client download when
-you are logged in to the Supervisor in this terminal. It reads the same file from the Supervisor,
+you are logged in to the Supervisor on this machine. It reads the same file from the Supervisor,
 saves it as `~/.kube/<cluster>.kubeconfig` (on Linux, macOS and WSL, readable only by you), then
 lists the cluster's nodes (its VMs: control plane and workers) to show it works. It is the
 cluster's shared administrator login
 ([what the file is](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)): keep it
-private.
+private. When the file expires, run this again: it replaces the old file. Next:
+[Use the VKS cluster](#use-the-vks-cluster).
 Set `VKS_NAMESPACE` to your vSphere Namespace's name, and `VKS_CLUSTER` to a name from the `NAME`
 column of [Check your vSphere Namespace](#check-your-vsphere-namespace).
 
@@ -758,8 +767,9 @@ Pick one of the two ways.
 ### Make it the default in this terminal
 
 Run this when you will work with this one VKS cluster in this terminal: it points `KUBECONFIG` at
-the cluster's kubeconfig for this terminal only, and changes no file. Every `kubectl` command in
-this terminal then goes to the VKS cluster.
+the cluster's kubeconfig for this terminal only, and changes no file. It prints the name of the
+context it uses. Every `kubectl` command in this terminal then goes to the VKS cluster. Set
+`VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -787,7 +797,7 @@ read; a new terminal has them back.
 
 Use this way when this terminal should keep reading your other kubeconfigs: add `--kubeconfig`
 with the VKS cluster's kubeconfig to every `kubectl` command; nothing else changes, in any
-terminal. For example, this lists the cluster's nodes:
+terminal. For example, this lists the cluster's nodes (set `VKS_CLUSTER` to the cluster's name):
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -817,7 +827,7 @@ expired ([how long it works](KUBECONFIG.md#the-files-the-guides-make)); download
 Optional: run this once after you get the kubeconfig, because kubectl must be within one minor
 version of the cluster to be supported (the middle number: 1.36, 1.37 and 1.38 for a 1.37
 cluster). It asks the cluster for its version and changes nothing. It prints both versions, so
-you can tell whether to install another kubectl:
+you can tell whether to install another kubectl. Set `VKS_CLUSTER` to the cluster's name:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -862,7 +872,8 @@ server (Unauthorized)` or `… (the server has asked for the client to provide c
 `vcf` command answers `Unable to read password from terminal` or `the server has asked for the
 client to provide credentials`: the Supervisor login lasts about 10 hours. It logs you in again
 with the password in this terminal and keeps the context `SUPERVISOR_CONTEXT`; afterwards the
-contexts in its kubeconfig work again, with a new token. In a new terminal, first run the password
+contexts in its kubeconfig work again, with a new token (the temporary key from your SSO login).
+While the login still lasts, it skips the renewal. In a new terminal, first run the password
 step of the Create section you used, and mind the lock-out. Set `SUPERVISOR_CA` to the file you
 created the context with (the vCenter CA, or `<SUPERVISOR_CONTEXT>.crt`), or to `""` if you
 created it without CA.
@@ -951,10 +962,10 @@ renewal: it is a login of its own
 
 Run this when you are done with the Supervisor on this machine, or before you create the context
 of the same `SUPERVISOR_CONTEXT` again (an ended login needs only the renewal above). It deletes
-the Supervisor login with its namespace contexts, its kubeconfig, `vcf`'s log files (they hold a
-copy of the login token) and the password in this terminal. The VKS cluster's kubeconfig is kept;
-delete it with `rm` if you no longer need it.
-Afterwards `vcf context list` no longer shows the login.
+the Supervisor login with its contexts for your vSphere Namespaces, its kubeconfig, `vcf`'s log
+files (they hold a copy of the login token) and the password in this terminal. The VKS cluster's
+kubeconfig is kept; delete it with `rm` if you no longer need it.
+Afterwards `vcf context list` no longer shows the login; to log in again, create the context again.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

@@ -11,8 +11,10 @@
 
 This builds the web app in [`argocd/test-web-apps`](../argocd/test-web-apps) into an image with
 podman or docker, pushes it to a Harbor project, runs it in a VKS cluster from Harbor, and opens
-it in a browser and with `curl`. The page it shows names the engine that built it, so you can tell
-it from the same app pulled from Docker Hub.
+it in a browser and with `curl`. An image is an app packed with everything it needs to run; a
+cluster starts it as containers. A registry is a server that stores images, and Harbor is one: a
+Harbor project is a folder of images with its own access rights. The app's page names the engine
+that built it, so you can tell it from the same app pulled from Docker Hub.
 
 Every step works with podman or docker. Steps 3, 4 and 6 start with `CONTAINER_ENGINE="podman"`:
 keep it for podman, or change it to `CONTAINER_ENGINE="docker"` for docker. The app runs in its own
@@ -59,8 +61,12 @@ blocks below and go on with step 2. Otherwise download it with the blocks after 
 
 ### If you ran HARBOR.md step 9 on this machine: copy its CA
 
-This copies `harbor-ca.crt` from HARBOR.md's folder to `~/.config/vks-guides/image`, only if it is
-a certificate of the Harbor `HARBOR_FQDN` names, and prints its fingerprint.
+Run this if you ran HARBOR.md step 9 on this machine: it reuses the CA saved there, with no
+download. It copies `harbor-ca.crt` from HARBOR.md's folder to `~/.config/vks-guides/image`, only
+if that folder belongs to the Harbor `HARBOR_FQDN` names and the file is a certificate, and prints
+the CA's fingerprint, a short code that identifies it. You get `<HARBOR_FQDN>-ca.crt`, the file
+step 2 uses. Set `HARBOR_FQDN` to your Harbor's name and `SUPERVISOR_CONTEXT` to the one you used
+in HARBOR.md.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -133,11 +139,12 @@ the CA below. `FAILED: nothing copied`: the error above it says why.
 
 ### Otherwise: download it from Harbor
 
-This downloads Harbor's CA from Harbor, saves it as `<HARBOR_FQDN>-ca.crt.new` in
-`~/.config/vks-guides/image` and prints its fingerprint, a short code that identifies it. Harbor
-is not trusted yet, so the file could be a fake: keep it (next block) only if the fingerprint is
-the same as the fingerprint your Harbor administrator got in HARBOR.md step 9. In Harbor's web page,
-**Projects** → your project → **REGISTRY CERTIFICATE** downloads the same file as `ca.crt`.
+Run this if you did not run HARBOR.md step 9 on this machine. It downloads Harbor's CA from
+Harbor, saves it as `<HARBOR_FQDN>-ca.crt.new` in `~/.config/vks-guides/image` and prints its
+fingerprint, a short code that identifies it. You get a file to check, not one to use yet: Harbor
+is not trusted yet, so the file could be a fake. Keep it (next block) only if the fingerprint is
+the same as the fingerprint your Harbor administrator got in HARBOR.md step 9. Set `HARBOR_FQDN`
+to your Harbor's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -190,7 +197,12 @@ is right, this Harbor publishes no CA (your organization's certificate, HARBOR.m
 `harbor-ca.crt` from your Harbor administrator and save it as
 `~/.config/vks-guides/image/<HARBOR_FQDN>-ca.crt`.
 
-When the fingerprints are the same, keep the file:
+**In Harbor's web page:** **Projects** → your project → **REGISTRY CERTIFICATE** downloads the
+same file as `ca.crt`.
+
+When the fingerprints are the same, run this to keep the file. It renames
+`<HARBOR_FQDN>-ca.crt.new` to `<HARBOR_FQDN>-ca.crt`, replacing an earlier copy. You get the CA
+file that step 2 makes your engine trust.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -227,8 +239,10 @@ prove it for docker).
 
 #### podman
 
-This copies Harbor's CA into the folder in your home where podman looks for it, so podman trusts
-Harbor. No `sudo` needed.
+Run this on Linux if you use podman, after step 1. It copies Harbor's CA into
+`~/.config/containers/certs.d/<HARBOR_FQDN>`, the folder in your home where podman looks for it;
+no `sudo` needed. You get a podman that trusts Harbor for login, push and pull (step 4). Set
+`HARBOR_FQDN` to your Harbor's name.
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
@@ -247,9 +261,10 @@ fi
 
 #### docker
 
-This copies Harbor's CA into the system folder where docker looks for it, so docker trusts Harbor.
-Run it as a block of its own: it uses `sudo`. docker 29.5 or newer reads it at once, without a
-restart. podman reads this folder too.
+Run this on Linux if you use docker, after step 1. It copies Harbor's CA into
+`/etc/docker/certs.d/<HARBOR_FQDN>`, the system folder where docker looks for it (podman reads this
+folder too). You get a docker that trusts Harbor; docker 29.5 or newer reads it at once, without a
+restart. Set `HARBOR_FQDN` to your Harbor's name. Run it as a block of its own: it uses `sudo`.
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
@@ -261,8 +276,10 @@ sudo install -D -m 0644 "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt" "/etc/docker/certs.d/
 
 ### macOS
 
-podman and Docker Desktop read the CA from your login keychain. Add it there first (macOS asks
-for your password):
+Run this first on a Mac, after step 1: podman and Docker Desktop read Harbor's CA from your login
+keychain. It adds Harbor's CA to your login keychain as a trusted root CA. You get a keychain that
+trusts Harbor; the part for your engine below makes the engine read it. Set `HARBOR_FQDN` to your
+Harbor's name. macOS asks for your password.
 
 ```sh
 HARBOR_FQDN="harbor.example.test"
@@ -280,8 +297,9 @@ Let the podman machine import the keychain's CAs: `podman machine stop`, then
 
 #### docker
 
-- With Colima ([PREREQS.md](PREREQS.md#podman-and-docker-on-macos)), which does not read the
-  keychain, put the CA into its virtual machine:
+- With Colima ([PREREQS.md](PREREQS.md#podman-and-docker-on-macos)), run this too, because Colima
+  does not read the keychain. It copies Harbor's CA into `/etc/docker/certs.d/<HARBOR_FQDN>`
+  inside Colima's virtual machine. You get a docker in Colima that trusts Harbor:
 
   ```sh
   HARBOR_FQDN="harbor.example.test"
@@ -295,11 +313,13 @@ Let the podman machine import the keychain's CAs: `podman machine stop`, then
 
 ### Windows
 
-podman and Docker Desktop read the CA from your user's trusted root CAs. Add it there first:
-double-click `<your Harbor name>-ca.crt` in `%USERPROFILE%\.config\vks-guides\image` →
-**Install Certificate** → **Current User** → **Place all certificates in the following store** →
-**Trusted Root Certification Authorities** → **Finish** → **Yes**. Or run this (Windows asks you
-to confirm with **Yes**):
+Do this first on Windows, after step 1: podman and Docker Desktop read Harbor's CA from your user's
+trusted root CAs. In Windows: double-click `<your Harbor name>-ca.crt` in
+`%USERPROFILE%\.config\vks-guides\image` → **Install Certificate** → **Current User** → **Place
+all certificates in the following store** → **Trusted Root Certification Authorities** →
+**Finish** → **Yes**. Or run this, which adds Harbor's CA to your user's trusted root CAs the same
+way. You get a Windows user that trusts Harbor; the part for your engine below makes the engine
+read it. Set `$HARBOR_FQDN` to your Harbor's name. Windows asks you to confirm with **Yes**.
 
 ```powershell
 $HARBOR_FQDN = "harbor.example.test"
@@ -329,19 +349,18 @@ the new CA.
 
 ## 3. Build the image
 
-Build the image on this machine first; Harbor and the cluster do not change yet. This downloads
-the app (`Dockerfile`, `index.html`) and its three Kubernetes files (for steps 5 and 6) into
+Run this first, on this machine: it makes the image that step 4 pushes and step 6 runs; Harbor
+and the cluster do not change yet. It downloads the app (`Dockerfile`, `index.html`) and its three
+Kubernetes files (the files that tell the cluster what to run, for steps 5 and 6) into
 `~/.config/vks-guides/image`, replacing an earlier copy, marks the app's page with the engine's
-name, and builds the image.
+name, and builds the image. You get the image
+`<HARBOR_FQDN>/<HARBOR_PROJECT>/test-web-apps:v1-podman` on this machine (docker: `v1-docker`):
+the tag (version label) names the engine, so running the block once with each builds both.
 
-`IMAGE_PLATFORM="linux/amd64"` builds the image for the VKS cluster's nodes, which are x86-64
-machines. Keep it, also on a Mac with Apple silicon: without it, such a Mac builds an `arm64` image,
-and the cluster's pods then fail with `exec format error`.
-
-The first line picks the engine: `CONTAINER_ENGINE="podman"` builds with podman; change it to
-`CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) to build with docker. To
-build with both, run the block twice, once with each; the images get the tags (version labels)
-`v1-podman` and `v1-docker`.
+The first line picks the engine: keep `podman`, or change it to `docker`. Set `HARBOR_FQDN` to
+your Harbor's name and `HARBOR_PROJECT` to your project. Keep `IMAGE_PLATFORM="linux/amd64"`, also
+on a Mac with Apple silicon: the cluster's nodes are x86-64 machines, and without it such a Mac
+builds an `arm64` image whose pods fail with `exec format error`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -433,15 +452,13 @@ else {
 
 ## 4. Push it to Harbor
 
-Use the robot account from HARBOR.md step 10. Keep `HARBOR_ROBOT` in single quotes: the `$` is
-part of the name. A robot made in Harbor's web page under **Administration** is called
-`robot$<its name>`; one made by step 10's block is `robot$<your project>+push`.
+This uploads (pushes) the image from step 3 to your Harbor project, logged in as the robot account
+(a Harbor login for tools rather than people) from HARBOR.md step 10. Run the two blocks below in
+the same terminal: first the secret, then the push.
 
-The first line picks the engine: `CONTAINER_ENGINE="podman"` pushes the image podman built; change
-it to `CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) to push the image
-docker built. Built with both? Run the block once with each.
-
-Type the robot's secret in this terminal (it is not shown):
+The push block logs in with the robot's secret, so type it first, in this terminal. This line asks
+for it without showing it and keeps it in this terminal only, not in a file. You get the secret
+ready for the next block, which forgets it when it ends:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -455,11 +472,20 @@ printf 'Robot secret: '; IFS= read -rs HARBOR_ROBOT_SECRET; echo
 $HARBOR_ROBOT_SECRET = Read-Host -AsSecureString 'Robot secret'
 ```
 
-Then this uploads (pushes) your image to your Harbor project:
+Then run this, in the same terminal, once per engine you built with: keep
+`CONTAINER_ENGINE="podman"` to push the image podman built, or change it to
+`CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) for docker's. Before a
+second run, type the secret again: the block forgets it. The block:
 
-- it logs in to Harbor as the robot account and pushes the image;
-- it saves the image's digest, a unique ID of this exact build, so that step 6 runs this build;
-- it logs out again, so the robot's login is not left on this machine.
+- logs in to Harbor as the robot account and pushes the image;
+- saves the image's digest, a unique ID of this exact build, in
+  `~/.config/vks-guides/image/digest-<engine>`, so that step 6 runs this build;
+- logs out again, so the robot's login is not left on this machine.
+
+You get the image in your Harbor project, and its digest on this machine. Set `HARBOR_FQDN` and
+`HARBOR_PROJECT` as in step 3, and `HARBOR_ROBOT` to the robot's name in single quotes (the `$` is
+part of it): `robot$<its name>` for a robot made in Harbor's web page under **Administration**,
+`robot$<your project>+push` for one made by step 10's block.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -550,15 +576,20 @@ project now lists the repository `test-web-apps`.
 
 ## 5. Only for a private project: let the cluster pull from it
 
-Needed unless you made the project public (HARBOR.md step 10 makes it private by default). For a
-private one, the cluster needs a robot's login: this stores it in the cluster as the Secret
-`harbor-pull`, and step 6 makes the app use it. Use a robot that may only pull: in Harbor's web
-page, a robot with only **Repository** → **Pull** on this project ([HARBOR.md step
-10](HARBOR.md#create-a-robot-account), *In Harbor's web page*); the push robot also works, but it
-can also push. Set `HARBOR_PULL_ROBOT` to the name Harbor showed for it (`robot$` and the name you
-typed). Anyone who may read Secrets in the namespace can read it.
+Do this step only if your Harbor project is private (HARBOR.md step 10 makes it private by
+default); for a public project go on with step 6. The cluster can download (pull) images from a
+private project only with a robot's login. This step stores that login in the cluster as a pull
+secret: a Kubernetes Secret (the cluster's way to store a password) named `harbor-pull`, which
+step 6 makes the app use.
 
-Type the pull robot's secret in this terminal (it is not shown):
+Pick the robot the cluster logs in as. Best is one that may only pull: in Harbor's web page, a
+robot with only **Repository** → **Pull** on this project ([HARBOR.md step
+10](HARBOR.md#create-a-robot-account), *In Harbor's web page*); the push robot also works, but it
+can also push.
+
+The next block stores the pull robot's secret in the cluster, so type it first, in this terminal.
+This line asks for it without showing it and keeps it in this terminal only, not in a file. You
+get the secret ready for the next block, which forgets it when it ends:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -572,14 +603,17 @@ printf 'Pull robot secret: '; IFS= read -rs HARBOR_PULL_SECRET; echo
 $HARBOR_PULL_SECRET = Read-Host -AsSecureString 'Pull robot secret'
 ```
 
-Then this saves the pull robot's login in your VKS cluster. It creates:
+Then run this, in the same terminal, to save the pull robot's login in your VKS cluster. It
+creates:
 
 - the namespace `harbor-demo`, a separate area of the cluster for the app (if it is not there
   yet);
-- the Secret `harbor-pull`, the cluster's way to store a password, with the robot's name and
-  secret.
+- the Secret `harbor-pull`, with the robot's name and secret.
 
-The cluster's nodes log in to Harbor with it when they download the app's image in step 6.
+You get a cluster whose nodes log in to Harbor with that Secret when they download the app's image
+in step 6. Running it again replaces the Secret's login, for a new robot or secret. Set
+`VKS_CLUSTER` to your cluster's name and `HARBOR_PULL_ROBOT` to the name Harbor showed for the
+robot (`robot$` and the name you typed), in single quotes.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -656,19 +690,26 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 cluster's kubeconfig has expired; save it again ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)),
 type the pull robot's secret again (the line above the block) and run this block again.
 
+**Who can read it:** anyone who may read Secrets in the namespace `harbor-demo` can read the
+robot's secret.
+
 ## 6. Deploy the app
 
-This starts the app in your VKS cluster from the image you pushed to Harbor in step 4, which
-shows that the cluster can pull your own images from Harbor. It creates:
+Run this after step 4 (and step 5 for a private project). It starts the app in your VKS cluster
+from the image you pushed to Harbor in step 4, which shows that the cluster can pull your own
+images from Harbor. It creates:
 
 - the namespace `harbor-demo`, to keep the app apart from everything else;
 - the app itself: five pods (copies of the app, each a running container of your image);
 - a Service, which gives the app an address you can open from your machine (step 7).
 
 If you did step 5, the pods log in to Harbor with the Secret `harbor-pull`. The block waits until
-the five pods run, then checks that they run exactly the image you pushed, not an older one.
+the five pods run, then checks that they run exactly the image you pushed, not an older one. You
+get the app running in five pods, ready to open in step 7. Running it again with the other engine
+replaces the pods with that engine's image.
 
-The first line picks which push to run: `CONTAINER_ENGINE="podman"` runs the image podman pushed,
+Set `VKS_CLUSTER` to your cluster's name, and `HARBOR_FQDN` and `HARBOR_PROJECT` as in step 3. The
+first line picks which push to run: `CONTAINER_ENGINE="podman"` runs the image podman pushed,
 `CONTAINER_ENGINE="docker"` (PowerShell: `$CONTAINER_ENGINE = "docker"`) the one docker pushed.
 
 <details>
@@ -771,8 +812,10 @@ and read its last lines.
 
 ## 7. Open the app
 
-This shows that the app answers from your machine. It waits up to 2 minutes for the app's address,
-which the Supervisor's load balancer gives it, prints the address, and fetches the app's page.
+Run this after step 6 to see that the app answers from your machine. It waits up to 2 minutes for
+the app's address, which the Supervisor's load balancer gives its Service, prints the address, and
+fetches the app's page. You get the address to open in a browser and the page's heading. Set
+`VKS_CLUSTER` to your cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -838,7 +881,11 @@ else {
 
 ## 8. Remove it (optional)
 
-This deletes the app and its namespace from the cluster and the files this guide wrote.
+Run this when you no longer need the app. It deletes the namespace `harbor-demo` from the cluster,
+with the app, its Service and the Secret `harbor-pull`, and the folder `~/.config/vks-guides/image`
+on this machine (Harbor's CA file, the app's files and the digests). You get a cluster without the
+app; the image on this machine and in Harbor, and your engine's trust in Harbor, stay (below). Set
+`VKS_CLUSTER` to your cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
