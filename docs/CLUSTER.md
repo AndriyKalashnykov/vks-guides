@@ -79,7 +79,7 @@ the node images (OS) built for it; a cluster class is Broadcom's template for th
 |---|---|
 | name | lower-case letters, digits and `-`, a name no cluster in this namespace ever had |
 | Kubernetes release | the newest the create page offers |
-| VM class | `best-effort-small` (2 CPUs, 4 GB) ran this guide's clusters; Broadcom recommends `best-effort-medium` or larger, and never a small or xsmall class for workers that run apps (KB 446139). If the Supervisor runs the Metrics Aggregator ([OBSERVABILITY.md](OBSERVABILITY.md) step 11), each new cluster also runs Broadcom's monitoring add-ons, about 100 MiB per node |
+| VM class | `best-effort-medium` (2 CPUs, 8 GB) or larger, for the control plane and the workers: Broadcom recommends it, and never a small or xsmall class for workers that run apps (KB 446139); a `best-effort-small` (2 CPUs, 4 GB) control-plane node ran at 95% to 110% of its memory in use (measured on VKS 3.8). If the Supervisor runs the Metrics Aggregator ([OBSERVABILITY.md](OBSERVABILITY.md) step 11), each new cluster also runs Broadcom's monitoring add-ons, about 100 MiB per node |
 | storage class | one from step 1 |
 | control-plane nodes | `1`, or `3` for a cluster that must stay up when a node fails |
 | worker nodes | `1` or more |
@@ -206,8 +206,8 @@ right.
 
 5. **4. Node pools:** the table holds one pool with **Replicas** `1`. To change the number of
    workers, open the row's ⋮ menu, choose **Edit** and set **Replicas**. To give the workers
-   another VM class than the control plane (for example `best-effort-medium` workers with a
-   `best-effort-small` control plane), turn on **Overrides** at the bottom of that window, click
+   another VM class than the control plane (for example `best-effort-large` workers with a
+   `best-effort-medium` control plane), turn on **Overrides** at the bottom of that window, click
    **NEXT**, and select the class under **VM Class & Storage Class**; click **NEXT** through the
    other steps and **FINISH**. The row then shows the pool's class. Click **NEXT**.
 
@@ -692,7 +692,7 @@ spec:
           replicas: 1                   # <-- 6. worker nodes: 1 or more
     variables:
       - name: vmClass
-        value: best-effort-small        # <-- 7. a VM class
+        value: best-effort-medium       # <-- 7. a VM class
       - name: storageClass
         value: wcp-vmfs                 # <-- 7. a storage class
       - name: vsphereOptions
@@ -782,11 +782,11 @@ during the change the cluster has one node more for the control plane and one mo
      VM class of the namespace (step 9's first block lists them). A cluster made on the create page
      with **Overrides** has a `vmClass` under `controlPlane` or a node pool's `overrides` as well;
      change those too;
-   - for the size of the workers only (for example `best-effort-medium` workers with a
-     `best-effort-small` control plane), when the node pool has no `overrides` yet: add a line
+   - for the size of the workers only (for example `best-effort-large` workers with a
+     `best-effort-medium` control plane), when the node pool has no `overrides` yet: add a line
      below the line `name: node-pool-1` (your pool's name, under `machineDeployments`; under each
      pool you change), starting in the same column as `name:`, with the class you want:
-     `variables: {overrides: [{name: vmClass, value: best-effort-medium}]}`. The editor does not
+     `variables: {overrides: [{name: vmClass, value: best-effort-large}]}`. The editor does not
      indent a new line, so type the spaces. A wrong column either makes **SAVE** report a YAML
      syntax error, or saves nothing for the pool: after **SAVE**, reload the YAML and check that it
      shows four lines under the pool (`variables:`, `overrides:`, `- name: vmClass`, `value: …`);

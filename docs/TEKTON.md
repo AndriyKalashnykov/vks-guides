@@ -39,15 +39,15 @@ The blocks keep their files in `~/.config/vks-guides/tekton` (PowerShell:
 - for A, the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
   and the edit or owner role on the cluster's vSphere Namespace.
 
-**The VKS cluster to make.** One control-plane node of `best-effort-small` and one worker of
-`best-effort-medium` (2 CPUs, 8 GB) are enough for either way and this guide's pipeline
-([CLUSTER.md](CLUSTER.md)). Measured on a VKS 3.8 cluster with one `best-effort-small` worker:
-Tekton reserved about 0.6 GiB of memory with A and 0.2 GiB with B, and while it ran it used at
-most about 0.4 GiB (A) and 0.2 GiB (B). Add a worker
-([CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)) if the cluster also runs other
-apps, such as the image builds of [CICD.md](CICD.md). Broadcom says not to use a small or xsmall
-class for workers that run apps, and to use a guaranteed class for production
-([KB 446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html)).
+**The VKS cluster to make.** One control-plane node and one worker, both `best-effort-medium` (2
+CPUs, 8 GB; [CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)), are enough for either
+way and this guide's pipeline. Measured on a VKS 3.8 cluster with one `best-effort-small` worker:
+Tekton reserved about 0.6 GiB of memory with A and 0.2 GiB with B, and while it ran it used at most
+about 0.4 GiB (A) and 0.2 GiB (B). Add a worker ([CLUSTER.md step
+10](CLUSTER.md#10-resize-the-cluster-optional)) if the cluster also runs other apps, such as the
+image builds of [CICD.md](CICD.md). Broadcom says not to use a small or xsmall class for workers
+that run apps, and to use a guaranteed class for production ([KB
+446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html)).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):

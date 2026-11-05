@@ -43,18 +43,19 @@ Run the steps in order. Who does what:
 
 The cluster for Keycloak:
 
-1. Its vSphere Namespace offers the VM class `best-effort-small` (2 CPUs, 4 GB) or larger
+1. Its vSphere Namespace offers the VM class `best-effort-medium` (2 CPUs, 8 GB) or larger
    ([NAMESPACE.md step 8](NAMESPACE.md#8-check-the-namespace) lists them under `VM classes:`; a
    vCenter administrator adds one with [NAMESPACE.md step 6](NAMESPACE.md#6-add-the-vm-classes)).
    Keycloak uses about 0.5 to 0.8 GB and PostgreSQL under 0.1 GB, and they ask for
-   1.5 GB of a `best-effort-small` worker's 2.9 GB. Choose `best-effort-medium` (8 GB) for many
-   users or other apps in the same cluster.
+   1.5 GB of the memory a worker hands out (about 2.9 GB on `best-effort-small`, 6 GB on
+   `best-effort-medium`); [CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values) says why
+   not `best-effort-small`.
 2. Create the cluster with
    [CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), with that
    `vmClass`, one control-plane node and one worker (`replicas: 1` for both). With
-   `best-effort-small` it takes about 50 GB of the namespace's storage (two nodes of 20 GB disk plus
-   4 GB memory each, and Keycloak's 2 GB volume),
-   and 48 GB more while it updates ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)).
+   `best-effort-medium` it takes about 58 GB of the namespace's storage (two nodes of 20 GB disk
+   plus 8 GB memory each, and Keycloak's 2 GB volume), and 56 GB more while it updates
+   ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)).
    Keep it for Keycloak: the clusters that log in through Keycloak are other clusters
    ([KEYCLOAK.md](KEYCLOAK.md)). To change its size later, see
    [CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional).

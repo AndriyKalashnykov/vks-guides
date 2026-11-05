@@ -34,12 +34,12 @@ The blocks keep their files in `~/.config/vks-guides/monitoring` (PowerShell:
   beside what the cluster's nodes take from it ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values));
 - a VKS cluster with the workers below.
 
-**The VKS cluster to make.** One control-plane node of `best-effort-small` and one worker of
-`best-effort-medium` (2 CPUs, 8 GB) are enough for this guide ([CLUSTER.md](CLUSTER.md)). Add a
-worker ([CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)) if the cluster also runs
-other apps. Broadcom says not to use a small or xsmall class for workers that run apps, and to use
-a guaranteed class for production
-([KB 446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html)).
+**The VKS cluster to make.** One control-plane node and one worker, both `best-effort-medium` (2
+CPUs, 8 GB; [CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)), are enough for this
+guide. Add a worker ([CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)) if the
+cluster also runs other apps. Broadcom says not to use a small or xsmall class for workers that run
+apps, and to use a guaranteed class for production ([KB
+446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html)).
 
 Measured on a VKS 3.8 cluster with one `best-effort-medium` worker, an hour after the install: the
 stack used about 0.7 GB of memory (Grafana 0.4 GB, Prometheus 0.2 GB), with the worker at 8% CPU
