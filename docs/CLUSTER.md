@@ -21,12 +21,24 @@
 You create the cluster in the vSphere Client, on your vSphere Namespace's **Resources** tab (the
 Local Consumption Interface). Steps 3 to 5 are clicks; the other steps use a terminal and need
 [kubectl](KUBECTL.md), [jq](PREREQS.md) and a [Supervisor login](LOGIN.md). The names and
-screenshots of steps 3 to 5 are from the vSphere Client for VCF 9.1.1 with VKS 3.7; the rest ran on
-VKS 3.8. The screenshots show example names; yours differ. Steps 3 to 5 were tested as a vCenter administrator; the terminal steps also as a user
-with only **Namespaces Edit**.
+screenshots of steps 3 to 5 are from the vSphere Client for VCF 9.1.1; the screenshots show example
+names; yours differ.
 
 To create the cluster from a YAML file with kubectl instead of clicks, see
 [step 9](#9-create-the-cluster-with-kubectl-and-a-yaml-file).
+
+The steps (step 9 replaces steps 3 to 5; 8 and 10 are optional):
+
+1. [Check the namespace](#1-check-the-namespace)
+2. [Choose a name and the values](#2-choose-a-name-and-the-values)
+3. [Open the create page](#3-open-the-create-page)
+4. [Fill in the create page](#4-fill-in-the-create-page)
+5. [Review and create](#5-review-and-create)
+6. [Wait for the cluster](#6-wait-for-the-cluster)
+7. [Get the kubeconfig and check the cluster](#7-get-the-kubeconfig-and-check-the-cluster)
+8. [Delete the cluster (optional)](#8-delete-the-cluster-optional)
+9. [Create the cluster with kubectl and a YAML file](#9-create-the-cluster-with-kubectl-and-a-yaml-file) (instead of steps 3 to 5)
+10. [Resize the cluster (optional)](#10-resize-the-cluster-optional)
 
 ## Prerequisites
 
@@ -42,8 +54,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|
-| your browser | vCenter (the vSphere Client) | 443 | creating and watching the cluster (steps 3 to 6) |
-| your machine | the Supervisor's address | 443 | kubectl with the Supervisor kubeconfig (steps 1, 2, 6 to 9) |
+| your browser | vCenter (the vSphere Client) | 443 | the storage limit, creating, watching and resizing the cluster (steps 2 to 6, 10) |
+| your machine | the Supervisor's address | 443 | kubectl with the Supervisor kubeconfig (steps 1, 2, 6 to 10) |
 | your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 7, 8) |
 
 ## 1. Check the namespace
@@ -98,7 +110,9 @@ quota set for the namespace*.
 Never reuse a cluster's name in the same namespace: a new cluster under an old name can get the
 old cluster's address and never become available. After `dev-1`, take `dev-2`.
 
-This checks that nothing in the namespace holds the name.
+Run this before you create the cluster, with the name you chose. It checks that nothing in the
+namespace holds the name, neither a cluster nor its address entry, and changes nothing. You then
+know whether the name is free to use now.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -211,9 +225,10 @@ Available**, **Age** `< 1 min`.
 
 ## 6. Wait for the cluster
 
-Creating the cluster takes a few minutes. Watch its row in the vSphere Client (the refresh arrow
-reloads the list), or run this block: it shows the cluster and each of its machines (the virtual
-machines that become its nodes), with their state. Run it again until the cluster is available.
+Creating the cluster takes a few minutes, and you can use it only once it is available. Watch its
+row in the vSphere Client (the refresh arrow reloads the list), or run this block after **FINISH**
+(or step 9): it shows the cluster and each of its machines (the virtual machines that become its
+nodes), with their state, and changes nothing. Run it again until the cluster is available.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -241,15 +256,17 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 ```
 
 **Expect:** the cluster with `AVAILABLE` `True`, and each machine `Running`; in the client,
-**Available** with a green tick. A cluster of one control-plane node and one worker took about
-5 minutes on a small lab; the first cluster of a Kubernetes release takes longer, while vCenter
-downloads its node image.
+**Available** with a green tick. The first cluster of a Kubernetes release takes longer, while
+vCenter downloads its node image.
 
 ![The list with the cluster Available](img/cluster/12-cluster-available.png)
 
-**If not:** still `False` after 30 minutes. First check the cluster's address: a cluster can get
-stuck on an address left over from an older cluster of the same name. This prints the address the
-cluster uses and the address its load balancer got; they must be the same.
+**If not:** still `False` after 30 minutes: run the three blocks below, in order, to find why.
+
+Run this first when the cluster stays `False`: a cluster can get stuck on an address left over
+from an older cluster of the same name. It prints the address the cluster uses and the address its
+load balancer got, and changes nothing. If the two addresses are the same, the address is not
+the cause.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -282,8 +299,9 @@ if ($LASTEXITCODE -eq 0) { "cluster address: $(if ($E) { $E } else { 'none' }), 
 load-balancer entry that gives the cluster its address): wait, the address comes first. Two different addresses: the cluster kept an old address; delete it
 (step 8) and create it again under a new name.
 
-If the addresses match, this shows why the cluster waits: read the `Conditions` (the cluster's
-state checks) and the `Events` (what happened to it) at the end.
+Run this next if the two addresses match, to learn why the cluster waits. It describes the cluster
+and changes nothing. Read the `Conditions` (the cluster's state checks) and the `Events` (what
+happened to it) at the end of its output.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -307,7 +325,9 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE describe clusters.cluster.x-k8s.io $VKS_CLUSTER
 ```
 
-If no event says why, this shows whether vSphere could make each node's virtual machine.
+Run this last if no event says why the cluster waits. It checks, for each machine of the cluster,
+whether vSphere could make its virtual machine, and changes nothing. You get one line per machine,
+with vSphere's reason when it could not.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -355,7 +375,9 @@ Get the cluster's kubeconfig (the file that lets kubectl reach the cluster), in 
 Client ([Download the VKS cluster's kubeconfig from the vSphere Client](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client))
 or with the VCF CLI ([Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig)),
 and run [Match kubectl to the cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
-Then this checks the nodes and the default storage class.
+Then run this once the cluster is available, to check that every node is ready for apps. It reads
+the cluster with that kubeconfig and changes nothing. It lists the nodes and names the storage
+class an app's disk gets when the app names none.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -405,14 +427,16 @@ vSphere Namespace and keep their storage
 ([Broadcom KB 402764](https://knowledge.broadcom.com/external/article/402764)). A cluster that
 ArgoCD manages comes back after you delete it here; delete it in ArgoCD instead.
 
-First run the block in [step 2](#2-choose-a-name-and-the-values) with your cluster's name.
+First run the block in [Check that the name is free](#check-that-the-name-is-free) (step 2) with
+your cluster's name.
 
 **Expect:** `in use:`, then `cluster.cluster.x-k8s.io/<name>` and
 `virtualmachineservice.vmoperator.vmware.com/<name>` (the cluster and its address entry). If it says `none now` or `unknown`, stop:
 the name is wrong, or you may not read it.
 
-Then this lists the disks of the cluster's apps: first as the cluster sees them, then as they
-sit in the vSphere Namespace.
+Then run this before the delete, to know which disks the cluster's apps made: they outlive the
+cluster. It lists them, first as the cluster sees them, then as they sit in the vSphere Namespace,
+and changes nothing. Keep the list to compare with after the delete.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -443,7 +467,9 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get persistentvolu
 **Expect:** `No resources found` twice, or the disks listed. Each disk listed stays after the
 delete and keeps its storage; the optional last block of this step deletes them all.
 
-Then this deletes the cluster.
+Then run this, with the disk list kept, to delete the cluster. It deletes the cluster and its virtual
+machines, and returns at once without waiting. Once the delete finishes, the cluster is gone, and
+the disks listed above stay.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -469,16 +495,17 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete clusters.cl
 
 **Expect:** `cluster.cluster.x-k8s.io "<name>" deleted` (newer kubectl: `… deleted from <your
 namespace> namespace`). Then run the block in
-[step 2](#2-choose-a-name-and-the-values) again until it says `none now`, and the disk block
+[Check that the name is free](#check-that-the-name-is-free) again until it says `none now`, and the disk block
 above: its first command now fails (the cluster is gone); its second list shows the disks the
 cluster left behind.
 
 **If not:** `Forbidden`: your role on the namespace cannot delete clusters; ask for the
 **Namespaces Edit** role.
 
-Optional: the deleted cluster's disks still use the vSphere Namespace's storage. **This deletes
-them (the second list of the disk block above) and what they hold, for good.** It deletes nothing
-while a cluster of that name exists.
+Optional: run this after the delete, when nobody needs the data on the deleted cluster's disks:
+they still use the vSphere Namespace's storage. **This deletes them (the second list of the disk
+block above) and what they hold, for good.** It deletes nothing while a cluster of that name
+exists. Afterwards the second list of the disk block is empty.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -520,10 +547,12 @@ Do not create the next cluster under the same name. The cluster's kubeconfig sta
 ## 9. Create the cluster with kubectl and a YAML file
 
 This replaces steps 3 to 5: you write the cluster as a YAML file and create it with kubectl. Run
-steps 1 and 2 first. Tested as a vCenter administrator.
+steps 1 and 2 first.
 
-1. This lists the values the file needs: the Kubernetes releases you may use, the newest cluster
-   class, and the namespace's VM classes and storage classes.
+1. Run this before you write the file, to know which values your Supervisor and namespace accept.
+   It lists the Kubernetes releases you may use, the newest cluster class, and the namespace's VM
+   classes and storage classes, and changes nothing. You copy its values into the file in the
+   next step.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -651,8 +680,9 @@ spec:
 Leave `class: node-pool` (the node pool type the cluster class defines), `serviceDomain` and
 `classRef.namespace` as they are.
 
-3. This checks the file on the Supervisor without creating anything (`--dry-run=server`), then
-   creates the cluster.
+3. Run this once the file is saved, to create the cluster from it. It first checks the file on
+   the Supervisor without creating anything (`--dry-run=server`), and creates the cluster only if
+   that check passes. Afterwards the cluster is being created, as after **FINISH** in step 5.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -700,11 +730,10 @@ Then go on with [step 6](#6-wait-for-the-cluster). Step 8 deletes a cluster made
 This changes the size of a running cluster's nodes (its VM class) or its number of workers, in the
 vSphere Client. VKS replaces the nodes one at a time: it makes a new node first, moves the pods,
 then deletes the old one. The cluster keeps its address, and apps with a volume keep their data.
-It took about 3 minutes for a cluster of 1 control-plane node and 1 worker.
 
-Before you start, check the namespace's storage limit as in [step 2](#2-choose-a-name-and-the-values):
+Before you start, check the namespace's storage limit as in
+[step 2](#check-the-namespaces-storage-limit):
 during the change the cluster has one node more for the control plane and one more per node pool.
-Tested as a vCenter administrator.
 
 1. In the vSphere Client, open your namespace, its **Resources** tab, and **Kubernetes service**.
    On your cluster's row, open the ⋮ menu and choose **View YAML**.
@@ -733,8 +762,10 @@ While the nodes are replaced, the cluster's status shows an ⓘ, and its YAML's 
 
 ![The cluster Available with an info icon, and its YAML status: Rolling 1 replicas with outdated spec](img/cluster/25-rolling.jpg)
 
-This shows the VM class the cluster asks for, the class of each node, and whether all nodes are up
-to date. Run it until both lines say `True`.
+Run this after **SAVE**, to follow the change and know when it is done. It shows the VM class the
+cluster asks for, the class of each node, and whether all nodes are up to date, and changes
+nothing. Run it again until every node is of the new class (or the number of workers is the one you
+set), `PoweredOn`, and both lines say `True`: then the resize is done.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -780,7 +811,7 @@ and `control plane up to date: True`, `workers up to date: True`.
 **If not:**
 - After 20 minutes still a node of the old class, or a node that never powers on: the `describe`
   block in [step 6](#6-wait-for-the-cluster)'s **If not** names the reason. A namespace storage limit without room for the new nodes
-  ([step 2](#2-choose-a-name-and-the-values)) stops the change. Fix the cause, or set the value
+  ([step 2](#check-the-namespaces-storage-limit)) stops the change. Fix the cause, or set the value
   back, and save again.
 - Nodes of the old class after the change finished: the cluster has a `vmClass` under `overrides`
   too (step 2 above).

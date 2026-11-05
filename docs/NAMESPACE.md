@@ -25,6 +25,19 @@ If you only use a namespace someone else made, go to
 lets users create namespaces from a template), you can instead create the namespace from a YAML
 file with kubectl: [step 10](#10-create-a-namespace-with-kubectl-and-a-yaml-file).
 
+The steps:
+
+1. [Find the Supervisor's address and vCenter's CA](#1-find-the-supervisors-address-and-vcenters-ca) (vCenter administrator)
+2. [Find the storage policies and the VM classes](#2-find-the-storage-policies-and-the-vm-classes) (vCenter administrator)
+3. [Create the namespace](#3-create-the-namespace) (vCenter administrator)
+4. [Give users a role](#4-give-users-a-role) (vCenter administrator)
+5. [Add a storage policy](#5-add-a-storage-policy) (vCenter administrator)
+6. [Add the VM classes](#6-add-the-vm-classes) (vCenter administrator)
+7. [Set a storage limit (optional) and check the status](#7-set-a-storage-limit-optional-and-check-the-status) (vCenter administrator)
+8. [Check the namespace](#8-check-the-namespace) (each user of the namespace)
+9. [Remove the namespace (optional)](#9-remove-the-namespace-optional) (vCenter administrator)
+10. [Create a namespace with kubectl and a YAML file](#10-create-a-namespace-with-kubectl-and-a-yaml-file) (a user the Namespace Service allows)
+
 ## Prerequisites
 
 - a vCenter user who may create vSphere Namespaces (a vCenter administrator), and a Supervisor
@@ -36,7 +49,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|
-| your browser | vCenter (`https://<your vCenter>/ui`) | 443 | the vSphere Client (steps 1 to 7, 9) |
+| your browser | vCenter (`https://<your vCenter>/ui`) | 443 | the vSphere Client (steps 1 to 7, 9, 10) |
 | your machine | the Supervisor's address | 443 | kubectl (steps 8 to 10) |
 
 ## 1. Find the Supervisor's address and vCenter's CA
@@ -56,11 +69,13 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
    ![vCenter's start page: the grey box on the right, with Download trusted root CA certificates as the last link under For Developers](img/namespace/02-vcenter-ca.jpg)
 
 The file holds vCenter's CAs (certificate authorities). LOGIN.md uses them to check that a login
-reaches your real Supervisor. This prints each CA's fingerprint, a short code that identifies it;
-it changes nothing on your machine. Give them to your users: LOGIN.md's
-[Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca) asks them to
-compare their download with them. Trust them only if your browser showed no certificate warning
-for vCenter.
+reaches your real Supervisor.
+
+Run this once, before you hand out the Supervisor's address, because LOGIN.md's
+[Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca) asks your users to
+compare their download with these CAs. It prints each CA's fingerprint, a short code that
+identifies it, and changes nothing on your machine. You then have the fingerprints to give your
+users. Trust them only if your browser showed no certificate warning for vCenter.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -245,7 +260,9 @@ Log in to the Supervisor first ([LOGIN.md](LOGIN.md)). If you were logged in bef
 namespace existed, or before your user got its role, [log out](LOGIN.md#log-out) and log in
 again.
 
-This checks that the namespace exists and that your user may create VKS clusters in it.
+Run this before you create a VKS cluster, in a namespace you made or one someone gave you. It
+checks that the namespace exists and that your user may create VKS clusters in it, and changes
+nothing. Two answers, your namespace and `yes`, mean you may go on.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -279,9 +296,11 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
   **Namespaces Edit** role on the namespace (step 4).
 - `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
-Before you create a VKS cluster, this lists what the namespace offers it: VM classes, storage
-classes, Kubernetes releases (the Kubernetes versions a cluster can run) and cluster classes
-(Broadcom's templates for a cluster).
+Run this next, still before you create a VKS cluster, to see whether the namespace offers what
+a cluster needs. It lists what the namespace offers a cluster: VM classes, storage classes,
+Kubernetes releases (the Kubernetes versions a cluster can run) and cluster classes (Broadcom's
+templates for a cluster). It changes nothing. You then know which VM classes and storage
+classes you can choose in [CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -380,8 +399,9 @@ one name under `Storage classes:`, then `Kubernetes releases ready to use:` and
 Broadcom asks you to delete its VKS clusters, VMs and vSphere Pods first; the window that asks
 you to confirm says the same.
 
-Before you remove it, this lists the VKS clusters, VMs, volumes and pods (running containers)
-left in it:
+Run this right before you remove the namespace, so that you do not delete work someone still
+uses. It lists the VKS clusters, VMs, volumes and pods (running containers) left in it, and
+changes nothing. An empty list means the namespace may go:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -437,7 +457,7 @@ not end. Do not create a namespace of the same name meanwhile.
 This replaces steps 3, 5 and 6. The namespace takes its storage policy, network and VM classes
 from the Supervisor's **Namespace Service** template, so you add none yourself. You get a role on
 the namespace; other users get one only from a vCenter administrator
-([step 4](#4-give-users-a-role)). Tested as a vCenter administrator only.
+([step 4](#4-give-users-a-role)).
 
 Broadcom is retiring the Namespace Service: the vSphere Client says it *will be deprecated in
 the next major release of VCF* and points to VCF Automation. If VCF Automation creates your
@@ -456,7 +476,9 @@ namespaces, do not use this step.
    If the service is off, the administrator turns it on and fills in the template:
    [Create and Configure a Self-Service Namespace Template](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/configuring-and-managing-vsphere-namespaces/provision-a-self-service-namespace/create-and-configure-a-self-service-namespace.html).
 
-2. Log in to the Supervisor ([LOGIN.md](LOGIN.md)). This checks that you may create namespaces.
+2. Log in to the Supervisor ([LOGIN.md](LOGIN.md)). Run this before you write the YAML file, to
+   learn whether the Namespace Service lets your user create namespaces. It asks the Supervisor
+   and changes nothing. The answer `yes` means you may go on to the file.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -494,8 +516,10 @@ metadata:
 The name: lower-case letters, digits and `-`, not used by another namespace, and not starting
 with `vmware-system-` or `svc-`. It cannot be changed later.
 
-4. This checks the file on the Supervisor without creating anything (`--dry-run=server`), then
-   creates the namespace.
+4. Run this once the file is saved, to create the namespace. It first checks the file on the
+   Supervisor without creating anything (`--dry-run=server`), then creates the namespace. You
+   then have a namespace with the template's storage policy, network and VM classes, and a role
+   on it.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -536,8 +560,9 @@ In the vSphere Client the namespace is listed under **Supervisor Management** â†
 
 ![The Namespaces tab: two namespaces made with kubectl, Running, Storage 0 | 108 GB](img/namespace/16-namespaces-kubectl.png)
 
-To remove the namespace, first run the block in step 9 to check that it is empty. Then this
-deletes the namespace from the Supervisor:
+When you no longer need a namespace you created with this step, first run the block in step 9 to
+check that it is empty. Then this deletes the namespace from the Supervisor. Afterwards the
+vSphere Client's Namespaces tab shows it as Removing until it is gone:
 
 **Linux, macOS, WSL (bash or zsh):**
 

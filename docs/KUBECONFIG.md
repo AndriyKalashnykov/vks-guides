@@ -9,9 +9,17 @@
 A kubeconfig is the file kubectl reads to find a cluster and log in to it: the cluster's address,
 its CA (so kubectl knows it is the real server), and a login. The login decides what the file is
 worth: some files carry a key that works for anyone holding a copy, others only tell kubectl which
-program to run for a sign-in. This guide lists the files the guides make, shows how to use them,
-which ones may be handed over, how to merge several into one, and how `vcf` and `kubectl` keep
-your logins.
+program to run for a sign-in. [The files the guides make](#the-files-the-guides-make) lists each file
+and whether it may be sent. The steps:
+
+1. [See what a file holds](#1-see-what-a-file-holds): you, before you use or send a file.
+2. [Use a file](#2-use-a-file): you, or the person you gave it to.
+3. [Hand a file over](#3-hand-a-file-over): you send it; the person saves it.
+4. [Merge files into `~/.kube/config`](#4-merge-files-into-kubeconfig-optional): optional, on your
+   machine.
+
+[How `vcf` and `kubectl` keep your logins](#how-vcf-and-kubectl-keep-your-logins) explains the
+files a login writes, and how to clean up a login that went into your own `~/.kube/config`.
 
 ## Prerequisites
 
@@ -53,7 +61,10 @@ user, `SYSTEM` and `Administrators`, until [step 3](#3-hand-a-file-over) leaves 
 
 ## 1. See what a file holds
 
-This shows who may read the file and what kind of login it holds, without printing any secret.
+Run this before you use a kubeconfig you were given, or before you send one, to know what it is
+worth. It lists the file's permissions and the lines that show its server and its kind of login,
+without printing any secret, and changes nothing. You then know who may read the file and whether
+it holds a key, a token or a sign-in command.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -102,7 +113,11 @@ Send only a file whose *send it?* column in [the table](#the-files-the-guides-ma
 file with no secret (`yes`) may go by email or chat. A file with a token or a key (`to the team
 only`, `to that person only`) goes only through a password manager's share or as an encrypted
 file, never by email, chat or a shared folder; then delete your copy. The person saves it in their
-`.kube` folder and makes it readable only by them:
+`.kube` folder.
+
+The person who received the file runs this once after saving it, so that no other user of their
+machine can read it. It makes the file readable and writable only by them (Windows: only their user
+stays on the file) and changes nothing else. Afterwards it is ready for [Use a file](#2-use-a-file):
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -132,11 +147,12 @@ kubelogin needs [kubelogin](PREREQS.md#kubelogin-optional).
 
 ## 4. Merge files into `~/.kube/config` (optional)
 
-Optional: tools that read only `~/.kube/config` see every cluster at once. This copies the files in
-`FILES`, after your `~/.kube/config` if you have one, into a new file readable only by you, lists
-its contexts, and only then replaces `~/.kube/config`, keeping the old one as
-`~/.kube/config.before-merge`. It stops, changing nothing, when a file is missing or two files hold
-a context, cluster or user of the same name with different content.
+Run this, if you want to, when a tool reads only `~/.kube/config` and should see every cluster at
+once. It copies the files in `FILES`, after your `~/.kube/config` if you have one, into a new file
+readable only by you and lists its contexts; only then does it replace `~/.kube/config`, keeping
+the old one as `~/.kube/config.before-merge`. It stops, changing nothing, when a file is missing or
+two files hold a context, cluster or user of the same name with different content. Afterwards
+`kubectl --context <name>` reaches each merged cluster.
 
 Merge VKS cluster files and hand-outs only. Not `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` or any
 file a `vcf` login writes (`vcf context list`): `vcf` renews only its own file, so the copy stops
@@ -356,10 +372,11 @@ exists, it holds your other clusters, and a `vcf` login made without `KUBECONFIG
 | renew (`vcf context refresh`) | writes the new login into `~/.kube/config` again | writes only that file |
 | log out (`vcf context delete -y`) | removes the Supervisor's contexts, cluster and user; your other clusters stay | changes only that file |
 
-If you logged in with `KUBECONFIG` not set, `kubectl` without `--kubeconfig` may now talk to the
-Supervisor instead of your own clusters. The block below saves a copy of `~/.kube/config`, makes
-your own context the current one again, and removes the Supervisor's contexts from the file. Run it
-in a new terminal, not one where you ran *Make it the default in this terminal*, so that it sees the
+Run the block below only if you logged in with `KUBECONFIG` not set: `kubectl` without
+`--kubeconfig` may then talk to the Supervisor instead of your own clusters. It saves a copy of
+`~/.kube/config` as `~/.kube/config.before-cleanup`, makes your own context the current one again,
+and removes the Supervisor's contexts, cluster and user from the file. Afterwards `kubectl` without
+`--kubeconfig` talks to your own cluster again. Run it in a new terminal, not one where you ran *Make it the default in this terminal*, so that it sees the
 same files as your login did.
 
 1. Run the block unchanged: it lists your contexts, then stops at the switch, because
@@ -424,8 +441,10 @@ in the same kubeconfig. Messages you may see:
   (PowerShell: `$null | vcf context use $SUPERVISOR_CONTEXT`) so that it stops instead, and print
   `FAILED: the VCF CLI is not on context …`. Renew the login, then run the block again.
 
-The block below shows your `vcf` contexts, the kubeconfig file each one uses, and the
-current-context of each file. It needs `jq` ([PREREQS.md](PREREQS.md)) and `kubectl`
+Run the block below when `vcf` or `kubectl` acts on a server or file you did not expect, or after
+one of the messages above. It shows your `vcf` contexts, the kubeconfig file each one uses, and the
+current-context of each file, and changes nothing. You then see which `vcf` context is active and
+which context `kubectl` uses in each file. It needs `jq` ([PREREQS.md](PREREQS.md)) and `kubectl`
 ([KUBECTL.md](KUBECTL.md)).
 
 **Linux, macOS, WSL (bash or zsh):**
