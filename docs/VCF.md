@@ -9,11 +9,17 @@
 `vcf` is VMware's command-line tool; you use it to [log in to the Supervisor](LOGIN.md) (the
 Kubernetes control plane that vCenter runs when Workload Management is enabled; it holds your
 vSphere Namespaces). The plugin bundle adds its other commands (`vcf cluster`, `vcf addon`, …).
-Download two files from Broadcom, then run the install block; it needs no internet access.
+You download two files from Broadcom, then run the install block; it needs no internet access.
+
+The steps:
+
+1. [Download the two files](#1-download-the-two-files)
+2. [Install vcf and its plugins](#2-install-vcf-and-its-plugins)
+3. [Stop the essentials message](#3-stop-the-essentials-message)
 
 ## Prerequisites
 
-- a Broadcom support account with access to your company's VMware downloads ([Download](#download));
+- a Broadcom support account with access to your company's VMware downloads ([step 1](#1-download-the-two-files));
 - [tar](PREREQS.md) (Linux, macOS).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):
@@ -22,7 +28,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 |---|---|---|---|
 | your browser | `support.broadcom.com` | 443 | Download |
 
-## Download
+## 1. Download the two files
 
 You need a Broadcom support account with access to your company's VMware downloads (ask your
 vSphere administrator for access, or for the two files). Download both files for your platform:
@@ -51,10 +57,12 @@ Arm PC). On a machine without a browser, download them on another one and copy b
   plugins' VKS plugins (`addon`, `cluster`, …) are v3.8.0, for VKS 3.8 (the bundle also carries
 v3.7.2).
 
-## Install
+## 2. Install vcf and its plugins
 
-This checks the two files you downloaded against their SHA2 values, installs `vcf`, then installs
-its plugins from the bundle. If a file does not match, it installs nothing.
+Run this once for each user on each machine you will log in from (the plugins go into your home
+folder), after you downloaded both files: the other guides need `vcf` and its plugins. It checks the two files against their SHA2 values, installs
+`vcf`, then installs its plugins from the bundle. If a file does not match, it installs nothing.
+Afterwards `vcf` and your plugins are installed, and the block prints their versions.
 
 1. Copy the block for your OS into a text editor.
 2. Paste the two SHA2 values between the quotes on its first two lines.
@@ -204,16 +212,18 @@ Lines about the `essential plugins` or `telemetry:v9.0.2` are harmless; the next
 - `WARNING: 'vcf' on PATH is …`: another `vcf` (the path in that line) is found first. Delete that
   file, or put `INSTALL_DIR` first in your `PATH`.
 
-## Stop the essentials message
+## 3. Stop the essentials message
 
-Once `vcf` has been used on a machine, every command may first print `The vcf cli essential
-plugins have not been installed …` and `Failed to install plugin 'telemetry:v9.0.2'`: `vcf` looks
-online for a plugin version Broadcom has not published. The command still runs. Setting
-`VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION` to `v9.1.1` stops the lookup; Broadcom does not document
-this variable. This sets it for this terminal and for new ones: it adds one line to `~/.zshrc` or
+Run this once for each user on each machine, right after the install, so that `vcf` commands stop printing two
+extra lines first. Once `vcf` has been used on a machine, every command may first print `The vcf
+cli essential plugins have not been installed …` and `Failed to install plugin
+'telemetry:v9.0.2'`: `vcf` looks online for a plugin version Broadcom has not published. The
+command still runs. Setting `VCF_CLI_ESSENTIALS_PLUGIN_GROUP_VERSION` to `v9.1.1` stops the
+lookup; Broadcom does not document this variable. This sets it for this terminal and for new ones: it adds one line to `~/.zshrc` or
 `~/.bashrc` (`~/.bash_profile` on macOS bash; on Linux bash it also creates `~/.bash_profile` when
 there is none of `~/.bash_profile`, `~/.bash_login` and `~/.profile`); on Windows it sets a user environment
-variable.
+variable. Afterwards `vcf` commands no longer print those two lines, in this terminal and in the
+ones you open later.
 
 **Linux, macOS, WSL (bash or zsh):**
 

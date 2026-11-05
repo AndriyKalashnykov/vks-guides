@@ -22,10 +22,17 @@ Supervisor, for all vSphere Namespaces. An add-on runs inside one VKS cluster, f
 cluster. Harbor is also an add-on: that is a separate registry inside one VKS cluster, not the
 Supervisor Service.
 
+The steps:
+
+1. [See the catalog](#1-see-the-catalog): the add-ons you can install.
+2. [See what a cluster has](#2-see-what-a-cluster-has): the add-ons a VKS cluster already runs.
+
 ## Prerequisites
 
 - for steps 1 and 2: the [VCF CLI](VCF.md) with your Supervisor login (the VCF CLI context
   `SUPERVISOR_CONTEXT`, made in [LOGIN.md](LOGIN.md)).
+- for step 2: a VKS cluster ([CLUSTER.md](CLUSTER.md)), and the names of its vSphere Namespace and
+  of the cluster.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):
 
@@ -82,9 +89,11 @@ for that reason.
 
 ## 1. See the catalog
 
-To see what you can install, this lists the add-ons your Supervisor offers, with a short
-description of each. It switches the VCF CLI to your Supervisor login and changes nothing on the Supervisor or the cluster. It
-needs the [VCF CLI](VCF.md) and a [Supervisor login](LOGIN.md).
+Run this before you choose an add-on, to see which ones your Supervisor offers. It lists the
+add-ons in your Supervisor's catalog, with a short description of each; it switches the VCF CLI to
+your Supervisor login and changes nothing on the Supervisor or the cluster. You then have the
+add-on names, such as `cert-manager`, that the other guides install. It needs the
+[VCF CLI](VCF.md) and a [Supervisor login](LOGIN.md).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -120,8 +129,12 @@ has ended; [renew it](LOGIN.md#renew-the-supervisor-login) and run this again.
 
 ## 2. See what a cluster has
 
-To see what a cluster runs beyond its core add-ons, this lists the add-ons installed in your VKS
-cluster. It switches the VCF CLI to your Supervisor login and changes nothing on the Supervisor or the cluster.
+Run this before you install an add-on that a guide needs, to see whether the cluster already has
+it, and again after, to see that it is ready. Set `VKS_NAMESPACE` and `VKS_CLUSTER` to your
+vSphere Namespace and VKS cluster; the block lists the add-ons installed in that cluster beyond its
+core add-ons. It switches the VCF CLI to your Supervisor login and changes nothing on the
+Supervisor or the cluster. You then have a row per add-on: whether it is ready, and whether you
+may remove or upgrade it with `vcf addon`.
 
 **Linux, macOS, WSL (bash or zsh):**
 

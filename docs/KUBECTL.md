@@ -10,9 +10,14 @@
 > - [Using Intel-based apps on a Mac with Apple silicon](https://support.apple.com/en-us/102527) (Rosetta)
 
 `kubectl` is the command-line tool for the Supervisor and your VKS clusters (both are
-Kubernetes). Run **one** of the two install blocks:
-[From dl.k8s.io](#from-dlk8sio), or [From the Supervisor](#from-the-supervisor-dlk8sio-blocked)
-when this machine cannot reach dl.k8s.io. After you log in,
+Kubernetes). Install it once for each user, on each machine where you paste the guides' blocks. Use **one** of
+the two ways:
+
+- [From dl.k8s.io](#from-dlk8sio): the usual way.
+- [From the Supervisor](#from-the-supervisor-dlk8sio-blocked): when this machine cannot reach
+  dl.k8s.io.
+
+After you log in,
 [match it to your cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
 
 ## Prerequisites
@@ -33,10 +38,12 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 ## From dl.k8s.io
 
-This installs `kubectl`, so that you can type `kubectl` in any terminal. It downloads the official
+Run this before you log in, when this machine can reach dl.k8s.io: the other guides'
+blocks run `kubectl`. It downloads the official
 program, checks that it arrived whole (its SHA-256 checksum) and copies it into `INSTALL_DIR`. If
 that folder needs `sudo` and `sudo` would ask for a password, it uses `~/.local/bin` instead (see
 [PREREQS.md](PREREQS.md#sudo-optional)). On Windows it also adds the folder to your PATH.
+Afterwards you can type `kubectl` in this terminal, and the block prints its version.
 Leave `KUBECTL_VERSION` empty for the latest stable release, or set one such as `v1.37.1`.
 
 <details>
@@ -139,18 +146,25 @@ Remove-Item -Recurse -Force $TMP
 
 If this machine cannot reach dl.k8s.io, get `kubectl` from the Supervisor instead. This downloads
 the Supervisor's tool package, takes `kubectl` out of it and installs it like the block above. It
-works for amd64 Linux, macOS and Windows only. This `kubectl` has the Supervisor's version, which
-may be too old for your VKS cluster. The download checks the Supervisor's certificate against the
-vCenter CA, so first do step 1 of
-[Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca), including its
-`mv` block (on Linux and macOS it needs only curl, unzip or bsdtar, and openssl). On Windows, then trust that
-CA with `Import-Certificate -FilePath "$HOME\.kube\vcenter-ca.pem" -CertStoreLocation
-Cert:\CurrentUser\Root` and confirm with **Yes**. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP
-address or DNS name ([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca),
-step 1).
+works for amd64 Linux, macOS and Windows only. Afterwards you can type `kubectl` in this terminal,
+and the block prints its version. This `kubectl` has the Supervisor's version, which
+may be too old for your VKS cluster.
 
-On Apple silicon this kubectl runs through Rosetta. If you have not installed Rosetta, do it
-first: `softwareupdate --install-rosetta --agree-to-license`.
+Before you run it:
+
+- The download checks the Supervisor's certificate against the vCenter CA, so first do step 1 of
+  [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca), including its
+  `mv` block (on Linux and macOS it needs only curl, unzip or bsdtar, and openssl).
+- On Windows, then trust that CA with
+  `Import-Certificate -FilePath "$HOME\.kube\vcenter-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root`
+  and confirm with **Yes**.
+- On Apple silicon this kubectl runs through Rosetta. If you have not installed Rosetta, do it
+  first: `softwareupdate --install-rosetta --agree-to-license`.
+
+Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name
+([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca), step 1). For a
+Supervisor of another vCenter, use that vCenter's CA file (LOGIN.md, step 1) as `SUPERVISOR_CA`, and on
+Windows as `Import-Certificate`'s `-FilePath`.
 
 <details>
 <summary><b>Linux amd64, macOS, WSL amd64 (bash or zsh)</b></summary>
