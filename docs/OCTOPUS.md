@@ -19,9 +19,10 @@ nginx that holds the certificate), and its gRPC port 8443 (`octopus-grpc`), whic
 own certificate and is used by Octopus agents such as the Argo CD gateway. Port 80 (plain HTTP) is
 on neither.
 
-Every password and key goes into a Kubernetes Secret through a pipe: none is shown or put on a
-command line, and none is saved in a file you did not ask for (on Windows, the sign-in in steps 9
-and 10 uses a temporary file that the block deletes). Nothing secret goes into Helm.
+Every password and key goes into a Kubernetes Secret (a store for passwords and keys inside the
+cluster) through a pipe: none is shown or put on a command line, and none is saved in a file you
+did not ask for (on Windows, the sign-in in steps 9 and 10 uses a temporary file that the block
+deletes). Nothing secret goes into Helm.
 
 Run the steps in order. Steps 11 to 13 are for later.
 
@@ -90,10 +91,14 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 
 ## 1. Check the cluster
 
-This checks that the nodes are ready, the free memory, CPU and image disk on each worker, that the
-cluster has a default storage class, and that no `octopus` namespace exists yet. Octopus, SQL Server,
-nginx and the cert-manager add-on of step 2 ask for about 0.7 CPU and 4.3 GiB of memory; pods
-already in the `octopus` and `cert-manager` namespaces are not counted as using any.
+Run this first, to see whether the cluster can hold Octopus before you install anything. It only
+reads: it checks that the nodes are ready, that the cluster has a default storage class (the
+setting that gives pods, the containers that run in the cluster, their disks from vSphere storage)
+and that no namespace `octopus` (a namespace inside the VKS cluster) exists yet, and it shows the
+free memory, CPU and image disk on each worker. You get one line per worker to compare with what
+Octopus needs: Octopus, SQL Server, nginx and the cert-manager add-on of step 2 ask for about 0.7
+CPU and 4.3 GiB of memory (pods already in the namespaces `octopus` and `cert-manager` are not
+counted as using any). Set `VKS_CLUSTER` to the name of Octopus's cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -198,29 +203,24 @@ The certificate for Octopus's web page (step 5) comes from cert-manager, a Broad
 VKS cluster ([what add-ons are](ADDONS.md)). Run
 [KEYCLOAK-VKS.md step 2](KEYCLOAK-VKS.md#2-install-cert-manager) once, with `VKS_CLUSTER` changed
 from `my-keycloak-cluster` to Octopus's cluster and `VKS_NAMESPACE` to its vSphere Namespace.
-When the add-on is there already, it changes nothing.
+When the add-on is there already, it changes nothing. That block switches the VCF CLI's current
+context to the Supervisor, and it stays there.
 
 **Expect:** as in that step: `condition met` for the three cert-manager deployments, or
 `cert-manager: already installed`.
 
 ## 3. Create the namespace and the Secrets
 
-This creates the namespace `octopus` (a namespace inside the VKS cluster, not a vSphere Namespace;
-it is not listed under Supervisor Management → Namespaces), which allows only pods that follow the
-`restricted` Pod Security Standard, and these Secrets:
-
-- `sql-sa` and `sql-octopus`: random passwords for SQL Server's administrator `sa` and for the
-  login `octopus` that Octopus uses (step 6);
-- `octopus-masterkey`: Octopus's random master key, which encrypts the secrets in its database;
-- `octopus-adminusername` and `octopus-adminpassword`: Octopus's first user, `admin`, with the
-  password you type;
-- `octopus-licensekey`: your licence;
-- `octopus-connectionstring`: how Octopus reaches its database, with the `octopus` login.
-
-A Secret that exists is kept: SQL Server keeps the passwords it was first given, and Octopus cannot
-read its database with another master key. Nothing prints a password or the key.
-
-Type the password for Octopus's user `admin`, on its own (it is not shown):
+Run this once, before SQL Server and Octopus start (steps 6 and 7): they read their passwords, key
+and licence from here. It creates the namespace `octopus` (a namespace inside the VKS cluster, not a
+vSphere Namespace; it is not listed under Supervisor Management → Namespaces), which allows only
+pods that follow the `restricted` Pod Security Standard (Kubernetes' strictest rules for what a
+container may do), and in it seven Secrets: random passwords for SQL Server, Octopus's random
+master key, Octopus's first user `admin` with the password you type, your licence from
+`octopus-license.xml`, and how Octopus reaches its database. You get the
+namespace with its Secrets, ready for steps 4 to 7; nothing prints a password or the key. Run
+again, it keeps every Secret that exists (the list is below the **If not:**). Set `VKS_CLUSTER` in
+the second block. First type the password for Octopus's user `admin`, on its own (it is not shown):
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -337,13 +337,26 @@ Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_ADMIN_PASSWORD
 - `Error from server (Forbidden)`: the kubeconfig is not the cluster's administrator file.
 - To change the admin password later, use step 12; this step keeps the Secret that exists.
 
+**The Secrets:**
+- `sql-sa` and `sql-octopus`: random passwords for SQL Server's administrator `sa` and for the
+  login `octopus` that Octopus uses (step 6);
+- `octopus-masterkey`: Octopus's random master key, which encrypts the secrets in its database;
+- `octopus-adminusername` and `octopus-adminpassword`: Octopus's first user, `admin`, with the
+  password you type;
+- `octopus-licensekey`: your licence;
+- `octopus-connectionstring`: how Octopus reaches its database, with the `octopus` login.
+
+A Secret that exists is kept: SQL Server keeps the passwords it was first given, and Octopus cannot
+read its database with another master key.
+
 ## 4. Create the Services and get Octopus's addresses
 
-This creates Octopus's two Services, which get addresses from the Supervisor's load balancer:
-`octopus-web` on port 443 for the web page and REST API, and `octopus-grpc` on port 8443 for gRPC.
-Octopus itself starts in step 7. An address stays while its Service exists; deleting a Service
-gives its address back, and a new Service can get another one: then step 5, step 8 and every
-bookmark and agent that uses the old address must change.
+Run this before step 5: the web page's certificate is made for the address this step gets. It
+creates Octopus's two Services (a Service gives a set of pods one address that stays), which get
+addresses from the Supervisor's load balancer: `octopus-web` on port 443 for the web page and REST
+API, and `octopus-grpc` on port 8443 for gRPC. Octopus itself starts in step 7. You get Octopus's
+two addresses, printed at the end. Run again, it changes nothing and prints the same addresses. Set
+`VKS_CLUSTER` to the name of Octopus's cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -457,13 +470,19 @@ addresses are free): **Supervisor Management** → **Supervisors** → your Supe
 **Virtual IP Address Range(s)**. With NSX or Avi, the range is in that load balancer's own
 settings.
 
+**If a Service is deleted:** an address stays while its Service exists; deleting a Service gives
+its address back, and a new Service can get another one: then step 5, step 8 and every bookmark and
+agent that uses the old address must change.
+
 ## 5. Make the web page's certificate
 
-This makes a CA (certificate authority) of your own with cert-manager, valid for 10 years, and from
-it a certificate for Octopus's web address from step 4 and its in-cluster name
-`octopus-web.octopus.svc`. cert-manager renews the certificate before
-it ends; nginx picks the new one up within about 6 minutes. The gRPC port keeps Octopus's own
-certificate.
+Run this after step 4, so that Octopus's web page answers over HTTPS with a certificate your
+browser and agents can trust. It makes a CA (certificate authority: the issuer your browser trusts
+in step 9) of your own with cert-manager, valid for 10 years, and from it a certificate for
+Octopus's web address from step 4 and its in-cluster name `octopus-web.octopus.svc`. You get the
+CA and the certificate in the namespace `octopus`: nginx serves the certificate from step 7 on,
+and step 8 saves the CA. Run again, it keeps the CA. Set `VKS_CLUSTER` to the name of Octopus's
+cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -606,13 +625,18 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n octopus wait 
   and run this block again.
 - `timed out`: `kubectl --kubeconfig <file> -n octopus describe certificate octopus-tls` shows why.
 
+**Renewal:** cert-manager renews the certificate before it ends; nginx picks the new one up within
+about 6 minutes. The gRPC port keeps Octopus's own certificate.
+
 ## 6. Run SQL Server and create Octopus's database
 
-This runs SQL Server 2025 Express with a 10 GiB volume, waits until it accepts logins, then creates
-the database `OctopusDeploy` and the login `octopus` that owns it. Octopus uses that login, not
-`sa`. The SQL statements go to `sqlcmd` in the pod on its input, and `sqlcmd` reads the `sa`
-password from the pod's own environment: no password is on a command line. Running this block
-accepts Microsoft's licence terms for SQL Server Express (`ACCEPT_EULA`).
+Run this after step 3 and before step 7: Octopus keeps all its data in this database. It runs SQL
+Server 2025 Express with a 10 GiB volume (a disk from the default storage class), waits until it
+accepts logins, then creates the database `OctopusDeploy` and the login `octopus` that owns it.
+Octopus uses that login, not `sa`. You get SQL Server running with Octopus's empty database. Run
+again, it changes nothing and SQL Server keeps running. Set `VKS_CLUSTER` to the name of Octopus's
+cluster. Running this block accepts Microsoft's licence terms for SQL Server Express
+(`ACCEPT_EULA`).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -869,15 +893,20 @@ running) and the same two lines.
 - `FAILED: SQL Server does not accept logins`: the log shows why; a `sa` password SQL Server
   refuses stops it at start (step 3 makes one it accepts).
 
+**No password on a command line:** the SQL statements go to `sqlcmd` in the pod on its input, and
+`sqlcmd` reads the `sa` password from the pod's own environment.
+
 ## 7. Run Octopus
 
-This writes a values file for Octopus's Helm chart 1.18.0 (no secrets in it: Octopus reads them
-from step 3's Secrets), installs or updates Octopus with it, waits until Octopus is ready, then runs
-nginx in front of Octopus's web page with step 5's certificate. Octopus runs as a non-root user
-with a read-only file system, and without Docker-in-Docker (so steps cannot run in containers on
-Octopus's built-in worker). It accepts Octopus Deploy's EULA (`acceptEula`) and gives the `admin`
-user the e-mail `admin@example.com`. The first start takes several
-minutes: the nodes download a 1.6 GB image and Octopus creates its database tables.
+Run this after steps 3 to 6 to start Octopus itself, and again after step 11. It writes a values
+file, `~/.config/vks-guides/octopus/values.yaml`, for Octopus's Helm chart 1.18.0 (Helm installs
+an application from a package, its chart; the values file holds this guide's settings and no
+secrets: Octopus reads them from step 3's Secrets), installs or updates Octopus with it, waits
+until Octopus is ready, then runs nginx in front of Octopus's web page with step 5's certificate.
+You get Octopus running behind its web address; step 8 checks it. Run again, it keeps Octopus's
+data and keys. Set `VKS_CLUSTER` to the name of Octopus's cluster. It accepts Octopus Deploy's EULA
+(`acceptEula`) and gives the `admin` user the e-mail `admin@example.com`. The first start takes
+several minutes: the nodes download a 1.6 GB image and Octopus creates its database tables.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1270,11 +1299,16 @@ prints `unchanged` for nginx and keeps Octopus's data and keys.
 - `secret "octopus-tls" not found` in `kubectl --kubeconfig <file> -n octopus describe pod -l app=octopus-proxy`:
   step 5 did not finish.
 
+**How Octopus runs:** as a non-root user with a read-only file system, and without
+Docker-in-Docker (so steps cannot run in containers on Octopus's built-in worker).
+
 ## 8. Save the CA
 
-This saves step 5's CA as `octopus-ca.pem` in your home folder, prints its fingerprint (it holds
-no secret; your browser and agents trust Octopus's web page with it), and checks that Octopus
-answers on its web address and on its gRPC port.
+Run this after step 7, to get the file your browser and agents trust Octopus's web page with, and
+to check that Octopus answers. It saves step 5's CA as `octopus-ca.pem` in your home folder (it
+holds no secret), prints its fingerprint, and checks that Octopus answers on its web address and on
+its gRPC port. You get `octopus-ca.pem` for step 9 and for every agent that connects to Octopus.
+Run again, it saves the same CA again. Set `VKS_CLUSTER` to the name of Octopus's cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1359,11 +1393,10 @@ gRPC port keeps Octopus's own certificate.
 
 ## 9. Sign in
 
-Open `https://<OCTOPUS_ADDRESS>` in your browser. It warns that the connection is not private until
-it trusts your CA: either trust `octopus-ca.pem` as below, or check the fingerprint (click **Not
-secure** left of the address, then the certificate details: the issuer's SHA-256 fingerprint is the
-one step 8 printed) and click **Advanced** and **Proceed to … (unsafe)**, as in
-[HEADLAMP.md](HEADLAMP.md).
+Octopus's web page is `https://<OCTOPUS_ADDRESS>`; your browser warns that the connection is not
+private until it trusts your CA. Run the line below once on the machine whose browser you sign in
+with, so that the browser trusts Octopus's web page. It adds `octopus-ca.pem` from step 8 to your
+user's trusted CAs. You get Octopus's web page in your browser with no warning.
 
 **macOS** (macOS asks for your password):
 
@@ -1377,6 +1410,10 @@ security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychai
 Import-Certificate -FilePath "$HOME\octopus-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
+Or, without trusting the CA, check the fingerprint (click **Not secure** left of the address, then
+the certificate details: the issuer's SHA-256 fingerprint is the one step 8 printed) and then click
+**Advanced** and **Proceed to … (unsafe)**, as in [HEADLAMP.md](HEADLAMP.md).
+
 Sign in as `admin` with the password you typed in step 3:
 
 ![Octopus: Welcome! Please sign in, with Username and Password](img/octopus/01-sign-in.jpg)
@@ -1386,8 +1423,9 @@ the bottom left, then **License Usage**:
 
 ![License Usage Dashboard: Projects 0/10, Tenants 0/10, Machines 0/10, Users 1/10, Task Cap 0/5](img/octopus/02-license-usage.jpg)
 
-To check from a terminal instead, this signs in with the password in step 3's Secret (it is not
-shown) and prints Octopus's version and the licence's limits:
+Run this instead to check the sign-in and the licence from a terminal, without the web page. It
+signs in as `admin` with the password in step 3's Secret (it is not shown) and changes nothing. You
+get Octopus's version and the licence's limits. Set `VKS_CLUSTER` to the name of Octopus's cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1499,7 +1537,10 @@ deployment to this environment**, then **Save**: `Lifecycle created`. The lists 
 
 ![Lifecycles: Default Lifecycle and dev-test-prod, with the phases dev, test and prod](img/octopus/06-lifecycles.jpg)
 
-To do the same from a terminal (it skips what exists):
+Run this instead to do the same from a terminal, for example to set up another Octopus the same
+way. It signs in as `admin` with the password in step 3's Secret, creates the environments `dev`,
+`test` and `prod` and the lifecycle `dev-test-prod`, and skips what exists. You get the same two
+lists as in the web page above. Set `VKS_CLUSTER` to the name of Octopus's cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1605,10 +1646,13 @@ dev-test-prod: created, phases dev,test,prod` (`exists` when run again).
 
 ## 11. Trust Nexus and add it as a Docker feed (optional)
 
-Octopus checks Nexus's certificate when it lists image tags. This gives Octopus Nexus's CA: it
-saves `nexus-ca.pem` from [NEXUS.md step 7](NEXUS.md#7-save-nexuss-ca-and-check-its-address) as a ConfigMap
-(the certificate only, no key), and writes a second values file that builds a CA bundle for
-Octopus when it starts. Then run step 7 again: it uses both files, and Octopus restarts once.
+Run this only if Octopus deploys images from Nexus ([NEXUS.md](NEXUS.md)): Octopus checks Nexus's
+certificate when it lists image tags, and does not trust Nexus's CA yet. It saves `nexus-ca.pem`
+from [NEXUS.md step 7](NEXUS.md#7-save-nexuss-ca-and-check-its-address) as a ConfigMap (a store
+for settings and files that are not secret, inside the cluster; here the certificate only, no
+key), and writes a second values file, `values-ca.yaml`, that builds a CA bundle for Octopus when
+it starts. You get Octopus ready to trust Nexus: then run step 7 again; it uses both values files,
+and Octopus restarts once. Set `VKS_CLUSTER` to the name of Octopus's cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1769,9 +1813,11 @@ by its full path in Nexus, `<NEXUS_REPO>/<image>` (for example `apps/busybox`).
 
 ## 12. Change the admin password
 
-Octopus sets `admin`'s password from step 3's Secret each time it starts, so a password changed in
-the web page goes back at the next restart. This replaces the Secret with the password you type and
-restarts Octopus (about a minute). Type the new password, on its own (it is not shown):
+Run this to change the password of Octopus's user `admin` for good: Octopus sets `admin`'s password
+from step 3's Secret each time it starts, so a password changed in the web page goes back at the
+next restart. This replaces the Secret with the password you type and restarts Octopus (about a
+minute). You then sign in with the new password. Set `VKS_CLUSTER` in the second block. First type
+the new password, on its own (it is not shown):
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1844,11 +1890,14 @@ Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_ADMIN_PASSWORD
 
 ## 13. Remove Octopus (optional)
 
-This removes Octopus and SQL Server and deletes the namespace `octopus` with every Secret, the CA
-and the database, then waits until the volumes are gone (SQL Server's, and Octopus's
+Run this when you no longer need Octopus; to delete its cluster too, run this first. It removes
+Octopus and SQL Server and deletes the namespace `octopus` with every Secret, the CA and the
+database, then waits until the volumes are gone (SQL Server's, and Octopus's
 `package-repository-claim`, `artifacts-claim`, `task-log-claim`, `audit-log-claim` and server log).
 Once the volumes are gone it also deletes step 11's `~/.config/vks-guides/octopus/values-ca.yaml`,
-whose ConfigMap goes with the namespace. cert-manager stays; so do `octopus-ca.pem`, `values.yaml` and the CA you trusted in step 9.
+whose ConfigMap goes with the namespace. You get the cluster without Octopus: cert-manager stays;
+so do `octopus-ca.pem`, `values.yaml` and the CA you trusted in step 9. Set `VKS_CLUSTER` to the
+name of Octopus's cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
