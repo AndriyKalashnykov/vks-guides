@@ -35,6 +35,7 @@ blocks; there is nothing to build.
   "The connections this guide needs, for a firewall (all TCP, besides DNS…):"
   `| from | to | port | for |` with every connection its blocks open or make another component
   open (the nodes, ArgoCD); registries by name, with a link to PREREQS.md's Registry hosts.
+  A row from the reader's own machine says `your machine (laptop or jump box)`.
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
 - The Supervisor is named by `SUPERVISOR_CONTEXT="supervisor"` (one name per Supervisor: a-z,
   0-9 and `-`, not ending in `-keycloak`) and its file by

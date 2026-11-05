@@ -77,9 +77,9 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the Supervisor's address | 443 | the VCF CLI (step 2) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps) |
-| your machine | `ghcr.io` | 443 | the Octopus Helm chart (step 7) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | the VCF CLI (step 2) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps) |
+| your machine (laptop or jump box) | `ghcr.io` | 443 | the Octopus Helm chart (step 7) |
 | the cluster's nodes | `projects.packages.broadcom.com` | 443 | the cert-manager add-on (step 2) |
 | the cluster's nodes | `mcr.microsoft.com` | 443 | the SQL Server image (step 6) |
 | the cluster's nodes | `docker.io` | 443 | the Octopus and nginx images (step 7) |

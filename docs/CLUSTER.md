@@ -55,8 +55,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 | from | to | port | for |
 |---|---|---|---|
 | your browser | vCenter (the vSphere Client) | 443 | the storage limit, creating, watching and resizing the cluster (steps 2 to 6, 10) |
-| your machine | the Supervisor's address | 443 | kubectl with the Supervisor kubeconfig (steps 1, 2, 6 to 10) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 7, 8) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl with the Supervisor kubeconfig (steps 1, 2, 6 to 10) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (steps 7, 8) |
 
 ## 1. Check the namespace
 

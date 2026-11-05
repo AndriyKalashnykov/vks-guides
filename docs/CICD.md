@@ -83,9 +83,9 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the Supervisor's address | 443 | kubectl to ArgoCD (steps 1, 5, 9) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (all steps), and the Git server's port-forward (steps 4, 7, 8) |
-| your machine | Harbor's address | 443 | Harbor's API (steps 1, 3, 9) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl to ArgoCD (steps 1, 5, 9) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (all steps), and the Git server's port-forward (steps 4, 7, 8) |
+| your machine (laptop or jump box) | Harbor's address | 443 | Harbor's API (steps 1, 3, 9) |
 | the build, in the cluster | `docker.io`; Harbor's address | 443 | the app's base image; pushing the image |
 | the cluster's nodes | `docker.io`, `ghcr.io`; Harbor's address | 443 | the first app image, `alpine/git` and Kaniko; the built image |
 | ArgoCD, on the Supervisor | the VKS cluster's API address | 6443 | deploying the app |

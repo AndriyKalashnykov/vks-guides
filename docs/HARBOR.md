@@ -50,11 +50,11 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 |---|---|---|---|
 | your browser | `support.broadcom.com` | 443 | downloading the Harbor files (step 2) |
 | your browser | vCenter (the vSphere Client) | 443 | registering, installing, changing and removing Harbor (steps 5, 6, 12 to 14) |
-| your machine | the Supervisor's address | 443 | kubectl with the Supervisor kubeconfig (steps 1, 4, 6 to 9, 12 to 14, and *Bind the moved files*) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl with the Supervisor kubeconfig (steps 1, 4, 6 to 9, 12 to 14, and *Bind the moved files*) |
 | the Supervisor | `projects.packages.broadcom.com` | 443 | Harbor's images (step 6) |
 | the Supervisor | `ghcr.io` | 443 | Harbor's scanner, Trivy: its vulnerability data |
 | your machine and your browser | Harbor's address | 443 | checks, API calls, web page, podman or docker login (steps 7, 9, 10) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (step 11) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (step 11) |
 | the VKS cluster's nodes | Harbor's address | 443 | pulling images from Harbor (step 11) |
 
 Decide before you install:

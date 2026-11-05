@@ -66,8 +66,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the Supervisor's address | 443 | the VCF CLI (step 2) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (all steps) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | the VCF CLI (step 2) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (all steps) |
 | the cluster's nodes | `projects.packages.broadcom.com` | 443 | the cert-manager add-on (step 2) |
 | the cluster's nodes | `quay.io`, `docker.io` | 443 | the Keycloak and PostgreSQL images (step 5) |
 | your machine, the people's machines and browsers | Keycloak's address (step 5) | 443 | Keycloak's pages and logins |

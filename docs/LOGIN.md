@@ -44,9 +44,9 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | vCenter | 443 | the vCenter CA ([Create Supervisor context with CA](#create-supervisor-context-with-ca), step 1) |
-| your machine | the Supervisor's address | 443 | the VCF CLI and kubectl to the Supervisor (create the context, check the namespace, get the kubeconfig, renew) |
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl to the VKS cluster |
+| your machine (laptop or jump box) | vCenter | 443 | the vCenter CA ([Create Supervisor context with CA](#create-supervisor-context-with-ca), step 1) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | the VCF CLI and kubectl to the Supervisor (create the context, check the namespace, get the kubeconfig, renew) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl to the VKS cluster |
 | your browser | vCenter (the vSphere Client) | 443 | [Download the VKS cluster's kubeconfig from the vSphere Client](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client) |
 
 ## Create Supervisor context with CA

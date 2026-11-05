@@ -18,7 +18,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | `get.helm.sh` | 443 | downloading Helm and its checksum |
+| your machine (laptop or jump box) | `get.helm.sh` | 443 | downloading Helm and its checksum |
 
 ## 1. Download and install helm
 

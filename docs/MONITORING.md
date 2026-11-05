@@ -33,10 +33,10 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps), Grafana through `localhost:3000` (step 7) |
+| your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps), Grafana through `localhost:3000` (step 7) |
 | the cluster's nodes | `quay.io`, `ghcr.io`, `registry.k8s.io`, `docker.io` | 443 | the images |
-| your machine | `github.com`, `release-assets.githubusercontent.com` | 443 | the chart, with Helm (step 4) |
-| your machine | the Supervisor's address | 443 | kubectl, with ArgoCD (steps 9, 10) |
+| your machine (laptop or jump box) | `github.com`, `release-assets.githubusercontent.com` | 443 | the chart, with Helm (step 4) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl, with ArgoCD (steps 9, 10) |
 | ArgoCD, on the Supervisor | `prometheus-community.github.io`, `github.com`, `release-assets.githubusercontent.com` | 443 | the chart, with ArgoCD (step 9) |
 | ArgoCD, on the Supervisor | the VKS cluster's API address | 6443 | installing into the cluster, with ArgoCD (step 9) |
 

@@ -3,6 +3,8 @@
 The Supervisor is the Kubernetes control plane vCenter runs when Workload Management is on; a VKS
 cluster is a set of VMs in a vSphere Namespace that runs your apps. kubectl is the command-line
 tool for both, and a kubeconfig is the file that tells kubectl which one to reach and how to log in.
+In every guide, *your machine* is the laptop, workstation or jump box where you paste the blocks.
+Your logins and kubeconfigs stay on it; a step marked *(the person)* runs on that person's machine.
 
 Do them in this order:
 
