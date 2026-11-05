@@ -79,7 +79,7 @@ the node images (OS) built for it; a cluster class is Broadcom's template for th
 |---|---|
 | name | lower-case letters, digits and `-`, a name no cluster in this namespace ever had |
 | Kubernetes release | the newest the create page offers |
-| VM class | `best-effort-medium` (2 CPUs, 8 GB) or larger, for the control plane and the workers: Broadcom recommends it, and never a small or xsmall class for workers that run apps (KB 446139); a `best-effort-small` (2 CPUs, 4 GB) control-plane node ran at 95% to 110% of its memory in use (measured on VKS 3.8). If the Supervisor runs the Metrics Aggregator ([OBSERVABILITY.md](OBSERVABILITY.md) step 11), each new cluster also runs Broadcom's monitoring add-ons, about 100 MiB per node |
+| VM class | `best-effort-medium` (2 CPUs, 8 GB) or larger, for the control plane and the workers: Broadcom recommends it, and never a small or xsmall class for workers that run apps (KB 446139); a `best-effort-small` (2 CPUs, 4 GB) control-plane node used 2.6 to 3.1 GiB, 95% to 110% of the memory it hands out to pods (about 2.8 GiB), measured on VKS 3.8. If the Supervisor runs the Metrics Aggregator ([OBSERVABILITY.md](OBSERVABILITY.md) step 11), each new cluster also runs Broadcom's monitoring add-ons, about 100 MiB per node |
 | storage class | one from step 1 |
 | control-plane nodes | `1`, or `3` for a cluster that must stay up when a node fails |
 | worker nodes | `1` or more |
@@ -91,8 +91,8 @@ Each node of a cluster takes about 20 GB of disk plus its memory from the namesp
 (`best-effort-*` classes reserve no memory, so all of it). A Kubernetes version change replaced
 one node at a time (measured on VKS 3.7). A change of VM class first adds one node of the new class
 for the control plane and one per node pool, next to the old ones. Plan for that: a cluster of 1
-control-plane node and 1 worker of `best-effort-small` needs about 2 × (20 + 4) = 48 GB, and while it
-changes to `best-effort-medium`, 2 × (20 + 4) + 2 × (20 + 8) = 104 GB. Each extra worker adds its
+control-plane node and 1 worker of `best-effort-medium` needs about 2 × (20 + 8) = 56 GB, and while
+it changes to `best-effort-large`, 2 × (20 + 8) + 2 × (20 + 16) = 128 GB. Each extra worker adds its
 own 20 GB plus memory.
 
 In the vSphere Client, open the namespace: its **Summary** tab shows, under **Capacity and Usage**,
@@ -379,8 +379,8 @@ if ($LASTEXITCODE -eq 0) {
 
 **If not:**
 - `False` and a message that ends in `insufficient storage quota`: the vSphere Namespace's storage
-  limit is full. A cluster of one control-plane node and two best-effort-small workers in one node
-  pool needs about 72 GB, and about 128 GB while it changes to `best-effort-medium` (step 2).
+  limit is full. A cluster of one control-plane node and two `best-effort-medium` workers in one
+  node pool needs about 84 GB, and about 156 GB while it changes to `best-effort-large` (step 2).
   Free storage in the namespace, or ask your vCenter administrator to raise its limit.
 - Nothing printed: check `VKS_NAMESPACE` and `VKS_CLUSTER`, or wait until the first block of this
   step lists machines.
@@ -782,10 +782,11 @@ during the change the cluster has one node more for the control plane and one mo
      VM class of the namespace (step 9's first block lists them). A cluster made on the create page
      with **Overrides** has a `vmClass` under `controlPlane` or a node pool's `overrides` as well;
      change those too;
-   - for the size of the workers only (for example `best-effort-large` workers with a
-     `best-effort-medium` control plane), when the node pool has no `overrides` yet: add a line
-     below the line `name: node-pool-1` (your pool's name, under `machineDeployments`; under each
-     pool you change), starting in the same column as `name:`, with the class you want:
+   - for the size of the workers only (for example `best-effort-large` workers, a class the
+     namespace has, with a `best-effort-medium` control plane), when the node pool has no
+     `overrides` yet: add a line below the line `name: node-pool-1` (your pool's name, under
+     `machineDeployments`; under each pool you change), starting in the same column as `name:`,
+     with the class you want:
      `variables: {overrides: [{name: vmClass, value: best-effort-large}]}`. The editor does not
      indent a new line, so type the spaces. A wrong column either makes **SAVE** report a YAML
      syntax error, or saves nothing for the pool: after **SAVE**, reload the YAML and check that it

@@ -32,10 +32,10 @@ read-only token can look, not change.
 
 **The VKS cluster to make.** Choose the row with everything you will install and make the cluster
 with that many workers ([CLUSTER.md](CLUSTER.md)), or add workers to a running cluster ([CLUSTER.md
-step 10](CLUSTER.md#10-resize-the-cluster-optional)). One control-plane node of
-`best-effort-medium` in every row ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)).
-Broadcom says not to use a small or xsmall class for workers that run apps, and to use a guaranteed
-class for production ([KB
+step 10](CLUSTER.md#10-resize-the-cluster-optional)). Every row needs one control-plane node of
+`best-effort-medium` ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)). Broadcom
+says not to use a small or xsmall class for workers that run apps, and to use a guaranteed class
+for production ([KB
 446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html)).
 
 | Headlamp with | workers (`best-effort-medium`, 2 CPUs, 8 GB) |

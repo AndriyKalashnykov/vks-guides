@@ -663,7 +663,7 @@ ArgoCD at the folder `argocd/guest-cluster` of this repository, with your cluste
 four values from the lists above. No VKS cluster is created yet: ArgoCD shows what it would create,
 and creates the cluster only when you click **SYNC** below. Set `VKS_CLUSTER` to the name, and
 `K8S_VERSION`, `CLUSTER_CLASS`, `VM_CLASS` and `STORAGE_CLASS` to a value from each list (for a VM
-class, its first column).
+class, its first column; [CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values) says which).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

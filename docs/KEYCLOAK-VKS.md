@@ -54,7 +54,8 @@ The cluster for Keycloak:
    [CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), with that
    `vmClass`, one control-plane node and one worker (`replicas: 1` for both). With
    `best-effort-medium` it takes about 58 GB of the namespace's storage (two nodes of 20 GB disk
-   plus 8 GB memory each, and Keycloak's 2 GB volume), and 56 GB more while it updates
+   plus 8 GB memory each, and Keycloak's 2 GB volume), and 28 GB more while its Kubernetes version
+   updates, more while its VM class changes
    ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)).
    Keep it for Keycloak: the clusters that log in through Keycloak are other clusters
    ([KEYCLOAK.md](KEYCLOAK.md)). To change its size later, see
