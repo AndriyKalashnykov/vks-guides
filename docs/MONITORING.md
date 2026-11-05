@@ -43,8 +43,9 @@ a guaranteed class for production
 
 Measured on a VKS 3.8 cluster with one `best-effort-medium` worker, an hour after the install: the
 stack used about 0.7 GB of memory (Grafana 0.4 GB, Prometheus 0.2 GB), with the worker at 8% CPU
-and 22% memory in use. The stack reserves no CPU or memory, so it shares the worker with your
-other apps, and Prometheus uses more memory as the cluster gets more nodes and pods.
+and 22% memory in use. The stack reserves 200 MiB of memory (Alertmanager) and no CPU, so it
+shares the worker with your other apps, and Prometheus uses more memory as the cluster gets more
+nodes and pods.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
