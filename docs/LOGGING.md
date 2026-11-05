@@ -13,9 +13,9 @@
 This installs Broadcom's Fluent Bit add-on (Product tier) on a VKS cluster. Fluent Bit is a small
 program that collects the logs of every app on a node and sends them on; an add-on is software
 that Broadcom packages and tests for VKS, installed into a cluster from the Supervisor
-([ADDONS.md](ADDONS.md)). Fluent Bit runs on every node and sends the cluster's logs over HTTPS,
-with certificate verification, to Log Management in VCF Operations, where they appear
-under **Operate** → **Logs**.
+([ADDONS.md](ADDONS.md)). Fluent Bit runs on every node (each VM of the cluster) and sends the
+cluster's logs over HTTPS, with certificate verification, to Log Management in VCF Operations,
+where they appear under **Operate** → **Logs**.
 
 The blocks keep their files in `~/.config/vks-guides/logging` (PowerShell:
 `$HOME\.config\vks-guides\logging`).
@@ -164,10 +164,12 @@ if (-not (Test-Path $CA)) {
 **Expect:** the CA's `subject=` and `sha256 Fingerprint=…` (`SHA256 Fingerprint=` on macOS), then an
 `http=` code other than `000`: the connection and the certificate are good, whatever the code.
 
-**If not:** `http=000`: this machine cannot reach the name on port 9543, or Log Management's
-certificate was not signed by this CA or not issued for this name. Run
-`curl -v --cacert <the CA file> https://<the name>:9543/api/v2/events` (Windows: `curl.exe`) and
-read the error; ask your administrator for the right CA, or a certificate issued for the name.
+**If not:**
+- `http=000` with `logs.example.test`: set `LOGS_FQDN`.
+- `http=000`: this machine cannot reach the name on port 9543, or Log Management's certificate
+  was not signed by this CA or not issued for this name. Run
+  `curl -v --cacert <the CA file> https://<the name>:9543/api/v2/events` (Windows: `curl.exe`) and
+  read the error; ask your administrator for the right CA, or a certificate issued for the name.
 
 ## 3. Write the values
 
@@ -592,8 +594,9 @@ then run step 6 again.
 Run this when the cluster's logs should stop going to VCF Operations. It asks the Supervisor to
 remove the Fluent Bit add-on from your VKS cluster. It makes your Supervisor login
 (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and in its kubeconfig file, and that stays
-after the block. You then have a cluster without Fluent Bit. Set `VKS_NAMESPACE` and `VKS_CLUSTER`
-as in step 1.
+after the block. You then have a cluster without Fluent Bit. If you also send logs to Loki
+([OBSERVABILITY.md](OBSERVABILITY.md) step 5), this stops those too. Set `VKS_NAMESPACE` and
+`VKS_CLUSTER` as in step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 

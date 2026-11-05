@@ -10,6 +10,10 @@ CI/CD](GITOPS-CICD.md)); observability needs monitoring and Helm.
 | [Send a VKS cluster's logs to VCF Operations](LOGGING.md) | Broadcom's Fluent Bit add-on, sending the cluster's logs over HTTPS to Log Management in VCF Operations |
 | [See a VKS cluster's logs and traces in Grafana](OBSERVABILITY.md) | Loki and Jaeger in the cluster, Broadcom's Fluent Bit add-on sending logs to Loki, a sample app with linked logs and traces, and the cluster in VCF Operations |
 
+On one cluster use either MONITORING.md or the Prometheus add-on of HEADLAMP.md step 11.1, not
+both. Logging and Observability share one Fluent Bit add-on; each guide's step says how to
+keep the other's output.
+
 ## Tested on
 
 ✅ every block run, "part" some blocks run, — not run.

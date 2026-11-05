@@ -120,10 +120,11 @@ Run this once, after step 1, to install Headlamp in the cluster. Headlamp's add-
 certificate from cert-manager, another add-on, so this installs cert-manager first when the cluster
 does not have it. It makes your Supervisor login the active one for the VCF CLI and in its
 kubeconfig file, as step 1 does (that stays), and reads the cluster with its administrator
-kubeconfig (the file kubectl reads to reach the cluster), `~/.kube/<cluster>.kubeconfig`. The block
-waits until Headlamp runs, then shows its address; run it again and it skips what is already
-installed. Next: step 3. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to
-the cluster's name, and `HEADLAMP_RELEASE` to the release from step 1.
+kubeconfig (the file kubectl reads to reach the cluster), `~/.kube/<cluster>.kubeconfig`. Headlamp
+takes one address from the Supervisor's load-balancer range. The block waits until Headlamp runs,
+then shows its address; run it again and it skips what is already installed. Next: step 3. Set
+`VKS_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to the cluster's name, and
+`HEADLAMP_RELEASE` to the release from step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -260,7 +261,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 **Expect:** `Addon 'cert-manager' is being installed in the cluster …`, `Addon 'headlamp' is being
 installed in the cluster …`, `deployment.apps/headlamp condition met`, then the pod
 `headlamp-…` `1/1 Running` and the service `headlamp` of type `LoadBalancer` with an
-`EXTERNAL-IP` and port `443`. About two minutes in all.
+`EXTERNAL-IP` (Headlamp's address) and port `443`. About two minutes in all.
 
 **If not:**
 - `MISSING: kubectl`: install it ([KUBECTL.md](KUBECTL.md)), then run the block again; nothing was
@@ -270,10 +271,10 @@ installed in the cluster …`, `deployment.apps/headlamp condition met`, then th
   Nothing was installed.
 - `STOPPED: … not the add-on`: someone installed cert-manager another way; use another cluster.
 - `FAILED: Headlamp did not reach the cluster` or `did not start`: `vcf addon install list
-  --cluster-name <cluster> -n <namespace>` shows `READY`; with `False`, `vcf addon install get
-  headlamp --cluster-name
-  <cluster> -n <namespace>` says why. `Expected to find kind 'cert-manager.io/v1/Issuer'`:
-  cert-manager was not ready yet; the add-on retries by itself within minutes.
+  --cluster-name <cluster> -n <namespace>`: when its `READY` column says `False`, `vcf addon
+  install get headlamp --cluster-name <cluster> -n <namespace>` says why. `Expected to find kind
+  'cert-manager.io/v1/Issuer'`: cert-manager was not ready yet; the add-on retries by itself within
+  minutes.
 - `FAILED: … add-on` with `Forbidden`: you need the edit or owner role on the vSphere Namespace.
 - `FAILED: the VCF CLI`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 - `EXTERNAL-IP` stays `<pending>`: the Supervisor has no free load balancer address. With the
@@ -776,12 +777,12 @@ the least rights they need, and a token for it in step 8.2. Pick one row:
 | `view` | a namespace | that namespace | nothing |
 | `edit` | a namespace | that namespace, Secrets included | create, edit, scale and delete there |
 
-`view` sees no Secrets; none of the three sees nodes or access rules. `edit` can also act as any
-ServiceAccount of its namespace, so the block refuses the namespace `headlamp` and the cluster's
-system namespaces. An account limited to one namespace also gets the right to list the namespaces'
-names (role `headlamp-namespace-lister`), so that Headlamp's namespace list works; it sees nothing
-inside the other namespaces. Give no account made here `admin` or `cluster-admin` (an
-administrator logs in as in step 6.1).
+`view` sees no Secrets (stored passwords and keys); none of the three sees nodes or access rules
+(who may do what). `edit` can also act as any ServiceAccount of its namespace, so the block refuses
+the namespace `headlamp` and the cluster's system namespaces. An account limited to one namespace
+also gets the right to list the namespaces' names (role `headlamp-namespace-lister`), so that
+Headlamp's namespace list works; it sees nothing inside the other namespaces. Give no account made
+here `admin` or `cluster-admin` (an administrator logs in as in step 6.1).
 
 Run this once for each person or team who will use Headlamp without their own SSO login, and for
 yourself when you want a login with fewer rights than your SSO user (step 6.1). It makes the account
@@ -879,8 +880,8 @@ deployments in team-a: yes`, `may read pods in other namespaces: no`. For `view`
 `no`, `no`.
 
 **If not:** `STOPPED: …`: fix the three values at the top. A `yes` where you expect `no`: the
-account has another binding; `kubectl --kubeconfig <admin file> get rolebindings,clusterrolebindings
--A -o wide | grep headlamp:<account>` lists them.
+account has another binding; `kubectl --kubeconfig <the VKS kubeconfig> get
+rolebindings,clusterrolebindings -A -o wide | grep headlamp:<account>` lists them.
 
 **What it makes:** the ServiceAccount `ACCOUNT` in the namespace `headlamp`. With
 `ACCESS_NAMESPACE` empty, the cluster-wide ClusterRoleBinding `headlamp-<ACCOUNT>` (the Cluster…
@@ -1000,7 +1001,7 @@ does not end a token; only deleting the account (or waiting for its end) does.
 
 The three settings of the add-on that this guide uses:
 
-| variable | the add-on's setting | empty or `no` |
+| variable | the add-on's setting | when empty or `no` |
 |---|---|---|
 | `HEADLAMP_HOSTNAME` | `hostname`: the name in Headlamp's certificate (step 10 uses it) | `headlamp.vks.example.com` |
 | `CERT_WITH_IP` | `tls.certManager.ipAddresses`: also Headlamp's address in the certificate | name only |
@@ -1017,8 +1018,9 @@ made when the name or address changes; Headlamp reads it only when it starts, so
 restarts it (some seconds away), and prints the certificate's names and fingerprint. The browser
 warns again for the new certificate: check its new fingerprint (steps 4 and 5). It restarts Headlamp
 only when Headlamp still shows an older certificate than the one in the cluster. Set `VKS_NAMESPACE`
-and `VKS_CLUSTER` as in step 2, `HEADLAMP_HOSTNAME` (empty gives `headlamp.vks.example.com`), and
-`CERT_WITH_IP` and `KUBESCAPE_PLUGIN` to `yes` or `no`.
+and `VKS_CLUSTER` as in step 2, `HEADLAMP_HOSTNAME` to your DNS name for Headlamp (step 10), or
+empty, which gives `headlamp.vks.example.com`, and `CERT_WITH_IP` and `KUBESCAPE_PLUGIN` to `yes`
+or `no`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1387,7 +1389,10 @@ the plugin finds Prometheus by itself. The block first makes your Supervisor log
 (`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
 that stays after the block. Run it again and it skips an installed Prometheus. Set `VKS_NAMESPACE`
 and `VKS_CLUSTER` as in step 2, and `PROMETHEUS_STORAGE` to the size of Prometheus's disk (the
-add-on's own default is 150Gi).
+add-on's own default is 150Gi). Skip this on a cluster where you follow
+[MONITORING.md](MONITORING.md): it does not cover a cluster that runs this add-on (its step 1
+counts it as a Prometheus already running). If VCF Operations' monitoring is on for this cluster
+([OBSERVABILITY.md](OBSERVABILITY.md) step 11), do not run this.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
