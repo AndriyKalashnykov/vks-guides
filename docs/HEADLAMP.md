@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Official Broadcom, Headlamp and Kubernetes documentation for this guide**
 >
-> - Broadcom: [VKS Add-ons Release Notes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/release-notes/vks-addons-release-notes.html) (Headlamp version, support tier), [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html), [Configure an Installed Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/configure-an-installed-add-on-using-vcf-cli.html)
+> - Broadcom: [KB 446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html) (worker VM classes), [VKS Add-ons Release Notes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/release-notes/vks-addons-release-notes.html) (Headlamp version, support tier), [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html), [Configure an Installed Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/configure-an-installed-add-on-using-vcf-cli.html)
 > - Headlamp: [Installation](https://headlamp.dev/docs/latest/installation/) (service account tokens), [In-cluster](https://headlamp.dev/docs/latest/installation/in-cluster/)
 > - Kubernetes: [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) (the `view` and `edit` roles), [kubectl create token](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_create/kubectl_create_token/)
 > - Contour: [TLS Termination](https://projectcontour.io/docs/1.33/config/tls-termination/) (TLS session passthrough)
@@ -28,7 +28,27 @@ read-only token can look, not change.
   and the edit or owner role on the cluster's vSphere Namespace;
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md);
 - for the Kubescape plugin only (step 11): [Helm](HELM.md);
-- about 250m CPU and 400 MiB of memory free on the workers, for Headlamp and cert-manager.
+- a VKS cluster with the workers in the table below.
+
+**The VKS cluster to make.** Choose the row with everything you will install and make the cluster
+with that many workers ([CLUSTER.md](CLUSTER.md)), or add workers to a running cluster
+([CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)). One control-plane node of
+`best-effort-small` is enough in every row. For workers, Broadcom recommends `best-effort-medium`
+(2 CPUs, 8 GB) or larger, and a guaranteed class for production
+([KB 446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html)).
+
+| Headlamp with | workers (`best-effort-medium`) |
+|---|---|
+| nothing else (steps 1 to 9) | 1 |
+| one of Contour (step 10), the Prometheus plugin (step 11.1) or the Kubescape plugin (step 11.2) | 1 |
+| two or all three of them | 2 |
+
+Measured on a VKS 3.8 cluster with `best-effort-small` workers, as the CPU and memory each part
+asks Kubernetes to keep for it (a worker with 2 CPUs has about 1.9 to hand out): VKS's own pods 0.9
+CPU on the first worker; Headlamp and cert-manager 0.13 CPU (0.23 while step 9 restarts Headlamp);
+Contour, Prometheus and Kubescape about 0.4 CPU each, and 0.8, 0.7 and 2 GB of memory.
+`best-effort-medium` has more memory but the same 2 CPUs, so CPU sets the count: two of the three
+on one worker ask for 92 to 95% of its CPU, which leaves about 0.1 CPU for anything else.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
@@ -1408,9 +1428,10 @@ itself ("Error fetching prometheus info"): in that browser, **Settings** → **P
 
 ![Deployment hello: memory over the last hour](img/headlamp/18-prometheus-chart.png)
 
-**If not:** a pod `Pending`: the workers lack CPU or memory (about 450m CPU and 800 MiB with one
-worker), or the storage class has no room for `PROMETHEUS_STORAGE`. No charts in Headlamp: the
-account needs `headlamp-prometheus-query` (step 11.3, with `PROMETHEUS_QUERY="yes"`).
+**If not:** a pod `Pending`: the workers lack CPU or memory (about 0.4 CPU and 0.7 GB on the first
+worker, plus 0.05 CPU and 64 MiB on every other node), or the storage class has no room for
+`PROMETHEUS_STORAGE`. No charts in Headlamp: the account needs `headlamp-prometheus-query` (step
+11.3, with `PROMETHEUS_QUERY="yes"`).
 
 ### 11.2 Kubescape
 
@@ -1421,10 +1442,11 @@ project), not a Broadcom add-on, and Broadcom does not support it, nor its plugi
 with Helm ([HELM.md](HELM.md)) into the namespace `kubescape` (a namespace inside the VKS cluster),
 and adds cluster-wide object types (CRDs); six of them stay after a Helm uninstall (step 12). Its
 node agent runs on every worker and needs access to it, so the namespace's pod security is
-`privileged`. It asks for about 450m CPU and 2 GiB of memory with the requests below, lowered from
-the chart's own (about 800m), and keeps its results on a 5Gi volume. Run it again and Helm sets
-Kubescape to this block's chart version and settings; with the same ones, nothing changes. Next:
-step 9, as the text below the block says. Set `VKS_CLUSTER` to the cluster's name.
+`privileged`. It asks for about 0.35 CPU and 2 GB of memory, plus 0.05 CPU and 0.18 GB on every
+further worker, with the requests below, lowered from the chart's own (about 800m), and keeps its
+results on a 5Gi volume. Run it again and Helm sets Kubescape to this block's chart version and
+settings; with the same ones, nothing changes. Next: step 9, as the text below the block says. Set
+`VKS_CLUSTER` to the cluster's name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
