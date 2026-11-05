@@ -176,14 +176,15 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 
 Then run this in the same terminal, once to get the name the cluster knows you by (the cluster
 administrator needs it for step 3), and again whenever kubectl answers `Unauthorized`, 10 hours
-after a login; a new login replaces the old one in the same file. It logs you in to the VKS
-cluster as `SSO_USER` through the Supervisor and writes the login to your own kubeconfig (the file
-kubectl reads to reach the cluster) `VKS_USER_KUBECONFIG`, readable only by you. You then have that
-file, and the name the cluster knows you by: send that name, exactly as printed, to the cluster
+after a login; a new login is written to the same file. It logs you in to the VKS cluster as
+`SSO_USER` through the Supervisor and writes the login to your own kubeconfig `VKS_USER_KUBECONFIG`
+(the file kubectl reads to reach the cluster), readable only by you. You then have that file, and
+the name the cluster knows you by: send that name, exactly as printed, to the cluster
 administrator (step 3).
 
-Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name, `SSO_USER` to your full SSO
-user name, and `VKS_NAMESPACE` (the vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
+Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name, `SUPERVISOR_CA` to the
+vCenter CA file from step 1, `SSO_USER` to your full SSO user name, and `VKS_NAMESPACE` (the
+vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -289,10 +290,11 @@ emulation; not tested).
 ### 2b. Windows and macOS: trust the vCenter CA (the person, once)
 
 Do this once on Windows or macOS, before steps 2c and 2d, and before a browser sign-in through the
-Supervisor (group step 5): there the browser, the plugin (and on Windows the download in step 2c) check the Supervisor's certificate against your user's trusted CAs, not
-`SUPERVISOR_CA`. It adds the vCenter CA from step 1, saved as `~/.kube/vcenter-ca.pem`, to your
-user's trusted CAs. You then trust certificates the vCenter CA signed, the Supervisor's among them,
-as this user. Windows asks you to confirm with **Yes**:
+Supervisor (group step 5): there the browser, the plugin, and on Windows the download in step 2c,
+check the Supervisor's certificate against your user's trusted CAs, not `SUPERVISOR_CA`. It adds
+the vCenter CA from step 1, saved as `~/.kube/vcenter-ca.pem`, to your user's trusted CAs. You then
+trust certificates the vCenter CA signed, the Supervisor's among them, as this user. Windows asks
+you to confirm with **Yes**; on macOS, run the line under **macOS** below instead:
 
 **Windows (PowerShell):**
 
@@ -318,7 +320,8 @@ the trusted CA from step 2b), runs it to check that it starts, and only then ins
 `INSTALL_DIR`. You then have the `kubectl-vsphere` command for step 2d; running this again replaces
 the installed plugin.
 
-Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name.
+Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name and `SUPERVISOR_CA` to the
+vCenter CA file from step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -381,14 +384,15 @@ Remove-Item -Recurse -Force $TMP
 
 Do this to log in with the plugin: once to get the name the cluster knows you by (the cluster
 administrator needs it for step 3), and again whenever kubectl answers `Unauthorized`, 10 hours
-after a login; a new login replaces the old one in the same file. It logs you in to the VKS
-cluster as `SSO_USER` and writes the login to your own kubeconfig `VKS_USER_KUBECONFIG`, readable
-only by you. On Linux, macOS and WSL it asks for the SSO password. You then have that file, and the
-name the cluster knows you by: send that name, exactly as printed, to the cluster administrator
+after a login; a new login is written to the same file. It logs you in to the VKS cluster as
+`SSO_USER` and writes the login to your own kubeconfig `VKS_USER_KUBECONFIG`, readable only by
+you. On Linux, macOS and WSL it asks for the SSO password. You then have that file, and the name
+the cluster knows you by: send that name, exactly as printed, to the cluster administrator
 (step 3).
 
-Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name, `SSO_USER` to your full SSO
-user name, and `VKS_NAMESPACE` (the vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
+Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name, `SUPERVISOR_CA` to the
+vCenter CA file from step 1, `SSO_USER` to your full SSO user name, and `VKS_NAMESPACE` (the
+vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
 **A few failed logins in a row lock the SSO user for some minutes.**
 
 <details>
@@ -484,10 +488,10 @@ folder for the team's workloads, not the vSphere Namespace) if it is not there, 
 and delete most things in it. The person can then deploy in that namespace: send them its name
 (step 4). Run it once per person; for the same name again it answers `already exists`.
 
-Set `ADMIN_KUBECONFIG` to the administrator kubeconfig of `VKS_CLUSTER`
-([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), `TEAM_NAMESPACE` to the team's namespace,
-and `SSO_NAME` to the name the person sent, letter for letter: a name in other letter case gets no
-rights.
+Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
+from [LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
+elsewhere), `TEAM_NAMESPACE` to the team's namespace, and `SSO_NAME` to the name the person sent,
+letter for letter: a name in other letter case gets no rights.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -602,10 +606,12 @@ every VKS cluster in the namespace, or `REMOVE` to take the role away. A group t
 role gets the new one. It then reads the permission back. The group's members can then sign in;
 step 3 gives them rights inside the cluster.
 
-Set `VCENTER_FQDN` to vCenter's address, `SSO_USER` to the vCenter administrator's SSO user,
-`IDP_NAME` to the **Provider Name** from step 1, `VKS_NAMESPACE` to the vSphere Namespace, and
-`KC_GROUP` to the group's name at the identity provider (in Keycloak, as the realm lists it),
-letters, digits, `-` or `_` only.
+Set `VCENTER_FQDN` to vCenter's address, `VCENTER_CA` to the vCenter CA file
+([Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca), step 1),
+`SSO_USER` to the vCenter administrator's SSO user, `IDP_NAME` to the **Provider Name** from step
+1, `VKS_NAMESPACE` to the vSphere Namespace, `ROLE` to `VIEW`, `EDIT` or `REMOVE`, and `KC_GROUP`
+to the group's name at the identity provider (in Keycloak, as the realm lists it), letters,
+digits, `-` or `_` only.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -721,11 +727,13 @@ makes the namespace `TEAM_NAMESPACE` inside the VKS cluster (a folder for the te
 the vSphere Namespace) if it is not there, and a RoleBinding (the record that gives a group a role
 in one namespace) that gives the group `ROLE` in it: `edit` to deploy, `view` to read only. Every
 member then has those rights; step 4 makes their file. Run it once per group and namespace; for the
-same group, role and namespace again it answers `already exists`.
+same group, role and namespace again it answers `already exists`. To change the role, delete the
+old RoleBinding first (below).
 
-Set `ADMIN_KUBECONFIG` to the administrator kubeconfig of `VKS_CLUSTER`
-([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), `KC_PREFIX` to the prefix from step 1 and
-`KC_GROUP` to the group's name from step 2.
+Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
+from [LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
+elsewhere), `KC_PREFIX` to the prefix from step 1, `KC_GROUP` to the group's name from step 2,
+`TEAM_NAMESPACE` to the team's namespace and `ROLE` to `edit` or `view`.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -989,25 +997,32 @@ or identity provider user does not take it away; only deleting the ServiceAccoun
 The ServiceAccount lives in its own namespace inside the VKS cluster, `SA_NAMESPACE`, where the
 team has no rights (so it cannot make more tokens for it), and gets its role in `TEAM_NAMESPACE`.
 Pick `DAYS` as short as the work allows: 30 by default, never more than 90 for a team; the cluster
-does not shorten it.
+does not shorten it. Never give `edit` on a namespace that holds software with wider rights (step
+4 says why).
 
 <a id="make-it"></a>
 
 ### 1. Make the team's token and its file (cluster administrator)
 
 Do this when a team or a tool needs its own login to one namespace inside the VKS cluster (a folder
-for the team's workloads, not a vSphere Namespace). It makes the team's namespace if it is not
-there, a ServiceAccount (a login that belongs to no person) for the team, and a RoleBinding (the
-record that gives a login a role in one namespace) that gives it a role there: `edit` to deploy,
-`view` to read only. It then makes a token, the key of that login, valid for the days you set, and
-writes it into a kubeconfig file, `TEAM_KUBECONFIG`, readable only by you. Last it shows when the
-token ends, which login it is and what it may do. You then have one file for that team or tool:
-send it to them (step 2). Run again for the same team, it makes a new token and file; copies of the
-old file keep working until their own end (step 3).
+for the team's workloads, not a vSphere Namespace).
 
-Set `ADMIN_KUBECONFIG` to the administrator kubeconfig of `VKS_CLUSTER`
-([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), `TEAM` to a name for the team or tool,
-`TEAM_NAMESPACE` to its namespace, `ROLE` to `edit` or `view`, and `DAYS` to the days (above).
+It makes, inside the cluster: that namespace if it is not there; a ServiceAccount for the team (a
+login that belongs to no person) in the namespace `SA_NAMESPACE`; and a RoleBinding (the record
+that gives a login a role in one namespace) that lets it deploy (`edit`) or only read (`view`) in
+the team's namespace. It then makes a token, the key of that login, valid for the days you set,
+writes it into a kubeconfig file readable only by you, and shows when the token ends, which login
+it is and what it may do.
+
+You then have one file, `TEAM_KUBECONFIG`, for that team or tool: send it to them (step 2). Run it
+again for the same team and it writes a new file with a new token in its place; copies of the old
+file keep working until the old token ends (step 3). A changed `ROLE` adds a second RoleBinding and
+keeps the old one: delete `<TEAM>-<old role>` first.
+
+Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
+from [LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
+elsewhere), `TEAM` to a name for the team or tool, `TEAM_NAMESPACE` to its namespace, `ROLE` to
+`edit` or `view`, and `DAYS` to the days (above).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1187,20 +1202,23 @@ whole VKS cluster: whoever has a copy can do everything in it.
 
 ### 1. Make the administrator token and its file (cluster administrator)
 
-Do this when a tool or a person needs the whole VKS cluster. It makes a ServiceAccount (a login
-that belongs to no person) in the namespace `SA_NAMESPACE` inside the cluster, and a
-ClusterRoleBinding `<SA_NAME>-cluster-admin` (the record that gives a login a role in every
-namespace) that gives it `cluster-admin`, the role for everything. It then makes a token, the key
-of that login, valid for the days you set, or with `DAYS="never"` a token Secret `<SA_NAME>-token`
-that does not expire, and writes it into a kubeconfig file, `SA_KUBECONFIG`, readable only by you.
-Last it shows when the token ends, which login it is and what it may do. You then have one file
-for that tool or person: send it (step 2). Run again with days, it makes a new token and file, and
-copies of the old file keep working until their own end; with `never` it gives the same token
-(step 3).
+Do this when a tool or a person needs the whole VKS cluster.
 
-Set `ADMIN_KUBECONFIG` to the administrator kubeconfig of `VKS_CLUSTER`
-([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), `SA_NAME` to a name for the tool or person,
-and `DAYS` to 1 to 36500 days (365 for a year) or `never`.
+It makes, inside the cluster, the namespace `SA_NAMESPACE` if it is not there, a ServiceAccount (a
+login that belongs to no person) in it, and a ClusterRoleBinding `<SA_NAME>-cluster-admin` (the
+record that gives a login a role in the whole cluster) that gives it `cluster-admin`, the role for
+everything. It then makes a token, the key of that login, valid for the days you set, or with
+`DAYS="never"` a token Secret `<SA_NAME>-token` that does not expire; writes it into a kubeconfig
+file readable only by you; and shows when the token ends, which login it is and what it may do.
+
+You then have one file, `SA_KUBECONFIG`, for that tool or person: send it (step 2). Run it again
+with days and it writes a new file with a new token; copies of the old file keep working until the
+old token ends. With `never` it gives the same token (step 3).
+
+Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
+from [LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
+elsewhere), `SA_NAME` to a name for the tool or person, and `DAYS` to 1 to 36500 days (365 for a
+year) or `never`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1461,19 +1479,23 @@ name, and that name is never given rights again.
 
 ### 1. Make the certificate and its file (cluster administrator)
 
-Do this when such a person needs access (on Windows, in WSL). It makes a key (the secret that proves
-who holds the file) and a certificate signing request: a request to the cluster to sign a
-certificate for a new name, `PERSON` plus the date and time (for example `alice-20261029223015`),
-valid for `DAYS` days. It approves the request, so the cluster signs it, then deletes the request.
-It makes the namespace `TEAM_NAMESPACE` inside the VKS cluster if it is not there and a RoleBinding
-(the record that gives a name a role in one namespace) that gives that name `edit` in it, and
-writes the kubeconfig, key included, to `PERSON_KUBECONFIG`, readable only by you. You then have
-one file for that person: send it (step 2). Each run makes a new name, so that you can take each
-certificate away alone; an older name keeps its rights until step 4.
+Do this when such a person needs access (on Windows, in WSL).
 
-Set `ADMIN_KUBECONFIG` to the administrator kubeconfig of `VKS_CLUSTER`
-([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), `PERSON` to a short name for the person,
-`TEAM_NAMESPACE` to their namespace, and `DAYS` to as few days as they need.
+It makes a key (the secret that proves who holds the file) and a certificate signing request: a
+request to the cluster to sign a certificate for a new name, `PERSON` plus the date and time (for
+example `alice-20261029223015`), valid for `DAYS` days. It approves the request, so the cluster
+signs it, then deletes the request. It makes the namespace `TEAM_NAMESPACE` inside the VKS cluster
+if it is not there, and a RoleBinding (the record that gives a name a role in one namespace) that
+gives that name `edit` in it, and writes the kubeconfig, key included, readable only by you.
+
+You then have one file, `PERSON_KUBECONFIG`, for that person: send it (step 2). Each run makes a
+new name, so that you can take each certificate away alone; an older name keeps its rights until
+step 4.
+
+Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
+from [LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
+elsewhere), `PERSON` to a short name for the person, `TEAM_NAMESPACE` to their namespace, and
+`DAYS` to as few days as they need.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

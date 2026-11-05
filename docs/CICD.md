@@ -46,8 +46,8 @@ The blocks keep their files in `~/.config/vks-guides/cicd` (PowerShell:
 - the Harbor files from [HARBOR.md](HARBOR.md) in `~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>`
   (PowerShell: `$HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT>`): `harbor-data-values.yml`,
   `harbor-ca.crt`, `secrets.env` and `supervisor-uid`;
-- the VKS cluster from ARGOCD.md step 7, its kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig))
-  and your Supervisor kubeconfig;
+- the VKS cluster from ARGOCD.md step 7, its kubeconfig
+  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) and your Supervisor kubeconfig;
 - with GitLab, a worker with its own disk for container images: on a worker's default disk (about
   15 GiB, whatever its VM class), GitLab and the build filled it and GitLab was evicted. Make the
   cluster with [CLUSTER.md](CLUSTER.md) step 9 and the `workers:` part below, then do the table's
@@ -296,7 +296,8 @@ gives each its own Harbor login. It signs in to Harbor as `admin` (password from
   trusts Harbor.
 
 Set `VKS_CLUSTER` and `GIT_SERVER` as in step 2, and `SUPERVISOR_CONTEXT` as in step 1. A second
-run keeps what is there.
+run keeps the project, the robots and their Secrets, and refreshes `harbor-ca` from
+`harbor-ca.crt`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -761,7 +762,8 @@ repository) with three projects:
 The pipeline sits apart from `app`, so someone who may push to `app` cannot change it. Nobody may
 force-push to a project's `main`. The block runs inside GitLab's pod, so no GitLab token reaches
 this machine; it takes about a minute. Set `VKS_CLUSTER` as in step 2 and `SUPERVISOR_CONTEXT` as
-in step 1. A second run keeps what is there. Afterwards, give your developers the Developer role on
+in step 1. A second run keeps the group, the projects and their files, and sets the branch
+protection and the pipeline settings again. Afterwards, give your developers the Developer role on
 `cicd/app` and the Reporter role on `cicd/ci`.
 
 <details>
@@ -1171,8 +1173,8 @@ second run the group, the projects and their files say `kept`.
 
 **If not:**
 - `pods "gitlab-0" not found`: do GITLAB.md steps 1 to 4 first.
-- A Ruby error such as `… (RuntimeError)`: the line names what GitLab refused; fix it in GitLab's web
-  page, or delete the group `cicd` there, then run this again.
+- A Ruby error such as `… (RuntimeError)`: the line names what GitLab refused; fix it in GitLab's
+  web page, or delete the group `cicd` there, then run this again.
 
 ## 5. Let ArgoCD deploy it
 
@@ -1804,12 +1806,12 @@ spec:
 
 </details>
 
-**Expect:** the `created` (or `unchanged`/`configured`) lines, `started pipelinerun.tekton.dev/cicd-demo-<x>`,
-then within a few minutes `Succeeded: Tasks Completed: 2 (Failed: 0, Cancelled 0), Skipped: 0` and
-`deploy now at <Harbor>/cicd-demo/test-web-apps@sha256:…`. Then run step 5's check with
-`WANT="test-web-apps v1"`. A second run builds again and writes the new digest. If someone pushed to
-`app` while it ran, the last line is `skipped: app has moved on …` and that push's run updates
-`deploy`.
+**Expect:** the `created` (or `unchanged`/`configured`) lines, `started
+pipelinerun.tekton.dev/cicd-demo-<x>`, then within a few minutes `Succeeded: Tasks Completed: 2
+(Failed: 0, Cancelled 0), Skipped: 0` and `deploy now at <Harbor>/cicd-demo/test-web-apps@sha256:…`.
+Then run step 5's check with `WANT="test-web-apps v1"`. A second run builds again and writes the new
+digest. If someone pushed to `app` while it ran, the last line is `skipped: app has moved on …` and
+that push's run updates `deploy`.
 
 **If not:**
 - `Failed: …`: `kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci logs -l
@@ -1819,8 +1821,8 @@ then within a few minutes `Succeeded: Tasks Completed: 2 (Failed: 0, Cancelled 0
   `UNAUTHORIZED` means `harbor-push` is missing or expired (step 3); `toomanyrequests` is Docker
   Hub's pull limit (wait and run this again).
 - `Failed` in `write-back` with `Authentication failed`: `git-writeback` is wrong; delete it
-  (`kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci delete secret git-writeback`) and run step 4
-  again.
+  (`kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci delete secret git-writeback`) and run step
+  4 again.
 - `FAILED: cannot read app's main`: the write-back could not reach Gitea; check that Gitea runs
   (`kubectl --kubeconfig <the VKS kubeconfig> -n gitea get pods`) and run this again.
 - No `Succeeded` or `Failed` after 15 minutes: `kubectl --kubeconfig <the VKS kubeconfig> -n cicd-ci

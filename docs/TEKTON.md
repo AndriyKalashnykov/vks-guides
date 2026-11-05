@@ -10,11 +10,12 @@
 > - Tekton: [EventListeners](https://tekton.dev/docs/triggers/eventlisteners/), [TriggerBindings](https://tekton.dev/docs/triggers/triggerbindings/), [TriggerTemplates](https://tekton.dev/docs/triggers/triggertemplates/)
 > - Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/), [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
 
-This installs Tekton into a VKS cluster. Tekton is a CI/CD engine: it runs each step of a build
-as a pod (one or more containers that Kubernetes runs together on a worker node). It then runs a
-pipeline (tasks, or build steps, run in order) with two tasks, and starts it again from an HTTP
-request, as a Git server does on a push, through an EventListener (a small web service in the
-cluster that starts a run). Tekton's own `tkn` program is not needed.
+This installs Tekton into a VKS cluster. Tekton is a CI/CD engine: it runs each task of a build as a
+pod (one or more containers that Kubernetes runs together on a worker node), and each step of a task
+as one container in that pod. It then runs a pipeline (tasks that run in the order you set) with two
+tasks, and starts it again from an HTTP request, as a Git server does on a push, through an
+EventListener (a small web service in the cluster that starts a run). Tekton's own `tkn` program is
+not needed.
 
 Install Tekton one of two ways; a cluster has one or the other:
 
@@ -51,11 +52,12 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 1. Check the cluster
 
-Run this first, before you install Tekton, to see whether the cluster is ready for it. It only
-reads the cluster and changes nothing. It shows that each node (a VM of the cluster) is `Ready`,
-how much CPU each worker has free (1000m is one CPU; A needs about 400m, B about 200m), and
-whether some Tekton is already installed; the `Tekton:` line tells you which step comes next. Set
-`VKS_CLUSTER` to your cluster's name; the block uses its kubeconfig in `~/.kube`.
+Run this first, before you install Tekton, to see whether the cluster is ready for it. It only reads
+the cluster and changes nothing. It shows that each node (a VM of the cluster) is `Ready`, how much
+CPU each worker has free (1000m is one CPU; A needs about 400m, B about 200m), and whether some
+Tekton is already installed; the `Tekton:` line tells you which step comes next. Set `VKS_CLUSTER`
+to your cluster's name; the block reads its kubeconfig, `~/.kube/<VKS_CLUSTER>.kubeconfig`
+([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -619,7 +621,8 @@ if ($LASTEXITCODE -ne 0) {
 controller, webhook and core interceptors.
 
 **If not:**
-- `STOPPED: … Tekton Operator (A)`: use A: run step 2's add-on block, then its TektonConfig block, then step 4.
+- `STOPPED: … Tekton Operator (A)`: use A: run step 2's add-on block, then its TektonConfig block,
+  then step 4.
 - `timed out waiting for the condition`: run `kubectl --kubeconfig <the VKS kubeconfig> -n
   tekton-pipelines get pods`. `ErrImagePull` or `ImagePullBackOff`: the nodes cannot reach
   `ghcr.io`. `Pending`: not enough free CPU (step 1).
@@ -633,8 +636,8 @@ Run this after step 2 or 3, to see that Tekton works: it runs a small pipeline. 
 
 - the namespace `tekton-demo` (a namespace inside the VKS cluster, not a vSphere Namespace), to
   keep the demo apart; only pods that meet Kubernetes' strictest pod rules (`restricted`) run there;
-- two Tasks (build steps, each run as its own pod): `say-hello` makes a greeting, `show-it` prints
-  what it gets;
+- two Tasks (each a list of steps, the commands to run, that runs as its own pod): `say-hello` makes
+  a greeting, `show-it` prints what it gets;
 - the Pipeline `hello`, which runs the two in order and hands the greeting to the second.
 
 It then starts one run of the pipeline (a PipelineRun), waits for it to finish, and prints the
