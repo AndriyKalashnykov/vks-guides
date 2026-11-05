@@ -2273,6 +2273,8 @@ EOF
   fi
   if [ -z "$GITEA_PASSWORD" ]; then
     echo "FAILED: no Gitea password in this terminal; type it (step 4), then run this again"
+  elif ! WT="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-ci get secret cicd-webhook -o jsonpath='{.data.token}' | openssl base64 -d -A)" || [ -z "$WT" ]; then
+    echo "FAILED: cannot read the webhook token (Secret cicd-webhook in cicd-ci, see the error above); the webhooks are unchanged"
   else
     CFG="$(mktemp)"
     P="$(printf '%s' "$GITEA_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
@@ -2282,10 +2284,11 @@ EOF
     for ID in $(api "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks" | jq -r --arg u "$HOOK" '.[]? | select(.config.url == $u) | .id'); do
       api -o /dev/null -X DELETE "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks/$ID" && echo "replaced webhook $ID"
     done
-    kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-ci get secret cicd-webhook -o jsonpath='{.data.token}' | openssl base64 -d -A \
+    printf '%s' "$WT" \
       | jq -R --arg u "$HOOK" '{type: "gitea", active: true, events: ["push"], branch_filter: "main",
                                config: {url: $u, content_type: "json", secret: .}}' \
       | api -o /dev/null -w 'webhook: %{http_code}\n' -X POST --data-binary @- "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks"
+    WT=""
     rm -f "$CFG"
   fi
   kubectl --kubeconfig "$VKS_KUBECONFIG" -n cicd-ci wait --for=condition=Ready eventlistener/cicd-demo --timeout=5m
@@ -2406,8 +2409,13 @@ if ($LASTEXITCODE -ne 0) {
     kubectl --kubeconfig $VKS_KUBECONFIG create -f -
   Remove-Variable B
 }
+$global:LASTEXITCODE = $null
+$WB = kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-ci get secret cicd-webhook -o jsonpath='{.data.token}'
+$WOK = ($LASTEXITCODE -eq 0) -and $WB
 if (-not $GITEA_PASSWORD) {
   "FAILED: no Gitea password in this terminal; type it (step 4), then run this again"
+} elseif (-not $WOK) {
+  "FAILED: cannot read the webhook token (Secret cicd-webhook in cicd-ci, see the error above); the webhooks are unchanged"
 } else {
   $P = [Net.NetworkCredential]::new('', $GITEA_PASSWORD).Password.Replace('\', '\\').Replace('"', '\"')
   $CFG = [IO.Path]::GetTempFileName(); $BODY = [IO.Path]::GetTempFileName()
@@ -2419,7 +2427,7 @@ if (-not $GITEA_PASSWORD) {
       curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -X DELETE "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks/$ID"
       "replaced webhook $ID"
     }
-    $W = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String((kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-ci get secret cicd-webhook -o jsonpath='{.data.token}')))
+    $W = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($WB))
     Set-Content -Encoding ascii -Path $BODY -Value ('{"type":"gitea","active":true,"events":["push"],"branch_filter":"main","config":{"url":"' + $HOOK + '","content_type":"json","secret":"' + $W + '"}}')
     Remove-Variable W
     "webhook: $(curl.exe -sS --connect-timeout 20 --max-time 30 -K $CFG -o NUL -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" "$GITEA_URL/api/v1/repos/gitea-admin/app/hooks")"
@@ -2437,6 +2445,8 @@ run), `webhook: 201` (after `replaced webhook <n>` on a second run) and
 `eventlistener.triggers.tekton.dev/cicd-demo condition met`.
 
 **If not:**
+- `FAILED: cannot read the webhook token …`: the Secret `cicd-webhook` in `cicd-ci` is missing or
+  unreadable; run this block again, which makes it when it is missing.
 - After step 8's push, no new PipelineRun, and Gitea's log
   (`kubectl --kubeconfig <the VKS kubeconfig> -n gitea logs deployment/gitea`) says `denied by
   egress policy`: your Gitea predates GITEA.md's webhook setting; run GITEA.md step 4 again (it

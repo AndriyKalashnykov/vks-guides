@@ -639,9 +639,11 @@ else
     echo "FAILED: cannot reach the VKS cluster; get its kubeconfig again (LOGIN.md)"
   elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit >/dev/null 2>&1; then
     MOUNTS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit \
-    -o jsonpath='{.spec.template.spec.volumes[*].secret.secretName}' 2>/dev/null || true)"
+    -o jsonpath='{.spec.template.spec.volumes[*].secret.secretName}')" || MOUNTS="FAILED"
     case " $MOUNTS " in *" tls-ca-cert "*) TO_OPS=1 ;; *) TO_OPS="" ;; esac
-    if [ -z "$LOGS_FQDN" ] && [ -n "$TO_OPS" ]; then
+    if [ "$MOUNTS" = "FAILED" ]; then
+      echo "FAILED: cannot read the fluent-bit add-on (see the error above); nothing changed"
+    elif [ -z "$LOGS_FQDN" ] && [ -n "$TO_OPS" ]; then
       echo "FAILED: the add-on also sends to Log Management (LOGGING.md); set LOGS_FQDN to its name"
     elif vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -f "$V" -y; then
       sleep 30
@@ -732,9 +734,13 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   if ($OK) {
     kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit 2>$null | Out-Null
     $INSTALLED = $LASTEXITCODE -eq 0
-    $MOUNTS = kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit -o jsonpath='{.spec.template.spec.volumes[*].secret.secretName}' 2>$null
+    $global:LASTEXITCODE = $null
+    $MOUNTS = kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit -o jsonpath='{.spec.template.spec.volumes[*].secret.secretName}'
+    $MOUNTFAIL = $INSTALLED -and $LASTEXITCODE -ne 0
     $TO_OPS = @("$MOUNTS" -split ' ') -contains 'tls-ca-cert'
-    if ($INSTALLED -and $TO_OPS -and -not $LOGS_FQDN) {
+    if ($MOUNTFAIL) {
+      "FAILED: cannot read the fluent-bit add-on (see the error above); nothing changed"
+    } elseif ($INSTALLED -and $TO_OPS -and -not $LOGS_FQDN) {
       "FAILED: the add-on also sends to Log Management (LOGGING.md); set LOGS_FQDN to its name"
     } elseif ($INSTALLED) {
       vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f $V -y
@@ -772,6 +778,8 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 `daemon set "fluent-bit" successfully rolled out`.
 
 **If not:**
+- `FAILED: cannot read the fluent-bit add-on …`: nothing was changed; check the kubeconfig and
+  run the block again.
 - `not found` for the release: copy its name again from LOGGING.md step 1.
 - A login error (`Unauthorized`, `Unable to read password from terminal` (Windows:
   `The handle is invalid`), `provide credentials`) or `context … not found`: as in LOGGING.md

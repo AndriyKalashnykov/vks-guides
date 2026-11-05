@@ -51,6 +51,13 @@ blocks; there is nothing to build.
   server (local file writes and `vcf context use` may come first), and prints
   `MISSING: jq (PREREQS.md)`: empty output takes the wrong branch, deletes nothing, or loses a
   token a server already made.
+- A delete, uninstall or update decided by a query's result fails closed: read the query's exit
+  code (sh `if ! X="$(…)"` or `X="$(…)" || X=FAILED`, no `2>/dev/null`; PowerShell
+  `$global:LASTEXITCODE = $null` before, `-ne 0` after) and stop with `FAILED: … nothing removed`.
+  An empty result from a failed query is not "nothing uses it" (`kubectl get a,b -A` prints nothing
+  when one type is missing). A shared add-on (cert-manager, Contour, Prometheus) is removed only
+  after an in-block check that nothing uses it; a check namespace or Secret is deleted only when
+  this run created it.
 - Downloads use `--connect-timeout 20 --speed-time 60`; a file is replaced only after it checks out.
 - Broadcom terms: "VKS cluster" (not guest/TKG cluster), "Supervisor", "vSphere Namespace",
   "VCF CLI". Text is minimal: what to run and what to expect, no notes or mechanism essays.

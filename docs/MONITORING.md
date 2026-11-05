@@ -672,32 +672,71 @@ deleted` and `namespace "monitoring" deleted`.
 (CRDs), such as ServiceMonitor, and they stay after the uninstall. This deletes them, and every
 object of those kinds in the cluster. You then have none of them left. Run it only if step 1, run
 before you installed this guide, printed `Prometheus Operator CRDs: 0`; otherwise something else
-in the cluster uses them.
+in the cluster uses them. It stops, deleting nothing, while any object of those kinds is left or when
+it cannot count them.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name | grep 'monitoring\.coreos\.com$' \
-  | while read -r C; do kubectl --kubeconfig "$VKS_KUBECONFIG" delete "$C"; done
+CRDS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)" || CRDS="FAILED"
+LIST="$(printf '%s\n' "$CRDS" | grep 'monitoring\.coreos\.com$' | sed 's|.*/||')"
+USED="$(printf '%s\n' "$LIST" | while read -r C; do
+  if [ -n "$C" ]; then kubectl --kubeconfig "$VKS_KUBECONFIG" get "$C" -A -o name </dev/null || echo "FAILED: $C"; fi
+done)"
+if [ "$CRDS" = "FAILED" ] || printf '%s\n' "$USED" | grep -q '^FAILED'; then
+  echo "FAILED: cannot count the objects of these kinds (see the error above); nothing deleted"
+elif [ -n "$USED" ]; then
+  printf '%s\n' "$USED"
+  echo "STOPPED: objects of these kinds are left (above); something else uses them"
+else
+  printf '%s\n' "$LIST" | while read -r C; do
+    if [ -n "$C" ]; then kubectl --kubeconfig "$VKS_KUBECONFIG" delete crd "$C" </dev/null; fi
+  done
+fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
-kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name | Where-Object { $_ -cmatch 'monitoring\.coreos\.com$' } | ForEach-Object { kubectl --kubeconfig $VKS_KUBECONFIG delete $_ }
+$global:LASTEXITCODE = $null
+$CRDS = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
+$FAIL = $LASTEXITCODE -ne 0
+$LIST = @($CRDS | Where-Object { $_ -cmatch 'monitoring\.coreos\.com$' } | ForEach-Object { ($_ -split '/')[-1] })
+$USED = @()
+foreach ($C in $LIST) {
+  $global:LASTEXITCODE = $null
+  $USED += @(kubectl --kubeconfig $VKS_KUBECONFIG get $C -A -o name)
+  if ($LASTEXITCODE -ne 0) { $FAIL = $true }
+}
+if ($FAIL) {
+  "FAILED: cannot count the objects of these kinds (see the error above); nothing deleted"
+} elseif (@($USED | Where-Object { $_ }).Count -gt 0) {
+  $USED
+  "STOPPED: objects of these kinds are left (above); something else uses them"
+} else {
+  $LIST | ForEach-Object { kubectl --kubeconfig $VKS_KUBECONFIG delete crd $_ }
+}
 ```
+
+</details>
 
 **Expect:** ten `customresourcedefinition.apiextensions.k8s.io "….monitoring.coreos.com" deleted`
 lines (nothing when run again).
 
-**If not:** `Unauthorized`: the VKS cluster's kubeconfig has expired;
-[get it again](LOGIN.md#get-the-vks-clusters-kubeconfig).
+**If not:**
+- `STOPPED: …`: something else in the cluster uses these kinds; leave them.
+- `FAILED: …` or `Unauthorized`: the VKS cluster's kubeconfig has expired;
+  [get it again](LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 ## 9. Install with ArgoCD (instead of steps 4 and 5)
 

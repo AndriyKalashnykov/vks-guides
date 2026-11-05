@@ -1257,12 +1257,17 @@ else
   if [ "$DAYS" = "never" ]; then
     printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: %s-token\n  namespace: %s\n  annotations:\n    kubernetes.io/service-account.name: %s\ntype: kubernetes.io/service-account-token\n' \
       "$SA_NAME" "$SA_NAMESPACE" "$SA_NAME" | adm apply -f - >/dev/null
+    GETFAIL=""
     for i in 1 2 3 4 5 6 7 8 9 10; do
-      TOKEN="$(adm -n "$SA_NAMESPACE" get secret "${SA_NAME}-token" -o jsonpath='{.data.token}' 2>/dev/null | base64 -d 2>/dev/null)"
+      if B="$(adm -n "$SA_NAMESPACE" get secret "${SA_NAME}-token" -o jsonpath='{.data.token}')"; then
+        if ! TOKEN="$(printf '%s' "$B" | base64 -d)"; then GETFAIL=1; fi
+      else
+        GETFAIL=1
+      fi
       if [ -n "$TOKEN" ]; then break; fi
       sleep 2
     done
-    if [ -z "$TOKEN" ]; then adm -n "$SA_NAMESPACE" delete secret "${SA_NAME}-token" --ignore-not-found >/dev/null; fi
+    if [ -z "$TOKEN" ] && [ -z "$GETFAIL" ]; then adm -n "$SA_NAMESPACE" delete secret "${SA_NAME}-token" --ignore-not-found >/dev/null; fi
   else
     TOKEN="$(adm -n "$SA_NAMESPACE" create token "$SA_NAME" --duration="$((DAYS * 24))h")"
   fi
@@ -1312,12 +1317,15 @@ if ($DAYS -ne "never" -and ("$DAYS" -notmatch '^[1-9][0-9]{0,4}$' -or [int]"$DAY
   if ($DAYS -eq "never") {
     @('apiVersion: v1', 'kind: Secret', 'metadata:', "  name: $SA_NAME-token", "  namespace: $SA_NAMESPACE", '  annotations:',
       "    kubernetes.io/service-account.name: $SA_NAME", 'type: kubernetes.io/service-account-token') | adm apply -f - | Out-Null
+    $GETFAIL = $false
     foreach ($i in 1..10) {
-      $B = adm -n $SA_NAMESPACE get secret "$SA_NAME-token" -o jsonpath='{.data.token}' 2>$null
-      if ($B) { $TOKEN = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B)); break }
+      $global:LASTEXITCODE = $null
+      $B = adm -n $SA_NAMESPACE get secret "$SA_NAME-token" -o jsonpath='{.data.token}'
+      if ($LASTEXITCODE -ne 0) { $GETFAIL = $true }
+      elseif ($B) { try { $TOKEN = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B)); break } catch { $GETFAIL = $true } }
       Start-Sleep 2
     }
-    if (-not $TOKEN) { adm -n $SA_NAMESPACE delete secret "$SA_NAME-token" --ignore-not-found | Out-Null }
+    if (-not $TOKEN -and -not $GETFAIL) { adm -n $SA_NAMESPACE delete secret "$SA_NAME-token" --ignore-not-found | Out-Null }
   } else {
     $TOKEN = adm -n $SA_NAMESPACE create token $SA_NAME "--duration=$([int]$DAYS * 24)h"
   }
@@ -1384,11 +1392,12 @@ CHECK_NAMESPACE="access-check"
 k() { kubectl --kubeconfig "$SA_KUBECONFIG" "$@"; }
 chmod 600 "$SA_KUBECONFIG"
 echo "acts as: $(k auth whoami -o jsonpath='{.status.userInfo.username}')"
-k create namespace "$CHECK_NAMESPACE"
-k -n "$CHECK_NAMESPACE" create configmap check --from-literal=step=created --save-config
-k -n "$CHECK_NAMESPACE" create configmap check --from-literal=step=updated --dry-run=client -o yaml | k apply -f -
-echo "read back: $(k -n "$CHECK_NAMESPACE" get configmap check -o jsonpath='{.data.step}')"
-k delete namespace "$CHECK_NAMESPACE"
+if k create namespace "$CHECK_NAMESPACE"; then
+  k -n "$CHECK_NAMESPACE" create configmap check --from-literal=step=created --save-config
+  k -n "$CHECK_NAMESPACE" create configmap check --from-literal=step=updated --dry-run=client -o yaml | k apply -f -
+  echo "read back: $(k -n "$CHECK_NAMESPACE" get configmap check -o jsonpath='{.data.step}')"
+  k delete namespace "$CHECK_NAMESPACE"
+fi
 ```
 
 **Windows (PowerShell):**
@@ -1403,10 +1412,12 @@ function k { $input | kubectl --kubeconfig $SA_KUBECONFIG @args }
 icacls $SA_KUBECONFIG /inheritance:r /grant:r "${env:USERNAME}:F" | Out-Null
 "acts as: $(k auth whoami -o jsonpath='{.status.userInfo.username}')"
 k create namespace $CHECK_NAMESPACE
-k -n $CHECK_NAMESPACE create configmap check --from-literal=step=created --save-config
-k -n $CHECK_NAMESPACE create configmap check --from-literal=step=updated --dry-run=client -o yaml | k apply -f -
-"read back: $(k -n $CHECK_NAMESPACE get configmap check -o jsonpath='{.data.step}')"
-k delete namespace $CHECK_NAMESPACE
+if ($LASTEXITCODE -eq 0) {
+  k -n $CHECK_NAMESPACE create configmap check --from-literal=step=created --save-config
+  k -n $CHECK_NAMESPACE create configmap check --from-literal=step=updated --dry-run=client -o yaml | k apply -f -
+  "read back: $(k -n $CHECK_NAMESPACE get configmap check -o jsonpath='{.data.step}')"
+  k delete namespace $CHECK_NAMESPACE
+}
 ```
 
 **Expect:** `acts as: system:serviceaccount:kubeconfig-access:cluster-admin-ci`,
