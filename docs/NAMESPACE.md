@@ -239,7 +239,8 @@ policy offered in the namespace) named after the policy, and a second one ending
    The yellow line about *Instance Storage* is a note, not an error.
 
 **Expect:** the **VM Service** card shows the number of classes you ticked (*2 Associated VM
-Classes*, for example), and its link reads **MANAGE VM CLASSES**.
+Classes*, for example), and its link reads **MANAGE VM CLASSES**. If it still shows *0*, click the
+refresh arrow at the top of the vSphere Client.
 
 A VKS cluster needs no content library in the namespace: do not click **ADD CONTENT LIBRARY**.
 

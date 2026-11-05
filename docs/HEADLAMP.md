@@ -687,8 +687,10 @@ The person icon at the top right shows who you are logged in as, and logs you ou
 
 ![The account menu: Log out: lab-tester, hl-c1](img/headlamp/04-logged-in-as.png)
 
-An account limited to one namespace picks it in **Namespaces** at the top right of any list; the
-**Map** has its own **Namespaces** box. Headlamp remembers the choice in this browser:
+An account limited to one namespace first sees *You don't have permissions to view this resource* on
+the start page (**Overview** and **Events** read the whole cluster); that is expected. It picks its
+namespace in **Namespaces** at the top right of any list, such as **Workloads → Pods**; the **Map**
+has its own **Namespaces** box. Headlamp remembers the choice in this browser:
 
 ![The Namespaces list with headlamp-demo ticked](img/headlamp/05-namespaces-dropdown.png)
 
