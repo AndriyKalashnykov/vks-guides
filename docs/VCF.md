@@ -11,7 +11,7 @@ Kubernetes control plane that vCenter runs when Workload Management is enabled; 
 vSphere Namespaces). The plugin bundle adds its other commands (`vcf cluster`, `vcf addon`, …).
 You download two files from Broadcom, then run the install block; it needs no internet access.
 
-The steps (you, on the machine you will log in from):
+The steps:
 
 1. [Download the two files](#1-download-the-two-files)
 2. [Install vcf and its plugins](#2-install-vcf-and-its-plugins)
@@ -59,10 +59,10 @@ v3.7.2).
 
 ## 2. Install vcf and its plugins
 
-Run this once on each machine you will log in from, after you downloaded both files: the other
-guides need `vcf` and its plugins. It checks the two files against their SHA2 values, installs
+Run this once for each user on each machine you will log in from (the plugins go into your home
+folder), after you downloaded both files: the other guides need `vcf` and its plugins. It checks the two files against their SHA2 values, installs
 `vcf`, then installs its plugins from the bundle. If a file does not match, it installs nothing.
-Afterwards `vcf` and its plugins are installed, and the block prints their versions.
+Afterwards `vcf` and your plugins are installed, and the block prints their versions.
 
 1. Copy the block for your OS into a text editor.
 2. Paste the two SHA2 values between the quotes on its first two lines.
@@ -214,7 +214,7 @@ Lines about the `essential plugins` or `telemetry:v9.0.2` are harmless; the next
 
 ## 3. Stop the essentials message
 
-Run this once on each machine, right after the install, so that `vcf` commands stop printing two
+Run this once for each user on each machine, right after the install, so that `vcf` commands stop printing two
 extra lines first. Once `vcf` has been used on a machine, every command may first print `The vcf
 cli essential plugins have not been installed …` and `Failed to install plugin
 'telemetry:v9.0.2'`: `vcf` looks online for a plugin version Broadcom has not published. The

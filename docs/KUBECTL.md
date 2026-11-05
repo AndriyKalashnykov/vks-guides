@@ -10,7 +10,7 @@
 > - [Using Intel-based apps on a Mac with Apple silicon](https://support.apple.com/en-us/102527) (Rosetta)
 
 `kubectl` is the command-line tool for the Supervisor and your VKS clusters (both are
-Kubernetes). Install it once on each machine where you paste the guides' blocks. Use **one** of
+Kubernetes). Install it once for each user, on each machine where you paste the guides' blocks. Use **one** of
 the two ways:
 
 - [From dl.k8s.io](#from-dlk8sio): the usual way.
@@ -38,7 +38,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 ## From dl.k8s.io
 
-Run this once on this machine, before you log in, when it can reach dl.k8s.io: the other guides'
+Run this before you log in, when this machine can reach dl.k8s.io: the other guides'
 blocks run `kubectl`. It downloads the official
 program, checks that it arrived whole (its SHA-256 checksum) and copies it into `INSTALL_DIR`. If
 that folder needs `sudo` and `sudo` would ask for a password, it uses `~/.local/bin` instead (see
@@ -163,8 +163,8 @@ Before you run it:
 
 Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name
 ([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca), step 1). For a
-Supervisor of another vCenter, use that vCenter's CA file: as `SUPERVISOR_CA`, and on Windows in
-`Import-Certificate`.
+Supervisor of another vCenter, use that vCenter's CA file (LOGIN.md, step 1) as `SUPERVISOR_CA`, and on
+Windows as `Import-Certificate`'s `-FilePath`.
 
 <details>
 <summary><b>Linux amd64, macOS, WSL amd64 (bash or zsh)</b></summary>
