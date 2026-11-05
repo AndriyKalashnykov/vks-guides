@@ -1415,6 +1415,14 @@ security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychai
 Import-Certificate -FilePath "$HOME\octopus-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
+**Expect:** macOS: no output after your password. Windows: a line with the CA's thumbprint and
+`CN=Octopus CA`. Then the browser opens Octopus's web page with no warning (restart the browser
+first).
+
+**If not:** `UI is not allowed in this operation` (Windows): run the line in PowerShell on the
+desktop, not over a remote session, so Windows can ask for **Yes**. A missing `octopus-ca.pem`:
+copy it from step 8 first.
+
 Or, without trusting the CA, check the fingerprint (click **Not secure** left of the address, then
 the certificate details: the issuer's SHA-256 fingerprint is the one step 8 printed) and then click
 **Advanced** and **Proceed to … (unsafe)**, as in [HEADLAMP.md](HEADLAMP.md).

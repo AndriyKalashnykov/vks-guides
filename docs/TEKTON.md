@@ -1307,6 +1307,10 @@ kubectl --kubeconfig $VKS_KUBECONFIG delete clusterrole tekton-demo-listener --i
 **Expect:** `namespace "tekton-demo" deleted`, `clusterrolebinding… "tekton-demo-listener"
 deleted` and `clusterrole… "tekton-demo-listener" deleted`.
 
+**If not:** no output: the demo was removed already. `timed out waiting for the condition`: run
+`kubectl --kubeconfig <the VKS kubeconfig> describe namespace tekton-demo` to see what holds it,
+then this block again.
+
 ## 7. Uninstall Tekton (optional)
 
 **This deletes every Tekton task, pipeline and run in the cluster, in every namespace.** Each

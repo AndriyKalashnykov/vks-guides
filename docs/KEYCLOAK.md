@@ -336,6 +336,9 @@ kubectl oidc-login clean
 (`Could not delete the token cache from the keyring: …` where there is none). The next command asks
 for a new code.
 
+**If not:** kubectl does not know `oidc-login`: kubelogin is not installed on this machine
+([PREREQS.md](PREREQS.md#kubelogin-optional)), so it holds no Keycloak tokens to delete.
+
 ## 6. Take access away (cluster administrator)
 
 Delete the group's RoleBinding (`kubectl --kubeconfig <admin file> -n team-a delete rolebinding

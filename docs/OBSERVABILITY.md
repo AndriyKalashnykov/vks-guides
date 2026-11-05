@@ -1935,6 +1935,10 @@ if ($LASTEXITCODE -eq 0 -and $SUP) {
 
 **Expect:** `record removed`.
 
+**If not:** `FAILED: cannot read the Supervisor` above `Unauthorized`: run [Renew the Supervisor
+login](LOGIN.md#renew-the-supervisor-login), then this block again. Above `Forbidden`: log in as a
+vCenter administrator.
+
 What stays behind: the AddonInstalls in `vmware-system-vks-public` on the Supervisor, and the
 Service `default/metrics-aggregator` in each VKS cluster. Leave every cluster at `disabled` once the
 service is gone.
