@@ -786,11 +786,12 @@ rolebinding keycloak-sv-k8s-devs-edit`).
 
 Do this once per cluster, after step 3, to make the file the people use. It needs your Supervisor
 login with the **Can edit** role ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)) and makes
-it the VCF CLI's current login. It writes a kubeconfig for the VKS cluster that holds no password,
-token or key: when used, the file runs the VCF CLI (`vcf pinniped-auth`), which asks for a sign-in
-at the identity provider. Then it shows which program the file runs. You then have
-`KC_KUBECONFIG`: one file for the whole group, which may be sent by email or chat (below). Run
-again, it replaces that file only when the new one checks out.
+it the active one for the VCF CLI and in its kubeconfig file, and that stays after the block. It
+writes a kubeconfig for the VKS cluster that holds no password, token or key: when used, the file
+runs the VCF CLI (`vcf pinniped-auth`), which asks for a sign-in at the identity provider. Then it
+shows which program the file runs. You then have `KC_KUBECONFIG`: one file for the whole group,
+which may be sent by email or chat (below). Run again, it replaces that file only when the new one
+checks out.
 
 Set `VKS_NAMESPACE` to the vSphere Namespace, `VKS_CLUSTER` to the cluster, and
 `SUPERVISOR_CONTEXT` to your Supervisor login's name ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)).
@@ -1150,11 +1151,13 @@ a new one.
 ### 4. Take the team's token away (cluster administrator)
 
 Do this when the team or tool should lose its access, or a copy of the file may have leaked. It
-deletes the team's ServiceAccount and **every ServiceAccount token Secret (a stored token that
-does not end) in `TEAM_NAMESPACE`, also those the team did not make** (with `edit`, the team could
-have made lasting ones). Every copy of the file then answers `Unauthorized` within about 15
-seconds, and making a ServiceAccount of the same name again does not bring the copies back. Set
-`TEAM`, `TEAM_NAMESPACE`, `SA_NAMESPACE`, `VKS_CLUSTER` and `ADMIN_KUBECONFIG` to what step 1 used.
+deletes the team's ServiceAccount and **every ServiceAccount token Secret (a stored token that does
+not end) in `TEAM_NAMESPACE`, also those the team did not make** (with `edit`, the team could have
+made lasting ones). Every copy of the file then answers `Unauthorized` within about 15 seconds, and
+making a ServiceAccount of the same name again does not bring the copies back. The team's
+RoleBinding and namespace stay; delete the namespace when the team's work in it is no longer needed.
+Set `TEAM`, `TEAM_NAMESPACE`, `SA_NAMESPACE`, `VKS_CLUSTER` and `ADMIN_KUBECONFIG` to what step 1
+used.
 
 **Linux, macOS, WSL (bash or zsh):**
 
