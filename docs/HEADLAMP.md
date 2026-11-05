@@ -913,6 +913,8 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp delete serviceaccount $ACCOUNT 
 **Expect:** a `deleted` line for the account and for each binding it had. Logging out of Headlamp
 does not end a token; only deleting the account (or waiting for its end) does.
 
+**If not:** `MISSING: jq (PREREQS.md)`: install jq, then run the block again.
+
 ## 9. Change the add-on's settings (optional, cluster administrator)
 
 The three settings of the add-on that this guide uses:

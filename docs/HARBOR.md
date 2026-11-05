@@ -404,6 +404,9 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get storageclass -o custom-columns=N
 
 **Expect:** one name per line, for example `wcp-vmfs`.
 
+**If not:** `error: You must be logged in to the server (Unauthorized)`: run [Renew the
+Supervisor login](LOGIN.md#renew-the-supervisor-login), then the block again.
+
 ### Write the file
 
 Harbor's configuration file is Broadcom's file with only these fields changed:
@@ -1161,6 +1164,13 @@ else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n ($NS[0] -replace '^namespa
 
 **Expect:** every pod `Running` or `Completed`, and five volumes `Bound`.
 
+**If not:**
+- `FAILED: cannot list …` under `Unauthorized`: run [Renew the Supervisor
+  login](LOGIN.md#renew-the-supervisor-login), then the block again.
+- `FAILED: Harbor namespaces …: ''`: the service is not installed (step 6); two names: see *Fix
+  common problems*.
+- A volume that stays `Pending`: as in the list above the block.
+
 ### Get a DNS record
 
 Ask whoever runs your DNS for the **A record** the block printed, in a zone your machine and the
@@ -1887,6 +1897,10 @@ then `Removed login credentials for <your Harbor name>` (docker:
 - `unauthorized` (podman: `invalid username/password`) as `admin`: see *Log in as admin*. As the
   robot: its name or secret is wrong, or it has expired. A robot made in Harbor's web page is
   `robot$<the name you typed>`.
+- `FAILED: harbor-data-values.yml or secrets.env is missing …`: run steps 3 and 4 with the same
+  `SUPERVISOR_CONTEXT`.
+- `FAILED: no …harbor-data-values.yml, or no robot secret …`: run step 4, or type the secret
+  again (the line above the block), then run the block in the same terminal.
 
 To build an image, push it to this project and run it in a VKS cluster, see [IMAGE.md](IMAGE.md).
 
