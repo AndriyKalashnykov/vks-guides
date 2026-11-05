@@ -18,9 +18,21 @@ The small command-line tools the other guides' blocks use: `curl`, `tar`, `unzip
 `bsdtar`), `jq`, `openssl`. Required: do the section for your OS, then run [Check](#check), before
 any other guide. The sections marked optional are needed only where a guide says so.
 
+1. The section for your OS: [Linux (Debian / Ubuntu)](#linux-debian--ubuntu),
+   [AlmaLinux 10](#almalinux-10), [Photon OS 5](#photon-os-5), [Arch Linux](#arch-linux),
+   [macOS](#macos) or [Windows](#windows).
+2. [Check](#check).
+3. When a guide or an install points you there: [sudo](#sudo-optional),
+   [`~/.local/bin` on your PATH](#localbin-on-your-path),
+   [podman and docker](#podman-and-docker-optional), [kubelogin](#kubelogin-optional).
+
+[Registry hosts, for a firewall](#registry-hosts-for-a-firewall) lists the hosts a firewall must
+also allow for each image registry.
+
 ## Linux (Debian / Ubuntu)
 
-Run this on Debian or Ubuntu: it installs the five tools with apt (needs `sudo`).
+Run this once on Debian or Ubuntu, before any other guide: it installs the five tools with apt
+(needs `sudo`). Afterwards the other guides' blocks find them.
 
 ```sh
 sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
@@ -39,6 +51,9 @@ AlmaLinux is a free rebuild of Red Hat Enterprise Linux (RHEL). Its blocks here 
 guides use RHEL's own tools (`dnf`, Docker's RHEL repository), so they also fit RHEL 10, Rocky
 Linux 10 and CentOS Stream 10; they were run on AlmaLinux only.
 
+Run this once on AlmaLinux, before any other guide: it installs the five tools with dnf (needs
+`sudo`). Afterwards the other guides' blocks find them.
+
 ```sh
 sudo dnf install -y curl tar unzip jq openssl
 ```
@@ -50,8 +65,9 @@ sudo dnf install -y curl tar unzip jq openssl
 
 ## Photon OS 5
 
-This refreshes the package list and installs the tools the guides use, plus basic tools Photon OS
-lacks by default (`coreutils`, `findutils`, `gawk`, `diffutils`, `sed`, `grep`).
+Run this once on Photon OS 5, before any other guide. This refreshes the package list and
+installs the tools the guides use, plus basic tools Photon OS lacks by default (`coreutils`,
+`findutils`, `gawk`, `diffutils`, `sed`, `grep`).
 
 It installs `libarchive` instead of `unzip`. Photon OS 5's own package repositories have `unzip`,
 but recent Photon OS VMs deployed through a vSphere Namespace's VM Service are set to a shorter
@@ -81,8 +97,10 @@ an `ssh` from a new terminal logs in. Then run [Check](#check).
 
 ## Arch Linux
 
-This installs the tools with `pacman`. `-Syu` also upgrades the rest of the system first: Arch Linux
-does not support installing packages without that upgrade.
+Run this once on Arch Linux, before any other guide. This installs the tools with `pacman`.
+`-Syu` also upgrades the rest of the system first: Arch Linux does not support installing
+packages without that upgrade. Afterwards the five tools are installed and the system is up to
+date.
 
 ```sh
 sudo pacman -Syu --needed --noconfirm curl tar unzip jq openssl
@@ -99,8 +117,9 @@ sudo pacman -Syu --needed --noconfirm curl tar unzip jq openssl
 
 ## macOS
 
-macOS ships `curl`, `tar`, `unzip` and `openssl`, and recent releases also ship `jq`. This
-installs `jq` with [Homebrew](https://brew.sh) only when it is missing:
+Run this once on macOS, before any other guide. macOS ships `curl`, `tar`, `unzip` and
+`openssl`, and recent releases also ship `jq`. This installs `jq` with [Homebrew](https://brew.sh)
+only when it is missing; afterwards all five tools are there:
 
 ```sh
 command -v jq >/dev/null 2>&1 || brew install jq
@@ -125,6 +144,7 @@ Pick one:
 
 1. Open **PowerShell as Administrator** and install WSL with Ubuntu. This also turns WSL on if
    Windows does not have it yet; it needs Windows 10 version 2004 or later, or Windows 11.
+   Afterwards Ubuntu is in the Start menu, ready for step 2.
 
    ```powershell
    wsl --install -d Ubuntu
@@ -141,7 +161,9 @@ Pick one:
    Ubuntu terminal too, with the `sh` blocks.
 
 3. Files you download in Windows (the VCF CLI tarballs) are in your Windows `Downloads` folder,
-   not in Ubuntu's `~/Downloads`. Print its path inside Ubuntu:
+   not in Ubuntu's `~/Downloads`. Run this once, before you install the VCF CLI, to find that
+   folder from Ubuntu: it prints the folder's path inside Ubuntu and changes nothing. That path is
+   the `DOWNLOAD_DIR` the VCF CLI install asks for:
 
    ```sh
    WIN_DOWNLOADS="$(wslpath "$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')")/Downloads"
@@ -153,8 +175,10 @@ Pick one:
 
 ## Check
 
-This prints `ok` or `MISSING` for each tool the guides use: the ones above, and the ones the next
-guides install (`kubectl`, `vcf`, and `helm` for the guides that install apps with Helm).
+Run this after your OS's section above, before any other guide, to see which tools are still
+missing. This prints `ok` or `MISSING` for each tool the guides use: the ones above, and the ones
+the next guides install (`kubectl`, `vcf`, and `helm` for the guides that install apps with Helm).
+It changes nothing; the list shows which tools you still have to install.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -183,7 +207,9 @@ foreach ($t in 'curl.exe', 'tar.exe', 'kubectl', 'vcf', 'helm') {
 
 The kubectl and VCF CLI install blocks never ask for a password. When `/usr/local/bin` needs
 administrator rights and `sudo` would ask, the tool goes into `~/.local/bin` instead. To have it
-in `/usr/local/bin`, give `sudo` your password first, as a block of its own:
+in `/usr/local/bin`, give `sudo` your password first, as a block of its own. This makes `sudo`
+remember your password for a few minutes and changes nothing else; the install block you run next
+in this terminal then uses `/usr/local/bin`:
 
 ```sh
 sudo -v
@@ -200,7 +226,8 @@ If an install printed `note: …/.local/bin added to PATH for this terminal only
 not find the tool yet. This adds `~/.local/bin` to `PATH`, the list of folders your shell searches
 for commands, in your shell's startup file (`~/.zshrc`, `~/.bashrc` or `~/.bash_profile`). With
 `~/.bashrc`, it also creates `~/.bash_profile` when bash has none of `~/.bash_profile`,
-`~/.bash_login` and `~/.profile`, so SSH logins read it:
+`~/.bash_login` and `~/.profile`, so SSH logins read it. Afterwards every new terminal finds the
+tools:
 
 ```sh
 case "$(uname -s)/${BASH_VERSION:+bash}" in
@@ -232,15 +259,17 @@ it lets you run `docker` without `sudo`, after you log out and back in.
 
 ### podman and docker on Debian / Ubuntu
 
-podman:
+podman, to build and push images with podman: this installs podman from Ubuntu's or Debian's
+packages; afterwards the `podman` command is ready to use.
 
 ```sh
 sudo apt-get update && sudo apt-get install -y podman
 ```
 
-docker: this installs Docker's own packages from Docker's repository (Ubuntu's own is too old).
-It first removes Ubuntu's docker packages if you have them, and at the end adds you to the
-`docker` group:
+docker, to build and push images with docker: Ubuntu's own docker is too old to push to Harbor,
+so this installs Docker's own packages from Docker's repository. It first removes Ubuntu's docker
+packages if you have them, and at the end adds you to the `docker` group. Afterwards docker runs,
+and works without `sudo` once you log out and back in:
 
 ```sh
 D="$(. /etc/os-release && echo "$ID")"
@@ -274,14 +303,16 @@ esac
 
 ### podman and docker on AlmaLinux 10
 
-podman:
+podman, to build and push images with podman: this installs podman from AlmaLinux's own packages;
+afterwards the `podman` command is ready to use.
 
 ```sh
 sudo dnf install -y podman
 ```
 
-docker: this adds Docker's own repository (AlmaLinux has no docker package), installs and starts
-docker, and adds you to the `docker` group:
+docker, to build and push images with docker: this adds Docker's own repository (AlmaLinux has no
+docker package), installs and starts docker, and adds you to the `docker` group. Afterwards docker
+runs, and works without `sudo` once you log out and back in:
 
 ```sh
 sudo dnf install -y dnf-plugins-core && sudo dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo && sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin && sudo usermod -aG docker "$USER" && sudo systemctl enable --now docker && echo "docker installed: log out and back in"
@@ -297,9 +328,10 @@ running. Restart the machine; docker then starts by itself.
 
 ### podman and docker on Photon OS 5
 
-docker only: podman cannot run without `root` on Photon OS. This installs and starts docker and
-adds you to the `docker` group. Like the line in [Photon OS 5](#photon-os-5), it can update the SSH
-server and restarts it.
+docker only: podman cannot run without `root` on Photon OS. Run this on Photon OS to build and
+push images with docker. This installs and starts docker and adds you to the `docker` group. Like
+the line in [Photon OS 5](#photon-os-5), it can update the SSH server and restarts it. Afterwards
+docker runs, and works without `sudo` once you log out and back in.
 
 ```sh
 sudo tdnf install -y docker openssh openssh-socket && sudo /usr/sbin/sshd -t && sudo systemctl try-restart sshd.service && sudo usermod -aG docker "$USER" && sudo systemctl enable --now docker && echo "docker installed: log out and back in"
@@ -313,13 +345,16 @@ in [Photon OS 5](#photon-os-5).
 
 ### podman and docker on Arch Linux
 
-podman:
+podman, to build and push images with podman: this installs podman with pacman and upgrades the
+system; afterwards the `podman` command is ready to use.
 
 ```sh
 sudo pacman -Syu --needed --noconfirm podman
 ```
 
-docker: this installs and starts docker and its build plugin, and adds you to the `docker` group:
+docker, to build and push images with docker: this installs and starts docker and its build
+plugin, and adds you to the `docker` group. Afterwards docker runs, and works without `sudo` once
+you log out and back in:
 
 ```sh
 sudo pacman -Syu --needed --noconfirm docker docker-buildx && sudo usermod -aG docker "$USER" && sudo systemctl enable --now docker.socket docker.service && echo "docker installed: log out and back in"
@@ -334,8 +369,9 @@ machine; docker then starts by itself.
 
 ### podman and docker on macOS
 
-podman: on macOS it runs containers in a small Linux virtual machine. This installs podman, then
-creates and starts that machine if it is not there or not running:
+podman, to build and push images with podman: on macOS it runs containers in a small Linux virtual
+machine. This installs podman, then creates and starts that machine if it is not there or not
+running. Afterwards the `podman` command uses that machine:
 
 ```sh
 brew install podman
@@ -346,9 +382,10 @@ podman info >/dev/null 2>&1 || podman machine start
 **Expect:** the last lines say the machine `started successfully`, or nothing if it was already
 running.
 
-docker, with [Colima](https://github.com/abiosoft/colima), which runs docker in a small Linux
-virtual machine (Docker Desktop also works; larger companies need a paid subscription for it).
-This installs Colima, docker and its build plugin, starts Colima, and points docker at it:
+docker, to build and push images with docker: use [Colima](https://github.com/abiosoft/colima),
+which runs docker in a small Linux virtual machine (Docker Desktop also works; larger companies
+need a paid subscription for it). This installs Colima, docker and its build plugin, starts
+Colima, and points docker at it. Afterwards the `docker` command talks to docker in Colima:
 
 ```sh
 brew install colima docker docker-buildx
@@ -367,12 +404,15 @@ Administrator** with `wsl --install --no-distribution`, and restart Windows if i
 
 - podman: download `podman-installer-windows-amd64.msi` from
   [Podman's releases](https://github.com/podman-container-tools/podman/releases), install it, open a new
-  **Windows PowerShell** and run the block below. It creates and starts podman's Linux virtual
-  machine, where your containers run.
+  **Windows PowerShell** and run the block below.
 - docker: install [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)
   and start it. Larger companies need a paid subscription for it. Free instead: Docker CE inside
   WSL 2, with the [Debian / Ubuntu](#podman-and-docker-on-debian--ubuntu) docker block run in
   your WSL Ubuntu; then use docker, and IMAGE.md's Linux blocks, in that Ubuntu.
+
+For podman, to build and push images with podman, run this once in that new Windows PowerShell:
+it creates and starts podman's Linux virtual machine, where your containers run. Afterwards the
+`podman` command uses that machine:
 
 ```powershell
 podman machine init
@@ -383,7 +423,9 @@ podman machine start
 
 ### Check podman and docker
 
-This shows, for podman and docker, whether each is installed and running, and its version.
+Run this after you install either engine, and after you log out and back in, to see that it is
+ready. This shows, for podman and docker, whether each is installed and running, and its version.
+It changes nothing; afterwards you know which engine is ready for IMAGE.md.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -426,7 +468,8 @@ foreach ($e in 'podman', 'docker') {
 
 ## kubelogin (optional)
 
-Only for [KEYCLOAK.md](KEYCLOAK.md), where a person logs in to a VKS cluster with Keycloak. This
+Only for [KEYCLOAK.md](KEYCLOAK.md): run this on each machine where a person logs in to a VKS
+cluster with Keycloak. This
 downloads kubelogin `KUBELOGIN_VERSION` from GitHub, checks it against its published checksum, and
 installs it as `kubectl-oidc_login`, the name under which kubectl runs it as `kubectl oidc-login`.
 Install [kubectl](KUBECTL.md) first.
