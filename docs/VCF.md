@@ -41,7 +41,7 @@ Arm PC). On a machine without a browser, download them on another one and copy b
 | file | where to click | direct link |
 |---|---|---|
 | `VCF-Consumption-CLI-<platform>-9.1.1.0100.25746586.tar.gz` | [My Downloads](https://support.broadcom.com/group/ecx/downloads) → VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0100 → **VCF Consumption CLI** | [VCF CLI](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0100&os=&servicePk=547810&language=EN&groupId=545612&viewGroup=true) |
-| `VCF-Consumption-CLI-PluginBundle-<platform>-9.1.1.0200.25839222.tar.gz` | [My Downloads](https://support.broadcom.com/group/ecx/downloads) → VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0200 → **VCF Consumption CLI Plugins** | [VCF CLI plugins](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0200&os=&servicePk=548172&language=EN&groupId=545621&viewGroup=true) |
+| `VCF-Consumption-CLI-PluginBundle-<platform>-9.1.1.0300.25882127.tar.gz` | [My Downloads](https://support.broadcom.com/group/ecx/downloads) → VMware vSphere Foundation → VMware vSphere Foundation 9 → 9.1.1.0300 → **VCF Consumption CLI Plugins** | [VCF CLI plugins](https://support.broadcom.com/group/ecx/productfiles?displayGroup=VMware%20vSphere%20Foundation%209&release=9.1.1.0300&os=&servicePk=549164&language=EN&groupId=545621&viewGroup=true) |
 
 - With a VMware Cloud Foundation account, click VMware Cloud Foundation → VMware Cloud Foundation
   9 instead, then for each file the release whose file names match the table. Until you pick the
@@ -52,7 +52,7 @@ Arm PC). On a machine without a browser, download them on another one and copy b
   `…-PluginBundle-…`, `…-OCI-…`).
 - Copy the **SHA2** value of each file (its SHA-256 checksum: 64 letters and digits); the install
   block checks them.
-- Take the files whose names contain `9.1.1.0100.25746586` (the CLI) and `9.1.1.0200.25839222`
+- Take the files whose names contain `9.1.1.0100.25746586` (the CLI) and `9.1.1.0300.25882127`
   (the plugins), the names the install block expects; the two come from different releases. The
   plugins' VKS plugins (`addon`, `cluster`, …) are v3.8.0, for VKS 3.8 (the bundle also carries
 v3.7.2).
@@ -80,7 +80,7 @@ VCF_PLUGINS_SHA256=""
 DOWNLOAD_DIR="$HOME/Downloads"
 INSTALL_DIR="/usr/local/bin"
 VCF_CLI_VERSION="9.1.1.0100.25746586"
-VCF_PLUGINS_VERSION="9.1.1.0200.25839222"
+VCF_PLUGINS_VERSION="9.1.1.0300.25882127"
 
 case "$(uname -s)/$(uname -m)" in
   Linux/x86_64)  P=Linux_AMD64 ;;
@@ -137,7 +137,7 @@ $VCF_PLUGINS_SHA256 = ""                 # SHA2 of the plugin bundle from the do
 $DOWNLOAD_DIR = "$HOME\Downloads"
 $INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"
 $VCF_CLI_VERSION = "9.1.1.0100.25746586"
-$VCF_PLUGINS_VERSION = "9.1.1.0200.25839222"
+$VCF_PLUGINS_VERSION = "9.1.1.0300.25882127"
 
 $global:LASTEXITCODE = $null
 $P = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'Windows_ARM64' } else { 'Windows_AMD64' }
