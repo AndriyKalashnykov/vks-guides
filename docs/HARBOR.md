@@ -365,8 +365,8 @@ after `kept the existing …` when the file was there.
 - Other numbers: the file was edited or cut short. If no Harbor was installed with it yet, delete
   it, run the block again, then step 4.
 
-**Your own admin password:** to use it instead, put it in the file using only letters, digits and
-`-`: step 4 refuses any other character.
+**Your own admin password:** to use it instead, change `HARBOR_ADMIN_PASSWORD` in `secrets.env`
+before step 4, using only letters, digits and `-`: step 4 refuses any other character.
 
 **Keep this file, and a copy where you keep passwords, for as long as this Harbor exists**: any
 later change to its configuration must send the same seven values (with another
@@ -801,10 +801,11 @@ No VKS clusters yet: skip *Record the VKS cluster machines* here and step 8.
 Installing Harbor makes VKS update every node of your VKS clusters (a node is one of the VMs a VKS
 cluster runs on; VKS calls it a machine), so that they trust Harbor. Run this right before you
 install, once for each vSphere Namespace (the namespace in vCenter) that holds VKS clusters. It
-saves the current list of machines in that vSphere Namespace in a file on this machine, and
-changes nothing on the Supervisor. Set `VKS_NAMESPACE` to that vSphere Namespace's name. You get
-the number of machines recorded; step 8 compares against this record to show when every node has
-been updated. Running it again for the same vSphere Namespace replaces its record.
+saves the current list of machines in that vSphere Namespace in a file on this machine, and changes
+nothing on the Supervisor. Set `VKS_NAMESPACE` to that vSphere Namespace's name. You get the number
+of machines recorded; step 8 compares against this record to show when every node has been updated.
+Running it again for the same vSphere Namespace replaces its record, so run it again only right
+before an install or step 13's change, never while the nodes are being updated.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1168,9 +1169,9 @@ VKS cluster nodes both use (a `hosts` file line does not reach the nodes).
 ### Check the DNS record
 
 Run this once the DNS record exists, before you use Harbor's name. It checks that, from this
-machine, Harbor's name leads to the address Harbor has on the Supervisor, and changes nothing.
-You get `DNS is right` with the name and the address. Step 11 checks the same from the VKS
-cluster nodes.
+machine, Harbor's name leads to the address Harbor has on the Supervisor, and changes nothing. You
+get `DNS is right` with the name and the address. Step 11 checks that the VKS cluster nodes reach
+Harbor by this name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1460,10 +1461,10 @@ on macOS), `Harbor at https://<your Harbor name> with this CA: http=200`, then `
 ### Log in as admin
 
 Run this after *Save the CA*, to make sure the admin password works before the next blocks use it.
-It logs in to Harbor's API (the address tools use to talk to Harbor) as `admin` with the password
-from `secrets.env`, using `harbor-ca.crt` to trust Harbor, and asks who you are; nothing changes in
-Harbor. You get your user name and whether it is an administrator. The next blocks log in the same
-way to create a project and a robot account.
+It logs in to Harbor's API (the way programs such as `curl` talk to Harbor, at the same address as
+its web page) as `admin` with the password from `secrets.env`, using `harbor-ca.crt` to trust
+Harbor, and asks who you are; nothing changes in Harbor. You get your user name and whether it is an
+administrator. The next blocks log in the same way to create a project and a robot account.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1585,8 +1586,8 @@ Harbor (nothing changes on the Supervisor or in vCenter). Set:
   pull, so a VKS cluster needs a stored login (a pull secret); `"true"` for a **public** one, where
   anyone who reaches Harbor can pull. Pushing always needs a login.
 
-You get the project's name and whether it is public; running it again with the same name leaves
-the project as it is.
+You get the project's name and whether it is public; running it again with the same name leaves the
+project as it is. To click instead, use **In Harbor's web page** after this block's **If not:**.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2916,7 +2917,7 @@ else {
 - `Nothing deleted: … has no supervisor-uid`: step 1 was not run with this `SUPERVISOR_CONTEXT`;
   move the folder aside the same way.
 
-Ask for Harbor's DNS record to be removed too.
+**DNS record:** ask for Harbor's DNS record to be removed too.
 
 If you trusted Harbor's CA for podman or docker, [IMAGE.md step 8](IMAGE.md#8-remove-it-optional)
 says how to stop.

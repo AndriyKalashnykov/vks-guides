@@ -215,12 +215,12 @@ Run this once, before SQL Server and Octopus start (steps 6 and 7): they read th
 and licence from here. It creates the namespace `octopus` (a namespace inside the VKS cluster, not a
 vSphere Namespace; it is not listed under Supervisor Management → Namespaces), which allows only
 pods that follow the `restricted` Pod Security Standard (Kubernetes' strictest rules for what a
-container may do), and in it seven Secrets: random passwords for SQL Server, Octopus's random
-master key, Octopus's first user `admin` with the password you type, your licence from
-`octopus-license.xml`, and how Octopus reaches its database. You get the
-namespace with its Secrets, ready for steps 4 to 7; nothing prints a password or the key. Run
-again, it keeps every Secret that exists (the list is below the **If not:**). Set `VKS_CLUSTER` in
-the second block. First type the password for Octopus's user `admin`, on its own (it is not shown):
+container may do), and in it seven Secrets: random passwords for SQL Server, Octopus's random master
+key, Octopus's first user `admin` with the password you type, your licence from
+`octopus-license.xml`, and how Octopus reaches its database. You get the namespace with its Secrets,
+ready for steps 4 to 7; nothing prints a password or the key. Run again, it keeps every Secret that
+exists (the list is below the **If not:**). Set `VKS_CLUSTER` in the second block to the name of
+Octopus's cluster. First type the password for Octopus's user `admin`, on its own (it is not shown):
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -899,14 +899,15 @@ running) and the same two lines.
 ## 7. Run Octopus
 
 Run this after steps 3 to 6 to start Octopus itself, and again after step 11. It writes a values
-file, `~/.config/vks-guides/octopus/values.yaml`, for Octopus's Helm chart 1.18.0 (Helm installs
-an application from a package, its chart; the values file holds this guide's settings and no
-secrets: Octopus reads them from step 3's Secrets), installs or updates Octopus with it, waits
-until Octopus is ready, then runs nginx in front of Octopus's web page with step 5's certificate.
-You get Octopus running behind its web address; step 8 checks it. Run again, it keeps Octopus's
-data and keys. Set `VKS_CLUSTER` to the name of Octopus's cluster. It accepts Octopus Deploy's EULA
-(`acceptEula`) and gives the `admin` user the e-mail `admin@example.com`. The first start takes
-several minutes: the nodes download a 1.6 GB image and Octopus creates its database tables.
+file, `~/.config/vks-guides/octopus/values.yaml`, for Octopus's Helm chart 1.18.0 (Helm installs an
+application from a package, its chart; the values file holds this guide's settings and no secrets:
+Octopus reads its passwords and keys from step 3's Secrets), installs or updates Octopus with it,
+waits until Octopus is ready, then runs nginx in front of Octopus's web page with step 5's
+certificate. You get Octopus running behind its web address; step 8 checks it. Run again, it keeps
+Octopus's data and keys. Set `VKS_CLUSTER` to the name of Octopus's cluster. It accepts Octopus
+Deploy's EULA (`acceptEula`) and gives the `admin` user the e-mail `admin@example.com`. The first
+start takes several minutes: the nodes download a 1.6 GB image and Octopus creates its database
+tables.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1395,8 +1396,9 @@ gRPC port keeps Octopus's own certificate.
 
 Octopus's web page is `https://<OCTOPUS_ADDRESS>`; your browser warns that the connection is not
 private until it trusts your CA. Run the line below once on the machine whose browser you sign in
-with, so that the browser trusts Octopus's web page. It adds `octopus-ca.pem` from step 8 to your
-user's trusted CAs. You get Octopus's web page in your browser with no warning.
+with (copy `octopus-ca.pem` from step 8 there first; it holds no secret), so that the browser trusts
+Octopus's web page. It adds `octopus-ca.pem` to your user's trusted CAs. You get Octopus's web page
+in your browser with no warning. To skip this, check the fingerprint instead (below).
 
 **macOS** (macOS asks for your password):
 
@@ -1816,8 +1818,8 @@ by its full path in Nexus, `<NEXUS_REPO>/<image>` (for example `apps/busybox`).
 Run this to change the password of Octopus's user `admin` for good: Octopus sets `admin`'s password
 from step 3's Secret each time it starts, so a password changed in the web page goes back at the
 next restart. This replaces the Secret with the password you type and restarts Octopus (about a
-minute). You then sign in with the new password. Set `VKS_CLUSTER` in the second block. First type
-the new password, on its own (it is not shown):
+minute). You then sign in with the new password. Set `VKS_CLUSTER` in the second block to the name
+of Octopus's cluster. First type the new password, on its own (it is not shown):
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1890,14 +1892,14 @@ Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_ADMIN_PASSWORD
 
 ## 13. Remove Octopus (optional)
 
-Run this when you no longer need Octopus; to delete its cluster too, run this first. It removes
-Octopus and SQL Server and deletes the namespace `octopus` with every Secret, the CA and the
-database, then waits until the volumes are gone (SQL Server's, and Octopus's
-`package-repository-claim`, `artifacts-claim`, `task-log-claim`, `audit-log-claim` and server log).
-Once the volumes are gone it also deletes step 11's `~/.config/vks-guides/octopus/values-ca.yaml`,
-whose ConfigMap goes with the namespace. You get the cluster without Octopus: cert-manager stays;
-so do `octopus-ca.pem`, `values.yaml` and the CA you trusted in step 9. Set `VKS_CLUSTER` to the
-name of Octopus's cluster.
+Run this when you no longer need Octopus; to delete its cluster too, run this first, then
+[CLUSTER.md step 8](CLUSTER.md#8-delete-the-cluster-optional). It removes Octopus and SQL Server and
+deletes the namespace `octopus` with every Secret, the CA and the database, then waits until the
+volumes are gone (SQL Server's, and Octopus's `package-repository-claim`, `artifacts-claim`,
+`task-log-claim`, `audit-log-claim` and server log). Once the volumes are gone it also deletes step
+11's `~/.config/vks-guides/octopus/values-ca.yaml`, whose ConfigMap goes with the namespace. You get
+the cluster without Octopus: cert-manager stays; so do `octopus-ca.pem`, `values.yaml` and the CA
+you trusted in step 9. Set `VKS_CLUSTER` to the name of Octopus's cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1947,5 +1949,8 @@ are gone`. Run again, it prints `release: not found` and `namespaces "octopus" n
 **If not:**
 - `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not delete the
   cluster until it is gone.
+- `STILL THERE: (the check failed …)`: kubectl could not read the cluster; the error above says why
+  (`Unauthorized`: the file has expired, [get it again](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+  Then run the block again.
 
 Back to [README](../README.md).

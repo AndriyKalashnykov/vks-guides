@@ -99,15 +99,15 @@ one's name for step 4. The cluster's list has no `fluent-bit`.
 ## 2. Check Log Management's certificate
 
 Fluent Bit sends logs only to a server it trusts, so first check that you have the right
-certificate. Save the CA certificate from your administrator (the file that proves Log
-Management's certificate is genuine) as `~/.config/vks-guides/logging/logs-ca.crt` (PowerShell:
-`$HOME\.config\vks-guides\logging\logs-ca.crt`). Then set `LOGS_FQDN` to Log Management's DNS name
-and run this. It changes nothing, and:
+certificate. Save the CA certificate from your administrator (the file that proves Log Management's
+certificate is genuine) as `~/.config/vks-guides/logging/logs-ca.crt` (PowerShell:
+`$HOME\.config\vks-guides\logging\logs-ca.crt`). Then run this. It changes nothing, and:
 
 - prints the certificate's fingerprint, a short code to compare with your administrator's;
 - connects to Log Management and checks that it answers with a certificate this CA vouches for.
 
-You then know that this CA and this name work; step 3 uses both.
+You then know that this CA and this name work; step 3 uses the name, step 5 the CA. Set `LOGS_FQDN`
+to Log Management's DNS name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -487,14 +487,14 @@ minutes.
 
 ## 7. Change the destination (optional)
 
-Run this when the logs must go to a different Log Management, or its CA changed. First run steps
-2 and 3 with the new name. Then this block replaces the CA certificate in the Secret
+Run this when the logs must go to a different Log Management, or its CA changed. First run steps 2
+and 3 with the new CA or name. Then this block replaces the CA certificate in the Secret
 `tls-ca-cert`, asks the Supervisor to give Fluent Bit the new settings from step 3, and restarts
-Fluent Bit. It switches the VCF CLI's current context to your Supervisor (`SUPERVISOR_CONTEXT`),
-and the VCF CLI stays on it after the block. You then have the logs going to the new Log
-Management: check with step 6. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 1. If you also
-send logs to Loki ([OBSERVABILITY.md](OBSERVABILITY.md) step 5), this block replaces those
-settings too: run that step 5 again afterwards, with `LOGS_FQDN` set to the new name.
+Fluent Bit. It switches the VCF CLI's current context to your Supervisor (`SUPERVISOR_CONTEXT`), and
+the VCF CLI stays on it after the block. You then have the logs going to the new Log Management:
+check with step 6. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 1. If you also send logs to Loki
+([OBSERVABILITY.md](OBSERVABILITY.md) step 5), this block replaces those settings too: run that step
+5 again afterwards, with `LOGS_FQDN` set to the new name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

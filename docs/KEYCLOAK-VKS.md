@@ -141,13 +141,14 @@ already`: Keycloak may be installed; steps 3 to 5 keep what exists.
 ## 2. Install cert-manager
 
 Run this once per cluster, before step 4: Keycloak's HTTPS certificate (step 4) comes from
-cert-manager, a Broadcom add-on of the VKS cluster that makes and renews certificates
-([what add-ons are](ADDONS.md)). It switches the VCF CLI's current context to the Supervisor, and
-the switch stays after the block; it installs cert-manager with the VCF CLI when the cluster does
-not have it, and waits until it accepts certificate requests. You get cert-manager ready in the
-cluster. When the add-on is there already (for example from [HEADLAMP.md](HEADLAMP.md)), it
-changes nothing. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to its
-name, and `SUPERVISOR_CONTEXT` to the Supervisor's name you logged in with ([LOGIN.md](LOGIN.md)).
+cert-manager, a Broadcom add-on of the VKS cluster that makes and renews certificates ([what add-ons
+are](ADDONS.md)). It switches the VCF CLI's current context to the Supervisor, and the switch stays
+after the block; it installs cert-manager with the VCF CLI when the cluster does not have it, and
+waits until it accepts certificate requests. You get cert-manager ready in the cluster. When the
+add-on is there already (for example from [HEADLAMP.md](HEADLAMP.md)), it changes nothing. Set
+`VKS_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to its name, and
+`SUPERVISOR_CONTEXT` to the name of your Supervisor login from [LOGIN.md](LOGIN.md) (`supervisor`
+unless you chose another).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -325,12 +326,12 @@ foreach ($S in @(@('keycloak-db', 'keycloak'), @('keycloak-admin', 'admin'))) {
 ## 4. Make Keycloak's certificate
 
 Run this after steps 2 and 3, so that Keycloak answers over HTTPS with a certificate that browsers
-and clusters can trust. It makes a CA (certificate authority: the issuer that browsers and clusters
-trust, steps 6 and 8) of your own with cert-manager, valid for 10 years, and from it a certificate
-for `KEYCLOAK_HOST`, the DNS name Keycloak will have (step 7), and for its name inside the cluster.
-You get the CA and the certificate in the namespace `keycloak`, for steps 5 and 6. Run again, it
-keeps the CA. Set `VKS_CLUSTER` to the name of Keycloak's cluster and `KEYCLOAK_HOST` to Keycloak's
-DNS name.
+and clusters can trust. It makes a CA (certificate authority: it signs the certificate, and browsers
+and clusters that trust it, steps 6 and 8, trust Keycloak) of your own with cert-manager, valid for
+10 years, and from it a certificate for `KEYCLOAK_HOST`, the DNS name Keycloak will have (step 7),
+and for its name inside the cluster. You get the CA and the certificate in the namespace `keycloak`,
+for steps 5 and 6. Run again, it keeps the CA. Set `VKS_CLUSTER` to the name of Keycloak's cluster
+and `KEYCLOAK_HOST` to Keycloak's DNS name.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1220,10 +1221,10 @@ group path** off and **Add to ID token** on.
 Run this for each person who signs in through Keycloak. It adds the person to the realm with their
 name, email address and a temporary password, which they change at their first sign in, and puts
 them in a group. You get the person's account, ready for their first sign in. In the second block,
-set `VKS_CLUSTER`, `REALM` and the person's username, names, email address (Keycloak requires
-them, or stops the first sign in at **Update Account Information**) and group; `OTP="yes"` adds
-a one-time-code app (such as Google Authenticator) at the first sign in. First type the temporary
-password, on its own:
+set `VKS_CLUSTER` to the name of Keycloak's cluster, `REALM` and the person's username, names, email
+address (Keycloak requires them, or stops the first sign in at **Update Account Information**) and
+group; `OTP="yes"` adds a one-time-code app (such as Google Authenticator) at the first sign in.
+First type the temporary password, on its own:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1679,7 +1680,8 @@ if (-not $V) { "Keycloak's volume is gone" } else { "STILL THERE: $V" }
 seconds. Run again, it prints `namespaces "keycloak" not found` first.
 
 **If not:** `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not
-delete the cluster until it is gone. `STILL THERE: (the check failed …)`: log in to the Supervisor
-again ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)) and run the block again.
+delete the cluster until it is gone. `STILL THERE: (the check failed …)`: kubectl could not read the
+cluster; the error above says why (`Unauthorized`: the file has expired, [get it
+again](LOGIN.md#get-the-vks-clusters-kubeconfig)). Then run the block again.
 
 Back to [README](../README.md).

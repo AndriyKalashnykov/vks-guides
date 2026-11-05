@@ -148,13 +148,14 @@ kubectl --kubeconfig $VKS_KUBECONFIG create namespace podinfo
 
 ## 3. Install Loki
 
-Run this after step 2, so the logs of step 5 have a place to go. It installs Loki, which stores
-the cluster's logs so Grafana can search them. It downloads Loki's installer (a Helm chart),
-checks that the file is exactly the one published, writes the settings file `loki-values.yaml`,
-and installs Loki in the namespace `observability` as the Helm release `loki`: one pod with a disk
-of `LOKI_STORAGE`. Loki deletes logs older than `LOKI_RETENTION` (`168h`: 7 days). You then have
-Loki running, ready for step 5; running it again updates Loki to the current settings. Set
-`VKS_CLUSTER` as in step 1, and `LOKI_STORAGE` and `LOKI_RETENTION` if you want other values.
+Run this after step 2, so the logs of step 5 have a place to go. It installs Loki, which stores the
+cluster's logs so Grafana can search them. It downloads Loki's installer (a Helm chart), checks that
+the file is exactly the one published, writes the settings file `loki-values.yaml`, and installs
+Loki in the namespace `observability` as the Helm release `loki`: one pod (the smallest thing
+Kubernetes runs: here one container) with a disk of `LOKI_STORAGE`. Loki deletes logs older than
+`LOKI_RETENTION` (`168h`: 7 days). You then have Loki running, ready for step 5; running it again
+applies a new `LOKI_RETENTION`, but the disk keeps its first size. Set `VKS_CLUSTER` as in step 1,
+and `LOKI_STORAGE` (before the first run) and `LOKI_RETENTION` if you want other values.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -546,13 +547,13 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 
 Run this after step 3, so the cluster's logs reach Loki. Fluent Bit is a small program, on every
 node, that collects the logs of every container and sends them on; Broadcom packages it as an
-add-on, which the Supervisor installs into the cluster ([ADDONS.md](ADDONS.md)). This makes
-Fluent Bit send every container's logs to Loki, tagged with their namespace, pod, container and
-node, so you can filter by them in Grafana. It writes `fluent-bit-values.yaml`, then installs
-Fluent Bit, or, if [LOGGING.md](LOGGING.md) installed it, updates and restarts it. It switches the
-VCF CLI's current context to your Supervisor (`SUPERVISOR_CONTEXT`), and the VCF CLI stays on it
-after the block. You then have the logs in Loki; step 7 checks them. Set `VKS_NAMESPACE` to the
-cluster's vSphere Namespace and `VKS_CLUSTER` as in step 1, and also:
+add-on, which the Supervisor installs into the cluster ([ADDONS.md](ADDONS.md)). This makes Fluent
+Bit send every container's logs to Loki, tagged with their namespace, pod, container and node, so
+you can filter by them in Grafana. It writes `fluent-bit-values.yaml`, then installs Fluent Bit, or,
+if it is already installed (by [LOGGING.md](LOGGING.md) or an earlier run of this step), updates and
+restarts it. It switches the VCF CLI's current context to your Supervisor (`SUPERVISOR_CONTEXT`),
+and the VCF CLI stays on it after the block. You then have the logs in Loki; step 7 checks them. Set
+`VKS_NAMESPACE` to the cluster's vSphere Namespace and `VKS_CLUSTER` as in step 1, and also:
 
 - `FLUENT_BIT_RELEASE`: as in LOGGING.md step 1;
 - `LOGS_FQDN`: if you did LOGGING.md, Log Management's DNS name from its step 3, so logs keep
@@ -1478,13 +1479,13 @@ Services. An error naming the YAML: you chose the wrong file.
 
 ### 11.5 Turn it on for your VKS cluster
 
-Run this after step 11.4, to turn on VCF Operations' collection for your VKS cluster. It marks
-the cluster `enabled` on the Supervisor, with a label (a tag on the cluster's object); the
-Supervisor then installs Broadcom's Telegraf and Prometheus add-ons in the cluster, which send its
-metrics to VCF Operations. The block waits until both run. It stops first if the cluster has an
-older install of MONITORING.md, which would clash with them. You then have the cluster sending
-metrics; step 11.6 checks them. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace and
-`VKS_CLUSTER` as in step 1.
+Run this after step 11.4 (or right after 11.1, if it found a Metrics Aggregator), to turn on VCF
+Operations' collection for your VKS cluster. It marks the cluster `enabled` on the Supervisor, with
+a label (a tag on the cluster's object); the Supervisor then installs Broadcom's Telegraf and
+Prometheus add-ons in the cluster, which send its metrics to VCF Operations. The block waits until
+both run. It stops first if the cluster has an older install of MONITORING.md, which would clash
+with them. You then have the cluster sending metrics; step 11.6 checks them. Set `VKS_NAMESPACE` to
+the cluster's vSphere Namespace and `VKS_CLUSTER` as in step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1795,8 +1796,8 @@ stop (see above).
 **Remove what the Metrics Aggregator left in the vSphere Namespaces.** Its uninstall leaves a
 Certificate and two Secrets named `telegraf-<cluster>…` for each VKS cluster in each vSphere
 Namespace, and the Certificates keep trying to renew from an issuer that is gone. Run this only
-after the uninstall above: it removes them in every vSphere Namespace, then lists what is left.
-You then have no `telegraf` objects left in the vSphere Namespaces.
+after the uninstall above: it removes them in every vSphere Namespace, then lists what is left. You
+then see, for each vSphere Namespace, whether any `telegraf` objects are left.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

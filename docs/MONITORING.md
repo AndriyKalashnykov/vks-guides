@@ -116,12 +116,13 @@ if ($LASTEXITCODE -eq 0) {
 ## 2. Create the namespace
 
 Run this after step 1, so that everything this guide installs has one place in the cluster. It
-creates the namespace `monitoring` (a namespace inside the VKS cluster, not a vSphere Namespace;
-it is not listed under Supervisor Management → Namespaces), which holds everything this guide
-installs. One part, node-exporter, reads each node's own CPU, memory and disk figures; that needs
-extra rights, so this namespace is `privileged`: Kubernetes' pod security checks are off for every
-pod in it. You then have the namespace for steps 3 to 5 (or 9); running it again changes nothing.
-Set `VKS_CLUSTER` as in step 1.
+creates the namespace `monitoring` (a namespace inside the VKS cluster, not a vSphere Namespace; it
+is not listed under Supervisor Management → Namespaces), which holds everything this guide installs.
+One part, node-exporter, reads each node's own CPU, memory and disk figures; that needs extra
+rights, so this namespace is `privileged`: Kubernetes' pod security checks are off for every pod
+(the smallest thing Kubernetes runs: one or more containers) in it. You then have the namespace for
+steps 3 to 5 (or 9); running it again keeps the namespace and what is in it. Set `VKS_CLUSTER` as in
+step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -248,9 +249,9 @@ of this machine could see it. Anyone who can read Secrets in `monitoring` can re
 
 ## 4. Download the chart and write the values
 
-Run this after step 3, to get what step 5 installs. It gets the installer for Prometheus and
-Grafana (a Helm chart) and writes the settings step 5 installs it with; it changes nothing in the
-cluster. Set `PROMETHEUS_STORAGE` to the disk size for Prometheus's data. It:
+Run this after step 3, to get what step 5 installs. It gets the installer for Prometheus and Grafana
+(a Helm chart) and writes the settings step 5 installs it with; it changes nothing in the cluster.
+It:
 
 - downloads the chart and checks that the file is exactly the one published;
 - writes `values.yaml`, in which:
@@ -263,7 +264,7 @@ cluster. Set `PROMETHEUS_STORAGE` to the disk size for Prometheus's data. It:
     through the VKS node firewall.
 
 You get two files in `~/.config/vks-guides/monitoring`, the chart and `values.yaml`; running it
-again replaces both.
+again replaces both. Set `PROMETHEUS_STORAGE` to the disk size for Prometheus's data.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -444,9 +445,10 @@ annotated` and the same for the `clusterrolebinding`.
 Then run this, to install the monitoring. It installs Prometheus, Grafana and the rest in the
 namespace `monitoring` with Helm, as the Helm release `prometheus`, from the files of step 4. It
 waits until Prometheus and Alertmanager run, then lists the pods (the running parts) and
-Prometheus's disk. The first run takes a few minutes, while the nodes download the images. You
-then have Prometheus collecting; step 6 checks it, step 7 opens Grafana. Running it again
-updates the install to the current `values.yaml`. Set `VKS_CLUSTER` as in step 1.
+Prometheus's disk. The first run takes a few minutes, while the nodes download the images. You then
+have Prometheus collecting; step 6 checks it, step 7 opens Grafana. Running it again updates the
+install to the current `values.yaml` (a new `PROMETHEUS_STORAGE` does not resize the disk). Set
+`VKS_CLUSTER` as in step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -560,12 +562,11 @@ and run this again.
 
 ## 7. Open Grafana
 
-Run this whenever you want to see the graphs. Grafana runs inside the cluster and has no address
-you can open, so this makes a port-forward: kubectl carries the connections of
-<http://localhost:3000> on your machine through the cluster's API address to Grafana, while the
-command runs; it changes nothing in the cluster. You then have Grafana at
-<http://localhost:3000>. Set `VKS_CLUSTER` as in step 1. Leave it running while you use Grafana;
-press **Ctrl+C** to stop.
+Run this whenever you want to see the graphs. Grafana runs inside the cluster and has no address you
+can open, so this makes a port-forward: kubectl carries what you open at <http://localhost:3000> on
+your machine through the cluster's API address to Grafana, while the command runs; it changes
+nothing in the cluster. You then have Grafana at <http://localhost:3000>. Set `VKS_CLUSTER` as in
+step 1. Leave it running while you use Grafana; press **Ctrl+C** to stop.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -718,8 +719,8 @@ namespace.`
 Then run this, to have ArgoCD install Prometheus and Grafana in your VKS cluster. It creates, on
 the Supervisor:
 
-- the ArgoCD project `monitoring`, which limits what ArgoCD may create there (the namespaces
-  `monitoring` and `kube-system`, and the chart's cluster-wide objects);
+- the ArgoCD project `monitoring`, which limits what ArgoCD may create in the VKS cluster (the
+  namespaces `monitoring` and `kube-system`, and the chart's cluster-wide objects);
 - the ArgoCD Application `prometheus`: the install itself, with the settings of step 4.
 
 ArgoCD starts at once and puts back anything later changed or deleted in the cluster; to change

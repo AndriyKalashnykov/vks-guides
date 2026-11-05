@@ -2407,7 +2407,9 @@ if (-not $V) { "Nexus's volumes are gone" } else { "STILL THERE: $V" }
 `namespaces "nexus" not found` first.
 
 **If not:** `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not
-delete the cluster until it is gone.
+delete the cluster until it is gone. `STILL THERE: (the check failed …)`: kubectl could not read the
+cluster; the error above says why (`Unauthorized`: the file has expired, [get it
+again](LOGIN.md#get-the-vks-clusters-kubeconfig)). Then run the block again.
 
 **What stays:** VKS clusters that pull from Nexus can no longer do so; a new CA made by step 5 is a
 different CA: after a new install, give each pulling cluster the new CA under a new key (step 11,

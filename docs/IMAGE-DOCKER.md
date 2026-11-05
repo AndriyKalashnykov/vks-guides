@@ -20,10 +20,10 @@ others use. If you open a new terminal, run the first block again.
 
 - docker 29.5 or newer ([PREREQS.md](PREREQS.md#podman-and-docker-optional)), `curl`,
   `openssl` and [kubectl](KUBECTL.md);
-- a Harbor project and a robot account that may push to it
-  ([HARBOR.md step 10](HARBOR.md#10-create-a-project-and-a-robot-account)), and
-  [HARBOR.md step 11](HARBOR.md#11-check-that-a-vks-cluster-can-pull-from-harbor) passed on this
-  cluster (done by you or your Harbor administrator);
+- a Harbor project and a robot account (a Harbor login for programs, not a person) that may push to
+  it ([HARBOR.md step 10](HARBOR.md#10-create-a-project-and-a-robot-account)), and [HARBOR.md step
+  11](HARBOR.md#11-check-that-a-vks-cluster-can-pull-from-harbor) passed on this cluster (done by
+  you or your Harbor administrator);
 - for a private project, also a robot that may only pull: in Harbor's web page, as in HARBOR.md
   step 10, *In Harbor's web page*, with only **Repository** → **Pull** ticked. Its name is
   `robot$` and the name you type;
@@ -46,12 +46,12 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 0. Set your values
 
-Run this first, and again in any new terminal: the other blocks use the values it sets. Set them
-to your own: your Harbor and project, the two robot accounts (below the block), the app's
-namespace inside your VKS cluster (a separate area for the app, not a vSphere Namespace), and
-`VKS_CLUSTER`, your VKS cluster's name: its kubeconfig file from LOGIN.md, `VKS_KUBECONFIG`, is
-what every `kubectl` command below uses. It also creates the folder `~/image-simple` for the downloaded files and moves this
-terminal into it.
+Run this first, and again in any new terminal: the other blocks use the values it sets. Set them to
+your own: your Harbor and project, the two robot accounts (below the block), the app's namespace
+inside your VKS cluster (a separate area for the app, not a vSphere Namespace), and `VKS_CLUSTER`,
+your VKS cluster's name. `VKS_KUBECONFIG` is that cluster's kubeconfig from LOGIN.md (the file with
+its address and your login), which every `kubectl` command below uses. The block also creates the
+folder `~/image-simple` for the downloaded files and moves this terminal into it.
 
 ```sh
 HARBOR_FQDN="harbor.env1.lab.test"
@@ -238,9 +238,11 @@ kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" rollout status deploy
 **Expect:** `namespace/harbor-demo`, `deployment.apps/test-web-apps` and `service/test-web-apps`
 lines, then `deployment "test-web-apps" successfully rolled out`.
 
-**If not:** the wait does not end: run `kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" get events`. `x509` means the
-nodes do not trust Harbor (HARBOR.md step 11); `unauthorized` or `not found` means the project is
-private and step 5 is missing, or the image name is wrong.
+**If not:** `… .kubeconfig: no such file or directory`: set `VKS_CLUSTER` in the first block and
+run it again. The wait does not end: run
+`kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$APP_NAMESPACE" get events`.
+`x509` means the nodes do not trust Harbor (HARBOR.md step 11); `unauthorized` or `not found`
+means the project is private and step 5 is missing, or the image name is wrong.
 
 ## 7. Open the app
 
@@ -276,8 +278,8 @@ cd "$HOME"
 rm -r "$HOME/image-simple"
 ```
 
-Run this only if this machine will not push to this Harbor again. It removes Harbor's CA from
-the folder where docker looks for it (it asks for your password; run it on its own). Afterwards
+Run this only if this machine will not use this Harbor with docker again. It removes Harbor's CA
+from the folder where docker looks for it (it asks for your password; run it on its own). Afterwards
 docker refuses to talk to this Harbor until you do step 2 again:
 
 ```sh

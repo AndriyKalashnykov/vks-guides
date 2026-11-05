@@ -16,12 +16,12 @@
 > - [Delete a Supervisor Service](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/delete-a-vsphere-service.html)
 
 ArgoCD is a program that reads a folder in Git and applies what it describes to a place it may
-deploy to (a *destination*): a vSphere Namespace or a VKS cluster. On a Supervisor it is the
-ArgoCD Service: a vCenter administrator installs the service once, then a vSphere Namespace runs
-its own ArgoCD (an *instance*). In this guide ArgoCD creates a VKS cluster from the chart in
+deploy to (a *destination*): a vSphere Namespace or a VKS cluster. On a Supervisor it is the ArgoCD
+Service: a vCenter administrator installs the service once, then a vSphere Namespace runs its own
+ArgoCD (an *instance*). In this guide ArgoCD creates a VKS cluster from the chart in
 [`argocd/guest-cluster`](../argocd/guest-cluster), then deploys the app in
-[`argocd/test-web-apps`](../argocd/test-web-apps) into that cluster and keeps it in sync: it
-applies the folder again whenever the folder or the app changes.
+[`argocd/test-web-apps`](../argocd/test-web-apps) into that cluster and keeps it in sync: if someone
+changes or deletes the app on the cluster, ArgoCD puts it back.
 
 You choose two vSphere Namespaces: one that runs ArgoCD (you set it as `ARGOCD_NAMESPACE` in the
 blocks) and one that holds the VKS cluster (`VKS_NAMESPACE`). They can be the same namespace.
@@ -357,7 +357,8 @@ there:
 - ArgoCD's account `argocd-k8s-sa` (a login for the ArgoCD program, not a person) gets the `edit`
   role there, the same rights as **Namespaces Edit**;
 - the namespace becomes a *destination*, a place ArgoCD may deploy to, named after the namespace,
-  for the project `vks-clusters` that step 6 creates.
+  for the project `vks-clusters` that step 6 creates. The ArgoCD Service keeps it as the
+  ManagedEntity `ns-<namespace>`, its record of one destination.
 
 Afterwards ArgoCD may create VKS clusters in that namespace, which step 6 does.
 
@@ -545,9 +546,9 @@ spec:
 
 **Expect:** `appproject.argoproj.io/vks-clusters created`.
 
-The cluster's Application needs four values that your vSphere Namespace must offer. This lists the
-choices `VKS_NAMESPACE` offers for a new VKS cluster, and changes nothing. You get four lists, and
-you copy one value from each list into the Application block below:
+The cluster's Application needs four values. This lists the choices for a new VKS cluster in
+`VKS_NAMESPACE`, and changes nothing. You get four lists, and you copy one value from each list into
+the Application block below:
 
 - Kubernetes versions, written as the cluster needs them (without the `-vkr.N` ending);
 - cluster classes: VMware's templates for a cluster;
@@ -647,11 +648,12 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get application
 
 **If not:** a cluster or Application is listed: choose another `VKS_CLUSTER`.
 
-Run this once the name is free. It creates the Application for your VKS cluster in ArgoCD: it
-points ArgoCD at the folder `argocd/guest-cluster` of this repository, with your cluster's name
-and the four values from the lists above. No VKS cluster is created yet: ArgoCD shows what it
-would create, and creates the cluster only when you click **SYNC** below. Set `VKS_CLUSTER` to the
-name, and `K8S_VERSION`, `CLUSTER_CLASS`, `VM_CLASS` and `STORAGE_CLASS` to one line of each list.
+Run this once the name is free. It creates the Application for your VKS cluster in ArgoCD: it points
+ArgoCD at the folder `argocd/guest-cluster` of this repository, with your cluster's name and the
+four values from the lists above. No VKS cluster is created yet: ArgoCD shows what it would create,
+and creates the cluster only when you click **SYNC** below. Set `VKS_CLUSTER` to the name, and
+`K8S_VERSION`, `CLUSTER_CLASS`, `VM_CLASS` and `STORAGE_CLASS` to a value from each list (for a VM
+class, its first column).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
