@@ -8,6 +8,7 @@
 > - [Using Kubernetes Releases with VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/administering-kubernetes-releases-for-tkg-service-clusters/using-kubernetes-releases-with-tkg-service-clusters.html)
 > - [Using VM Classes with VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/using-vm-classes-with-tkg-service-clusters.html)
 > - [Using the Versioned ClusterClass](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass.html) (`builtin-generic-v3.8.0`, the newest in VKS 3.8.0)
+> - [ClusterClass Variable Overrides](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/clusterclass-variable-overrides.html) (step 10: a node pool's `vmClass`)
 > - [ClusterClass Variable Reference, VKS 3.8.0](https://developer.broadcom.com/xapis/vmware-vsphere-kubernetes-service/3.8.0/variable-docs.html) (`defaultStorageClass`; for `builtin-generic-v3.8.0`. [Other versions](https://developer.broadcom.com/xapis/vmware-vsphere-kubernetes-service/latest/) match other Cluster Classes)
 > - [Workflow for Provisioning VKS Clusters Using kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/workflow-for-provisioning-tkg-clusters-using-kubectl.html) (step 9)
 > - [Using builtin-generic-v3.6.0 Cluster Class with VKS 3.6.0 and Later](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/using-builtin-generic-v3-6-0-with-vks.html) (step 9: Broadcom's `v1beta2` Cluster YAML; `builtin-generic-v3.8.0` takes the same fields)
@@ -781,6 +782,15 @@ during the change the cluster has one node more for the control plane and one mo
      VM class of the namespace (step 9's first block lists them). A cluster made on the create page
      with **Overrides** has a `vmClass` under `controlPlane` or a node pool's `overrides` as well;
      change those too;
+   - for the size of the workers only (for example `best-effort-medium` workers with a
+     `best-effort-small` control plane), when the node pool has no `overrides` yet: add a line
+     below the line `name: node-pool-1` (your pool's name, under `machineDeployments`; under each
+     pool you change), starting in the same column as `name:`, with the class you want:
+     `variables: {overrides: [{name: vmClass, value: best-effort-medium}]}`. The editor does not
+     indent a new line, so type the spaces. A wrong column either makes **SAVE** report a YAML
+     syntax error, or saves nothing for the pool: after **SAVE**, reload the YAML and check that it
+     shows four lines under the pool (`variables:`, `overrides:`, `- name: vmClass`, `value: …`);
+     to go back to the cluster's class, delete those four lines;
    - for the number of workers, change `replicas` under `workers`, `machineDeployments`.
 
    The editor's **Find and replace** (Ctrl+H) finds the line.
@@ -842,14 +852,17 @@ if ($LASTEXITCODE -eq 0) {
 
 **Expect:** `the cluster asks for:` the new class; during the change, a new node for the control
 plane and for each node pool next to the old ones; at the end, every node of the new class,
-`PoweredOn`, and `control plane up to date: True`, `workers up to date: True`.
+`PoweredOn`, and `control plane up to date: True`, `workers up to date: True`. For the workers
+only: `the cluster asks for:` still shows the cluster's class, only the workers get the new class,
+and the control-plane node is not replaced.
 
 **If not:**
-- After 20 minutes still a node of the old class, or a node that never powers on: the `describe`
-  block in [step 6](#6-wait-for-the-cluster)'s **If not** names the reason. A namespace storage
-  limit without room for the new nodes ([step 2](#check-the-namespaces-storage-limit)) stops the
-  change. Fix the cause, or set the value back, and save again.
-- Nodes of the old class after the change finished: the cluster has a `vmClass` under `overrides`
-  too (step 2 above).
+- After 20 minutes still a node of the old class (for the workers only: a worker), or a node that
+  never powers on: the `describe` block in [step 6](#6-wait-for-the-cluster)'s **If not** names
+  the reason. A namespace storage limit without room for the new nodes
+  ([step 2](#check-the-namespaces-storage-limit)) stops the change. Fix the cause, or set the value
+  back, and save again.
+- Nodes of the old class after the change finished (unless you changed the workers only): the
+  cluster has a `vmClass` under `overrides` too (step 2 above).
 - Pods `Pending` with `Insufficient memory` after the change: the new class is too small for what
   runs in the cluster; choose a larger one.
