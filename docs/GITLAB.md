@@ -10,7 +10,8 @@
 > - Kubernetes: [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/), [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
 
 This runs GitLab Community Edition 19.5.1, a Git server (it stores your teams' code and its
-history) with CI/CD (it builds and tests the code on every push), in a VKS cluster: one pod
+history) with CI/CD (it builds and tests the code with the jobs a
+project lists), in a VKS cluster: one pod
 (Kubernetes' unit of a running program: one or more containers) with its own database, on a
 20 GiB volume, and a GitLab Runner (the program that runs CI jobs) that runs each CI job as a pod.
 GitLab CE is free; Broadcom does not support it. You reach it through `kubectl port-forward` (a
@@ -31,10 +32,10 @@ The blocks keep their files in `~/.config/vks-guides/gitlab` (PowerShell:
 ## Prerequisites
 
 - a VKS cluster with a default storage class ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), with a worker that has 6 GiB memory and
-  8 GiB disk free, such as a new `best-effort-large` worker (4 CPU, 16 GiB): GitLab alone uses
-  about 4 GiB. To build images with it as in [CICD.md](CICD.md), make the cluster with the worker
-  from [CICD.md's Prerequisites](CICD.md#prerequisites) first: the default disk is too small for that;
+  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), with a worker that has 6 GiB memory and 8
+  GiB disk free, such as a new `best-effort-large` worker (4 CPU, 16 GiB): GitLab alone uses about 4
+  GiB. To build images with it as in [CICD.md](CICD.md), make the cluster with the worker from
+  [CICD.md's Prerequisites](CICD.md#prerequisites) first: the default disk is too small for that;
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md), [git](https://git-scm.com/install/), and for
   step 8 [Helm](HELM.md);
 - for step 7, one free load-balancer address.
@@ -204,8 +205,8 @@ creates:
 
 - a 20 GiB volume (a virtual disk from the default storage class) for GitLab's database and
   repositories;
-- GitLab itself: one pod, `gitlab-0`, set to use less memory (a StatefulSet: Kubernetes keeps
-  that one pod running, under that fixed name);
+- GitLab itself: one pod, `gitlab-0`, kept by a StatefulSet (Kubernetes keeps that one pod
+  running, under that fixed name), and set to use less memory;
 - a Service: a fixed address for GitLab that only the cluster reaches. Step 5 opens it to your
   machine; the runner in step 8 uses it directly, as `http://gitlab.gitlab.svc.cluster.local`.
 
@@ -424,10 +425,10 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab get pvc,pods
 </details>
 
 **Expect:** a `Warning: would violate PodSecurity "restricted:latest"` line (GitLab runs as root;
-baseline allows it), `persistentvolumeclaim/gitlab-data created`,
-`statefulset.apps/gitlab created`, `service/gitlab created`, then
-`partitioned roll out complete: 1 new pods have been updated...`, `{:signup_enabled=>false}`, the claim `Bound` and the pod
-`gitlab-0` `1/1 Running` (`unchanged` lines on a second run).
+baseline allows it), `persistentvolumeclaim/gitlab-data created`, `statefulset.apps/gitlab created`,
+`service/gitlab created`, then `partitioned roll out complete: 1 new pods have been updated...`,
+`{:signup_enabled=>false}`, the claim `Bound` and the pod `gitlab-0` `1/1 Running` (`unchanged`
+lines on a second run).
 
 **If not:**
 - The claim stays `Pending`: the storage class cannot make the volume. `kubectl --kubeconfig <the
@@ -485,10 +486,10 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n gitlab exec -it gitlab-0 -- gitlab-rake 
 ## 5. Open GitLab
 
 GitLab has no address outside the cluster yet; run this to reach it from your machine. It opens a
-port-forward: a tunnel from port 3400 on your machine, through the cluster's API address, to
-GitLab's Service. You can then open GitLab at <http://localhost:3400> and sign in (below). It
-runs until you press **Ctrl+C**; keep it running for steps 6 to 9, and run it again whenever you
-need GitLab's web page. Set `VKS_CLUSTER` to your VKS cluster's name.
+port-forward: a tunnel from port 3400 on your machine, through the cluster's API address, to the
+GitLab pod behind its Service. You can then open GitLab at <http://localhost:3400> and sign in
+(below). It runs until you press **Ctrl+C**; keep it running for steps 6 to 9, and run it again
+whenever you need GitLab's web page. Set `VKS_CLUSTER` to your VKS cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -524,12 +525,12 @@ page has no **Register now** link.
 
 ## 6. Create a project by pushing to it
 
-Run this in a second terminal while step 5 runs, to put a first project (a repository: a
-project's files and their history) in GitLab. It makes a local repository with a README in
-`~/.config/vks-guides/gitlab/hello` and pushes it (sends it to GitLab); GitLab creates the private
-project `root/hello`. You get a project that steps 7 to 9 use. Running it again pushes nothing new.
-Git asks for the root password; `credential.helper=` stops git from saving it. Set `GITLAB_EMAIL`
-to your email address; it only labels the commit.
+Run this in a second terminal while step 5 runs, to put a first project (GitLab's name for a
+repository: your code's files and their history) in GitLab. It makes a local repository with a
+README in `~/.config/vks-guides/gitlab/hello` and pushes it (sends it to GitLab); GitLab creates the
+private project `root/hello`. You get a project that steps 7 to 9 use. Running it again pushes
+nothing new. Git asks for the root password; `credential.helper=` stops git from saving it. Set
+`GITLAB_EMAIL` to your email address; it only labels the commit.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -718,7 +719,8 @@ there. The runner takes only jobs from the project `root/hello` that carry the t
    `gitlab-runner-token` (a Kubernetes object that holds sensitive values), downloads the runner's
    Helm chart (a package of Kubernetes objects that Helm installs as one release) and checks it,
    installs it, and waits until the runner runs. You get a runner that GitLab shows online; step 9
-   gives it a job. Run again without 3, it keeps the token stored before. Set `VKS_CLUSTER` to
+   gives it a job. Running it again without 3 keeps
+   the token stored before. Set `VKS_CLUSTER` to
    your VKS cluster's name. If your GitLab is not the one from this guide's step 3, set
    `GITLAB_URL` to its address.
 

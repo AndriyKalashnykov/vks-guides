@@ -71,10 +71,15 @@ first.
 
 ## 1. Check the Supervisor
 
-This checks whether the Supervisor already runs a Harbor. If it does not, the block leaves a small
-note on this machine. Step 14 reads that note before you uninstall, so you never remove a Harbor
-that someone else installed. It saves the Supervisor's ID in `supervisor-uid`; every later block
-checks it, so one Supervisor's files are never used on another.
+Run this first, before you install, and again whenever you come back to this guide. It asks the
+Supervisor, with your Supervisor login's file (`~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig`, from
+[LOGIN.md](LOGIN.md)), whether it already runs a Harbor, and changes nothing there. On this
+machine it saves the Supervisor's ID in `supervisor-uid` (every later block checks it, so one
+Supervisor's files are never used on another) and, if no Harbor runs, leaves a small note: step 14
+reads that note before you uninstall, so you never remove a Harbor that someone else installed.
+You get one line saying whether a Harbor runs on this Supervisor, and one saying what was
+recorded. Set `SUPERVISOR_CONTEXT` to your Supervisor login's name (`supervisor` unless you chose
+another).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -170,9 +175,10 @@ if ($LASTEXITCODE -ne 0 -or -not $SUP) {
 
 **Expect:** `Harbor on this Supervisor: none`, then
 `recorded: this Supervisor had no Harbor when you began`. When you come back after installing:
-`Harbor on this Supervisor: namespace/svc-harbor-…` (the namespace the Supervisor makes for
-Harbor), then `recorded: this Supervisor had no Harbor when you began`: this Harbor is yours; go
-on at the step you need.
+`Harbor on this Supervisor: namespace/svc-harbor-…` (the namespace on the Supervisor that holds
+Harbor; the vSphere Client lists it with the vSphere Namespaces), then
+`recorded: this Supervisor had no Harbor when you began`: this Harbor is yours; go on at the step
+you need.
 
 **If not:**
 - `FAILED: …` above `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
@@ -209,8 +215,11 @@ Take the manifest with **legacy** in its name: it downloads Harbor from
 `projects.packages.broadcom.com`. The other one needs a VCF Software Depot and is not covered.
 Do not put these files into a Git repository; they are licensed to your Broadcom account.
 
-This checks that you downloaded the right two files and that they are not damaged. It prints a
+Run this after both downloads, before any later step uses the files. It checks that you
+downloaded the right two files and that they are not damaged, and changes nothing. You get a
 checksum (a fingerprint of the file's content) for each one; compare them with the lines below.
+If you saved the files somewhere else than `Downloads`, set `HARBOR_MANIFEST` and
+`HARBOR_VALUES_TEMPLATE` to where they are.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -258,16 +267,17 @@ foreach ($f in $HARBOR_MANIFEST, $HARBOR_VALUES_TEMPLATE) {
 
 ## 3. Make the secrets file
 
-Harbor is installed with seven passwords and keys. Run this step for any Harbor that is not a
-test: if you skip it, Harbor gets Broadcom's public default values (step 4's table lists them, and
-step 4 saves them in `secrets.env`, so the later steps work the same). Decide before step 6,
-because the admin password, the database password and `secretKey` cannot be changed after the
-install. If you change your mind after step 4, run step 4 again.
+Harbor is installed with seven passwords and keys: its `admin` password, its database password,
+and keys Harbor uses inside itself. Run this step for any Harbor that is not a test, before step 4:
+if you skip it, Harbor gets Broadcom's public default values (step 4's table lists them, and step 4
+saves them in `secrets.env`, so the later steps work the same). Decide before step 6, because the
+admin password, the database password and `secretKey` cannot be changed after the install. If you
+change your mind after step 4, run step 4 again.
 
-This block makes seven random ones and saves them in `secrets.env` (on Linux, macOS and WSL,
-readable only by you). A file that exists is kept. Nothing secret is printed. To use your own admin
-password instead, put it in the file using only letters, digits and `-`: step 4 refuses any other
-character.
+This block makes seven random values and saves them in `secrets.env`, in this guide's folder on
+this machine (on Linux, macOS and WSL, readable only by you); it changes nothing on the
+Supervisor. A file that exists is kept, so running it again changes nothing. Nothing secret is
+printed: you get one line that counts the values, for step 4 to put into Harbor's configuration.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -355,6 +365,9 @@ after `kept the existing …` when the file was there.
 - Other numbers: the file was edited or cut short. If no Harbor was installed with it yet, delete
   it, run the block again, then step 4.
 
+**Your own admin password:** to use it instead, put it in the file using only letters, digits and
+`-`: step 4 refuses any other character.
+
 **Keep this file, and a copy where you keep passwords, for as long as this Harbor exists**: any
 later change to its configuration must send the same seven values (with another
 `HARBOR_SECRET_KEY` Harbor can no longer read what it encrypted). vCenter shows the configuration
@@ -367,7 +380,9 @@ to everyone who may manage Supervisor Services.
 Harbor keeps its data on five disks (volumes). A storage class is a kind of vSphere storage that
 the Supervisor offers for such disks, named after a vCenter storage policy (the vSphere Client
 lists the policies: [NAMESPACE.md step 2](NAMESPACE.md#2-find-the-storage-policies-and-the-vm-classes)).
-To pick one for `HARBOR_STORAGE_CLASS` in the next block, this lists them.
+Run this before *Write the file*, to pick the storage class for Harbor's disks. It lists the
+storage classes the Supervisor offers, and changes nothing. You get their names: set one of them
+as `HARBOR_STORAGE_CLASS` in the next block.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -391,9 +406,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get storageclass -o custom-columns=N
 
 ### Write the file
 
-This writes Harbor's configuration file, `harbor-data-values.yml`. You paste this file into the
-vSphere Client when you install Harbor in step 6. It starts from Broadcom's file and changes only
-these fields:
+Harbor's configuration file is Broadcom's file with only these fields changed:
 
 | field in Broadcom's file | Broadcom's value | set to |
 |---|---|---|
@@ -409,14 +422,20 @@ these fields:
 | `storageClass` of the five volumes | `insert-storage-class-name-here` | `HARBOR_STORAGE_CLASS` |
 | the registry volume's `size` | `10Gi` | `HARBOR_REGISTRY_SIZE` |
 
-Set at the top:
+Run this after step 3 (or instead of it, for a test) and before step 6. It writes Harbor's
+configuration file, `harbor-data-values.yml`, in this guide's folder on this machine, from
+Broadcom's file and `secrets.env`; nothing changes on the Supervisor yet. Set at the top:
 
 - `HARBOR_FQDN`: Harbor's DNS name. To change it later, see step 12.
 - `HARBOR_STORAGE_CLASS`: a name from the list above.
 - `HARBOR_REGISTRY_SIZE`: the volume for your images. `10Gi` fills up in regular use, and this
   guide does not cover growing it.
+- `HARBOR_VALUES_TEMPLATE`: only if Broadcom's data values file is not in `Downloads`.
 
-The block then checks the file, and deletes it if anything came out wrong.
+You get the changed fields and counts; you paste this file into the vSphere Client when you
+install Harbor in step 6. The block checks the file first, and deletes it if anything came out
+wrong. Running it again writes the file anew from Broadcom's file: if you ran the optional block
+below or step 13's *Write the certificate into the file*, run them again after it.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -605,13 +624,15 @@ The file holds the secrets in clear text: do not share or commit it.
 
 ### Choose each volume's storage class and size (optional)
 
-Skip this unless you want one of Harbor's five disks on another storage class or at another size.
-The block in *Write the file* put all five on `HARBOR_STORAGE_CLASS`, with Broadcom's sizes (`1Gi`
-each for the job log, the database and Redis, Harbor's cache; `5Gi` for Trivy, the image scanner)
-and the registry at `HARBOR_REGISTRY_SIZE`. This block
-changes the disks you set in `harbor-data-values.yml`; leave the others `""`. Do it before step 6:
-after the install Harbor cannot change a disk's class, nor the size of the database, Redis or Trivy
-disk.
+The block in *Write the file* put all five of Harbor's disks on `HARBOR_STORAGE_CLASS`, with
+Broadcom's sizes (`1Gi` each for the job log, the database and Redis, Harbor's cache; `5Gi` for
+Trivy, the image scanner) and the registry at `HARBOR_REGISTRY_SIZE`. Skip this unless you want
+one of them on another storage class or at another size. Run it after *Write the file* and before
+step 6: after the install Harbor cannot change a disk's class, nor the size of the database,
+Redis or Trivy disk. This block changes only the lines of the disks you set at its top, in
+`harbor-data-values.yml` on this machine: set a storage class (a name from the list above) or a
+size (such as `20Gi`), and leave the others `""`. You get each disk's class and size, and how many
+lines changed.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -777,10 +798,13 @@ No VKS clusters yet: skip *Record the VKS cluster machines* here and step 8.
 
 ### Record the VKS cluster machines
 
-Installing Harbor makes VKS update every node (machine) of your VKS clusters, so that they trust
-Harbor. This saves the current list of machines in one vSphere Namespace. Step 8 compares against
-it to show when every node has been updated. Run it for each vSphere Namespace with VKS clusters,
-right before you install.
+Installing Harbor makes VKS update every node of your VKS clusters (a node is one of the VMs a VKS
+cluster runs on; VKS calls it a machine), so that they trust Harbor. Run this right before you
+install, once for each vSphere Namespace (the namespace in vCenter) that holds VKS clusters. It
+saves the current list of machines in that vSphere Namespace in a file on this machine, and
+changes nothing on the Supervisor. Set `VKS_NAMESPACE` to that vSphere Namespace's name. You get
+the number of machines recorded; step 8 compares against this record to show when every node has
+been updated. Running it again for the same vSphere Namespace replaces its record.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -852,10 +876,11 @@ elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE
 
 ### Copy the configuration
 
-This checks that the folder belongs to this Supervisor, then copies `harbor-data-values.yml` to
-the clipboard, without showing it, so you can paste it into the vSphere Client in *Install it*. The
-file holds Harbor's passwords: if your desktop keeps a clipboard history, switch it off for this
-step.
+Run this right before *Install it*. It checks that this guide's folder belongs to this
+Supervisor, then copies `harbor-data-values.yml` to the clipboard of this machine, without showing
+it; nothing else changes. You get `copied to the clipboard`, ready to paste into the vSphere Client
+in *Install it*. The file holds Harbor's passwords: if your desktop keeps a clipboard history,
+switch it off for this step.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -968,8 +993,9 @@ Harbor answers.
 
 ### Empty the clipboard
 
-The clipboard still holds Harbor's passwords. This empties it. Run it whether the install worked
-or not.
+Run this right after *Install it*, whether the install worked or not: the clipboard still holds
+Harbor's passwords. It empties the clipboard of this machine and changes nothing else. You get
+`clipboard emptied` once the passwords are gone from it.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1006,9 +1032,10 @@ Management** → **Namespaces** → the `svc-harbor-…` namespace → **Network
 
 ![The svc-harbor namespace's Network tab, Services: harbor-nginx is the only LoadBalancer, with its address under External IPs](img/harbor/11-nginx-external-ip.png)
 
-Before you ask for a DNS record, this finds the same address and waits until Harbor answers on it
-(it tries every 15 seconds, for up to 20 minutes). It then prints the DNS record to ask for in the
-next step. No DNS record is needed yet.
+Run this once step 6 shows **Configured**, before you ask for a DNS record (none is needed yet).
+It finds the same address on the Supervisor and waits until Harbor answers on it (it tries every
+15 seconds, for up to 20 minutes); it changes nothing. You get Harbor's namespace on the
+Supervisor (`svc-harbor-…`), its address, and the DNS record to ask for in the next step.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1097,10 +1124,11 @@ ask for. The block may take 20 minutes before it gives up; Ctrl+C stops it.
 - `FAILED: Harbor namespaces …: ''`: the service is not installed (step 6).
 - `Harbor address:   none yet`: the Supervisor has no free load-balancer address, or Harbor's
   pods (Harbor's running containers) never started.
-- An address but `http=000` or `http=503`: Harbor's pods are not all running. The block below
-  lists them and their volumes; a volume that stays `Pending` means a wrong storage class or no
-  room on its storage: uninstall
-  (step 14), fix it in step 4, install again (this updates every VKS node twice).
+- An address but `http=000` or `http=503`: Harbor's pods are not all running. To see which, run
+  the block below: it lists Harbor's pods and its five volumes (disks) in Harbor's namespace on the
+  Supervisor, and changes nothing. A volume that stays `Pending` means a wrong storage class or no
+  room on its storage: uninstall (step 14), fix it in step 4, install again (this updates every
+  VKS node twice).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1139,7 +1167,10 @@ VKS cluster nodes both use (a `hosts` file line does not reach the nodes).
 
 ### Check the DNS record
 
-Once the record exists, this checks that Harbor's name leads to Harbor's address from this machine.
+Run this once the DNS record exists, before you use Harbor's name. It checks that, from this
+machine, Harbor's name leads to the address Harbor has on the Supervisor, and changes nothing.
+You get `DNS is right` with the name and the address. Step 11 checks the same from the VKS
+cluster nodes.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1219,8 +1250,10 @@ namespaces …: ''`: Harbor is not installed; two names: see *Fix common problem
 ## 8. Check that the VKS cluster nodes were updated
 
 Your VKS cluster nodes can pull images from Harbor only after VKS has updated them to trust Harbor.
-This lists the machines (nodes) in one vSphere Namespace and counts how many were updated since
-step 6's record. Run it for each vSphere Namespace you recorded, until all are updated.
+Run this after the install, for each vSphere Namespace you recorded in step 6, until all its
+machines are updated. It lists the machines (nodes) in that vSphere Namespace and counts how many
+were updated since step 6's record; it changes nothing. Set `VKS_NAMESPACE` to that vSphere
+Namespace's name. You get the list of machines, then `machines updated: <n> of <n>`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1305,17 +1338,19 @@ a node.
 
 Harbor proves who it is with a certificate. Harbor signs that certificate itself, with its own
 certificate authority (CA), which no machine trusts yet. `curl`, podman, docker and browsers need
-the CA's file to trust Harbor; the next blocks use it, and IMAGE.md copies it (step 1).
+the CA's file to trust Harbor; the next blocks use it, and IMAGE.md copies it (step 1). Run this
+once DNS is right (step 7), and again after step 12 or 13.
 
 This block:
 
 - reads the CA from the Supervisor, where Harbor keeps it in a Secret (a stored object that also
   holds Harbor's private key, which the block does not print or keep);
 - checks that Harbor, at its DNS name, answers with a certificate this CA signed;
-- only then saves the CA as `harbor-ca.crt`. It prints the CA's fingerprint, which everyone who
-  uses this Harbor can compare.
+- only then saves the CA as `harbor-ca.crt` in this guide's folder on this machine, replacing an
+  earlier one; it changes nothing on the Supervisor.
 
-It needs a user who may read Secrets in Harbor's namespace on the Supervisor.
+You get the CA's name and fingerprint, which everyone who uses this Harbor can compare. It needs a
+user who may read Secrets in Harbor's namespace on the Supervisor.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1424,9 +1459,11 @@ on macOS), `Harbor at https://<your Harbor name> with this CA: http=200`, then `
 
 ### Log in as admin
 
-This checks that you can log in to Harbor as `admin` with the password from `secrets.env`, using
-`harbor-ca.crt` to trust Harbor. The next blocks log in the same way to create a project and a
-robot account.
+Run this after *Save the CA*, to make sure the admin password works before the next blocks use it.
+It logs in to Harbor's API (the address tools use to talk to Harbor) as `admin` with the password
+from `secrets.env`, using `harbor-ca.crt` to trust Harbor, and asks who you are; nothing changes in
+Harbor. You get your user name and whether it is an administrator. The next blocks log in the same
+way to create a project and a robot account.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1506,8 +1543,10 @@ in *Save the CA*) is in its trust store:
   certificates in the following store** → **Trusted Root Certification Authorities** → **Finish**
   → **Yes**. Chrome and Edge use it after a restart.
 
-Log in as `admin`. This prints the password **on your screen**: run it only when nobody can see
-the screen, then clear the terminal.
+Run this when you want to log in to Harbor's web page as `admin`. It prints the admin password
+from `secrets.env` **on your screen**, and changes nothing: run it only when nobody can see the
+screen, then clear the terminal. You get the password to type on Harbor's login page, with the
+user name `admin`.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1537,18 +1576,17 @@ password`: see *Log in as admin* above.
 
 ### Create the project
 
-In Harbor, images live in projects: folders, each with its own access rules. This creates one for
-your images. Set:
+In Harbor, images live in projects: folders, each with its own access rules. Run this
+after *Log in as admin*, once for each project you want. It creates a project for your images in
+Harbor (nothing changes on the Supervisor or in vCenter). Set:
 
 - `HARBOR_PROJECT`: its name, in lower-case letters, digits and `-`;
 - `HARBOR_PROJECT_PUBLIC`: `"false"` for a **private** project, where only logged-in users can
   pull, so a VKS cluster needs a stored login (a pull secret); `"true"` for a **public** one, where
   anyone who reaches Harbor can pull. Pushing always needs a login.
 
-In Harbor's web page the same is **Projects** → **NEW PROJECT**, with **Public** ticked or not
-under **Access Level**, then **OK**.
-
-![Harbor's New Project window with the name my-project and Public ticked](img/harbor/12-new-project-public.png)
+You get the project's name and whether it is public; running it again with the same name leaves
+the project as it is.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1629,12 +1667,18 @@ as it is), then `project my-project, public: false` (`true` for a public project
 **If not:** `http=401`: see *Log in as admin*. `http=400`: Harbor refused the name; use lower-case
 letters and digits.
 
+**In Harbor's web page** the same is **Projects** → **NEW PROJECT**, with **Public** ticked or not
+under **Access Level**, then **OK**.
+
+![Harbor's New Project window with the name my-project and Public ticked](img/harbor/12-new-project-public.png)
+
 ### Create a robot account
 
-A robot account is a login for tools rather than people. This creates one that may push to and
-pull from this project only, for 90 days. Use it instead of `admin` to push images, and for a VKS
-cluster's pull secret. The block prints the robot's name and secret; Harbor shows the secret only
-once.
+A robot account is a login for tools rather than people. Run this after *Create the project*, to
+get a login that you use instead of `admin` to push images, and for a VKS cluster's pull secret.
+It creates, in Harbor, a robot named `push` that may push to and pull from this project only, for
+90 days. Set `HARBOR_PROJECT` to the project's name. You get the robot's name and secret; Harbor
+shows the secret only once. Running it again for the same project fails with `ERROR CONFLICT`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1734,11 +1778,13 @@ Its name is `robot$` and the name you typed (here `robot$my-project-push`), not
 
 This needs [IMAGE.md step 1](IMAGE.md#1-get-harbors-ca) (copy the CA) and
 [step 2](IMAGE.md#2-trust-harbors-ca) (make your engine trust Harbor's CA), from the next group,
-[Container images](IMAGES.md): skip it now and come back after them. It checks that podman or
-docker on this machine can log in to Harbor, as `admin` and as the robot account, and logs out
-again. Set `CONTAINER_ENGINE` to `podman` or `docker`.
+[Container images](IMAGES.md): skip it now and come back after them. Run it to check, before you
+push images, that podman or docker on this machine can log in to Harbor. The blocks below log in
+as `admin` and as the robot account, and log out again, so no login stays saved on this machine.
+In each, set `CONTAINER_ENGINE` to `podman` or `docker`.
 
-As `admin`, with the password from the secrets file:
+This one logs in as `admin`, with the password from `secrets.env`. You get `Login Succeeded`, then
+a logout line.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1773,7 +1819,8 @@ else {
 ```
 
 To check the robot account, run this line and type the robot's secret at its prompt. The secret is
-not shown, and it stays only in this terminal, for the next block.
+not shown, and it stays only in this terminal. You get no other output; the next block uses the
+secret.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1787,9 +1834,11 @@ printf 'Robot secret: '; IFS= read -rs HARBOR_ROBOT_SECRET; echo
 $HARBOR_ROBOT_SECRET = Read-Host -AsSecureString 'Robot secret'
 ```
 
-This logs in to Harbor as the robot, which proves its name and secret work. It then logs out, so
-no login stays saved on this machine, and forgets the secret you typed. Keep `HARBOR_ROBOT` in
-single quotes: the `$` is part of the name.
+Run this in the same terminal, right after the line above. It logs in to Harbor as the robot,
+which proves its name and secret work. It then logs out, so no login stays saved on this machine,
+and forgets the secret you typed. Set `HARBOR_ROBOT` to the robot's name from *Create a robot
+account*, and keep it in single quotes: the `$` is part of the name. You get `Login Succeeded`,
+then a logout line.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1842,16 +1891,18 @@ To build an image, push it to this project and run it in a VKS cluster, see [IMA
 
 ## 11. Check that a VKS cluster can pull from Harbor
 
-This checks that your VKS cluster's nodes can reach Harbor and trust its certificate, before you
-run your own images from it. The block:
+Run this after step 8 shows every node updated, before you run your own images from Harbor, and
+again for each VKS cluster. It checks that your VKS cluster's nodes can reach Harbor and trust its
+certificate. The block:
 
 - starts a small test pod (a running container) in the cluster's `default` namespace (inside the
   VKS cluster, not a vSphere Namespace), from an image that does not exist in your project;
-- reads why the cluster could not get the image, then deletes the pod.
+- reads why the cluster could not get the image, then deletes the pod, so nothing is left behind.
 
 An answer such as *not found*, *unauthorized* or *access denied* is the good result: the nodes
-reached Harbor and trusted it. Any other answer names the problem. You need the VKS cluster's
-kubeconfig (the file that lets kubectl reach it) from
+reached Harbor and trusted it. Any other answer names the problem. Set `VKS_CLUSTER` to the VKS
+cluster's name and `HARBOR_PROJECT` to your project. The block uses the cluster's kubeconfig (the
+file that lets kubectl reach it), `~/.kube/<VKS_CLUSTER>.kubeconfig`, from
 [LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 <details>
@@ -2016,8 +2067,11 @@ them to the new name.
 
 ### Write the new name into the file
 
-This changes the `hostname:` line in `harbor-data-values.yml` to the new name; no other line
-changes. The later blocks read Harbor's name from this file.
+Run this as item 2 above, once the DNS record for the new name exists. It changes the `hostname:`
+line in `harbor-data-values.yml` on this machine to the new name; no other line changes, and
+nothing changes on the Supervisor until item 3. Set `HARBOR_NEW_FQDN` to the new name. You get the
+new `hostname:` line; the later blocks read Harbor's name from this file. Running it again with the
+same name changes nothing.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2097,9 +2151,10 @@ if ($HARBOR_NEW_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $HARBOR_NEW_FQDN -eq 'harbor
 
 ### Restart Harbor's web server
 
-Run this after **FINISH**. It waits until Harbor's certificate is for the new name (a minute or
-less), then deletes Harbor's web server pod, which starts again with that certificate. Pushes and
-pulls fail while it restarts.
+Run this as item 4 above, after **FINISH**. It waits until Harbor's certificate is for the new name
+(a minute or less), then deletes Harbor's web server pod in Harbor's namespace on the Supervisor;
+the pod starts again by itself with that certificate. Pushes and pulls fail while it restarts. You
+get `certificate for <the new name>: yes`, then Harbor's web server running again. Then do item 5.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2219,8 +2274,8 @@ Harbor makes its own CA and a ten-year certificate unless you give it yours. Giv
 browsers and tools must trust Harbor through your organization's CA. Safari and Chrome on macOS
 also need a certificate valid for 825 days or less, which Harbor's own is not.
 
-You need three PEM files, from your certificate team or, for the key, made by *Request the
-certificate* below:
+You need three PEM files (text files that start with `-----BEGIN`), from your certificate team
+or, for the key, made by *Request the certificate* below:
 
 - the server certificate for `HARBOR_FQDN` (a subject alternative name `DNS:<HARBOR_FQDN>` or a
   wildcard such as `DNS:*.<its domain>`, usage
@@ -2256,10 +2311,11 @@ then serves its earlier CA again.
 
 ### Request the certificate
 
-Skip this if your certificate team gives you all three files. Otherwise this makes Harbor's
-private key, `harbor.key`, and a certificate request, `harbor.csr`, for the name in step 4's file,
-both in your home folder. The key stays with you: send only `harbor.csr` to your
-certificate team and ask for two PEM files back:
+Skip this if your certificate team gives you all three files. Otherwise run it once, early, to get
+what your certificate team signs. It makes Harbor's private key, `harbor.key`, and a certificate
+request, `harbor.csr`, for the name in step 4's file, both in your home folder; nothing changes on
+the Supervisor. You get the request's name lines and the file to send. The key stays with you:
+send only `harbor.csr` to your certificate team and ask for two PEM files back:
 
 - the server certificate, followed by any intermediate CA certificates: save it as `harbor.crt`
   in your home folder;
@@ -2354,8 +2410,14 @@ When the two files are back, the next block checks that `harbor.crt` belongs to 
 
 ### Write the certificate into the file
 
-This checks the three files and writes them into `harbor-data-values.yml` only when every check
-passes. It needs `openssl`.
+Run this when you have the three files: before the install, after step 4; on an installed Harbor,
+as item 2 above. It checks that the certificate is for Harbor's name, for a web server, not
+expired, matches the key and is signed through the root CA, and only then writes the three files
+into `harbor-data-values.yml` on this machine; nothing changes on the Supervisor until you paste
+the file into the vSphere Client. It needs `openssl`. Set `HARBOR_TLS_CRT`, `HARBOR_TLS_KEY` and
+`HARBOR_CA_CRT` to the server certificate, its key and the root CA (the names *Request the
+certificate* uses are already set). You get the certificate's name and end date, then the three
+fields it wrote.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2518,10 +2580,12 @@ creation and updates on the whole Supervisor.
 
 ### Restart Harbor's web server
 
-Run this after **FINISH** on an installed Harbor. Harbor's web server keeps serving the old
-certificate until it restarts. This waits until Harbor has stored the new certificate (a minute or
-less): yours, or Harbor's own if you went back. It then restarts the web server, so it serves the
-new one. Pushes and pulls fail while it restarts.
+Run this on an installed Harbor as item 4 above, after **FINISH**: Harbor's web server keeps
+serving the old certificate until it restarts. This waits until Harbor has stored the new
+certificate (a minute or less): yours, or Harbor's own if you went back. It then deletes Harbor's
+web server pod in Harbor's namespace on the Supervisor; the pod starts again by itself and serves
+the new one. Pushes and pulls fail while it restarts. You get the certificate's issuer, then
+Harbor's web server running again. Then do item 5.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2652,8 +2716,9 @@ every VKS cluster on this Supervisor** again.
 
 ### Check that it is yours
 
-**Only uninstall a Harbor you installed.** This looks for the note that step 1 left on this
-machine. It says `MAY UNINSTALL` only if this Supervisor had no Harbor when you began.
+**Only uninstall a Harbor you installed.** Run this before *Uninstall it*. It looks for the note
+that step 1 left on this machine, and changes nothing. You get `MAY UNINSTALL` only if this
+Supervisor had no Harbor when you began; otherwise `DO NOT UNINSTALL`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2720,9 +2785,10 @@ sure it is yours, ask before you click.
 
    ![The Supervisor's installed services with Harbor selected and the UNINSTALL confirmation window](img/harbor/09-uninstall.png)
 
-On the Supervisor, Harbor runs in its own namespace (`svc-harbor-…`). This checks that the
-namespace is gone; until then Harbor is still being removed, and a new install fails. Run it again
-until it prints `none`: a few minutes.
+On the Supervisor, Harbor runs in its own namespace (`svc-harbor-…`). Run this after the row
+disappears: until that namespace is gone, Harbor is still being removed, and a new install fails.
+It lists the Harbor namespaces left on the Supervisor and changes nothing. Run it again until it
+prints `none`: a few minutes.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -2782,9 +2848,10 @@ reloaded.
 
 ### Delete what this guide wrote
 
-This deletes the files this guide wrote, only when no Harbor is on the Supervisor: with that folder
-go Harbor's passwords (`secrets.env`) and CA (`harbor-ca.crt`). Ask for the DNS record to be
-removed too.
+Run this last, once Harbor is uninstalled. It deletes this guide's folder for this Supervisor on
+this machine (`~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>`), only when no Harbor is on the
+Supervisor: with that folder go Harbor's passwords (`secrets.env`) and CA (`harbor-ca.crt`). Step
+13's files in your home folder stay. You get `deleted …`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2849,6 +2916,8 @@ else {
 - `Nothing deleted: … has no supervisor-uid`: step 1 was not run with this `SUPERVISOR_CONTEXT`;
   move the folder aside the same way.
 
+Ask for Harbor's DNS record to be removed too.
+
 If you trusted Harbor's CA for podman or docker, [IMAGE.md step 8](IMAGE.md#8-remove-it-optional)
 says how to stop.
 
@@ -2869,8 +2938,10 @@ says how to stop.
 Only if `~/.config/vks-guides/harbor` (PowerShell `$HOME\.config\vks-guides\harbor`) exists on
 this machine. Run it before step 1.
 
-An earlier version kept the files in that folder. This moves it to the Supervisor's own folder.
-Set `SUPERVISOR_CONTEXT` to your login's name for the Supervisor that Harbor runs on.
+An earlier version kept the files in that folder. This moves it, on this machine, to the
+Supervisor's own folder, and changes nothing on the Supervisor. Set `SUPERVISOR_CONTEXT` to your
+login's name for the Supervisor that Harbor runs on. You get `moved to …` (with the Supervisor it
+recorded, when step 1's note is in the folder), or `nothing to move`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2956,10 +3027,11 @@ else {
 
 ### Bind the moved files to this Supervisor
 
-Run this only for files that belong to the Supervisor this login reaches. The first run prints the
-Harbor hostname in the files and writes nothing. If that is the Harbor of this Supervisor, put
-that name in the block's first line (`BIND_HOSTNAME`) and run the block again: it records the
-Supervisor's ID in `supervisor-uid`.
+Run this when step 1 or the block above tells you to bind the files, and only for files that
+belong to the Supervisor this login reaches. The first run prints the Harbor hostname in the files
+and writes nothing. If that is the Harbor of this Supervisor, put that name in the block's first
+line (`BIND_HOSTNAME`) and run the block again: it records the Supervisor's ID in
+`supervisor-uid`, on this machine only. You get `bound …`; then run step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

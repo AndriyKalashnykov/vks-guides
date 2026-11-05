@@ -222,11 +222,10 @@ Install Gitea one of two ways, A or B; steps 5 to 9 are the same for both. Both 
 with the same settings and the keys from step 3. To switch from one to the other later, run step 9,
 then steps 2 and 3, first: they keep their data differently, and nothing carries over.
 
-Both blocks read the cluster's Service address range (the internal addresses the cluster gives
-its Services), so that Gitea may call build tools inside the cluster later ([CICD.md](CICD.md)
-step 7). On a cluster older than Kubernetes v1.33, which cannot
-show it, set `SERVICE_RANGE` to the range the cluster was created with (CLUSTER.md:
-`10.96.0.0/12`).
+Both blocks read the cluster's Service address range (the internal addresses the cluster gives its
+Services, the fixed addresses of programs inside it), so that Gitea may call build tools inside the
+cluster later ([CICD.md](CICD.md) step 7). On a cluster older than Kubernetes v1.33, which cannot
+show it, set `SERVICE_RANGE` to the range the cluster was created with (CLUSTER.md: `10.96.0.0/12`).
 
 ### A. With this guide's YAML (recommended)
 
@@ -941,10 +940,10 @@ created!` (`gitea-admin exists already` on a second run).
 ## 6. Open Gitea
 
 Gitea has no address outside the cluster yet; run this to reach it from your machine. It opens a
-port-forward: a tunnel from port 3300 on your machine, through the cluster's API address, to
-Gitea's Service. You can then open Gitea's web page at <http://localhost:3300> and sign in (below).
-It runs until you press **Ctrl+C**; keep it running for steps 7 and 8, and run it again whenever
-you need Gitea's web page. Set `VKS_CLUSTER` to your VKS cluster's name.
+port-forward: a tunnel from port 3300 on your machine, through the cluster's API address, to the
+Gitea pod behind its Service. You can then open Gitea's web page at <http://localhost:3300> and sign
+in (below). It runs until you press **Ctrl+C**; keep it running for steps 7 and 8, and run it again
+whenever you need Gitea's web page. Set `VKS_CLUSTER` to your VKS cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
