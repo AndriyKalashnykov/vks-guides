@@ -54,10 +54,10 @@ The file you hand over holds no secret, so it may be sent openly; the person's t
 
 ## 1. Turn Keycloak login on (when you create the cluster)
 
-Create the cluster with kubectl and a YAML file, as in
-[CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file). In `cluster.yaml`,
-add the entry below at the end of `spec.topology.variables`, after the `vsphereOptions` entry, with
-the same indentation as `- name: vsphereOptions`. Change the issuer and the CA (from the Keycloak
+Create the cluster with kubectl and a YAML file, as in [CLUSTER.md step
+9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file). In `cluster.yaml`, add the entry
+below at the end of `spec.topology.variables`, after the `vsphereOptions` entry, with the same
+indentation as `- name: vsphereOptions`. Change the issuer and the CA (from the Keycloak
 administrator, each line indented as shown), then apply the file as step 9 says. A cluster that
 already exists is not covered here: it has a `kubernetes` entry of its own, and changing it replaces
 the control-plane nodes.
@@ -102,7 +102,7 @@ Run this once per team, after step 1, so that the members of one Keycloak group 
 namespace of the cluster (a namespace inside the VKS cluster, not a vSphere Namespace). It creates
 that namespace if it is missing, and a RoleBinding there: a rule that gives the group the `edit`
 role (create and change apps in that namespace, not change who has access). Then it prints what a
-member may do there and that they may not look elsewhere. Set `ADMIN_KUBECONFIG` to your
+member may do there and that they may not list pods in `kube-system`. Set `ADMIN_KUBECONFIG` to your
 administrator kubeconfig of the cluster, `KEYCLOAK_GROUP` to the Keycloak group and
 `TEAM_NAMESPACE` to the team's namespace. Run it again for a second group; for the same group it
 changes nothing. Next: step 3.
@@ -156,15 +156,15 @@ file, or it has expired; get it again.
 ## 3. Make the person's kubeconfig (cluster administrator)
 
 Run this once per group, after step 2, to make the file its members log in with. It writes a new
-kubeconfig, `~/.kube/my-vks-cluster-keycloak.kubeconfig` (named after `NAME`): the cluster's
-address and CA from your administrator kubeconfig, and a login through kubelogin with a device
-code (kubectl prints a code, the person signs in to Keycloak with it in a browser), checking
-Keycloak's certificate against the Keycloak CA. Its context (the cluster, user and namespace
-kubectl uses by default) starts in the team's namespace. You get one file for the whole group: send
-it to the group's members (it holds no secret); each does step 4. Set `ADMIN_KUBECONFIG` and
-`TEAM_NAMESPACE` as in step 2, `KEYCLOAK_ISSUER` to the issuer and `KEYCLOAK_CA` to the CA file
-from the Keycloak administrator, and `NAME` to a name for the file. Run it again and it replaces
-that file.
+kubeconfig, `~/.kube/my-vks-cluster-keycloak.kubeconfig` (named after `NAME`): the cluster's address
+and CA from your administrator kubeconfig, and a login through kubelogin with a device code
+(kubelogin prints an address with a code; the person opens it in a browser and signs in to
+Keycloak), checking Keycloak's certificate against the Keycloak CA. Its context (the cluster, user
+and namespace kubectl uses by default) starts in the team's namespace. You get one file for the
+whole group: send it to the group's members (it holds no secret); each does step 4. Set
+`ADMIN_KUBECONFIG` and `TEAM_NAMESPACE` as in step 2, `KEYCLOAK_ISSUER` to the issuer and
+`KEYCLOAK_CA` to the CA file from the Keycloak administrator, and `NAME` to a name for the file. Run
+it again and it replaces that file.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -244,16 +244,18 @@ else {
 **If not:**
 - `unknown flag: --exec-interactive-mode`, then `FAILED`: kubectl is too old; update it
   ([KUBECTL.md](KUBECTL.md)).
-- `FAILED: no server or CA read …`: `ADMIN_KUBECONFIG` is not the cluster's administrator kubeconfig.
+- `FAILED: no server or CA read …`: `ADMIN_KUBECONFIG` is not the cluster's administrator
+  kubeconfig.
 
 ## 4. Log in (the person)
 
-The person runs this on their machine, once the administrator has sent them the file from step 3,
-to log in to the cluster with their Keycloak user. Install [kubectl](KUBECTL.md) and
+The person runs this on their machine, once the administrator has sent them the file from step 3, to
+log in to the cluster with their Keycloak user. Install [kubectl](KUBECTL.md) and
 [kubelogin](PREREQS.md#kubelogin-optional) first, and save the file where `KEYCLOAK_KUBECONFIG`
 points. It checks both tools and the file, then asks the cluster who you are; that first command
 starts the Keycloak sign-in below. You get a login that later kubectl commands with this file use.
-Run it again and it only prints who you are while your Keycloak session lasts.
+Run it again while your Keycloak session lasts and it only prints who you are; after that, it asks
+for a new code.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -278,8 +280,8 @@ elseif (-not (Test-Path $KEYCLOAK_KUBECONFIG)) { "MISSING: $KEYCLOAK_KUBECONFIG 
 else { kubectl --kubeconfig $KEYCLOAK_KUBECONFIG auth whoami }
 ```
 
-kubelogin prints `Please visit the following URL in your browser:` and a Keycloak address that
-ends in `user_code=XXXX-XXXX`. Open it in a browser on any machine, and open only an address your own
+kubelogin prints `Please visit the following URL in your browser:` and a Keycloak address that ends
+in `user_code=XXXX-XXXX`. Open it in a browser on any machine, and open only an address your own
 kubectl printed. Sign in to Keycloak:
 
 ![Keycloak's sign-in page of the realm: Username or email, Password, Sign In](img/keycloak/06-person-signin.jpg)

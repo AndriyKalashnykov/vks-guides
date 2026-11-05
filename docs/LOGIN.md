@@ -21,9 +21,9 @@ login on this machine):
    [Create Supervisor context with CA](#create-supervisor-context-with-ca) or
    [Create Supervisor context without CA](#create-supervisor-context-without-ca).
 2. [Check your vSphere Namespace](#check-your-vsphere-namespace).
-3. Get the VKS cluster's kubeconfig, one of
-   [Download the VKS cluster's kubeconfig from the vSphere Client](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)
-   or [Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig).
+3. Get the VKS cluster's kubeconfig, one of [Download the VKS cluster's kubeconfig from the vSphere
+   Client](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client) or [Get the VKS cluster's
+   kubeconfig](#get-the-vks-clusters-kubeconfig).
 4. [Use the VKS cluster](#use-the-vks-cluster).
 
 Later, run [Renew the Supervisor login](#renew-the-supervisor-login) when the login ends, and
@@ -31,7 +31,8 @@ Later, run [Renew the Supervisor login](#renew-the-supervisor-login) when the lo
 
 ## Prerequisites
 
-- [kubectl](KUBECTL.md), the [VCF CLI](VCF.md), and [curl, unzip (Photon OS: bsdtar), openssl and jq](PREREQS.md);
+- [kubectl](KUBECTL.md), the [VCF CLI](VCF.md), and [curl, unzip (Photon OS: bsdtar), openssl and
+  jq](PREREQS.md);
 - the Supervisor's IP address or DNS name, and vCenter's DNS name
   ([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca), step 1);
 - an SSO user with a role on your vSphere Namespace (for example `administrator@vsphere.local`),
@@ -171,8 +172,8 @@ its Supervisor.
 Run this right before you create the context (or, in a new terminal, before a renewal): the login
 reads the password from this terminal, so it is never on a command line or in your shell history.
 Paste this line on its own, then type the password; nothing is shown as you type (PowerShell shows
-`*`). Afterwards the password waits in this terminal for the next block, which creates the
-context.
+`*`). Afterwards the password waits in this terminal for the block that creates the context (or
+renews it).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -320,8 +321,8 @@ check for this login.
 Run this right before you create the context (or, in a new terminal, before a renewal): the login
 reads the password from this terminal, so it is never on a command line or in your shell history.
 Paste this line on its own, then type the password; nothing is shown as you type (PowerShell shows
-`*`). Afterwards the password waits in this terminal for the next block, which creates the
-context.
+`*`). Afterwards the password waits in this terminal for the block that creates the context (or
+renews it).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -513,24 +514,22 @@ that matches the one from your administrator, ignoring colons and upper/lower ca
   Supervisor.
 - A fingerprint that does not match: delete the file and do not log in with it.
 
-**3. Create the context:** run
-[step 3, *Create the context*, of Create Supervisor context with CA](#create-the-context) with
-`SUPERVISOR_CA="$HOME/.kube/${SUPERVISOR_CONTEXT}.crt"` (PowerShell: `"$HOME\.kube\${SUPERVISOR_CONTEXT}.crt"`).
-`x509: certificate is valid for …, not …` there means the certificate does not list the address
-in `SUPERVISOR_ENDPOINT`: use the DNS name or IP address the message lists.
-`x509: cannot validate certificate for <IP> because it doesn't contain any IP SANs` means it lists
-only DNS names: use the Supervisor's DNS name.
-`x509: certificate signed by unknown authority` means the Supervisor's certificate changed since
-you fetched it: fetch it again (step 2 above).
+**3. Create the context:** run [step 3, *Create the context*, of Create Supervisor context with
+CA](#create-the-context) with `SUPERVISOR_CA="$HOME/.kube/${SUPERVISOR_CONTEXT}.crt"` (PowerShell:
+`"$HOME\.kube\${SUPERVISOR_CONTEXT}.crt"`). `x509: certificate is valid for …, not …` there means
+the certificate does not list the address in `SUPERVISOR_ENDPOINT`: use the DNS name or IP address
+the message lists. `x509: cannot validate certificate for <IP> because it doesn't contain any IP
+SANs` means it lists only DNS names: use the Supervisor's DNS name. `x509: certificate signed by
+unknown authority` means the Supervisor's certificate changed since you fetched it: fetch it again
+(step 2 above).
 
 </details>
 
 ## Check your vSphere Namespace
 
-In the vSphere Client, the namespace's **Resources** tab shows its VKS clusters: the
-**Kubernetes** card counts them, and **GO TO SERVICE** lists them (see
-[Download the VKS cluster's kubeconfig from the vSphere Client](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client),
-step 1).
+In the vSphere Client, the namespace's **Resources** tab shows its VKS clusters: the **Kubernetes**
+card counts them, and **GO TO SERVICE** lists them (see [Download the VKS cluster's kubeconfig from
+the vSphere Client](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client), step 1).
 
 Run this block right after you log in, to check that your Supervisor login works: it checks that
 your SSO user can see your vSphere Namespace, and lists the VKS clusters in it
@@ -953,10 +952,10 @@ command that answered `Unauthorized` again.
 - A login error: check the password, and mind the lock-out.
 
 Why a new login and not a new file: the Supervisor's kubeconfig holds only a token (a temporary key
-from your SSO login). When the token ends, every context in that file fails at once, while
-`vcf context list` still shows them as before. The VKS cluster's kubeconfig does not need this
-renewal: it is a login of its own
-([two servers, two logins](KUBECONFIG.md#why-the-supervisor-and-each-vks-cluster-have-their-own-kubeconfig)).
+from your SSO login). When the token ends, every context in that file fails at once, while `vcf
+context list` still shows them as before. The VKS cluster's kubeconfig does not need this renewal:
+it is a login of its own ([two servers, two
+logins](KUBECONFIG.md#why-the-supervisor-and-each-vks-cluster-have-their-own-kubeconfig)).
 
 ## Log out
 
