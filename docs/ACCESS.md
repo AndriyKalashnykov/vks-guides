@@ -370,6 +370,10 @@ terminal.
   ([NAMESPACE.md](NAMESPACE.md) step 4), and disable the SSO user if they should lose vCenter as
   well.
 
+If the person's check in step 4 still answers `yes` afterwards, they also have rights through a
+group: a group with **Can edit** or **Owner** on the vSphere Namespace is an administrator of every
+VKS cluster in it. Take the person out of that group, or take the group's role away in vCenter.
+
 ## The kubectl vSphere plugin instead of the VCF CLI (optional)
 
 Only for people who log in without the VCF CLI. The kubectl vSphere plugin is a program that logs
