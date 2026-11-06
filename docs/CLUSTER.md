@@ -191,7 +191,7 @@ right.
    **Kubernetes Release**. In the **VM Class** table, select your class with the round button:
    the page preselects one, which may not be the one you want. Choose your **Storage Class**.
 
-   ![Step 2 General Settings: Cluster Name, Cluster Class, Kubernetes Release, and the VM Class table with best-effort-small selected](img/cluster/06-create-general.png)
+   ![Step 2 General Settings: Cluster Name, Cluster Class, Kubernetes Release, and the VM Class table with best-effort-medium selected](img/cluster/06-create-general.png)
 
 3. Still in step 2, open **Storage** and choose your storage class under **Default Storage
    Class**. The page leaves it empty; without it, every app that asks for a disk without naming a
@@ -211,7 +211,7 @@ right.
    **NEXT**, and select the class under **VM Class & Storage Class**; click **NEXT** through the
    other steps and **FINISH**. The row then shows the pool's class. Click **NEXT**.
 
-   ![Step 4 Node pools: ADD NODEPOOL and one pool with Replicas 1, Photon 5, best-effort-small and wcp-vmfs](img/cluster/09-create-node-pool.png)
+   ![Step 4 Node pools: ADD NODEPOOL and one pool with Replicas 1, Photon 5, best-effort-medium and wcp-vmfs](img/cluster/09-create-node-pool.png)
 
 **Expect:** **5. Review and Confirm** opens, and steps 1 to 4 each show a green tick.
 
@@ -796,7 +796,7 @@ during the change the cluster has one node more for the control plane and one mo
 
    The editor's **Find and replace** (Ctrl+H) finds the line.
 
-   ![The YAML pane in edit mode: SAVE and CANCEL, the note that edit mode checks only YAML syntax, and the vmClass value changed to best-effort-small](img/cluster/23-yaml-edit.jpg)
+   ![The YAML pane in edit mode: SAVE and CANCEL, the note that edit mode checks only YAML syntax, and the vmClass value changed to best-effort-medium](img/cluster/23-yaml-edit.png)
 
 3. Click **SAVE**. The vSphere Client checks only that the text is YAML, not that the change
    works: check it with the block below.
