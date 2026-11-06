@@ -39,6 +39,10 @@ blocks; there is nothing to build.
   `| from | to | port | for |` with every connection its blocks open or make another component
   open (the nodes, ArgoCD); registries by name, with a link to PREREQS.md's Registry hosts.
   A row from the reader's own machine says `your machine (laptop or jump box)`.
+  A guide that installs into a VKS cluster states there the cluster to make: VM class and worker
+  count for the base install and for each optional part, measured on the lab (requests and real use),
+  never as millicores or MiB the reader must add up. Control plane and examples use
+  `best-effort-medium` (CLUSTER step 2 holds the measured why; KB 446139).
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
 - The Supervisor is named by `SUPERVISOR_CONTEXT="supervisor"` (one name per Supervisor: a-z,
   0-9 and `-`, not ending in `-keycloak`) and its file by
@@ -51,6 +55,13 @@ blocks; there is nothing to build.
   server (local file writes and `vcf context use` may come first), and prints
   `MISSING: jq (PREREQS.md)`: empty output takes the wrong branch, deletes nothing, or loses a
   token a server already made.
+- A delete, uninstall or update decided by a query's result fails closed: read the query's exit
+  code (sh `if ! X="$(…)"` or `X="$(…)" || X=FAILED`, no `2>/dev/null`; PowerShell
+  `$global:LASTEXITCODE = $null` before, `-ne 0` after) and stop with `FAILED: … nothing removed`.
+  An empty result from a failed query is not "nothing uses it" (`kubectl get a,b -A` prints nothing
+  when one type is missing). A shared add-on (cert-manager, Contour, Prometheus) is removed only
+  after an in-block check that nothing uses it; a check namespace or Secret is deleted only when
+  this run created it.
 - Downloads use `--connect-timeout 20 --speed-time 60`; a file is replaced only after it checks out.
 - Broadcom terms: "VKS cluster" (not guest/TKG cluster), "Supervisor", "vSphere Namespace",
   "VCF CLI". Text is minimal: what to run and what to expect, no notes or mechanism essays.
@@ -121,3 +132,8 @@ blocks; there is nothing to build.
   DaemonSets, host ports) or starting the walkbox, say when the lab is clean, and send it any lab
   finding. It owns vCenter, the Supervisor and VCF Operations; this repo's work stays inside the
   VKS cluster.
+- Walkboxes stay powered off when not in use (owner order): start one with `make walkbox-vm-start
+  WALKBOX_OS=…` in nested-vsphere-lab (it prints the address, which can change; never hard-code it)
+  and `make walkbox-vm-stop WALKBOX_OS=…` after the run. Lab reads and changes during guide work
+  (kubectl with the Supervisor kubeconfig, curl, upgrades) run from a walkbox, not this host;
+  `make lab-capacity` (nested-vsphere-lab, read-only) shows the room before a cluster is made.
