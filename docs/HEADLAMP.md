@@ -467,15 +467,15 @@ The browser may ask again later, and does when the certificate changes (step 9).
 
 Everyone with a vCenter SSO login to the cluster pastes that login's token into Headlamp; Headlamp
 then has exactly that user's rights. You hold **Can edit** or **Owner** (Prerequisites), so you use
-6.1, and skip steps 1 and 3 of [ACCESS.md, "The person's own SSO
+6.1, and skip steps 1 and 2 of [ACCESS.md, "The person's own SSO
 account"](ACCESS.md#the-persons-own-sso-account). People with narrower rights from that section use
 6.2: send them steps 5, 6.2 and 7, with the address and the fingerprint from step 4, and the name
-of their namespace (ACCESS.md step 3); they need kubectl and jq (PREREQS.md).
+of their namespace (ACCESS.md step 2); they need kubectl and jq (PREREQS.md).
 
 First log in to the cluster with your SSO user, as in
-[ACCESS.md](ACCESS.md#the-persons-own-sso-account) step 2a (VCF CLI) or steps 2b to 2d (kubectl
-vSphere plugin), so that `~/.kube/<cluster>-<SSO_USER>.kubeconfig` holds the login. Set `SSO_USER`
-in the blocks below to the name that login used, letter for letter as in ACCESS.md step 2a or 2d.
+[ACCESS.md](ACCESS.md#the-persons-own-sso-account) step 3 (VCF CLI) or its optional kubectl
+vSphere plugin steps, so that `~/.kube/<cluster>-<SSO_USER>.kubeconfig` holds the login. Set `SSO_USER`
+in the blocks below to the name that login used, letter for letter as in that login.
 The token works only for this cluster and ends 10 hours after that login; the length cannot be
 changed, and the block prints when it ends.
 
@@ -579,13 +579,13 @@ the token, and `it ends:` 10 hours after the login (UTC). Paste it in step 7, th
 terminal; log out of Headlamp when you are done.
 
 **If not:**
-- `STOPPED: SSO_USER is …`: set `SSO_USER` to the full name with `@` and the domain, as in ACCESS.md
-  step 2a or 2d.
+- `STOPPED: SSO_USER is …`: set `SSO_USER` to the full name with `@` and the domain, as in your login
+  (ACCESS.md step 3).
 - `FAILED: this login is for the Supervisor …`: the file's current login is the Supervisor's; log in
-  to the cluster again (ACCESS.md step 2a, or 2b to 2d).
+  to the cluster again (ACCESS.md step 3).
 - `FAILED: the cluster did not answer …`: the command it names shows why.
 - `FAILED: no SSO login …`: check that `SSO_USER` is letter for letter as in your login (ACCESS.md
-  step 2a or 2d), then run that login again. A login through an external identity provider
+  step 3), then run that login again. A login through an external identity provider
   (ACCESS.md, `vcf pinniped-auth`) keeps no token in the file: use step 8.
 - `ENDED: …`: run the login in ACCESS.md again.
 
@@ -643,7 +643,7 @@ elif [ "$ALL" = yes ]; then
 else
   U="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
   if [ "${POD#no}" != "$POD" ]; then
-    echo "WARNING: ${U} has no rights in namespace ${TEAM_NAMESPACE}; Headlamp will show nothing there. Check TEAM_NAMESPACE, or ask your cluster administrator for ACCESS.md step 3"
+    echo "WARNING: ${U} has no rights in namespace ${TEAM_NAMESPACE}; Headlamp will show nothing there. Check TEAM_NAMESPACE, or ask your cluster administrator for ACCESS.md step 2"
   elif [ "${NSL#no}" != "$NSL" ]; then
     echo "NOTE: in Headlamp, add ${TEAM_NAMESPACE} under Settings > Cluster > Allowed namespaces (step 7)"
   fi
@@ -686,7 +686,7 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
 } else {
   $U = kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}'
   if ($POD.StartsWith('no')) {
-    "WARNING: $U has no rights in namespace ${TEAM_NAMESPACE}; Headlamp will show nothing there. Check TEAM_NAMESPACE, or ask your cluster administrator for ACCESS.md step 3"
+    "WARNING: $U has no rights in namespace ${TEAM_NAMESPACE}; Headlamp will show nothing there. Check TEAM_NAMESPACE, or ask your cluster administrator for ACCESS.md step 2"
   } elseif ($NSL.StartsWith('no')) {
     "NOTE: in Headlamp, add $TEAM_NAMESPACE under Settings > Cluster > Allowed namespaces (step 7)"
   }
@@ -707,8 +707,8 @@ terminal.
 - `STOPPED: this SSO user is an administrator …`: use step 6.1.
 - The `STOPPED: SSO_USER is …`, `FAILED: …` and `ENDED: …` lines: as in step 6.1.
 - `WARNING: … has no rights in namespace …`: check `TEAM_NAMESPACE` (the name your administrator
-  sent you); if it is right, the administrator has not given you rights yet: send them your name
-  for ACCESS.md step 3. Headlamp would show you nothing until then.
+  sent you); if it is right, the administrator has not given you rights yet: send them the name in
+  that line for ACCESS.md step 2. Headlamp would show you nothing until then.
 - `STOPPED: TEAM_NAMESPACE is …`: set it to your namespace's name.
 
 ## 7. Log in to Headlamp with the token (each person, administrator included)

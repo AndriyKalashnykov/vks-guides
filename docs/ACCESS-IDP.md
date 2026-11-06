@@ -51,7 +51,7 @@ The steps:
   ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca));
 - the person: [kubectl](KUBECTL.md), the [VCF CLI](VCF.md) and a browser; on Windows and macOS,
   the vCenter CA trusted by their user
-  ([ACCESS.md step 2b](ACCESS.md#2b-windows-and-macos-trust-the-vcenter-ca-the-person-once)).
+  ([ACCESS.md, plugin step 1](ACCESS.md#1-windows-and-macos-trust-the-vcenter-ca-the-person-once)).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; the Supervisor's DNS
 servers must resolve the identity provider's name):
@@ -390,7 +390,7 @@ line), so that they can check the file before they use it.
 You need kubectl and the [VCF CLI](VCF.md) (the file runs `vcf`; you do not log in with it), and a
 browser that trusts the identity provider's CA (for Keycloak:
 [KEYCLOAK-VKS.md step 8](KEYCLOAK-VKS.md#8-trust-keycloaks-ca-each-person-once)) and the vCenter CA
-(on Windows and macOS: [step 2b](ACCESS.md#2b-windows-and-macos-trust-the-vcenter-ca-the-person-once)). Save the file in your `.kube` folder, readable only by you
+(on Windows and macOS: [ACCESS.md, plugin step 1](ACCESS.md#1-windows-and-macos-trust-the-vcenter-ca-the-person-once)). Save the file in your `.kube` folder, readable only by you
 ([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)).
 
 Before the first use, check that the file runs `vcf pinniped-auth` and that its `server:` is the
