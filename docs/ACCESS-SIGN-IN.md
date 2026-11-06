@@ -5,11 +5,12 @@ administrator kubeconfig ([Log in](LOGIN.md)). Single sign-on uses an external i
 any OpenID Connect (OIDC) provider your organization runs. These guides use Keycloak as the example
 provider; without one, run it first ([Run an OIDC identity provider](KEYCLOAK-VKS.md)). For sign-in
 through the Supervisor, register it there ([its step 11](KEYCLOAK-VKS.md#11-register-keycloak-with-the-supervisor-optional)) before
-ACCESS.md's group way.
+[ACCESS-IDP.md](ACCESS-IDP.md).
 
 | guide | what it is |
 |---|---|
-| [Grant access to VKS clusters](ACCESS.md) | which way for which customer, and how to give a person, team or tool access to a VKS cluster and take it away: their vCenter SSO account, a group from the external identity provider through the Supervisor, a ServiceAccount token (one namespace or the whole cluster), or a personal certificate |
+| [Grant access to VKS clusters](ACCESS.md) | which way for which customer, and how to give a person, team or tool access to a VKS cluster and take it away: their vCenter SSO account, a ServiceAccount token (one namespace or the whole cluster), or a personal certificate |
+| [Grant an identity provider group access to VKS clusters, through the Supervisor](ACCESS-IDP.md) | a group from the external identity provider signs in to every VKS cluster of the Supervisor with a browser; one kubeconfig with no secret for the whole group |
 | [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | the example provider (Keycloak with PostgreSQL) in its own VKS cluster, with a certificate, a DNS name, a realm for VKS sign-ins, users and groups, and its registration on the Supervisor (step 11) |
 | [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | a VKS cluster created to trust the identity provider directly; people need only kubectl and kubelogin |
 
@@ -22,6 +23,7 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines:
 | guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
 | [Grant access to VKS clusters](ACCESS.md) | part | part | part | — | part | part |
+| [Grant an identity provider group access to VKS clusters, through the Supervisor](ACCESS-IDP.md) | part | — | — | — | — | — |
 | [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | part | part | part | — | part | part |
 | [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | ✅ | — | part | — | ✅ | — |
 
