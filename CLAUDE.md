@@ -10,6 +10,10 @@ blocks; there is nothing to build.
 
 ## Rules
 
+- `examples/` (owner's choice) holds runnable admin scripts built from guide blocks (`kubeconfig-*.sh`,
+  `rolebinding-idp-group.sh`) and `examples/README.md` comparing them. They use the guides' placeholder values
+  (no lab values), are not guides (no NOTE, Prerequisites or Tested on row, not on group pages), and must follow
+  the guide blocks they copy: a change to such a block updates its script in the same PR.
 - LOGIN.md, ACCESS.md and ACCESS-IDP.md are moved-guide stubs: a title, one line naming the new
   guide, and links from the old sections to their new homes; no NOTE, Prerequisites, blocks or
   Tested on row; not in the guide list or on group pages.
