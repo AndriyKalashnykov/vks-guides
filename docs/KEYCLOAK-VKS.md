@@ -1365,8 +1365,8 @@ Under **Groups**, a group's **Members** tab lists the people added to it.
 ## 11. Register Keycloak with the Supervisor (optional)
 
 This lets people sign in to every VKS cluster of a Supervisor with their Keycloak account, through
-the Supervisor: the group way of
-[ACCESS.md](ACCESS.md#a-group-from-an-external-identity-provider-through-the-supervisor). Skip it if
+the Supervisor
+([ACCESS-IDP.md](ACCESS-IDP.md)). Skip it if
 people sign in only to clusters made with [KEYCLOAK.md](KEYCLOAK.md). Who does what:
 
 - you, the Keycloak administrator: the client `supervisor` in the realm (11.2), then you send the
@@ -1576,8 +1576,8 @@ scopes basic, profile, email`, then `client secret: not shown …` (the secret w
 already, you must remove it first, and then:
 
 - every sign-in through that provider stops at once;
-- the roles its groups have on vSphere Namespaces ([ACCESS.md step
-  2](ACCESS.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator)) no longer
+- the roles its groups have on vSphere Namespaces ([ACCESS-IDP.md step
+  2](ACCESS-IDP.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator)) no longer
   apply: after this registration, run that step again for each group;
 - every VKS cluster of the Supervisor takes the change;
 - vCenter SSO logins keep working, so you can always get back in.
@@ -1603,7 +1603,7 @@ the names the provider's **VIEW SETTINGS** shows, or else the vCenter API's name
 
 **Expect:** the Identity Providers page shows a card **keycloak**, and its **VIEW SETTINGS** the
 values above. To check a sign-in, run the
-[ACCESS.md group steps](ACCESS.md#a-group-from-an-external-identity-provider-through-the-supervisor)
+[ACCESS-IDP.md steps](ACCESS-IDP.md)
 1 to 5 for one group: the person is `keycloak-sv:<user>`, in `keycloak-sv:<group>`.
 
 **If not:**
