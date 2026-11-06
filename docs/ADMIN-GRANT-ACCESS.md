@@ -692,7 +692,9 @@ request to the cluster to sign a certificate for a new name, `PERSON` plus the d
 example `alice-20261029223015`), valid for `DAYS` days. It approves the request, so the cluster
 signs it, then deletes the request. It makes the namespace `TEAM_NAMESPACE` inside the VKS cluster
 if it is not there, and a RoleBinding (the record that gives a name a role in one namespace) that
-gives that name `edit` in it, and writes the kubeconfig, key included, readable only by you.
+gives that name `edit` in it, and writes the kubeconfig, key included, readable only by you. With
+`TEAM_NAMESPACE=""` it gives the name `cluster-admin` on the whole cluster instead (a
+ClusterRoleBinding) and prints a `WARNING`: only for a person who must administer the cluster.
 
 You then have one file, `PERSON_KUBECONFIG`, for that person: send it (step 2). Each run makes a
 new name, so that you can take each certificate away alone; an older name keeps its rights until
@@ -700,8 +702,8 @@ step 4.
 
 Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
 from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
-elsewhere), `PERSON` to a short name for the person, `TEAM_NAMESPACE` to their namespace, and
-`DAYS` to as few days as they need.
+elsewhere), `PERSON` to a short name for the person, `TEAM_NAMESPACE` to their namespace (or
+`""` for the whole cluster), and `DAYS` to as few days as they need.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -735,15 +737,24 @@ CA="$(adm config view --minify --raw -o jsonpath='{.clusters[0].cluster.certific
 adm get csr "$CSR" -o go-template='{{.status.certificate | base64decode}}' > "$TMP/cert.pem" 2>/dev/null
 if [ -n "$CERT" ] && [ -n "$SERVER" ] && [ -n "$CA" ] \
    && [ "$(openssl x509 -in "$TMP/cert.pem" -noout -pubkey)" = "$(openssl pkey -in "$TMP/key.pem" -pubout)" ]; then
-  adm create namespace "$TEAM_NAMESPACE" --dry-run=client -o yaml | adm apply -f - >/dev/null
-  adm -n "$TEAM_NAMESPACE" create rolebinding "${NAME}-edit" --clusterrole=edit --user="$NAME" >/dev/null
+  if [ -n "$TEAM_NAMESPACE" ]; then
+    adm create namespace "$TEAM_NAMESPACE" --dry-run=client -o yaml | adm apply -f - >/dev/null
+    adm -n "$TEAM_NAMESPACE" create rolebinding "${NAME}-edit" --clusterrole=edit --user="$NAME" >/dev/null
+  else
+    echo "WARNING: TEAM_NAMESPACE is empty: ${NAME} gets cluster-admin on the whole cluster"
+    adm create clusterrolebinding "${NAME}-cluster-admin" --clusterrole=cluster-admin --user="$NAME" >/dev/null
+  fi
   rm -f "$PERSON_KUBECONFIG"
   ( umask 077
     printf 'apiVersion: v1\nkind: Config\nclusters:\n- name: %s\n  cluster:\n    server: %s\n    certificate-authority-data: %s\nusers:\n- name: %s\n  user:\n    client-certificate-data: %s\n    client-key-data: %s\ncontexts:\n- name: %s\n  context:\n    cluster: %s\n    user: %s\n    namespace: %s\ncurrent-context: %s\n' \
       "$NAME" "$SERVER" "$CA" "$NAME" "$CERT" "$(base64 < "$TMP/key.pem" | tr -d '\n')" \
-      "$NAME" "$NAME" "$NAME" "$TEAM_NAMESPACE" "$NAME" > "$PERSON_KUBECONFIG" )
+      "$NAME" "$NAME" "$NAME" "${TEAM_NAMESPACE:-default}" "$NAME" > "$PERSON_KUBECONFIG" )
   openssl x509 -in "$TMP/cert.pem" -noout -subject -enddate
-  echo "create deployments in $TEAM_NAMESPACE: $(kubectl --kubeconfig "$PERSON_KUBECONFIG" auth can-i create deployments)"
+  if [ -n "$TEAM_NAMESPACE" ]; then
+    echo "create deployments in $TEAM_NAMESPACE: $(kubectl --kubeconfig "$PERSON_KUBECONFIG" auth can-i create deployments)"
+  else
+    echo "everything in the cluster: $(kubectl --kubeconfig "$PERSON_KUBECONFIG" auth can-i '*' '*')"
+  fi
 else
   echo "FAILED: no matching certificate, server or CA (see the kubectl errors above)"
 fi
@@ -775,7 +786,8 @@ new file, and take the old name's rights away (step 4).
 ### 4. Take the certificate away (cluster administrator)
 
 Do this when the person should lose access, or has a new certificate from step 3. It deletes the
-RoleBinding of the name from step 1; nothing else changes. That name then has no rights in
+RoleBinding of the name from step 1 (with `TEAM_NAMESPACE=""`, its cluster-admin ClusterRoleBinding);
+nothing else changes. That name then has no rights in
 `TEAM_NAMESPACE`, but the certificate keeps proving the name until its end date (`notAfter`), so
 never give that name rights again. Set `NAME` to the name from step 1's `subject=` line, and
 `VKS_CLUSTER`, `ADMIN_KUBECONFIG` and `TEAM_NAMESPACE` to what step 1 used.
@@ -788,7 +800,11 @@ ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 NAME="alice-20261029223015"
 TEAM_NAMESPACE="team-a"
 
-kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$TEAM_NAMESPACE" delete rolebinding "${NAME}-edit"
+if [ -n "$TEAM_NAMESPACE" ]; then
+  kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$TEAM_NAMESPACE" delete rolebinding "${NAME}-edit"
+else
+  kubectl --kubeconfig "$ADMIN_KUBECONFIG" delete clusterrolebinding "${NAME}-cluster-admin"
+fi
 ```
 
 **Windows (PowerShell):**
@@ -799,11 +815,16 @@ $ADMIN_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $NAME = "alice-20261029223015"
 $TEAM_NAMESPACE = "team-a"
 
-kubectl --kubeconfig $ADMIN_KUBECONFIG -n $TEAM_NAMESPACE delete rolebinding "$NAME-edit"
+if ($TEAM_NAMESPACE) {
+  kubectl --kubeconfig $ADMIN_KUBECONFIG -n $TEAM_NAMESPACE delete rolebinding "$NAME-edit"
+} else {
+  kubectl --kubeconfig $ADMIN_KUBECONFIG delete clusterrolebinding "$NAME-cluster-admin"
+}
 ```
 
 **Expect:** `rolebinding.rbac.authorization.k8s.io "alice-20261029223015-edit" deleted` (newer
-kubectl: `… deleted from team-a namespace`).
+kubectl: `… deleted from team-a namespace`); with `TEAM_NAMESPACE=""`,
+`clusterrolebinding.rbac.authorization.k8s.io "alice-20261029223015-cluster-admin" deleted`.
 
 **If not:** `Error from server (NotFound)`: the RoleBinding is already gone, or `NAME` or
 `TEAM_NAMESPACE` is not what step 1 printed and used.
