@@ -42,8 +42,8 @@ blocks; there is nothing to build.
   A guide that installs a product or add-on into a VKS cluster has, in Prerequisites, a paragraph
   that opens **The VKS cluster to make.** and gives the VM class and worker count for the base
   install and for each optional part, measured on the lab (requests and real use), never as
-  millicores or MiB the reader must add up (a guide's own small test app needs no size). Control plane and examples use
-  `best-effort-medium` (CLUSTER step 2 holds the measured why; KB 446139).
+  millicores or MiB the reader must add up (a guide's own small test app needs no size). Control
+  plane and examples use `best-effort-medium` (CLUSTER step 2 holds the measured why; KB 446139).
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
 - The Supervisor is named by `SUPERVISOR_CONTEXT="supervisor"` (one name per Supervisor: a-z,
   0-9 and `-`, not ending in `-keycloak`) and its file by
