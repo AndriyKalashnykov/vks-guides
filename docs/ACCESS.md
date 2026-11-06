@@ -63,7 +63,7 @@ Who does what:
   3. [Log in with the VCF CLI](#3-log-in-with-the-vcf-cli-the-person) (the person)
   4. [Use the login](#4-use-the-login-the-person) (the person)
   5. [Take it away](#5-take-it-away-cluster-administrator-vcenter-administrator) (cluster administrator, vCenter administrator)
-  - Optional, without the VCF CLI: [the kubectl vSphere plugin](#the-kubectl-vsphere-plugin-instead-of-the-vcf-cli-optional) instead of step 3
+  - Optional, without the VCF CLI: [the kubectl vSphere plugin](#the-kubectl-vsphere-plugin-instead-of-the-vcf-cli-optional-and-deprecated) instead of step 3
 - [A group from an external identity provider, through the Supervisor](ACCESS-IDP.md): its own guide
 - [A ServiceAccount token](#a-serviceaccount-token)
   1. [Make the team's token and its file](#1-make-the-teams-token-and-its-file-cluster-administrator) (cluster administrator)
@@ -105,7 +105,7 @@ how to hand it over, use and merge it: [KUBECONFIG.md](KUBECONFIG.md).
 - vCenter administrator (SSO way): the vCenter CA
   ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca), step 1);
 - the person or tool: [kubectl](KUBECTL.md) (every way); SSO way: the [VCF CLI](VCF.md) or the
-  kubectl vSphere plugin ([optional](#the-kubectl-vsphere-plugin-instead-of-the-vcf-cli-optional)), and
+  kubectl vSphere plugin ([optional](#the-kubectl-vsphere-plugin-instead-of-the-vcf-cli-optional-and-deprecated)), and
   the vCenter CA (sent in step 1; optional for the VCF CLI login, step 3).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):
@@ -123,7 +123,7 @@ and the login writes their own kubeconfig: you send them names and the vCenter C
 kubeconfig. The vCenter administrator lets them log in (step 1), the cluster administrator gives
 them rights inside the cluster (step 2), then the person logs in (step 3) and uses the cluster
 (step 4). A login lasts 10 hours. Without the VCF CLI, people log in with the kubectl vSphere
-plugin instead ([below](#the-kubectl-vsphere-plugin-instead-of-the-vcf-cli-optional)).
+plugin instead ([below](#the-kubectl-vsphere-plugin-instead-of-the-vcf-cli-optional-and-deprecated)).
 
 ### 1. Give the person a role on the vSphere Namespace (vCenter administrator)
 
@@ -383,7 +383,10 @@ If the person's check in step 4 still answers `yes` afterwards, they also have r
 group: a group with **Can edit** or **Owner** on the vSphere Namespace is an administrator of every
 VKS cluster in it. Take the person out of that group, or take the group's role away in vCenter.
 
-## The kubectl vSphere plugin instead of the VCF CLI (optional)
+## The kubectl vSphere plugin instead of the VCF CLI (optional and deprecated)
+
+<details>
+<summary><b>The plugin steps</b></summary>
 
 Only for people who log in without the VCF CLI. The kubectl vSphere plugin is a program that logs
 kubectl in through the Supervisor; Broadcom replaced it with the VCF CLI, but it still works on 9.1
@@ -591,6 +594,8 @@ writes the name in its own letter case, for example `sso:Alice@vsphere.local`).
   this block again (Windows: the password line first) and type the password carefully. Mind the
   lock-out.
 - `logged in as:` with `Unauthorized`: the login did not work; see the error above it.
+
+</details>
 
 ## A ServiceAccount token
 
