@@ -174,13 +174,11 @@ printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
 $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 ```
 
-Then run this in the same terminal, once to get the name the cluster knows you by (the cluster
-administrator needs it for step 3), and again whenever kubectl answers `Unauthorized`, 10 hours
-after a login; a new login is written to the same file. It logs you in to the VKS cluster as
-`SSO_USER` through the Supervisor and writes the login to your own kubeconfig `VKS_USER_KUBECONFIG`
-(the file kubectl reads to reach the cluster), readable only by you. You then have that file, and
-the name the cluster knows you by: send that name, exactly as printed, to the cluster
-administrator (step 3).
+Then run this in the same terminal to log in, and again whenever kubectl answers `Unauthorized`,
+10 hours after a login; a new login is written to the same file. It logs you in to the VKS cluster
+as `SSO_USER` through the Supervisor and writes the login to your own kubeconfig
+`VKS_USER_KUBECONFIG` (the file kubectl reads to reach the cluster), readable only by you, then
+prints the name the cluster knows you by. You then use the cluster with that file (step 4).
 
 Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name, `SUPERVISOR_CA` to the
 vCenter CA file from step 1, `SSO_USER` to your full SSO user name, and `VKS_NAMESPACE` (the
@@ -211,7 +209,7 @@ elif mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_USER_KUBECONFIG" ) && chm
           --username "$SSO_USER" --auth-type basic --ca-certificate "$SUPERVISOR_CA" --skip-create-related-contexts \
           --workload-cluster-name "$VKS_CLUSTER" --workload-cluster-namespace "$VKS_NAMESPACE" </dev/null \
      && kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config use-context "${VKS_CLUSTER}-${SSO_USER}:${VKS_CLUSTER}" >/dev/null; then
-  echo "send this name: $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
+  echo "logged in as: $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
 else
   echo "FAILED: login (see the error above)"
 fi
@@ -253,7 +251,7 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
   }
   if ($OK) {
     kubectl --kubeconfig $VKS_USER_KUBECONFIG config use-context "${VKS_CLUSTER}-${SSO_USER}:${VKS_CLUSTER}" | Out-Null
-    "send this name: $(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')"
+    "logged in as: $(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')"
   } else {
     "FAILED: login (see the error above)"
   }
@@ -264,7 +262,7 @@ Remove-Variable SSO_PASSWORD -ErrorAction SilentlyContinue
 </details>
 
 **Expect:** `Successfully logged in to Kubernetes cluster <cluster>`, the contexts `<cluster>-<SSO_USER>` and
-`<cluster>-<SSO_USER>:<cluster>`, and `send this name: sso:…` (SSO writes the name in its own letter case,
+`<cluster>-<SSO_USER>:<cluster>`, and `logged in as: sso:…` (SSO writes the name in its own letter case,
 for example `sso:Alice@vsphere.local`).
 
 **If not:**
