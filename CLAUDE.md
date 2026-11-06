@@ -139,8 +139,9 @@ blocks; there is nothing to build.
 - Walkboxes stay powered off when not in use (owner order): start one with `make walkbox-vm-start
   WALKBOX_OS=…` in nested-vsphere-lab (it prints the address, which can change; never hard-code it)
   and `make walkbox-vm-stop WALKBOX_OS=…` after the run (`WALKBOX_NAME=` for a second box). Guide
-  blocks under test and lab reads and changes during guide work (kubectl with the Supervisor
-  kubeconfig, curl, upgrades) run from a walkbox, not this host. Toward the lab, this host runs only
-  nested-vsphere-lab's make targets (for example the `walkbox-*` targets, the `supervisor` login
-  above with `make vcf-context-refresh`, and `make lab-capacity`, which is read-only but signs in to
-  vCenter once, so mind the lock-out; run it before making a VKS cluster or a vSphere Pod).
+  blocks run for real (not the stubbed checks above) and lab reads and changes during guide work
+  (kubectl with the Supervisor kubeconfig, curl, upgrades) run from a walkbox, not this host. Toward
+  the lab, this host runs only nested-vsphere-lab's make targets (for example the `walkbox-*`
+  targets, the `supervisor` login above with `make vcf-context-refresh`, and `make lab-capacity`).
+  `make lab-capacity` is read-only but signs in to vCenter once (mind the lock-out); run it before
+  making a VKS cluster.
