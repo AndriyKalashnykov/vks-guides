@@ -41,9 +41,7 @@ blocks) and one that holds the VKS cluster (`VKS_NAMESPACE`). They can be the sa
 - for step 6: a vSphere Namespace that offers `best-effort-medium`, with about 84 GB of storage
   free.
 
-Written for ArgoCD Service 1.3.0 on VCF 9.1.1 with VKS 3.8. Steps 4 to 9 were run on 1.3.0 with
-ArgoCD 3.5.3, on an instance step 10 upgraded; step 3's create and step 2's pictures were done with
-1.2.0 (ArgoCD 3.4.4); step 10 was run from 1.2.0 to 1.3.0, the service upgrade through the API.
+Written for ArgoCD Service 1.3.0 on VCF 9.1.1 with VKS 3.8.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
@@ -171,7 +169,7 @@ checksum: delete the file and download it again; do not use it.
    version): on 1.3.0, skip to 4; on an older version, use step 10 instead.
 3. On the **Add New Service** card click **ADD**, then **UPLOAD**, and choose the manifest. The
    window shows **ArgoCD Service**, `argocd-service.vsphere.vmware.com`, `1.3.0-25873627`. Click
-   **FINISH**.
+   **FINISH**. The pictures of this step show release 1.2.0.
 
    ![The New Service window after the upload: ArgoCD Service, argocd-service.vsphere.vmware.com, version 1.2.0-25642124, and FINISH](img/argocd/01-new-service-uploaded.png)
 
@@ -191,8 +189,7 @@ checksum: delete the file and download it again; do not use it.
 
 5. **Supervisors** tab → your Supervisor's row → **View** in the **Services** column.
 
-**Expect:** **ArgoCD Service**, **Configured**, `1.3.0-25873627`, after about a minute. The pictures
-of this step were taken with release 1.2.0.
+**Expect:** **ArgoCD Service**, **Configured**, `1.3.0-25873627`, after about a minute.
 
 ![The Supervisor's installed services with ArgoCD Service Configured, version 1.2.0-25642124](img/argocd/05-installed.png)
 
@@ -232,7 +229,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get argocdversion argocd-supported-v
 
 **If not:** `the server doesn't have a resource type "argocdversion"`: step 2 is not finished. No
 `3.5.` line: the service is older than 1.3.0; a 1.2 service works for steps 3 to 9. Step 10
-upgrades a 1.2 service; an older one gets 1.2.0 first.
+upgrades a 1.2 service; an older one moves to 1.2.0 first, which upgrades only from 1.1.0.
 
 Run this to get your own ArgoCD. It creates the instance `argocd-1` in the vSphere Namespace
 `ARGOCD_NAMESPACE`, and the Supervisor starts ArgoCD there on one of your free load-balancer
@@ -1659,7 +1656,8 @@ on ArgoCD 3.4 or newer; go on with 10.2`.
 - `STOP: <namespace>/<instance> <version> is below ArgoCD 3.4`: that instance's owner runs 10.3
   now, with a `3.4.` version from step 3's list; then run this again.
 - `DONE: …`: the service is already upgraded; each `UPGRADE: …` instance's owner runs 10.3.
-- `STOP: the service is older than 1.2.0`: install release 1.2.0 as in step 2 first, then come back.
+- `STOP: the service is older than 1.2.0`: add release 1.2.0 with **Add New Version** and
+  **Manage Service** as in 10.2 (1.2.0 upgrades only from 1.1.0), then come back.
 - `Forbidden`: a vCenter administrator must run this; it reads every namespace.
 
 ### 10.2 Upgrade the service (vCenter administrator)
@@ -1668,14 +1666,13 @@ Do this after 10.1 printed `OK`. It registers ArgoCD Service 1.3.0 in vCenter an
 the Supervisor in place of 1.2.0, in about a minute. **There is no way back: Broadcom documents
 none, and 1.2.0 accepts neither 1.3.0 nor ArgoCD 3.5 instances.** Tell the instances' owners
 first: right after it, an instance on a version 1.3.0 does not offer (such as
-`3.4.4+vmware.1-vks.1`) shows `Failed` in step 1, and in our test kept serving, until its owner
-runs 10.3.
+`3.4.4+vmware.1-vks.1`) shows `Failed` in step 1 but keeps serving, until its owner runs 10.3.
 
 1. Download the 1.3.0 manifest as in step 2, item 1, of the same kind as the one step 2 installed
    (`-legacy-` in its name or not), and check it with step 2's checksum block and table.
 2. vSphere Client: menu (☰) → **Supervisor Management** → **Services**. On the **ArgoCD Service**
-   card click **ACTIONS** → **Add New Version**, then **UPLOAD**, choose the manifest, and click
-   **FINISH**. The card's **Active Versions** then shows `2`.
+   card click **ACTIONS** → **Add New Version**, then **UPLOAD**, choose the manifest, click
+   **NEXT**, accept the EULA if one is shown, and click **FINISH**.
 3. On the card click **ACTIONS** → **Manage Service**. Set **Install Version** to
    `1.3.0-25873627` (not the `1.2.0-25642124` that is there now), select your Supervisor, click
    **NEXT**. Wait for **Compatibility Check** and **Signature Verification** to **Pass**, click
