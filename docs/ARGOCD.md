@@ -10,8 +10,12 @@
 > - [Approach 1: Add and Manage a vSphere Namespace in an Argo CD Instance on Supervisor Service by Using kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-argo-cd-service/deploying-and-managing-an-argo-cd-instance-as-a-supervisor-service/register-a-vsphere-namespace-as-a-target-cluster-in-argo-cd-supervisor-service/approach-1-add-and-manage-a-vsphere-namespace-in-an-argo-cd-instance-on-supervisor-service/manage-a-vsphere-namespace-in-an-argo-cd-instance-on-supervisor-service-using-kubect.html)
 > - [Workflow for Provisioning VKS Clusters Using kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/workflow-for-provisioning-tkg-clusters-using-kubectl.html) (Kubernetes releases, VM classes, storage classes)
 > - [Register and Manage VKS Clusters in an Argo CD Instance on Supervisor Service by Using kubectl](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-argo-cd-service/deploying-and-managing-an-argo-cd-instance-as-a-supervisor-service/registering-and-managing-vks-clusters-in-argo-cd-supervisor-service/create-a-cluster-by-argocd.html)
-> - Argo CD 3.4: [Getting Started: Sync (Deploy) The Application](https://argo-cd.readthedocs.io/en/release-3.4/getting_started/#7-sync-deploy-the-application), [TLS configuration](https://argo-cd.readthedocs.io/en/release-3.4/operator-manual/tls/), [Declarative Setup](https://argo-cd.readthedocs.io/en/release-3.4/operator-manual/declarative-setup/), [Helm](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/helm/), [Automated Sync Policy](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/auto_sync/), [App Deletion](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/app_deletion/)
+> - Argo CD 3.5: [Getting Started: Sync (Deploy) The Application](https://argo-cd.readthedocs.io/en/release-3.5/getting_started/#7-sync-deploy-the-application), [TLS configuration](https://argo-cd.readthedocs.io/en/release-3.5/operator-manual/tls/), [Declarative Setup](https://argo-cd.readthedocs.io/en/release-3.5/operator-manual/declarative-setup/), [Helm](https://argo-cd.readthedocs.io/en/release-3.5/user-guide/helm/), [Automated Sync Policy](https://argo-cd.readthedocs.io/en/release-3.5/user-guide/auto_sync/), [App Deletion](https://argo-cd.readthedocs.io/en/release-3.5/user-guide/app_deletion/)
 > - [Argo CD Service API](https://developer.broadcom.com/xapis/argocd-service-api/latest/api-docs.html) (the `ArgoCD` and `ManagedEntity` fields)
+> - [Argo CD: upgrading 3.4 to 3.5](https://argo-cd.readthedocs.io/en/release-3.5/operator-manual/upgrading/3.4-3.5/) (step 10.4)
+> - [Add a New Version to a Supervisor Service](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/add-a-new-version-to-a-vsphere-service.html) (step 10.2)
+> - [Upgrade a Supervisor Service to a Newer Version](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/upgrade-a-supervisor-service-to-a-new-version.html) (step 10.2)
+> - [ArgoCD Service 1.3.0 release notes](https://github.com/vsphere-tmm/Supervisor-Services/blob/main/argocd-service/release-notes-v1.3.0.md) (step 10: instances below ArgoCD 3.4 move to 3.4 first)
 > - [Uninstall a Supervisor Service from a Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/uninstall-a-supervisor-service-version-from-a-supervisor.html)
 > - [Delete a Supervisor Service](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-supervisor-services-with-vsphere-iaas-control-plane/supervisor-service-life-cycle-management-and-consumption/delete-a-vsphere-service.html)
 
@@ -30,24 +34,27 @@ blocks) and one that holds the VKS cluster (`VKS_NAMESPACE`). They can be the sa
 
 - a [vSphere Namespace](NAMESPACE.md) where your SSO user has the **Namespaces Edit** role, and a
   [Supervisor login](LOGIN.md);
-- [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md);
-- for steps 2 and 10: a vCenter administrator;
+- [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md), and for steps 8 and 10.3 [curl](PREREQS.md);
+- for steps 2, 10.1, 10.2 and 11: a vCenter administrator;
 - three free load-balancer addresses: one for ArgoCD (step 3), one for the VKS cluster's API
-  (step 6), one for the test app (step 8).
+  (step 6), one for the test app (step 8);
+- for step 6: a vSphere Namespace that offers `best-effort-medium`, with about 84 GB of storage
+  free.
 
-Written for ArgoCD Service 1.2.0 on VCF 9.1.1 with VKS 3.8.
+Written for ArgoCD Service 1.3.0 on VCF 9.1.1 with VKS 3.8.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl with the Supervisor login (steps 1, 3 to 10) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl with the Supervisor login (steps 1, 3 to 11) |
 | your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl (step 8) |
-| your browser | `support.broadcom.com` | 443 | downloading the service manifest (step 2) |
-| your browser | vCenter (the vSphere Client) | 443 | steps 2 and 10 |
-| the Supervisor | `projects.packages.broadcom.com` | 443 | ArgoCD's images, with the `legacy` manifest (steps 2, 3) |
+| your browser | `support.broadcom.com` | 443 | downloading the service manifest (steps 2, 10.2) |
+| your browser | vCenter (the vSphere Client) | 443 | steps 2, 10.2 and 11 |
+| the Supervisor | `projects.packages.broadcom.com` | 443 | ArgoCD's images, with the `legacy` manifest (steps 2, 3, 10.2, 10.3) |
 | your browser | ArgoCD's address (step 4) | 443 | ArgoCD's web page |
+| your machine (laptop or jump box) | ArgoCD's address (step 4) | 443 | asking ArgoCD its version (step 10.3) |
 | ArgoCD, on the Supervisor | `github.com` | 443 | reading this repository (steps 6, 8) |
 | ArgoCD, on the Supervisor | the VKS cluster's API address | 6443 | deploying the test app (steps 7, 8) |
 | the VKS cluster's nodes | `docker.io` | 443 | the test app's image (step 8) |
@@ -100,6 +107,8 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get secret argo
   the login.
 - `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
   `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+- `Failed` instead of `Ready`: after a service upgrade, run step 10.3; otherwise `kubectl
+  --kubeconfig <Supervisor kubeconfig> -n <namespace> describe argocd <name>` shows why.
 
 ## 2. Install the ArgoCD Service (vCenter administrator)
 
@@ -107,15 +116,15 @@ Needs the privileges **Manage Supervisor Services** and **Manage Supervisor Serv
 Supervisors**.
 
 1. Download the service manifest: [Broadcom support](https://support.broadcom.com/group/ecx/downloads)
-   → **My Downloads** → search **vSphere Supervisor Services** → **ArgoCD Service** → **1.2.0**.
-   Tick **I agree to the Terms and Conditions** if the page shows it. Take release 1.2.0 even
+   → **My Downloads** → search **vSphere Supervisor Services** → **ArgoCD Service** → **1.3.0**.
+   Tick **I agree to the Terms and Conditions** if the page shows it. Take release 1.3.0 even
    when a newer one is listed. Broadcom offers two manifests, which differ only in where the
    Supervisor downloads ArgoCD from:
-   - `supervisor-service-argocd-1.2.0-25642124.yml` (*Internet Connected VCF 9.1 and newer*):
-     from the VCF Software Depot (`depot.kube-system.svc`). For a VCF 9.1 with a depot.
-   - `supervisor-service-argocd-legacy-1.2.0-25642124.yml` (*VCF 9.0 or older and
-     disconnected/airgapped VCF 9.1*): from `projects.packages.broadcom.com`. For a Supervisor
-     without a depot.
+   - `supervisor-service-argocd-1.3.0-25873627.yml` (*Supervisor 9.1 with Software Depot
+     configured*): from the VCF Software Depot (`depot.kube-system.svc`). For a VCF 9.1 with a
+     depot.
+   - `supervisor-service-argocd-legacy-1.3.0-25873627.yml` (*packages.broadcom.com will reach EOS
+     at the end of 2027*): from `projects.packages.broadcom.com`. For a Supervisor without a depot.
 
 Before you upload the file, check that it arrived whole. This prints its checksum (SHA-256) and
 changes nothing. You compare the checksum with the **SHA2** value on the download page, then go on
@@ -124,7 +133,7 @@ with item 2 below. Set `MANIFEST` to the file you downloaded.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-MANIFEST="$HOME/Downloads/supervisor-service-argocd-legacy-1.2.0-25642124.yml"
+MANIFEST="$HOME/Downloads/supervisor-service-argocd-legacy-1.3.0-25873627.yml"
 
 if [ ! -f "$MANIFEST" ]; then
   echo "FAILED: not found: $MANIFEST"
@@ -136,7 +145,7 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$MANIFEST = "$HOME\Downloads\supervisor-service-argocd-legacy-1.2.0-25642124.yml"
+$MANIFEST = "$HOME\Downloads\supervisor-service-argocd-legacy-1.3.0-25873627.yml"
 
 if (-not (Test-Path $MANIFEST)) {
   "FAILED: not found: $MANIFEST"
@@ -149,17 +158,18 @@ if (-not (Test-Path $MANIFEST)) {
 
 | file | SHA-256 |
 |---|---|
-| `supervisor-service-argocd-1.2.0-25642124.yml` | `ac936c659338b91c2a5e5451cecc50c89e178c2e512c21b93b6714dbeb5263b9` |
-| `supervisor-service-argocd-legacy-1.2.0-25642124.yml` | `e4f0d0bb85bc4c63d32ab52d0e39bb40b322dcecbbc4e5f29587f8ef765eb7f1` |
+| `supervisor-service-argocd-1.3.0-25873627.yml` | `0171c53e208fc39a731b9c6986f8280024fd92cd9155da9e5013c3ff5ae3f116` |
+| `supervisor-service-argocd-legacy-1.3.0-25873627.yml` | `dd6575eae06f68178849f2281db98d05076263eb63ae35f08709de1c618e551f` |
 
 **If not:** `FAILED: not found`: set `MANIFEST` to where the browser saved the file. A different
 checksum: delete the file and download it again; do not use it.
 
 2. In the vSphere Client (`https://<your vCenter>/ui`): menu (☰) → **Supervisor Management** →
-   **Services**. Skip to 4 if an **ArgoCD Service** card is there.
+   **Services**. If an **ArgoCD Service** card is there (click **Active Versions** to see its
+   version): on 1.3.0, skip to 4; on an older version, use step 10 instead.
 3. On the **Add New Service** card click **ADD**, then **UPLOAD**, and choose the manifest. The
-   window shows **ArgoCD Service**, `argocd-service.vsphere.vmware.com`, `1.2.0-25642124`. Click
-   **FINISH**.
+   window shows **ArgoCD Service**, `argocd-service.vsphere.vmware.com`, `1.3.0-25873627`. Click
+   **FINISH**. The pictures of this step show release 1.2.0.
 
    ![The New Service window after the upload: ArgoCD Service, argocd-service.vsphere.vmware.com, version 1.2.0-25642124, and FINISH](img/argocd/01-new-service-uploaded.png)
 
@@ -169,7 +179,7 @@ checksum: delete the file and download it again; do not use it.
    ![The Services tab with the green registered line and the ArgoCD Service card with its ACTIONS menu](img/argocd/02-registered.png)
 
 4. On the **ArgoCD Service** card click **ACTIONS** → **Manage Service**. Leave **Install
-   Version** at `1.2.0-25642124`, select your Supervisor, click **NEXT**. Wait for
+   Version** at `1.3.0-25873627`, select your Supervisor, click **NEXT**. Wait for
    **Compatibility Check** and **Signature Verification** to **Pass**, click **NEXT**. Leave
    **YAML Service Config** empty, click **FINISH**.
 
@@ -179,7 +189,7 @@ checksum: delete the file and download it again; do not use it.
 
 5. **Supervisors** tab → your Supervisor's row → **View** in the **Services** column.
 
-**Expect:** **ArgoCD Service**, **Configured**, `1.2.0-25642124`, after about a minute.
+**Expect:** **ArgoCD Service**, **Configured**, `1.3.0-25873627`, after about a minute.
 
 ![The Supervisor's installed services with ArgoCD Service Configured, version 1.2.0-25642124](img/argocd/05-installed.png)
 
@@ -188,7 +198,7 @@ checksum: delete the file and download it again; do not use it.
 - An error naming the YAML: wrong file; do not edit the manifest.
 - **Configuring** for more than 10 minutes: the Supervisor cannot download ArgoCD. With the
   `legacy` file, allow `projects.packages.broadcom.com`; with the other, check the VCF Software
-  Depot, or uninstall (step 10) and install the `legacy` file.
+  Depot, or uninstall (step 11) and install the `legacy` file.
 
 ## 3. Create the ArgoCD instance
 
@@ -215,9 +225,11 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get argocdversion argocd-supported-versions -o jsonpath='{range .spec.versions[*]}{.version}{''  ''}{.description}{''\n''}{end}'
 ```
 
-**Expect:** lines such as `3.4.4+vmware.1-vks.1  Recommended version.`
+**Expect:** lines such as `3.5.3+vmware.1-vks.1  Recommended version.`
 
-**If not:** `the server doesn't have a resource type "argocdversion"`: step 2 is not finished.
+**If not:** `the server doesn't have a resource type "argocdversion"`: step 2 is not finished. No
+`3.5.` line: the service is older than 1.3.0; a 1.2 service works for steps 3 to 9. Step 10
+upgrades a 1.2 service; an older one moves to 1.2.0 first, which upgrades only from 1.1.0.
 
 Run this to get your own ArgoCD. It creates the instance `argocd-1` in the vSphere Namespace
 `ARGOCD_NAMESPACE`, and the Supervisor starts ArgoCD there on one of your free load-balancer
@@ -230,7 +242,7 @@ addresses. You get ArgoCD's address, which step 1's block shows once ArgoCD is r
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-ARGOCD_VERSION="3.4.4+vmware.1-vks.1"
+ARGOCD_VERSION="3.5.3+vmware.1-vks.1"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" apply -f - <<EOF
 apiVersion: argocd-service.vsphere.vmware.com/v1alpha1
@@ -248,7 +260,7 @@ EOF
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$ARGOCD_VERSION = "3.4.4+vmware.1-vks.1"
+$ARGOCD_VERSION = "3.5.3+vmware.1-vks.1"
 
 @"
 apiVersion: argocd-service.vsphere.vmware.com/v1alpha1
@@ -618,7 +630,7 @@ if ($LASTEXITCODE -eq 0) {
 </details>
 
 **Expect:** under each heading at least one line, for example `v1.37.1+vmware.4`,
-`builtin-generic-v3.8.0`, `best-effort-small  2  4Gi …`, `wcp-vmfs`.
+`builtin-generic-v3.8.0`, `best-effort-medium  2  8Gi …`, `wcp-vmfs`.
 
 **If not:** an empty list or `Forbidden`: run [Check the namespace](NAMESPACE.md#8-check-the-namespace).
 
@@ -664,6 +676,8 @@ four values from the lists above. No VKS cluster is created yet: ArgoCD shows wh
 and creates the cluster only when you click **SYNC** below. Set `VKS_CLUSTER` to the name, and
 `K8S_VERSION`, `CLUSTER_CLASS`, `VM_CLASS` and `STORAGE_CLASS` to a value from each list (for a VM
 class, its first column; [CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values) says which).
+The cluster has one control-plane node and two workers of that class; with `best-effort-medium` it
+takes about 84 GB of the namespace's storage.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -676,7 +690,7 @@ VKS_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 K8S_VERSION="v1.37.1+vmware.4"
 CLUSTER_CLASS="builtin-generic-v3.8.0"
-VM_CLASS="best-effort-small"
+VM_CLASS="best-effort-medium"
 STORAGE_CLASS="wcp-vmfs"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" apply -f - <<EOF
@@ -718,7 +732,7 @@ $VKS_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $K8S_VERSION = "v1.37.1+vmware.4"
 $CLUSTER_CLASS = "builtin-generic-v3.8.0"
-$VM_CLASS = "best-effort-small"
+$VM_CLASS = "best-effort-medium"
 $STORAGE_CLASS = "wcp-vmfs"
 
 @"
@@ -771,7 +785,7 @@ Now look at it, then sync:
    sync; delete the Application in the ArgoCD page with **Non-cascading** and choose another
    name.
 
-   ![The DIFF tab: the left half empty, the right half in green with the Cluster: serviceDomain cluster.local, builtin-generic-v3.8.0, best-effort-small, wcp-vmfs and v1.37.1+vmware.4](img/argocd/07-diff.png)
+   ![The DIFF tab: the left half empty, the right half in green with the Cluster: serviceDomain cluster.local, builtin-generic-v3.8.0, best-effort-medium, wcp-vmfs and v1.37.1+vmware.4](img/argocd/07-diff.jpg)
 
 2. Close it, click **SYNC**, then **SYNCHRONIZE**.
 
@@ -1559,7 +1573,259 @@ if ($LASTEXITCODE -eq 0) {
 - `the server doesn't have a resource type "argocd"`: the ArgoCD Service is removed, and the
   instance with it; run the last two `kubectl` commands alone (in sh without the `&&`).
 
-## 10. Remove the ArgoCD Service (vCenter administrator)
+## 10. Upgrade to ArgoCD Service 1.3.0
+
+Do this when the service runs 1.2.0 and you want ArgoCD 3.5: step 3's version list then has no
+`3.5.` line. The upgrade has three parts, in this order: a vCenter administrator checks every
+ArgoCD instance on the Supervisor (10.1) and upgrades the service (10.2); then each instance's owner
+upgrades their instance (10.3) and checks it (10.4).
+
+### 10.1 Check that every instance can follow (vCenter administrator)
+
+Run this before 10.2: ArgoCD Service 1.3.0's upgrade check accepts only instances on ArgoCD 3.4 or
+3.5, and an instance below 3.4 must move to 3.4 while the service is still on 1.2.0. It lists every
+instance in every vSphere Namespace with its ArgoCD version, and changes nothing. You get each
+instance, then one line that says whether to go on.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
+
+OFFERED="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get argocdversion argocd-supported-versions -o jsonpath='{range .spec.versions[*]}{.version}{"\n"}{end}')" || OFFERED=""
+LIST="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get argocd -A -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{" "}{.spec.version}{"\n"}{end}')" || LIST="FAILED"
+
+if [ -z "$OFFERED" ] || [ "$LIST" = "FAILED" ]; then
+  echo "FAILED: cannot read the service or the instances (see the error above)"
+else
+  printf '%s\n' "$LIST"
+  OLD="$(printf '%s\n' "$LIST" | awk 'NF == 3 { split($3, v, "."); if (v[1] + 0 < 3 || (v[1] + 0 == 3 && v[2] + 0 < 4)) print $1 "/" $2 " " $3 }')"
+  if printf '%s\n' "$OFFERED" | grep -q '^3\.5\.'; then
+    echo "DONE: the service already offers ArgoCD 3.5; each owner goes on with 10.3"
+    printf '%s\n' "$LIST" | while read -r NS NAME VER; do
+      if [ -n "$VER" ] && ! printf '%s\n' "$OFFERED" | grep -qxF "$VER"; then echo "UPGRADE: $NS/$NAME $VER is not offered; its owner runs 10.3"; fi
+    done
+  elif ! printf '%s\n' "$OFFERED" | grep -q '^3\.4\.'; then
+    echo "STOP: the service is older than 1.2.0; a vCenter administrator installs 1.2.0 first"
+  elif [ -n "$OLD" ]; then
+    printf '%s\n' "$OLD" | while read -r X; do echo "STOP: $X is below ArgoCD 3.4"; done
+  else
+    echo "OK: every instance is on ArgoCD 3.4 or newer; go on with 10.2"
+  fi
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
+
+$OFFERED = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get argocdversion argocd-supported-versions -o jsonpath='{range .spec.versions[*]}{.version}{''\n''}{end}')
+$OK1 = $LASTEXITCODE -eq 0
+$LIST = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get argocd -A -o jsonpath='{range .items[*]}{.metadata.namespace}{'' ''}{.metadata.name}{'' ''}{.spec.version}{''\n''}{end}')
+if (-not $OK1 -or $LASTEXITCODE -ne 0 -or $OFFERED.Count -eq 0) {
+  "FAILED: cannot read the service or the instances (see the error above)"
+} else {
+  $LIST
+  $OLD = @($LIST | Where-Object { $_ } | ForEach-Object {
+    $f = $_ -split ' '
+    if ($f.Count -eq 3 -and [version](($f[2] -split '\+')[0]) -lt [version]'3.4') { "$($f[0])/$($f[1]) $($f[2])" }
+  })
+  if (@($OFFERED | Where-Object { $_ -like '3.5.*' }).Count -gt 0) {
+    "DONE: the service already offers ArgoCD 3.5; each owner goes on with 10.3"
+    $LIST | Where-Object { $_ } | ForEach-Object {
+      $f = $_ -split ' '
+      if ($f.Count -eq 3 -and $OFFERED -notcontains $f[2]) { "UPGRADE: $($f[0])/$($f[1]) $($f[2]) is not offered; its owner runs 10.3" }
+    }
+  } elseif (@($OFFERED | Where-Object { $_ -like '3.4.*' }).Count -eq 0) {
+    "STOP: the service is older than 1.2.0; a vCenter administrator installs 1.2.0 first"
+  } elseif ($OLD.Count -gt 0) {
+    $OLD | ForEach-Object { "STOP: $_ is below ArgoCD 3.4" }
+  } else {
+    "OK: every instance is on ArgoCD 3.4 or newer; go on with 10.2"
+  }
+}
+```
+
+**Expect:** a line `<namespace> <instance> <version>` per instance, then `OK: every instance is
+on ArgoCD 3.4 or newer; go on with 10.2`.
+
+**If not:**
+- `STOP: <namespace>/<instance> <version> is below ArgoCD 3.4`: that instance's owner runs 10.3
+  now, with a `3.4.` version from step 3's list; then run this again.
+- `DONE: …`: the service is already upgraded; each `UPGRADE: …` instance's owner runs 10.3.
+- `STOP: the service is older than 1.2.0`: add release 1.2.0 with **Add New Version** and
+  **Manage Service** as in 10.2 (1.2.0 upgrades only from 1.1.0), then come back.
+- `Forbidden`: a vCenter administrator must run this; it reads every namespace.
+
+### 10.2 Upgrade the service (vCenter administrator)
+
+Do this after 10.1 printed `OK`. It registers ArgoCD Service 1.3.0 in vCenter and installs it on
+the Supervisor in place of 1.2.0, in about a minute. **There is no way back: Broadcom documents
+none, and 1.2.0 accepts neither 1.3.0 nor ArgoCD 3.5 instances.** Tell the instances' owners
+first: right after it, an instance on a version 1.3.0 does not offer (such as
+`3.4.4+vmware.1-vks.1`) shows `Failed` in step 1 but keeps serving, until its owner runs 10.3.
+
+1. Download the 1.3.0 manifest as in step 2, item 1, of the same kind as the one step 2 installed
+   (`-legacy-` in its name or not), and check it with step 2's checksum block and table.
+2. vSphere Client: menu (☰) → **Supervisor Management** → **Services**. On the **ArgoCD Service**
+   card click **ACTIONS** → **Add New Version**, then **UPLOAD**, choose the manifest, click
+   **NEXT** if the window shows it, accept the EULA if one is shown, and click **FINISH**.
+3. On the card click **ACTIONS** → **Manage Service**. Set **Install Version** to
+   `1.3.0-25873627` (not the `1.2.0-25642124` that is there now), select your Supervisor, click
+   **NEXT**. Wait for **Compatibility Check** and **Signature Verification** to **Pass**, click
+   **NEXT**, leave **YAML Service Config** empty, and click **FINISH**.
+
+**Expect:** after about a minute, **Active Versions** lists `1.3.0-25873627` on your Supervisor
+and `1.2.0-25642124` on one fewer, and the Supervisor's services (**Supervisors** tab → **View** in
+the **Services** column) show **ArgoCD Service**, **Configured**, `1.3.0-25873627`.
+
+![The Versions window of ArgoCD Service: 1.3.0-25873627 Active on 1 Supervisor, 1.2.0-25642124 Active on 0](img/argocd/11-upgrade-versions.png)
+
+![The Supervisor's installed services: ArgoCD Service Configured, version and desired version 1.3.0-25873627, Trusted](img/argocd/12-upgrade-installed.png)
+
+**If not:**
+- **Compatibility Check** does not pass: an instance is below ArgoCD 3.4, or the service is older
+  than 1.2.0; run 10.1 and do what it prints, then **Manage Service** again.
+- **Configuring** for more than 10 minutes: the Supervisor cannot download 1.3.0. With the
+  `legacy` file, allow `projects.packages.broadcom.com`; with the other, check the VCF Software
+  Depot. Do not uninstall the service: that removes every instance.
+
+### 10.3 Upgrade your ArgoCD instance
+
+Run this after 10.2, for each instance you own; or before 10.2 when 10.1 printed `STOP` for your
+instance. It sets the instance to a new ArgoCD version, waits until the Supervisor has rolled it
+out, then asks ArgoCD for the version it runs. ArgoCD's web page and its Applications stay; the
+page may not answer for a minute while ArgoCD restarts. Set `ARGOCD_NAMESPACE`,
+`ARGOCD_INSTANCE` (step 1 shows it) and `ARGOCD_VERSION` to a version from step 3's list: the first
+*Recommended* one, or a `3.4.` one when 10.1 printed `STOP`.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+ARGOCD_INSTANCE="argocd-1"
+ARGOCD_VERSION="3.5.3+vmware.1-vks.1"
+
+if kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" patch argocd "$ARGOCD_INSTANCE" --type merge -p "spec: {version: $ARGOCD_VERSION}"; then
+  GEN="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get argocd "$ARGOCD_INSTANCE" -o jsonpath='{.metadata.generation}')"
+  STATE=""
+  for i in $(seq 60); do
+    STATE="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get argocd "$ARGOCD_INSTANCE" -o jsonpath='{.status.observedGeneration} {.status.phase}')"
+    if [ "$STATE" = "$GEN Ready" ]; then break; fi
+    sleep 10
+  done
+  IP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get argocd "$ARGOCD_INSTANCE" -o jsonpath='{.status.externalIP}')"
+  if [ "$STATE" != "$GEN Ready" ]; then
+    echo "NOT YET: $STATE (generation $GEN); run this block again in a few minutes"
+  else
+    RUNS=""
+    for i in $(seq 30); do
+      RUNS="$(curl -sk --connect-timeout 5 --max-time 10 "https://$IP/api/version")"
+      case "$RUNS" in *"v${ARGOCD_VERSION%%+*}+"*) break ;; esac
+      sleep 10
+    done
+    case "$RUNS" in
+      *"v${ARGOCD_VERSION%%+*}+"*) echo "ArgoCD at https://$IP runs: $RUNS" ;;
+      *) echo "NOT YET: ArgoCD at https://$IP answers: $RUNS; run this block again in a minute" ;;
+    esac
+  fi
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$ARGOCD_INSTANCE = "argocd-1"
+$ARGOCD_VERSION = "3.5.3+vmware.1-vks.1"
+
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE patch argocd $ARGOCD_INSTANCE --type merge -p "spec: {version: $ARGOCD_VERSION}"
+if ($LASTEXITCODE -eq 0) {
+  $GEN = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get argocd $ARGOCD_INSTANCE -o jsonpath='{.metadata.generation}'
+  $STATE = ""
+  foreach ($i in 1..60) {
+    $STATE = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get argocd $ARGOCD_INSTANCE -o jsonpath='{.status.observedGeneration} {.status.phase}'
+    if ($STATE -eq "$GEN Ready") { break }
+    Start-Sleep -Seconds 10
+  }
+  $IP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get argocd $ARGOCD_INSTANCE -o jsonpath='{.status.externalIP}'
+  if ($STATE -ne "$GEN Ready") {
+    "NOT YET: $STATE (generation $GEN); run this block again in a few minutes"
+  } else {
+    $RUNS = ""
+    foreach ($i in 1..30) {
+      $RUNS = curl.exe -sk --connect-timeout 5 --max-time 10 "https://$IP/api/version"
+      if ($RUNS -like "*v$(($ARGOCD_VERSION -split '\+')[0])+*") { break }
+      Start-Sleep -Seconds 10
+    }
+    if ($RUNS -like "*v$(($ARGOCD_VERSION -split '\+')[0])+*") { "ArgoCD at https://$IP runs: $RUNS" }
+    else { "NOT YET: ArgoCD at https://$IP answers: $RUNS; run this block again in a minute" }
+  }
+}
+```
+
+**Expect:** `argocd.argocd-service.vsphere.vmware.com/<instance> patched`, then after one to a few
+minutes `ArgoCD at https://<address> runs: {"Version":"v<the version you set>+…"}`.
+
+**If not:**
+- `patched (no change)`: the instance already runs that version.
+- `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
+- `admission webhook … denied the request: spec.version … is not in the supported versions list`:
+  take a version from step 3's list. `… downgrade … is not allowed`: an instance cannot go back to
+  an older version.
+- `NOT YET`: run the block again; still not `Ready` after 15 minutes: `kubectl --kubeconfig
+  <Supervisor kubeconfig> -n <namespace> describe argocd <instance>` shows why.
+
+### 10.4 Check your Applications after the upgrade
+
+Run this after 10.3, to see that ArgoCD still deploys what it deployed before. ArgoCD 3.5 renders
+Helm charts with Helm 4, so an Application can show `OutOfSync` or `Unknown` although nothing
+changed in Git. It lists every Application in the namespace with its sync and health state, then
+the vSphere Namespaces and VKS clusters the instance manages (ManagedEntities), and changes
+nothing. Set `ARGOCD_NAMESPACE` as in step 1.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get applications.argoproj.io -o jsonpath='{range .items[*]}{"Application: "}{.metadata.name}{"  "}{.status.sync.status}{"  "}{.status.health.status}{"\n"}{end}'
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get managedentities.argocd-service.vsphere.vmware.com
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get applications.argoproj.io -o jsonpath='{range .items[*]}{''Application: ''}{.metadata.name}{''  ''}{.status.sync.status}{''  ''}{.status.health.status}{''\n''}{end}'
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedentities.argocd-service.vsphere.vmware.com
+```
+
+**Expect:** `Application: <name>  Synced  Healthy` for each Application, then one row per
+ManagedEntity with **PHASE** `Ready` (`No resources found` when the instance manages none).
+
+**If not:**
+- `OutOfSync` on an Application you did not change: open it on ArgoCD's web page (step 4) and read
+  **DIFF**; click **SYNC** only when it changes nothing under `spec.topology` (that can replace a
+  VKS cluster's nodes).
+- `Unknown`: the web page shows the comparison error; see
+  [Argo CD's 3.4 to 3.5 notes](https://argo-cd.readthedocs.io/en/release-3.5/operator-manual/upgrading/3.4-3.5/).
+- `Progressing` or `Missing`: wait a minute after 10.3 and run this again.
+- No lines at all: the namespace has no Applications (step 9 removed the test app).
+
+## 11. Remove the ArgoCD Service (vCenter administrator)
 
 Do this step only if step 2 installed the service, and only when no ArgoCD instance is left on the
 Supervisor: removing the service removes the instances with it. This lists the instances in every
