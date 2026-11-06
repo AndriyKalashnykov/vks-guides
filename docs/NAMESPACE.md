@@ -45,7 +45,7 @@ The steps:
 - a vCenter user who may create vSphere Namespaces (a vCenter administrator), and a Supervisor
   that is running;
 - for step 1: [unzip (Photon OS: bsdtar) and openssl](PREREQS.md);
-- for steps 8 to 10: [kubectl](KUBECTL.md), [jq](PREREQS.md) and a [Supervisor login](LOGIN.md).
+- for steps 8 to 10: [kubectl](KUBECTL.md), [jq](PREREQS.md) and a [Supervisor login](SUPERVISOR-LOGIN.md).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):
 
@@ -60,7 +60,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
    left) choose **Supervisor Management**, then the **Supervisors** tab.
 2. Find your Supervisor's row. **Config Status** must show **Running**. The **Control Plane Node
    Address** column holds the Supervisor's address: that is `SUPERVISOR_ENDPOINT` in
-   [LOGIN.md](LOGIN.md).
+   [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md).
 
    ![The Supervisors tab of Supervisor Management: one row, Config Status Running, and the Control Plane Node Address column](img/namespace/01-supervisors.jpg)
 
@@ -70,11 +70,11 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
    ![vCenter's start page: the grey box on the right, with Download trusted root CA certificates as the last link under For Developers](img/namespace/02-vcenter-ca.jpg)
 
-The file holds vCenter's CAs (certificate authorities). LOGIN.md uses them to check that a login
+The file holds vCenter's CAs (certificate authorities). SUPERVISOR-LOGIN.md uses them to check that a login
 reaches your real Supervisor.
 
-Run this once, before you hand out the Supervisor's address, because LOGIN.md's
-[Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca) asks your users to
+Run this once, before you hand out the Supervisor's address, because SUPERVISOR-LOGIN.md's
+[Create Supervisor context with CA](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca) asks your users to
 compare their download with these CAs. It prints each CA's fingerprint, a short code that
 identifies it, and changes nothing on your machine. You then have the fingerprints to give your
 users. Trust them only if your browser showed no certificate warning for vCenter. Set `CA_ZIP`
@@ -261,8 +261,8 @@ name in **Storage**, and your VM classes counted in **VM Service**.
 
 ## 8. Check the namespace
 
-Log in to the Supervisor first ([LOGIN.md](LOGIN.md)). If you were logged in before the
-namespace existed, or before your user got its role, [log out](LOGIN.md#log-out) and log in
+Log in to the Supervisor first ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)). If you were logged in before the
+namespace existed, or before your user got its role, [log out](SUPERVISOR-LOGIN.md#log-out) and log in
 again.
 
 Run this before you create a VKS cluster, in a namespace you made or one someone gave you. It
@@ -300,7 +300,7 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 - `Forbidden`, or `no`: check `VKS_NAMESPACE` (a user who is not a vCenter administrator gets
   `Forbidden` for a name that does not exist); if it is right, your SSO user has no
   **Namespaces Edit** role on the namespace (step 4).
-- `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+- `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login).
 
 Run this next, still before you create a VKS cluster, to see whether the namespace offers what
 a cluster needs. It lists what the namespace offers a cluster: VM classes, storage classes,
@@ -484,7 +484,7 @@ namespaces, do not use this step.
    If the service is off, the administrator turns it on and fills in the template:
    [Create and Configure a Self-Service Namespace Template](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/vsphere-supervisor-installation-and-configuration/configuring-and-managing-vsphere-namespaces/provision-a-self-service-namespace/create-and-configure-a-self-service-namespace.html).
 
-2. Log in to the Supervisor ([LOGIN.md](LOGIN.md)). Run this before you write the YAML file, to
+2. Log in to the Supervisor ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)). Run this before you write the YAML file, to
    learn whether the Namespace Service lets your user create namespaces. It asks the Supervisor
    and changes nothing. The answer `yes` means you may go on to the file. Set `SUPERVISOR_CONTEXT`
    as in step 8.

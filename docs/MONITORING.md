@@ -28,8 +28,8 @@ The blocks keep their files in `~/.config/vks-guides/monitoring` (PowerShell:
 ## Prerequisites
 
 - a VKS cluster with a default storage class ([CLUSTER.md](CLUSTER.md)), its kubeconfig
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) and [Helm](HELM.md), or for step 9 the
-  ArgoCD of [ARGOCD.md](ARGOCD.md) and your [Supervisor login](LOGIN.md);
+  ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)) and [Helm](HELM.md), or for step 9 the
+  ArgoCD of [ARGOCD.md](ARGOCD.md) and your [Supervisor login](SUPERVISOR-LOGIN.md);
 - [kubectl](KUBECTL.md), [curl and jq](PREREQS.md);
 - 20 GiB of storage for Prometheus, inside the vSphere Namespace's storage limit if one is set,
   beside what the cluster's nodes take from it ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values));
@@ -63,7 +63,7 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 ## 1. Check the cluster
 
 Run this first, before you install anything, to see that the cluster is ready for this guide. It
-reads the cluster through its kubeconfig from LOGIN.md (`~/.kube/<VKS_CLUSTER>.kubeconfig`) and
+reads the cluster through its kubeconfig from SUPERVISOR-LOGIN.md (`~/.kube/<VKS_CLUSTER>.kubeconfig`) and
 changes nothing. Set `VKS_CLUSTER` to the VKS cluster's name. It shows whether:
 
 - its nodes are up;
@@ -129,7 +129,7 @@ if ($LASTEXITCODE -eq 0) {
   Prometheus add-on from [HEADLAMP.md](HEADLAMP.md) step 11.1). Use it, or a cluster without one;
   this guide does not cover both.
 - `FAILED: cannot read the cluster`: run
-  [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
+  [Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
 ## 2. Create the namespace
 
@@ -181,7 +181,7 @@ metadata:
 **Expect:** `namespace/monitoring created` (`configured` or `unchanged` on a second run).
 
 **If not:** `Forbidden`: your kubeconfig is not the cluster's administrator; use the one from
-[LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig).
+[SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 ## 3. Set Grafana's admin password
 
@@ -459,7 +459,7 @@ if ($LASTEXITCODE -ne 0) {
 `clusterrolebinding`.
 
 **If not:** `FAILED: cannot read the cluster`: run
-[Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
+[Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
 Then run this, to install the monitoring. It installs Prometheus, Grafana and the rest in the
 namespace `monitoring` with Helm, as the Helm release `prometheus`, from the files of step 4. It
@@ -697,7 +697,7 @@ kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name | Where-Object { $_ -cmatch
 lines (nothing when run again).
 
 **If not:** `Unauthorized`: the VKS cluster's kubeconfig has expired;
-[get it again](LOGIN.md#get-the-vks-clusters-kubeconfig).
+[get it again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 ## 9. Install with ArgoCD (instead of steps 4 and 5)
 
@@ -975,7 +975,7 @@ spec:
 (harmless, as in [ARGOCD.md](ARGOCD.md) step 6). `configured` or `unchanged` on your first run:
 someone else made them; stop and ask them.
 
-**If not:** `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login),
+**If not:** `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login),
 then this block again. `Forbidden`: your SSO user has no **Namespaces Edit** role on
 `ARGOCD_NAMESPACE`.
 
@@ -1142,6 +1142,6 @@ if ($LASTEXITCODE -ne 0) {
 - `STOPPED: …` with `namespace/monitoring`: run the block above again, then this one. With
   `namespace/tanzu-system-monitoring`: leave the objects; Broadcom's Prometheus add-on may use them.
 - `FAILED: cannot read the cluster`, `Unauthorized`: run
-  [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
+  [Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
 Back to [README](../README.md).

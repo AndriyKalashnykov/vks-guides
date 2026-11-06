@@ -33,7 +33,7 @@ Run the steps in order. Who does what:
 ## Prerequisites
 
 - a VKS cluster for Keycloak alone, made as below;
-- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
+- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)),
   for the cert-manager add-on;
 - [kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md);
 - a DNS name for Keycloak that you can point at an address (step 7), resolvable by the people who
@@ -61,7 +61,7 @@ The cluster for Keycloak:
    ([KEYCLOAK.md](KEYCLOAK.md)). To change its size later, see
    [CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional).
 3. Save its kubeconfig as `~/.kube/<cluster name>.kubeconfig`
-   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)); it is `<file>` in the **If not:** lines.
+   ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)); it is `<file>` in the **If not:** lines.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 [its other hosts](PREREQS.md#registry-hosts-for-a-firewall)):
@@ -95,7 +95,7 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
 elif ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
-elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (LOGIN.md)"
+elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"
 elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
   echo "default storage class: $(printf '%s' "$J" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | .metadata.name] | if length == 0 then "NONE" else join(" ") end')"
   kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' \
@@ -117,7 +117,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $global:LASTEXITCODE = $null; $MISS = $false
 if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
-elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
+elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
 else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
 if ($LASTEXITCODE -eq 0) { $J = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) {
@@ -150,7 +150,7 @@ VCF CLI when the cluster does not have it, and waits until it accepts certificat
 cert-manager ready in the cluster. When the add-on is there already (for example from
 [HEADLAMP.md](HEADLAMP.md)), it changes nothing. Set `VKS_NAMESPACE` to the cluster's vSphere
 Namespace, `VKS_CLUSTER` to its name, and `SUPERVISOR_CONTEXT` to the name of your Supervisor login
-from [LOGIN.md](LOGIN.md) (`supervisor` unless you chose another).
+from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md) (`supervisor` unless you chose another).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -168,7 +168,7 @@ if [ -n "$M" ]; then
   echo "STOPPED: install what is MISSING, then run this again"
 elif ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   if ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)" \
      || ! N="$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "cert-manager")] | length')" || [ -z "$N" ]; then
@@ -217,7 +217,7 @@ if ($M) {
   "STOPPED: install what is MISSING, then run this again"
 } elseif (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   $global:LASTEXITCODE = $null
   $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
@@ -262,9 +262,9 @@ if ($M) {
 **If not:**
 - `MISSING: …` then `STOPPED: install what is MISSING …`: install that tool; nothing changed.
   `FAILED: the VCF CLI …`: log in to the Supervisor again
-  ([LOGIN.md](LOGIN.md#renew-the-supervisor-login)), and check `VKS_NAMESPACE` and `VKS_CLUSTER`.
+  ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#renew-the-supervisor-login)), and check `VKS_NAMESPACE` and `VKS_CLUSTER`.
 - `FAILED: cannot read the cluster`: kubectl could not read Keycloak's cluster; the error above says
-  why (`Unauthorized`: [get its kubeconfig again](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+  why (`Unauthorized`: [get its kubeconfig again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)).
   Nothing was installed.
 - `STOPPED: … not the add-on`: someone installed cert-manager another way. Use that cert-manager
   for step 4 at your own judgement, or remove it and run this block again.
@@ -1366,7 +1366,7 @@ Under **Groups**, a group's **Members** tab lists the people added to it.
 
 This lets people sign in to every VKS cluster of a Supervisor with their Keycloak account, through
 the Supervisor
-([ACCESS-IDP.md](ACCESS-IDP.md)). Skip it if
+([ADMIN-GRANT-ACCESS-IDP.md](ADMIN-GRANT-ACCESS-IDP.md)). Skip it if
 people sign in only to clusters made with [KEYCLOAK.md](KEYCLOAK.md). Who does what:
 
 - you, the Keycloak administrator: the client `supervisor` in the realm (11.2), then you send the
@@ -1576,8 +1576,8 @@ scopes basic, profile, email`, then `client secret: not shown …` (the secret w
 already, you must remove it first, and then:
 
 - every sign-in through that provider stops at once;
-- the roles its groups have on vSphere Namespaces ([ACCESS-IDP.md step
-  2](ACCESS-IDP.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator)) no longer
+- the roles its groups have on vSphere Namespaces ([ADMIN-GRANT-ACCESS-IDP.md step
+  2](ADMIN-GRANT-ACCESS-IDP.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator)) no longer
   apply: after this registration, run that step again for each group;
 - every VKS cluster of the Supervisor takes the change;
 - vCenter SSO logins keep working, so you can always get back in.
@@ -1591,7 +1591,7 @@ the names the provider's **VIEW SETTINGS** shows, or else the vCenter API's name
 
 | setting | value |
 |---|---|
-| **Provider Name** (`display_name`) | `keycloak`; ACCESS.md (steps 1, 2 and 5) uses it |
+| **Provider Name** (`display_name`) | `keycloak`; ADMIN-GRANT-ACCESS-IDP.md (steps 1, 2 and 5) uses it |
 | **Issuer URL** (`issuer_URL`) | `https://<KEYCLOAK_HOST>/realms/<REALM>`, exactly as Keycloak prints it (step 7's check with your realm for `master`), no `/` at the end |
 | **Client ID** (`client_ID`) | `supervisor` |
 | client secret (`client_secret`) | the secret from 11.2 |
@@ -1603,7 +1603,7 @@ the names the provider's **VIEW SETTINGS** shows, or else the vCenter API's name
 
 **Expect:** the Identity Providers page shows a card **keycloak**, and its **VIEW SETTINGS** the
 values above. To check a sign-in, run the
-[ACCESS-IDP.md steps](ACCESS-IDP.md)
+[ADMIN-GRANT-ACCESS-IDP.md steps](ADMIN-GRANT-ACCESS-IDP.md)
 1 to 5 for one group: the person is `keycloak-sv:<user>`, in `keycloak-sv:<group>`.
 
 **If not:**
@@ -1722,6 +1722,6 @@ seconds. Run again, it prints `namespaces "keycloak" not found` first.
 **If not:** `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not
 delete the cluster until it is gone. `STILL THERE: (the check failed …)`: kubectl could not read the
 cluster; the error above says why (`Unauthorized`: the file has expired, [get it
-again](LOGIN.md#get-the-vks-clusters-kubeconfig)). Then run the block again.
+again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)). Then run the block again.
 
 Back to [README](../README.md).

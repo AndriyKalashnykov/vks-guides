@@ -15,8 +15,8 @@ commands.
 
 Run every block in the same terminal, one after the other: the first block sets the values the
 others use. If you open a new terminal, first point kubectl at your VKS cluster again with
-LOGIN.md's [Make it the default in this
-terminal](LOGIN.md#make-it-the-default-in-this-terminal), then run the first block again.
+SUPERVISOR-LOGIN.md's [Make it the default in this
+terminal](SUPERVISOR-LOGIN.md#make-it-the-default-in-this-terminal), then run the first block again.
 
 ## Prerequisites
 
@@ -30,9 +30,9 @@ terminal](LOGIN.md#make-it-the-default-in-this-terminal), then run the first blo
   step 10, *In Harbor's web page*, with only **Repository** → **Pull** ticked. Its name is
   `robot$` and the name you type;
 - `kubectl` pointed at your VKS cluster in this terminal: download its kubeconfig in the vSphere
-  Client ([LOGIN.md](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)) or
-  with the VCF CLI ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), then
-  [make it the default in this terminal](LOGIN.md#make-it-the-default-in-this-terminal);
+  Client ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)) or
+  with the VCF CLI ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)), then
+  [make it the default in this terminal](SUPERVISOR-LOGIN.md#make-it-the-default-in-this-terminal);
 - one free load-balancer address, for the app (step 6).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
@@ -49,7 +49,7 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 
 ## 0. Set your values
 
-Run this first, and again in any new terminal (after LOGIN.md's *Make it the default in this
+Run this first, and again in any new terminal (after SUPERVISOR-LOGIN.md's *Make it the default in this
 terminal*): the other blocks use the values it sets. Set them to
 your own: your Harbor and project, the two robot accounts (below the block), the app's namespace
 inside your VKS cluster (a separate area for the app, not a vSphere Namespace). The block also
@@ -196,8 +196,8 @@ kubectl config current-context
 
 **Expect:** the name of your VKS cluster's context.
 
-**If not:** another cluster's name: stop, and point kubectl at your VKS cluster with LOGIN.md's
-[Make it the default in this terminal](LOGIN.md#make-it-the-default-in-this-terminal). `error:
+**If not:** another cluster's name: stop, and point kubectl at your VKS cluster with SUPERVISOR-LOGIN.md's
+[Make it the default in this terminal](SUPERVISOR-LOGIN.md#make-it-the-default-in-this-terminal). `error:
 current-context is not set`: do that too. Then run this line again.
 
 Run this right after that line. It creates the app's namespace in the VKS cluster
@@ -217,7 +217,7 @@ rm -r "$HOME/image-simple/pull"
 
 **If not:** `localhost:8080` and `connection refused`: kubectl is not pointed at your VKS
 cluster; [make its kubeconfig the default in this
-terminal](LOGIN.md#make-it-the-default-in-this-terminal), then run the login line above and this
+terminal](SUPERVISOR-LOGIN.md#make-it-the-default-in-this-terminal), then run the login line above and this
 block again.
 
 ## 6. Deploy the app
@@ -262,8 +262,8 @@ kubectl config current-context
 
 **Expect:** the name of your VKS cluster's context.
 
-**If not:** another cluster's name: stop, and point kubectl at your VKS cluster with LOGIN.md's
-[Make it the default in this terminal](LOGIN.md#make-it-the-default-in-this-terminal). `error:
+**If not:** another cluster's name: stop, and point kubectl at your VKS cluster with SUPERVISOR-LOGIN.md's
+[Make it the default in this terminal](SUPERVISOR-LOGIN.md#make-it-the-default-in-this-terminal). `error:
 current-context is not set`: do that too. Then run this line again.
 
 Now send the three files to the cluster and wait until the app's five pods run. This creates the
@@ -280,7 +280,7 @@ lines, then `deployment "test-web-apps" successfully rolled out`.
 
 **If not:** `localhost:8080` and `connection refused`: kubectl is not pointed at your VKS
 cluster; [make its kubeconfig the default in this
-terminal](LOGIN.md#make-it-the-default-in-this-terminal) and run this again. The wait does not
+terminal](SUPERVISOR-LOGIN.md#make-it-the-default-in-this-terminal) and run this again. The wait does not
 end: run `kubectl -n "$APP_NAMESPACE" get events`. `x509` means the nodes do not trust Harbor
 (HARBOR.md step 11); `unauthorized` or `not found` means the project is private and step 5 is
 missing, or the image name is wrong.
@@ -317,8 +317,8 @@ kubectl config current-context
 
 **Expect:** the name of your VKS cluster's context.
 
-**If not:** another cluster's name: stop, and point kubectl at your VKS cluster with LOGIN.md's
-[Make it the default in this terminal](LOGIN.md#make-it-the-default-in-this-terminal). `error:
+**If not:** another cluster's name: stop, and point kubectl at your VKS cluster with SUPERVISOR-LOGIN.md's
+[Make it the default in this terminal](SUPERVISOR-LOGIN.md#make-it-the-default-in-this-terminal). `error:
 current-context is not set`: do that too. Then run this line again.
 
 Run this when you no longer need the app. It deletes the app and its namespace from the VKS

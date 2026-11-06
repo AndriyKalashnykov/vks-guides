@@ -47,7 +47,7 @@ The blocks keep their files in `~/.config/vks-guides/cicd` (PowerShell:
   (PowerShell: `$HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT>`): `harbor-data-values.yml`,
   `harbor-ca.crt`, `secrets.env` and `supervisor-uid`;
 - the VKS cluster from ARGOCD.md step 7, its kubeconfig
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) and your Supervisor kubeconfig;
+  ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)) and your Supervisor kubeconfig;
 - with GitLab, a worker with its own disk for container images: on a worker's default disk (about
   15 GiB, whatever its VM class), GitLab and the build filled it and GitLab was evicted. Make the
   cluster with [CLUSTER.md](CLUSTER.md) step 9 and the `workers:` part below, then do the table's
@@ -199,7 +199,7 @@ Namespace>` among the names.
   guide first (the table above); for Tekton, [TEKTON.md](TEKTON.md) step 1, then step 2 (A) or
   step 3 (B).
 - `namespace cicd-demo: 1`: an earlier run of this guide is still there; remove it with step 9.
-- `ArgoCD destinations:` empty, or an error before it: log in again ([LOGIN.md](LOGIN.md)), or add
+- `ArgoCD destinations:` empty, or an error before it: log in again ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)), or add
   the cluster with [ARGOCD.md](ARGOCD.md) step 7. If the cluster is there under another name, put
   that name in step 5's `DESTINATION`.
 
@@ -284,7 +284,7 @@ metadata:
 `namespace/gitlab-runner unchanged`; `unchanged` on a second run).
 
 **If not:** `Unauthorized`: the VKS cluster's kubeconfig has expired;
-[get it again](LOGIN.md#get-the-vks-clusters-kubeconfig).
+[get it again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 ## 3. Give the cluster two Harbor robots
 

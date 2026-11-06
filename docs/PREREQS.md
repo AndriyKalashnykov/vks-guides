@@ -54,6 +54,7 @@ hosts in [Registry hosts](#registry-hosts-for-a-firewall)):
 Run this once on Debian or Ubuntu: it installs the five tools with apt
 (needs `sudo`). Afterwards the other guides' blocks find them.
 
+<!-- lab-step: prereqs-ubuntu -->
 ```sh
 sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
 ```
@@ -206,6 +207,7 @@ It changes nothing.
 
 **Linux, macOS, WSL (bash or zsh):**
 
+<!-- lab-step: prereqs-check -->
 ```sh
 for t in curl tar unzip jq openssl tr awk diff find kubectl vcf helm; do
   command -v "$t" >/dev/null 2>&1 || { [ "$t" = unzip ] && command -v bsdtar >/dev/null 2>&1; } \
@@ -235,6 +237,7 @@ in `/usr/local/bin`, give `sudo` your password first, as a block of its own. Thi
 remember your password for a few minutes and changes nothing else; the kubectl or VCF CLI install
 block you run next in this terminal then uses `/usr/local/bin`:
 
+<!-- lab-step: prereqs-sudo -->
 ```sh
 sudo -v
 ```
@@ -253,6 +256,7 @@ for commands, in your shell's startup file (`~/.zshrc`, `~/.bashrc` or `~/.bash_
 `~/.bash_login` and `~/.profile`, so SSH logins read it. Afterwards every new terminal finds the
 tools:
 
+<!-- lab-step: prereqs-path -->
 ```sh
 case "$(uname -s)/${BASH_VERSION:+bash}" in
   Darwin/bash) RC="$HOME/.bash_profile" ;;
@@ -289,6 +293,7 @@ it lets you run `docker` without `sudo`, after you log out and back in.
 podman, to build and push images with podman: this installs podman from Ubuntu's or Debian's
 packages; then run [Check podman and docker](#check-podman-and-docker).
 
+<!-- lab-step: engines-podman-ubuntu -->
 ```sh
 sudo apt-get update && sudo apt-get install -y podman
 ```
@@ -302,6 +307,7 @@ so this installs Docker's own packages from Docker's repository. It first remove
 packages if you have them, and at the end adds you to the `docker` group. Afterwards, once you
 log out and back in, you run docker without `sudo`:
 
+<!-- lab-step: engines-docker-ubuntu -->
 ```sh
 D="$(. /etc/os-release && echo "$ID")"
 C="$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")"
@@ -480,6 +486,7 @@ It changes nothing; afterwards you know which engine is ready for IMAGE.md.
 
 **Linux, macOS, WSL (bash or zsh):**
 
+<!-- lab-step: engines-check -->
 ```sh
 for e in podman docker; do
   if ! command -v "$e" >/dev/null 2>&1; then
