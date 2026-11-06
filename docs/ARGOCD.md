@@ -1672,7 +1672,7 @@ first: right after it, an instance on a version 1.3.0 does not offer (such as
    (`-legacy-` in its name or not), and check it with step 2's checksum block and table.
 2. vSphere Client: menu (☰) → **Supervisor Management** → **Services**. On the **ArgoCD Service**
    card click **ACTIONS** → **Add New Version**, then **UPLOAD**, choose the manifest, click
-   **NEXT**, accept the EULA if one is shown, and click **FINISH**.
+   **NEXT** if the window shows it, accept the EULA if one is shown, and click **FINISH**.
 3. On the card click **ACTIONS** → **Manage Service**. Set **Install Version** to
    `1.3.0-25873627` (not the `1.2.0-25642124` that is there now), select your Supervisor, click
    **NEXT**. Wait for **Compatibility Check** and **Signature Verification** to **Pass**, click
