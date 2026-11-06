@@ -39,6 +39,11 @@ blocks; there is nothing to build.
   `| from | to | port | for |` with every connection its blocks open or make another component
   open (the nodes, ArgoCD); registries by name, with a link to PREREQS.md's Registry hosts.
   A row from the reader's own machine says `your machine (laptop or jump box)`.
+  A guide that installs a product or add-on into a VKS cluster has, in Prerequisites, a paragraph
+  that opens **The VKS cluster to make.** and gives the VM class and worker count for the base
+  install and for each optional part, measured on the lab (requests and real use), never as
+  millicores or MiB the reader must add up (a guide's own small test app needs no size). Control
+  plane and examples use `best-effort-medium` (CLUSTER step 2 holds the measured why; KB 446139).
 - After a block: **Expect:** (the output that proves it worked) and **If not:** (what to do).
 - The Supervisor is named by `SUPERVISOR_CONTEXT="supervisor"` (one name per Supervisor: a-z,
   0-9 and `-`, not ending in `-keycloak`) and its file by
@@ -51,6 +56,16 @@ blocks; there is nothing to build.
   server (local file writes and `vcf context use` may come first), and prints
   `MISSING: jq (PREREQS.md)`: empty output takes the wrong branch, deletes nothing, or loses a
   token a server already made.
+- A delete, uninstall or update decided by a query's result fails closed (IMAGE-DOCKER.md too)
+  wherever a failed or empty result would read as "remove" or "nothing uses it": read the query's
+  exit code (for example sh `if ! X="$(…)"`, `X="$(…)" || X=FAILED` or
+  `X="$(…)"; RC=$?`, no `2>/dev/null`; PowerShell `$global:LASTEXITCODE = $null` before, `-ne 0`
+  after), with the query alone in `$(…)` (a pipe keeps only the last command's exit code: capture
+  the raw output, then filter it), and stop with `FAILED: …` naming what was not removed. A piped
+  query whose failure removes nothing (`kubectl get … | jq … | while read …; do kubectl delete …`)
+  is fine. A shared add-on (cert-manager, Contour, Prometheus) is removed only
+  after an in-block check that nothing uses it; a check namespace or Secret is deleted only when
+  this run created it.
 - Downloads use `--connect-timeout 20 --speed-time 60`; a file is replaced only after it checks out.
 - Broadcom terms: "VKS cluster" (not guest/TKG cluster), "Supervisor", "vSphere Namespace",
   "VCF CLI". Text is minimal: what to run and what to expect, no notes or mechanism essays.
@@ -121,3 +136,12 @@ blocks; there is nothing to build.
   DaemonSets, host ports) or starting the walkbox, say when the lab is clean, and send it any lab
   finding. It owns vCenter, the Supervisor and VCF Operations; this repo's work stays inside the
   VKS cluster.
+- Walkboxes stay powered off when not in use (owner order): start one with `make walkbox-vm-start
+  WALKBOX_OS=…` in nested-vsphere-lab (it prints the address, which can change; never hard-code it)
+  and `make walkbox-vm-stop WALKBOX_OS=…` after the run (`WALKBOX_NAME=` for a second box). Guide
+  blocks run for real (not the stubbed checks above) and lab reads and changes during guide work
+  (kubectl with the Supervisor kubeconfig, curl, upgrades) run from a walkbox, not this host. Toward
+  the lab, this host runs only nested-vsphere-lab's make targets (for example the `walkbox-*`
+  targets, the `supervisor` login above with `make vcf-context-refresh`, and `make lab-capacity`).
+  `make lab-capacity` is read-only but signs in to vCenter once (mind the lock-out); run it before
+  making a VKS cluster.
