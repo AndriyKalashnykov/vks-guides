@@ -1088,10 +1088,60 @@ deleted`. Newer kubectl adds `from <namespace> namespace` to each `deleted` line
 
 **If not:** `timed out waiting`: ArgoCD cannot reach the VKS cluster. In the ArgoCD page, delete the
 Application with **Non-cascading**. If the VKS cluster is gone, stop here. Otherwise run this block
-again, then delete what the chart left outside the namespace: `kubectl --kubeconfig <the VKS
-kubeconfig> delete
-clusterrole,clusterrolebinding,mutatingwebhookconfiguration,validatingwebhookconfiguration -l
-app.kubernetes.io/instance=prometheus` and `kubectl --kubeconfig <the VKS kubeconfig> -n kube-system
-delete service -l app.kubernetes.io/instance=prometheus`.
+again, then the block below.
+
+**Delete what the chart left outside the namespace.** Run this only after you deleted the
+Application with **Non-cascading** and ran the block above again. It deletes the chart's cluster
+roles, cluster role bindings and webhook configurations, and its Services in `kube-system`: those
+with the label `app.kubernetes.io/instance=prometheus` (also another Helm release you named
+`prometheus`). It stops while the namespace `monitoring`
+still exists (the chart is still there), while Broadcom's Prometheus add-on runs in the cluster
+(namespace `tanzu-system-monitoring`, from VCF Operations' monitoring or HEADLAMP.md step 11.1: it
+can use the chart's old cluster role, step 5), and when it cannot tell. You then have nothing of
+the chart left but its CRDs (step 8). Set `VKS_CLUSTER` as in step 1.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+if ! N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace monitoring tanzu-system-monitoring -o name --ignore-not-found)"; then
+  echo "FAILED: cannot read the cluster with $VKS_KUBECONFIG (see the error above); nothing deleted"
+elif [ -n "$N" ]; then
+  printf '%s\n' "$N"
+  echo "STOPPED: leave these objects while the namespace above exists"
+else
+  kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrole,clusterrolebinding,mutatingwebhookconfiguration,validatingwebhookconfiguration -l app.kubernetes.io/instance=prometheus
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n kube-system delete service -l app.kubernetes.io/instance=prometheus
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+$global:LASTEXITCODE = $null
+$N = @(kubectl --kubeconfig $VKS_KUBECONFIG get namespace monitoring tanzu-system-monitoring -o name --ignore-not-found)
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: cannot read the cluster with $VKS_KUBECONFIG (see the error above); nothing deleted"
+} elseif (@($N | Where-Object { $_ }).Count -gt 0) {
+  $N
+  "STOPPED: leave these objects while the namespace above exists"
+} else {
+  kubectl --kubeconfig $VKS_KUBECONFIG delete clusterrole,clusterrolebinding,mutatingwebhookconfiguration,validatingwebhookconfiguration -l app.kubernetes.io/instance=prometheus
+  kubectl --kubeconfig $VKS_KUBECONFIG -n kube-system delete service -l app.kubernetes.io/instance=prometheus
+}
+```
+
+**Expect:** a `… deleted` line for each object, or `No resources found` where nothing was left.
+
+**If not:**
+- `STOPPED: …` with `namespace/monitoring`: run the block above again, then this one. With
+  `namespace/tanzu-system-monitoring`: leave the objects; Broadcom's Prometheus add-on may use them.
+- `FAILED: cannot read the cluster`, `Unauthorized`: run
+  [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
 Back to [README](../README.md).

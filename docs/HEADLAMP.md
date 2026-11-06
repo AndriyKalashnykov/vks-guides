@@ -27,7 +27,7 @@ read-only token can look, not change.
 - the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
   and the edit or owner role on the cluster's vSphere Namespace;
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md);
-- for the Kubescape plugin only (step 11): [Helm](HELM.md);
+- for the Kubescape plugin only (steps 11.2 and 12): [Helm](HELM.md);
 - a VKS cluster with the workers in the table below.
 
 **The VKS cluster to make.** Choose the row with everything you will install and make the cluster
@@ -1743,11 +1743,14 @@ else
     kubectl --kubeconfig "$VKS_KUBECONFIG" get rolebindings -A -o json \
       | jq -r '.items[] | select((.metadata.name | startswith("headlamp-")) and (.subjects | length > 0) and all(.subjects[]; .kind == "ServiceAccount" and .namespace == "headlamp")) | "\(.metadata.namespace) \(.metadata.name)"' \
       | while read -r NS B; do kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$NS" delete rolebinding "$B" </dev/null; done
-    USED="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings,rolebindings -A -o jsonpath='{range .items[*]}{.roleRef.name}{"\n"}{end}')"
-    for R in headlamp-namespace-lister headlamp-kubescape-reports; do
-      if printf '%s\n' "$USED" | grep -qx "$R"; then echo "kept: clusterrole ${R}, still used"; else kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrole "$R" --ignore-not-found; fi
-    done
-    if printf '%s\n' "$USED" | grep -qx headlamp-prometheus-query; then echo "kept: role headlamp-prometheus-query, still used"; else kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring delete role headlamp-prometheus-query --ignore-not-found 2>/dev/null; fi
+    if ! USED="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings,rolebindings -A -o jsonpath='{range .items[*]}{.roleRef.name}{"\n"}{end}')"; then
+      echo "FAILED: cannot read the bindings; the roles stay (see the error above), run this again"
+    else
+      for R in headlamp-namespace-lister headlamp-kubescape-reports; do
+        if printf '%s\n' "$USED" | grep -qx "$R"; then echo "kept: clusterrole ${R}, still used"; else kubectl --kubeconfig "$VKS_KUBECONFIG" delete clusterrole "$R" --ignore-not-found; fi
+      done
+      if printf '%s\n' "$USED" | grep -qx headlamp-prometheus-query; then echo "kept: role headlamp-prometheus-query, still used"; else kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-monitoring delete role headlamp-prometheus-query --ignore-not-found 2>/dev/null; fi
+    fi
     if [ -z "$N" ]; then echo "removed: namespace headlamp is gone"; else echo "NOT YET: namespace headlamp is still there; run this block again in a few minutes"; fi
   fi
 fi
@@ -1782,11 +1785,17 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
     ForEach-Object { kubectl --kubeconfig $VKS_KUBECONFIG delete clusterrolebinding $_.metadata.name }
   (kubectl --kubeconfig $VKS_KUBECONFIG get rolebindings -A -o json | ConvertFrom-Json).items | Where-Object { & $HL $_ } |
     ForEach-Object { kubectl --kubeconfig $VKS_KUBECONFIG -n $_.metadata.namespace delete rolebinding $_.metadata.name }
-  $USED = @((kubectl --kubeconfig $VKS_KUBECONFIG get clusterrolebindings,rolebindings -A -o json | ConvertFrom-Json).items | ForEach-Object { $_.roleRef.name })
-  foreach ($R in 'headlamp-namespace-lister', 'headlamp-kubescape-reports') {
-    if ($USED -contains $R) { "kept: clusterrole $R, still used" } else { kubectl --kubeconfig $VKS_KUBECONFIG delete clusterrole $R --ignore-not-found }
+  $global:LASTEXITCODE = $null
+  $RAW = kubectl --kubeconfig $VKS_KUBECONFIG get clusterrolebindings,rolebindings -A -o json
+  if ($LASTEXITCODE -ne 0) {
+    "FAILED: cannot read the bindings; the roles stay (see the error above), run this again"
+  } else {
+    $USED = @((($RAW -join "`n") | ConvertFrom-Json).items | ForEach-Object { $_.roleRef.name })
+    foreach ($R in 'headlamp-namespace-lister', 'headlamp-kubescape-reports') {
+      if ($USED -contains $R) { "kept: clusterrole $R, still used" } else { kubectl --kubeconfig $VKS_KUBECONFIG delete clusterrole $R --ignore-not-found }
+    }
+    if ($USED -contains 'headlamp-prometheus-query') { "kept: role headlamp-prometheus-query, still used" } else { kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring delete role headlamp-prometheus-query --ignore-not-found 2>$null }
   }
-  if ($USED -contains 'headlamp-prometheus-query') { "kept: role headlamp-prometheus-query, still used" } else { kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-monitoring delete role headlamp-prometheus-query --ignore-not-found 2>$null }
   if (-not $N) { "removed: namespace headlamp is gone" } else { "NOT YET: namespace headlamp is still there; run this block again in a few minutes" }
 }
 ```
@@ -1800,18 +1809,166 @@ made yourself, for example for an SSO user, still names that role; delete that b
 want it gone. A second run prints `Error: clusterAddon for addon headlamp … not found`, `(not
 deleted; …)`, and `removed: …` again.
 
-**If not:** `NOT YET: …`: the add-on is still being removed; run the block again. An error about
+**If not:** `NOT YET: …`: the add-on is still being removed; run the block again. `FAILED: cannot
+read the bindings`: the roles stay; check the kubeconfig and run the block again. An error about
 the login at the first line: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
 
-To remove the rest, each only if nothing else in the cluster uses it:
+**Remove Kubescape.** Run this after the block above if you installed Kubescape for its plugin
+(step 11.2) and nothing else in the cluster uses it. It uninstalls Kubescape with Helm, then
+deletes Kubescape's API registration (so the namespace can go), the namespace `kubescape` and the
+definitions Helm keeps (CRDs). You then have a cluster without Kubescape. Set `VKS_CLUSTER` as in
+step 2.
 
-- Kubescape: `helm --kubeconfig <the VKS kubeconfig> uninstall kubescape -n kubescape`, then
-  `kubectl --kubeconfig <the VKS kubeconfig> delete namespace kubescape`, then the definitions Helm
-  keeps: `kubectl --kubeconfig <the VKS kubeconfig> delete crd
-  clustersecurityexceptions.kubescape.io operatorcommands.kubescape.io rules.kubescape.io
-  runtimerulealertbindings.kubescape.io securityexceptions.kubescape.io
-  servicesscanresults.kubescape.io`.
-- Prometheus, Contour, cert-manager: `vcf addon install delete <prometheus|contour|cert-manager>
-  --cluster-name <cluster> -n <namespace> -y`. Remove cert-manager last.
-- The files this guide saved: `~/.config/vks-guides/headlamp` (PowerShell:
-  `$HOME\.config\vks-guides\headlamp`).
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+helm --kubeconfig "$VKS_KUBECONFIG" uninstall kubescape -n kubescape
+kubectl --kubeconfig "$VKS_KUBECONFIG" delete apiservice v1beta1.spdx.softwarecomposition.kubescape.io --ignore-not-found
+kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace kubescape
+kubectl --kubeconfig "$VKS_KUBECONFIG" delete crd clustersecurityexceptions.kubescape.io \
+  operatorcommands.kubescape.io rules.kubescape.io runtimerulealertbindings.kubescape.io \
+  securityexceptions.kubescape.io servicesscanresults.kubescape.io
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+helm --kubeconfig $VKS_KUBECONFIG uninstall kubescape -n kubescape
+kubectl --kubeconfig $VKS_KUBECONFIG delete apiservice v1beta1.spdx.softwarecomposition.kubescape.io --ignore-not-found
+kubectl --kubeconfig $VKS_KUBECONFIG delete namespace kubescape
+kubectl --kubeconfig $VKS_KUBECONFIG delete crd clustersecurityexceptions.kubescape.io operatorcommands.kubescape.io rules.kubescape.io runtimerulealertbindings.kubescape.io securityexceptions.kubescape.io servicesscanresults.kubescape.io
+```
+
+**Expect:** two `[Secret] …` lines that Helm keeps (the namespace takes them), `release "kubescape"
+uninstalled`, `namespace "kubescape" deleted` and six
+`customresourcedefinition.apiextensions.k8s.io "….kubescape.io" deleted` lines. The API registration
+line prints nothing when Helm already removed it.
+
+**If not:** `Release not loaded` or `NotFound`: that part was already removed; the lines after it
+still run. `Unauthorized` or no connection: run
+[Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
+
+**Remove an add-on.** Run this after the blocks above only for an add-on that this guide's step
+put in (it printed `Addon '<name>' is being installed`, not `already installed`): Prometheus (step
+11.1), Contour (step 10) and cert-manager (step 2), cert-manager last. It first checks that nothing
+still uses the add-on, and stops if something does or if it cannot tell: for cert-manager any
+certificate or issuer, for Contour any HTTPProxy or Ingress, for Prometheus VCF Operations'
+monitoring on the cluster (the Supervisor's label `automated-monitoring` is `enabled`). Only then
+it makes your Supervisor login (`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI
+and in its kubeconfig file, which stays after the block, and asks the Supervisor to remove the
+add-on. You then have the cluster without that add-on. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in
+step 2, and `ADDON` to `prometheus`, `contour` or `cert-manager`.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+ADDON="prometheus"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
+
+case "$ADDON" in
+  cert-manager) KIND="certificates.cert-manager.io,issuers.cert-manager.io,clusterissuers.cert-manager.io" ;;
+  contour) KIND="httpproxies.projectcontour.io,ingresses.networking.k8s.io" ;;
+  prometheus) KIND="monitoring" ;;
+  *) KIND="" ;;
+esac
+if [ -z "$KIND" ]; then
+  echo "STOPPED: ADDON is prometheus, contour or cert-manager: $ADDON"
+else
+  if [ "$KIND" = monitoring ]; then
+    USED="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" -o jsonpath='{.metadata.labels.addons\.kubernetes\.vmware\.com/automated-monitoring}')"; RC=$?
+    case "$USED" in enabled) USED="VCF Operations' monitoring is enabled on ${VKS_CLUSTER}" ;; *) USED="" ;; esac
+  else
+    USED="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get "$KIND" -A -o name)"; RC=$?
+  fi
+  if [ "$RC" -ne 0 ]; then
+    echo "FAILED: cannot check what uses ${ADDON} (see the error above); nothing removed"
+  elif [ -n "$USED" ]; then
+    printf '%s\n' "$USED"
+    echo "DO NOT REMOVE: the cluster still uses ${ADDON} (above)"
+  else
+    VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+    if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
+      printf '%s\n' "$VCF_USE"
+      echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+    else
+      vcf addon install delete "$ADDON" --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y
+    fi
+  fi
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$ADDON = "prometheus"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
+
+$KIND = switch -CaseSensitive ($ADDON) {
+  'cert-manager' { 'certificates.cert-manager.io,issuers.cert-manager.io,clusterissuers.cert-manager.io' }
+  'contour' { 'httpproxies.projectcontour.io,ingresses.networking.k8s.io' }
+  'prometheus' { 'monitoring' }
+  default { '' }
+}
+if (-not $KIND) {
+  "STOPPED: ADDON is prometheus, contour or cert-manager: $ADDON"
+} else {
+  $global:LASTEXITCODE = $null
+  if ($KIND -eq 'monitoring') {
+    $LABEL = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER -o jsonpath='{.metadata.labels.addons\.kubernetes\.vmware\.com/automated-monitoring}'
+    $USED = @(if ($LABEL -eq 'enabled') { "VCF Operations' monitoring is enabled on $VKS_CLUSTER" })
+  } else {
+    $USED = @(kubectl --kubeconfig $VKS_KUBECONFIG get $KIND -A -o name)
+  }
+  if ($LASTEXITCODE -ne 0) {
+    "FAILED: cannot check what uses ${ADDON} (see the error above); nothing removed"
+  } elseif (@($USED | Where-Object { $_ }).Count -gt 0) {
+    $USED
+    "DO NOT REMOVE: the cluster still uses ${ADDON} (above)"
+  } else {
+    $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
+    if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
+      $VCF_USE
+      "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+    } else {
+      vcf addon install delete $ADDON --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+    }
+  }
+}
+```
+
+</details>
+
+**Expect:** `Addon '<ADDON>' installed in the cluster … has been deleted`.
+
+**If not:**
+- `DO NOT REMOVE: …`: what it lists still needs the add-on; leave it, or remove those first (their
+  own guide's clean-up step).
+- `FAILED: cannot check what uses …` with `the server doesn't have a resource type`: the add-on's
+  definitions are gone, so it is already removed. With `Unauthorized` or no connection: run
+  [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) or
+  [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login) first.
+- `Error: clusterAddon for addon <ADDON> … not found`: it is already removed.
+- `FAILED: the VCF CLI …` or `Unable to read password from terminal` (Windows: `The handle is
+  invalid`): [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login) and run this again.
+- `Forbidden`: you need the edit or owner role on the vSphere Namespace.
+
+The files this guide saved stay in `~/.config/vks-guides/headlamp` (PowerShell:
+`$HOME\.config\vks-guides\headlamp`); delete that folder to remove them.
