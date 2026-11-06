@@ -280,10 +280,7 @@ for example `sso:Alice@vsphere.local`).
 - After fixing a value, run the password line and this block again.
 - `Initialization done!` and lines about plugins on the first run: harmless.
 
-Without the VCF CLI, steps 2c and 2d use the kubectl vSphere plugin (on Windows and macOS, step 2b first). Broadcom replaced it with the
-VCF CLI, but it still works on 9.1 ([KB 435399](https://knowledge.broadcom.com/external/article/435399)).
-The Supervisor serves it only as an amd64 build (Apple silicon and Windows on Arm would need x64
-emulation; not tested).
+Then use the cluster: [step 4](#4-use-the-login-and-renew-it-the-person).
 
 ### 2b. Windows and macOS: trust the vCenter CA (the person, once)
 
@@ -311,7 +308,11 @@ example over SSH). Run the line in Windows PowerShell on the desktop.
 ### 2c. Install the kubectl vSphere plugin (the person, once)
 
 Do this once, when you log in with the kubectl vSphere plugin (a program that logs kubectl in
-through the Supervisor) instead of the VCF CLI. It downloads the plugin from the Supervisor,
+through the Supervisor) instead of the VCF CLI (on Windows and macOS, step 2b first). Broadcom
+replaced the plugin with the VCF CLI, but it still works on 9.1
+([KB 435399](https://knowledge.broadcom.com/external/article/435399)). The Supervisor serves it only
+as an amd64 build (Apple silicon and Windows on Arm would need x64 emulation; not tested). This
+downloads the plugin from the Supervisor,
 checking the Supervisor's certificate against the vCenter CA
 ([Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca), step 1; on Windows,
 the trusted CA from step 2b), runs it to check that it starts, and only then installs it into
@@ -539,10 +540,46 @@ binding and run this again.
 
 ### 4. Use the login and renew it (the person)
 
-Use the file from step 2a or 2d, `~/.kube/<cluster>-<SSO_USER>.kubeconfig`, with `--kubeconfig` or
-`KUBECONFIG` ([KUBECONFIG.md](KUBECONFIG.md#2-use-a-file)), and name the namespace you were given
-in each command (`-n team-a`). It needs no password until the login ends: 10 hours after it,
-kubectl answers `Unauthorized`; log in again (step 2a, or 2d). The rights from step 3 stay.
+Run this in each new terminal where you use the cluster, after step 2a or 2d. Plain `kubectl` reads
+only `~/.kube/config`; your login is in its own file, `~/.kube/<cluster>-<SSO_USER>.kubeconfig`.
+This points `KUBECONFIG` at that file for this terminal, so every `kubectl` command in it uses your
+login ([KUBECONFIG.md](KUBECONFIG.md#2-use-a-file)), then shows who you are and whether you may
+deploy in the namespace you were given. Set `SSO_USER` and `VKS_CLUSTER` as in your login, and
+`TEAM_NAMESPACE` to that namespace.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+SSO_USER="alice@vsphere.local"
+VKS_CLUSTER="my-vks-cluster"
+TEAM_NAMESPACE="team-a"
+
+export KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
+kubectl auth whoami
+kubectl -n "$TEAM_NAMESPACE" auth can-i create deployments
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SSO_USER = "alice@vsphere.local"
+$VKS_CLUSTER = "my-vks-cluster"
+$TEAM_NAMESPACE = "team-a"
+
+$env:KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
+kubectl auth whoami
+kubectl -n $TEAM_NAMESPACE auth can-i create deployments
+```
+
+**Expect:** `Username` with your `sso:…` name, then `yes`. Then use `kubectl -n team-a …` in this
+terminal.
+
+**If not:**
+- `connection refused` to `localhost:8080`: the file is not there; check `SSO_USER` and
+  `VKS_CLUSTER` against your login (`ls ~/.kube`).
+- `no`: the cluster administrator has not given your name rights in that namespace yet (step 3).
+- `Unauthorized`: the login ended (10 hours after it). Log in again (step 2a, or 2d), then run this
+  again. The rights from step 3 stay.
 
 ### 5. Take it away (cluster administrator, vCenter administrator)
 
