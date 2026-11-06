@@ -106,7 +106,7 @@ how to hand it over, use and merge it: [KUBECONFIG.md](KUBECONFIG.md).
   ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca), step 1);
 - the person or tool: [kubectl](KUBECTL.md) (every way); SSO way: the [VCF CLI](VCF.md) or the
   kubectl vSphere plugin ([optional](#the-kubectl-vsphere-plugin-instead-of-the-vcf-cli-optional)), and
-  the vCenter CA (sent in step 1).
+  the vCenter CA (sent in step 1; optional for the VCF CLI login, step 3).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):
 
@@ -189,9 +189,10 @@ binding and run this again.
 
 ### 3. Log in with the VCF CLI (the person)
 
-You need the [VCF CLI](VCF.md) and the vCenter CA from step 1 ([Create Supervisor context with
-CA](LOGIN.md#create-supervisor-context-with-ca), step 1). **A few failed logins in a row lock the
-SSO user for some minutes.**
+You need the [VCF CLI](VCF.md). The vCenter CA from step 1 ([Create Supervisor context with
+CA](LOGIN.md#create-supervisor-context-with-ca), step 1) is optional but recommended: with it the
+login checks that it talks to your real Supervisor; without it (`SUPERVISOR_CA=""` below) it does
+not check, so someone between you and the Supervisor could capture your password.
 
 Type your SSO password first, so that it never shows on the screen or in the shell's history. This
 line only keeps it in this terminal; nothing else changes. You then have the password ready for the
@@ -216,8 +217,9 @@ as `SSO_USER` through the Supervisor and writes the login to your own kubeconfig
 prints the name the cluster knows you by. You then use the cluster with that file (step 4).
 
 Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name, `SUPERVISOR_CA` to the
-vCenter CA file from step 1, `SSO_USER` to your full SSO user name, and `VKS_NAMESPACE` (the
-vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
+vCenter CA file from step 1, or to `""` when you do not have it (the block then prints a `WARNING`
+and does not check the Supervisor's certificate), `SSO_USER` to your full SSO user name, and
+`VKS_NAMESPACE` (the vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -231,17 +233,19 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_USER_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 
 case "$SSO_USER" in */*|*\\*|*:*) SSO_USER_OK="" ;; *@*) SSO_USER_OK="yes" ;; *) SSO_USER_OK="" ;; esac
+if [ -n "$SUPERVISOR_CA" ]; then TLS="--ca-certificate=$SUPERVISOR_CA"; else TLS="--insecure-skip-tls-verify"; fi
 if [ -z "$SSO_USER_OK" ]; then
   printf '%s\n' "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: $SSO_USER"
 elif [ -z "$SSO_PASSWORD" ]; then
   echo "FAILED: no password in this terminal; run the password line above"
-elif [ ! -f "$SUPERVISOR_CA" ] || [ ! -s "$SUPERVISOR_CA" ]; then
+elif [ -n "$SUPERVISOR_CA" ] && { [ ! -f "$SUPERVISOR_CA" ] || [ ! -s "$SUPERVISOR_CA" ]; }; then
   echo "FAILED: not found: $SUPERVISOR_CA"
-elif mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_USER_KUBECONFIG" ) && chmod 600 "$VKS_USER_KUBECONFIG" \
+elif { [ -n "$SUPERVISOR_CA" ] || echo "WARNING: SUPERVISOR_CA is empty: the Supervisor's certificate is not checked"; } \
+     && mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_USER_KUBECONFIG" ) && chmod 600 "$VKS_USER_KUBECONFIG" \
      && { KUBECONFIG="$VKS_USER_KUBECONFIG" vcf context delete "${VKS_CLUSTER}-${SSO_USER}" -y --skip-delete-kubeconfig-context </dev/null >/dev/null 2>&1; true; } \
      && KUBECONFIG="$VKS_USER_KUBECONFIG" VCF_CLI_VSPHERE_PASSWORD="$SSO_PASSWORD" \
         vcf context create "${VKS_CLUSTER}-${SSO_USER}" --type k8s --endpoint "https://${SUPERVISOR_ENDPOINT}" \
-          --username "$SSO_USER" --auth-type basic --ca-certificate "$SUPERVISOR_CA" --skip-create-related-contexts \
+          --username "$SSO_USER" --auth-type basic "$TLS" --skip-create-related-contexts \
           --workload-cluster-name "$VKS_CLUSTER" --workload-cluster-namespace "$VKS_NAMESPACE" </dev/null \
      && kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config use-context "${VKS_CLUSTER}-${SSO_USER}:${VKS_CLUSTER}" >/dev/null; then
   echo "logged in as: $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
@@ -268,9 +272,13 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
   "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: ${SSO_USER}"
 } elseif (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   "FAILED: no password in this PowerShell; run the password line above"
-} elseif (-not (Test-Path $SUPERVISOR_CA -PathType Leaf) -or (Get-Item $SUPERVISOR_CA).Length -eq 0) {
+} elseif ($SUPERVISOR_CA -and (-not (Test-Path $SUPERVISOR_CA -PathType Leaf) -or (Get-Item $SUPERVISOR_CA).Length -eq 0)) {
   "FAILED: not found: $SUPERVISOR_CA"
 } else {
+  if ($SUPERVISOR_CA) { $TLS = "--ca-certificate=$SUPERVISOR_CA" } else {
+    $TLS = "--insecure-skip-tls-verify"
+    "WARNING: SUPERVISOR_CA is empty: the Supervisor's certificate is not checked"
+  }
   New-Item -ItemType Directory -Force -Path "$HOME\.kube" | Out-Null
   $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $VKS_USER_KUBECONFIG
   try {
@@ -278,7 +286,7 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
     $env:VCF_CLI_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
     $global:LASTEXITCODE = $null
     $null | vcf context create "${VKS_CLUSTER}-${SSO_USER}" --type k8s --endpoint "https://$SUPERVISOR_ENDPOINT" `
-      --username $SSO_USER --auth-type basic "--ca-certificate=$SUPERVISOR_CA" --skip-create-related-contexts `
+      --username $SSO_USER --auth-type basic $TLS --skip-create-related-contexts `
       --workload-cluster-name $VKS_CLUSTER --workload-cluster-namespace $VKS_NAMESPACE
     $OK = $LASTEXITCODE -eq 0
   } finally {
@@ -296,7 +304,8 @@ Remove-Variable SSO_PASSWORD -ErrorAction SilentlyContinue
 
 </details>
 
-**Expect:** `Successfully logged in to Kubernetes cluster <cluster>`, the contexts `<cluster>-<SSO_USER>` and
+**Expect:** with `SUPERVISOR_CA=""` first `WARNING: SUPERVISOR_CA is empty …`; then `Successfully
+logged in to Kubernetes cluster <cluster>`, the contexts `<cluster>-<SSO_USER>` and
 `<cluster>-<SSO_USER>:<cluster>`, and `logged in as: sso:…` (SSO writes the name in its own letter case,
 for example `sso:Alice@vsphere.local`).
 
@@ -487,7 +496,6 @@ password. You then use the cluster with that file
 Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name, `SUPERVISOR_CA` to the
 vCenter CA file from step 1, `SSO_USER` to your full SSO user name, and `VKS_NAMESPACE` (the
 vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
-**A few failed logins in a row lock the SSO user for some minutes.**
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
