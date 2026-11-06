@@ -29,7 +29,7 @@ Run the steps in order. Steps 11 to 13 are for later.
 ## Prerequisites
 
 - a VKS cluster for Octopus, made as below;
-- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
+- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)),
   for the cert-manager add-on (step 2);
 - [kubectl](KUBECTL.md), [Helm](HELM.md), and [jq, curl and openssl](PREREQS.md);
 - two free load-balancer addresses, one for each Service (step 4);
@@ -67,7 +67,7 @@ The cluster for Octopus:
    is about 15 GiB; when other applications share the worker, give it its own disk for container
    images with the `workers:` part in [CICD.md's Prerequisites](CICD.md#prerequisites).
 3. Save its kubeconfig as `~/.kube/<cluster name>.kubeconfig`
-   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)); it is `<file>` in the **If not:** lines.
+   ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)); it is `<file>` in the **If not:** lines.
 
 SQL Server. Octopus supports SQL Server versions that have at least two years of support left
 ([SQL Server database](https://octopus.com/docs/installation/sql-database)), and the free Express
@@ -112,7 +112,7 @@ WORKERS='!node-role.kubernetes.io/control-plane'
 if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
 elif ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
 elif ! command -v helm >/dev/null 2>&1; then echo "MISSING: helm (HELM.md)"
-elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (LOGIN.md)"
+elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"
 elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide \
      && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l "$WORKERS" --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu')" \
      && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu')" \
@@ -149,7 +149,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $global:LASTEXITCODE = $null; $MISS = $false
 if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
 elseif (-not (Get-Command helm -ErrorAction SilentlyContinue)) { "MISSING: helm (HELM.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
-elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
+elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
 else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
 if ($LASTEXITCODE -eq 0) { $N = @(kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu') }
 if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A '--field-selector=status.phase!=Succeeded,status.phase!=Failed' --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu') }
@@ -1961,7 +1961,7 @@ are gone`. Run again, it prints `release: not found` and `namespaces "octopus" n
 - `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not delete the
   cluster until it is gone.
 - `STILL THERE: (the check failed …)`: kubectl could not read the cluster; the error above says why
-  (`Unauthorized`: the file has expired, [get it again](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+  (`Unauthorized`: the file has expired, [get it again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)).
   Then run the block again.
 
 Back to [README](../README.md).

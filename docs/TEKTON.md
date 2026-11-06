@@ -34,9 +34,9 @@ The blocks keep their files in `~/.config/vks-guides/tekton` (PowerShell:
 ## Prerequisites
 
 - a VKS cluster with the workers below ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+  ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig));
 - [kubectl](KUBECTL.md), and [curl and jq](PREREQS.md);
-- for A, the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
+- for A, the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)),
   and the edit or owner role on the cluster's vSphere Namespace.
 
 **The VKS cluster to make.** One control-plane node and one worker, both `best-effort-medium` (2
@@ -68,7 +68,7 @@ the cluster and changes nothing. It shows that each node (a VM of the cluster) i
 CPU each worker has free (1000m is one CPU; A needs about 400m, B about 200m), and whether some
 Tekton is already installed; the `Tekton:` line tells you which step comes next. Set `VKS_CLUSTER`
 to your cluster's name; the block reads its kubeconfig, `~/.kube/<VKS_CLUSTER>.kubeconfig`
-([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -160,7 +160,7 @@ A's pods ask for about 400m in all, B's for 200m, each at most 100m on one worke
   `parts of one`: the cluster already has another Tekton, or what is left of one (step 7 removes
   what is left of A or B). Use another cluster; this guide does not cover it.
 - `FAILED: cannot read the cluster`: run
-  [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
+  [Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
 ## 2. Install Tekton with the VKS add-on (A)
 
@@ -170,7 +170,7 @@ For A, run this first, to find the Tekton add-on release your Supervisor offers.
 your Supervisor login (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and in its kubeconfig
 file, and that stays after the block. It then lists the Tekton add-on releases and changes nothing.
 You get the release name the next block needs; no release means your VKS is older than 3.8. Set
-`SUPERVISOR_CONTEXT` to your Supervisor's name from [LOGIN.md](LOGIN.md).
+`SUPERVISOR_CONTEXT` to your Supervisor's name from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md).
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -179,7 +179,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   vcf addon available-releases list --addon-name tekton-operator
 fi
@@ -192,7 +192,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   vcf addon available-releases list --addon-name tekton-operator
 }
@@ -203,7 +203,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 **If not:**
 - No row: the Supervisor runs a VKS older than 3.8. Use B (step 3).
 - `Unable to read password from terminal` (Windows: `The handle is invalid`), `provide credentials`
-  or `no current context set`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+  or `no current context set`: [renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login).
 
 Run this next, to install the Tekton Operator on your cluster: a program that installs and manages
 Tekton for you (Tekton itself comes in the next block). The block makes your Supervisor login
@@ -230,7 +230,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   mkdir -p "$TEKTON_DIR"
   printf 'helmValues:\n  exposure:\n    enabled: false\n' > "$TEKTON_DIR/addon-values.yaml"
@@ -290,7 +290,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   New-Item -ItemType Directory -Force -Path $TEKTON_DIR | Out-Null
   [IO.File]::WriteAllText("$TEKTON_DIR\addon-values.yaml", "helmValues:`n  exposure:`n    enabled: false`n")
@@ -351,7 +351,7 @@ then two `deployment.apps/… condition met` lines and the pods `tekton-operator
   vmware-system-helm get helmrelease` says why. The add-on retries every five minutes; run the
   block again.
 - `FAILED: the add-on` with `Forbidden`: you need the edit or owner role on the vSphere Namespace.
-- `FAILED: the VCF CLI`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+- `FAILED: the VCF CLI`: [renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login).
 
 Run this after the add-on block, to install Tekton itself. It writes `tektonconfig.yaml` to
 `~/.config/vks-guides/tekton` and gives it to the operator, to tell it which Tekton parts to
@@ -1349,7 +1349,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   if ! C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd -o name)" \
      || ! A="$(kubectl --kubeconfig "$VKS_KUBECONFIG" api-resources -o name)"; then
@@ -1424,7 +1424,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   $global:LASTEXITCODE = $null
   $C = @(kubectl --kubeconfig $VKS_KUBECONFIG get crd -o name)
@@ -1513,7 +1513,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   kubeconfig> get <kind> -A`; delete them first if they are yours.
 - `STOPPED: the VCF CLI` under `Unable to read password from terminal` (Windows:
   `The handle is invalid`) or `provide credentials`: [renew the Supervisor
-  login](LOGIN.md#renew-the-supervisor-login), then run the block again.
+  login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then run the block again.
 - `FAILED: the operator's sets are still there`: `kubectl --kubeconfig <the VKS kubeconfig> get
   tektoninstallersets -o yaml` shows what holds them (`finalizers`); run the block again.
 - `Tekton CRDs left:` more than 0, or `FAILED: …`: see the error above it, and run the block

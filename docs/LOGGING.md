@@ -22,8 +22,8 @@ The blocks keep their files in `~/.config/vks-guides/logging` (PowerShell:
 
 ## Prerequisites
 
-- the [VCF CLI](VCF.md) with its plugins, a [Supervisor login](LOGIN.md) and the VKS cluster's
-  kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+- the [VCF CLI](VCF.md) with its plugins, a [Supervisor login](SUPERVISOR-LOGIN.md) and the VKS cluster's
+  kubeconfig ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig));
 - [kubectl](KUBECTL.md), [curl and openssl](PREREQS.md);
 - Log Management's DNS name and the CA certificate (PEM) that signed its certificate, from your
   VCF Operations administrator;
@@ -67,7 +67,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   vcf addon available-releases list --addon-name fluent-bit
   vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"
@@ -84,7 +84,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   vcf addon available-releases list --addon-name fluent-bit
   vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE
@@ -97,8 +97,8 @@ one's name for step 4. The cluster's list has no `fluent-bit`.
 **If not:**
 - `Unauthorized`, `Unable to read password from terminal` (Windows: `The handle is invalid`) or
   `provide credentials`: your Supervisor login ended; run [Renew the Supervisor
-  login](LOGIN.md#renew-the-supervisor-login).
-- `context … not found`: create the Supervisor context ([LOGIN.md](LOGIN.md)).
+  login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login).
+- `context … not found`: create the Supervisor context ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)).
 - The cluster's list already has `fluent-bit`: it is installed; to change where it sends logs,
   see step 7.
 
@@ -282,7 +282,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
     --addon-release-name "$FLUENT_BIT_RELEASE" -f "$LOGGING_DIR/values.yaml" -y
@@ -301,7 +301,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f "$LOGGING_DIR\values.yaml" -y
 }
@@ -317,7 +317,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 ## 5. Give Fluent Bit the CA
 
 Run this right after step 4: Fluent Bit does not start until it has the CA certificate from
-step 2. It uses the VKS cluster's kubeconfig from LOGIN.md (`~/.kube/<VKS_CLUSTER>.kubeconfig`).
+step 2. It uses the VKS cluster's kubeconfig from SUPERVISOR-LOGIN.md (`~/.kube/<VKS_CLUSTER>.kubeconfig`).
 Set `VKS_CLUSTER` as in step 1. This block:
 
 - waits until step 4 has created `tanzu-system-logging`, a namespace inside the VKS cluster (a
@@ -527,7 +527,7 @@ else
   VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
   if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
     printf '%s\n' "$VCF_USE"
-    echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+    echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
   else
     if vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
          -f "$LOGGING_DIR/values.yaml" -y; then
@@ -562,7 +562,7 @@ if (-not (Test-Path $CA -PathType Leaf) -or (Get-Item $CA).Length -eq 0) {
   $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
   if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
     $VCF_USE
-    "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+    "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
   } else {
     vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$LOGGING_DIR\values.yaml" -y
     if ($LASTEXITCODE -eq 0) {
@@ -608,7 +608,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   vcf addon install delete fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y
 fi
@@ -624,7 +624,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   vcf addon install delete fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
 }

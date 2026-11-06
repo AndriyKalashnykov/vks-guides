@@ -21,7 +21,7 @@
 
 You create the cluster in the vSphere Client, on your vSphere Namespace's **Resources** tab (the
 Local Consumption Interface). Steps 3 to 5 are clicks; the other steps use a terminal and need
-[kubectl](KUBECTL.md), [jq](PREREQS.md) and a [Supervisor login](LOGIN.md). The names and
+[kubectl](KUBECTL.md), [jq](PREREQS.md) and a [Supervisor login](SUPERVISOR-LOGIN.md). The names and
 screenshots of steps 3 to 5 are from the vSphere Client for VCF 9.1.1; the screenshots show example
 names; yours differ.
 
@@ -45,7 +45,7 @@ The steps (step 9 replaces steps 3 to 5; 8 and 10 are optional):
 
 - a vSphere Namespace that passes [Check the namespace](NAMESPACE.md#8-check-the-namespace), and
   the **Namespaces Edit** role on it;
-- a [Supervisor login](LOGIN.md) with the [VCF CLI](VCF.md), [kubectl](KUBECTL.md) and
+- a [Supervisor login](SUPERVISOR-LOGIN.md) with the [VCF CLI](VCF.md), [kubectl](KUBECTL.md) and
   [jq](PREREQS.md);
 - one free load-balancer address, for the address kubectl uses to reach the cluster;
 - if you will install Harbor on this Supervisor, install it first ([HARBOR.md](HARBOR.md) steps 1
@@ -391,10 +391,10 @@ Never switch the cluster's virtual machines on or off in the vSphere Client: VKS
 ## 7. Get the kubeconfig and check the cluster
 
 Get the cluster's kubeconfig (the file that lets kubectl reach the cluster), in the vSphere
-Client ([Download the VKS cluster's kubeconfig from the vSphere Client](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client))
-or with the VCF CLI ([Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig)):
+Client ([Download the VKS cluster's kubeconfig from the vSphere Client](SUPERVISOR-LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client))
+or with the VCF CLI ([Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)):
 either way it is saved as `~/.kube/<cluster>.kubeconfig`. Then run
-[Match kubectl to the cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
+[Match kubectl to the cluster's version](SUPERVISOR-LOGIN.md#match-kubectl-to-the-clusters-version-optional).
 
 Then run this once the cluster is available, to check that every node is ready for apps. It reads
 the cluster with `~/.kube/<VKS_CLUSTER>.kubeconfig` and changes nothing. It lists the nodes and
@@ -574,7 +574,7 @@ else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete pers
   [Check that the name is free](#check-that-the-name-is-free) until it says `none now`, then this
   block again.
 - `Nothing deleted: cannot read the clusters`: the error above says why; under `Unauthorized`,
-  run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this block again.
+  run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then this block again.
 
 Do not create the next cluster under the same name. The cluster's kubeconfig stays in
 `~/.kube`; delete it yourself.

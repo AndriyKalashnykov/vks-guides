@@ -20,7 +20,7 @@ upstream; Broadcom does not support them. Tested on VKS 3.8 (Kubernetes v1.37.1)
 
 - VKS 3.8, and a new cluster made with kubectl and a YAML file
   ([CLUSTER.md step 9](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file)); its
-  administrator kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+  administrator kubeconfig ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig));
 - [kubectl](KUBECTL.md) for the administrator; [kubectl](KUBECTL.md) and
   [kubelogin](PREREQS.md#kubelogin-optional) for each person;
 - a Keycloak realm, set up by its administrator as below (no Keycloak yet:

@@ -32,7 +32,7 @@ The blocks keep their files in `~/.config/vks-guides/gitlab` (PowerShell:
 ## Prerequisites
 
 - a VKS cluster with a default storage class ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), with a worker that has 6 GiB memory and 8
+  ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)), with a worker that has 6 GiB memory and 8
   GiB disk free, such as a new `best-effort-large` worker (4 CPU, 16 GiB): GitLab alone uses about 4
   GiB. To build images with it as in [CICD.md](CICD.md), make the cluster with the worker from
   [CICD.md's Prerequisites](CICD.md#prerequisites) first: the default disk is too small for that;
@@ -59,7 +59,7 @@ nothing. It shows git's version on your machine, that each node (one of the clus
 the default storage class (the vSphere storage policy that GitLab's volume comes from), and that
 the cluster has no `gitlab` namespace yet (a namespace inside the VKS cluster, which step 2
 creates). Set `VKS_CLUSTER` to your VKS cluster's name; the block reads its kubeconfig from
-`.kube` in your home folder ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+`.kube` in your home folder ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -146,7 +146,7 @@ one CI job need a worker with at least 6 GiB memory and 8 GiB image disk free; a
 - `gitlab namespace: 1` before you ran step 2: the cluster already has a `gitlab` namespace. Use
   another cluster, or remove it with step 10 if it is an earlier run of this guide.
 - `FAILED: cannot read the cluster`: run
-  [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
+  [Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
 ## 2. Create the namespace
 
@@ -196,7 +196,7 @@ metadata:
 **Expect:** `namespace/gitlab created` (`unchanged` on a second run).
 
 **If not:** `Forbidden`: your kubeconfig is not the cluster's administrator; use the one from
-[LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig).
+[SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 ## 3. Install GitLab
 
@@ -1112,7 +1112,7 @@ foreach ($i in 1..36) {
 - `timed out waiting for the condition`: the cluster is still removing the load-balancer address
   or the volume; wait a few minutes and run this again.
 - `volumes left from gitlab: unknown`: kubectl could not read the volumes. Fix the error above
-  (often an expired login: [LOGIN.md](LOGIN.md)), then run this again.
+  (often an expired login: [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)), then run this again.
 - `volumes left from gitlab:` more than 0: the storage class keeps volumes (step 1 printed
   `reclaim Retain`). Delete them with `kubectl --kubeconfig <the VKS kubeconfig> delete pv <name>`
   when you no longer need the data.

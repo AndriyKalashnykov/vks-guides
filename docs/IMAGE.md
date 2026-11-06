@@ -33,8 +33,8 @@ listed under Supervisor Management → Namespaces): [ARGOCD.md](ARGOCD.md) keeps
 - [podman or docker](PREREQS.md#podman-and-docker-optional), [curl, jq and openssl](PREREQS.md),
   and [kubectl](KUBECTL.md);
 - the VKS cluster's kubeconfig, saved as `~/.kube/<cluster>.kubeconfig`: download it in the
-  vSphere Client ([LOGIN.md](LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client))
-  or with the VCF CLI ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)); steps 5 to 8 set
+  vSphere Client ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client))
+  or with the VCF CLI ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)); steps 5 to 8 set
   `VKS_CLUSTER` to that cluster's name;
 - one free load-balancer address, for the app (step 6).
 
@@ -703,7 +703,7 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 
 **If not:** `FAILED: the namespace … was not made` with `Unauthorized` above it: the login in the
 cluster's kubeconfig has expired; save it again
-([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), type the pull robot's secret again (the line
+([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)), type the pull robot's secret again (the line
 above the block) and run this block again. `FAILED: no pull robot secret in this terminal`: type
 it again, then run the block in the same terminal.
 
@@ -813,7 +813,7 @@ lines, `deployment "test-web-apps" successfully rolled out`, then
 `pods running your image: 5 of 5`.
 
 **If not:** `Unauthorized` (after `pull secret: none`): the login in the cluster's kubeconfig has
-expired; save it again ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), redo step 5 if you
+expired; save it again ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)), redo step 5 if you
 use the Secret, then run this block again.
 
 The wait ends with `exceeded its progress deadline` or times out: run `kubectl --kubeconfig
@@ -929,7 +929,7 @@ if ($LASTEXITCODE -eq 0) { Remove-Item -Recurse -Force -ErrorAction SilentlyCont
 
 **If not:** no `deleted harbor-demo and …` line: kubectl failed and the folder was kept. With
 `Unauthorized`, the login in the cluster's kubeconfig has expired: save it again
-([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)) and run this again.
+([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)) and run this again.
 
 The image built in step 3 stays on this machine: remove it with
 `podman rmi <your Harbor name>/<your project>/test-web-apps:v1-podman` (docker:

@@ -6,7 +6,7 @@
 > - [Installing the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/install-the-vcf-cli%283%29.html) (install the downloaded binary)
 > - [Installing the VCF CLI in Internet Restricted Environments](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/installing-the-vcf-cli-in-internet-restricted-environments%282%29.html) (the download and the plugin bundle)
 
-`vcf` is VMware's command-line tool; you use it to [log in to the Supervisor](LOGIN.md) (the
+`vcf` is VMware's command-line tool; you use it to [log in to the Supervisor](SUPERVISOR-LOGIN.md) (the
 Kubernetes control plane that vCenter runs when Workload Management is enabled; it holds your
 vSphere Namespaces). The plugin bundle adds its other commands (`vcf cluster`, `vcf addon`, …).
 You download two files from Broadcom, then run the install block; it needs no internet access.
@@ -74,6 +74,7 @@ then paste the whole block into the terminal.
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
+<!-- lab-step: vcf-install -->
 ```sh
 VCF_CLI_SHA256=""
 VCF_PLUGINS_SHA256=""
@@ -222,6 +223,7 @@ nothing.
 
 **Linux, macOS, WSL (bash or zsh):**
 
+<!-- lab-step: vcf-essentials -->
 ```sh
 case "$(uname -s)/${BASH_VERSION:+bash}" in
   Darwin/bash) RC="$HOME/.bash_profile" ;;
@@ -261,6 +263,7 @@ If you logged in with `vcf` before these guides, without `KUBECONFIG` set, see
 [If you already use kubectl with other clusters](KUBECONFIG.md#if-you-already-use-kubectl-with-other-clusters)
 first.
 
-Next: [Log in](LOGIN.md).
+Next: [Log in to the Supervisor](SUPERVISOR-LOGIN.md), or, given access to one VKS cluster,
+[USER-LOGIN.md](USER-LOGIN.md).
 
 Back to [README](../README.md).

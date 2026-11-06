@@ -33,7 +33,7 @@ blocks) and one that holds the VKS cluster (`VKS_NAMESPACE`). They can be the sa
 ## Prerequisites
 
 - a [vSphere Namespace](NAMESPACE.md) where your SSO user has the **Namespaces Edit** role, and a
-  [Supervisor login](LOGIN.md);
+  [Supervisor login](SUPERVISOR-LOGIN.md);
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md), and for steps 8 and 10.3 [curl](PREREQS.md);
 - for steps 2, 10.1, 10.2 and 11: a vCenter administrator;
 - three free load-balancer addresses: one for ArgoCD (step 3), one for the VKS cluster's API
@@ -63,7 +63,7 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 ## 1. Check for an ArgoCD you have
 
 Run this first, so you can skip the steps that are already done. It only reads, with your
-Supervisor login from LOGIN.md, and changes nothing: it checks whether the ArgoCD Service is
+Supervisor login from SUPERVISOR-LOGIN.md, and changes nothing: it checks whether the ArgoCD Service is
 installed on the Supervisor, whether your vSphere Namespace already runs its own ArgoCD, and
 whether ArgoCD's first `admin` password can still be read. You get one line for each thing found,
 and **Expect** says which step to go to. Set `ARGOCD_NAMESPACE` to the vSphere Namespace that runs
@@ -106,7 +106,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get secret argo
 - No `secret/…` line: someone changed the admin password and removed the first one. Ask them for
   the login.
 - `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
-  `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+  `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login).
 - `Failed` instead of `Ready`: after a service upgrade, run step 10.3; otherwise `kubectl
   --kubeconfig <Supervisor kubeconfig> -n <namespace> describe argocd <name>` shows why.
 
@@ -459,7 +459,7 @@ created` (`unchanged` on a second run). `configured` or `unchanged` on your firs
 else made them; stop and ask them.
 
 **If not:**
-- `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
+- `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then this
   block again.
 - `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
 
@@ -564,7 +564,7 @@ spec:
 **Expect:** `appproject.argoproj.io/vks-clusters created`.
 
 **If not:**
-- `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
+- `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then this
   block again.
 - `Forbidden`: your SSO user has no **Namespaces Edit** role on `ARGOCD_NAMESPACE`.
 
@@ -831,7 +831,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.clust
   namespace without room).
 
 ArgoCD changes this cluster only when you click **SYNC**; it does not recreate a cluster deleted
-elsewhere. To use the cluster, run [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig).
+elsewhere. To use the cluster, run [Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 ## 7. Add the VKS cluster to ArgoCD
 
@@ -1061,7 +1061,7 @@ administrator.
 
 **If not:**
 - `secrets "<cluster>-kubeconfig" not found`: check `VKS_CLUSTER` and `VKS_NAMESPACE`.
-- `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
+- `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then this
   block again.
 
 ### Add every VKS cluster of a namespace (optional)
@@ -1342,7 +1342,7 @@ name.
 Run this after the block above, to see the app run. It only reads, and shows ArgoCD's status for
 the app, how many of the five pods are ready, and whether its address answers. It needs the VKS
 cluster's kubeconfig file `~/.kube/<cluster>.kubeconfig` from
-[Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig). Run it again until
+[Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig). Run it again until
 it shows `5/5`: a minute or two.
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -1479,7 +1479,7 @@ prints two `NotFound` lines.
 **If not:**
 - `Error from server (NotFound)` for the Application: it is already gone, or `VKS_CLUSTER` is not
   its name.
-- `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
+- `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then this
   block again. `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
 
 Run this once the cluster is gone, to take back ArgoCD's rights in your vSphere Namespace. It
@@ -1567,7 +1567,7 @@ if ($LASTEXITCODE -eq 0) {
 **Expect:** up to four `… deleted` lines.
 
 **If not:** an error on the instance deletes nothing else.
-- `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then this
+- `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then this
   block again. `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
 - `timed out waiting`: the instance is still being removed; run the block again in a few minutes.
 - `the server doesn't have a resource type "argocd"`: the ArgoCD Service is removed, and the

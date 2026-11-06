@@ -18,7 +18,7 @@ the two ways:
   dl.k8s.io.
 
 After you log in,
-[match it to your cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
+[match it to your cluster's version](SUPERVISOR-LOGIN.md#match-kubectl-to-the-clusters-version-optional).
 
 ## Prerequisites
 
@@ -26,14 +26,14 @@ After you log in,
   [unzip (Photon OS: bsdtar) and openssl](PREREQS.md), the Supervisor's IP address or DNS name
   ([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca), step 1), and the
   vCenter CA from step 1 of
-  [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca).
+  [Create Supervisor context with CA](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 | from | to | port | for |
 |---|---|---|---|
 | your machine (laptop or jump box) | `dl.k8s.io` | 443 | From dl.k8s.io |
-| your machine (laptop or jump box) | vCenter | 443 | From the Supervisor: the vCenter CA ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca), step 1) |
+| your machine (laptop or jump box) | vCenter | 443 | From the Supervisor: the vCenter CA ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca), step 1) |
 | your machine (laptop or jump box) | the Supervisor's address | 443 | From the Supervisor |
 
 ## From dl.k8s.io
@@ -50,6 +50,7 @@ or set one such as `v1.37.1`.
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
+<!-- lab-step: kubectl -->
 ```sh
 KUBECTL_VERSION=""
 INSTALL_DIR="/usr/local/bin"
@@ -148,7 +149,7 @@ Remove-Item -Recurse -Force $TMP
 Before you run the block below, once on this machine:
 
 - The download checks the Supervisor's certificate against the vCenter CA, so first do step 1 of
-  [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca), including its
+  [Create Supervisor context with CA](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca), including its
   `mv` block (on Linux and macOS it needs only curl, unzip or bsdtar, and openssl).
 - On Windows, then trust that CA with
   `Import-Certificate -FilePath "$HOME\.kube\vcenter-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root`
@@ -161,7 +162,7 @@ the Supervisor's tool package, takes `kubectl` out of it and installs it like th
 works for amd64 Linux, macOS and Windows only. Afterwards you can type `kubectl` in this terminal,
 and the block prints its version. This `kubectl` has the Supervisor's version, which may be too old
 for your VKS cluster: after you log in,
-[match it to your cluster's version](LOGIN.md#match-kubectl-to-the-clusters-version-optional).
+[match it to your cluster's version](SUPERVISOR-LOGIN.md#match-kubectl-to-the-clusters-version-optional).
 Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name
 ([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca), step 1). Do the steps
 above first.
@@ -184,7 +185,7 @@ TMP="$(mktemp -d)"
 if [ -z "$P" ]; then
   echo "FAILED: no Supervisor kubectl for $(uname -s)/$(uname -m)"
 elif [ ! -f "$SUPERVISOR_CA" ] || [ ! -s "$SUPERVISOR_CA" ]; then
-  echo "FAILED: no vCenter CA at $SUPERVISOR_CA (LOGIN.md, Create Supervisor context with CA, step 1)"
+  echo "FAILED: no vCenter CA at $SUPERVISOR_CA (SUPERVISOR-LOGIN.md, Create Supervisor context with CA, step 1)"
 elif ! curl -fsS --connect-timeout 20 --speed-time 60 --cacert "$SUPERVISOR_CA" -o "$TMP/p.zip" "https://${SUPERVISOR_ENDPOINT}/wcp/plugin/${P}/vsphere-plugin.zip" \
      || ! { if command -v unzip >/dev/null 2>&1 || ! command -v bsdtar >/dev/null 2>&1; then unzip -oq "$TMP/p.zip" bin/kubectl -d "$TMP"; else bsdtar -xf "$TMP/p.zip" -C "$TMP" bin/kubectl; fi; }; then
   echo "FAILED: download from https://${SUPERVISOR_ENDPOINT}"
@@ -247,7 +248,7 @@ Remove-Item -Recurse -Force $TMP
 - `FAILED: no Supervisor kubectl for …` (Linux arm64): the Supervisor has none for this machine.
   Get dl.k8s.io unblocked and use [From dl.k8s.io](#from-dlk8sio).
 - `FAILED: no vCenter CA at …`: do step 1 of
-  [Create Supervisor context with CA](LOGIN.md#create-supervisor-context-with-ca) first, including
+  [Create Supervisor context with CA](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca) first, including
   its `mv` block.
 - `FAILED: download from …`: `SUPERVISOR_ENDPOINT` is wrong, or this machine cannot reach the
   Supervisor. The `curl:`, `unzip:` or `bsdtar:` line above it says which (in PowerShell, the message above
@@ -259,7 +260,7 @@ Remove-Item -Recurse -Force $TMP
   `softwareupdate --install-rosetta --agree-to-license`, then run the block again.
 - `note: …` and `WARNING: …` lines: as in [From dl.k8s.io](#from-dlk8sio).
 
-**Another vCenter's Supervisor:** use that vCenter's CA file (LOGIN.md, step 1) as
+**Another vCenter's Supervisor:** use that vCenter's CA file (SUPERVISOR-LOGIN.md, step 1) as
 `SUPERVISOR_CA`, and on Windows as `Import-Certificate`'s `-FilePath`.
 
 Back to [README](../README.md).

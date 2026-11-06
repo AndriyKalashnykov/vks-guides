@@ -23,8 +23,8 @@ read-only token can look, not change.
 ## Prerequisites
 
 - a VKS cluster ([CLUSTER.md](CLUSTER.md)) and its administrator kubeconfig
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
-- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
+  ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig));
+- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)),
   and the edit or owner role on the cluster's vSphere Namespace;
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md);
 - for the Kubescape plugin only (steps 11.2 and 12): [Helm](HELM.md);
@@ -75,7 +75,7 @@ Only for the Kubescape plugin (step 11):
 ## 1. Choose the Headlamp release (cluster administrator)
 
 Run this first: step 2 needs the name of a Headlamp release, and this lists the ones your Supervisor
-offers. The block first makes your Supervisor login (`SUPERVISOR_CONTEXT` from LOGIN.md) the active
+offers. The block first makes your Supervisor login (`SUPERVISOR_CONTEXT` from SUPERVISOR-LOGIN.md) the active
 one for the VCF CLI and in its kubeconfig file, and that stays after the block. It changes nothing
 else. Copy the release you choose for step 2.
 
@@ -86,7 +86,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   vcf addon available-releases list --addon-name headlamp
 fi
@@ -99,7 +99,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   vcf addon available-releases list --addon-name headlamp
 }
@@ -112,7 +112,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 - No `0.45.0` row: VKS on the Supervisor is older than 3.8. Release `0.42.0` does not support
   Kubernetes v1.37; use it only on a cluster with v1.33 to v1.36.
 - `Unable to read password from terminal` (Windows: `The handle is invalid`): [renew the Supervisor
-  login](LOGIN.md#renew-the-supervisor-login) and run this again.
+  login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login) and run this again.
 
 ## 2. Install cert-manager and Headlamp (cluster administrator)
 
@@ -139,7 +139,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   if ! command -v jq >/dev/null 2>&1; then
     echo "MISSING: jq (PREREQS.md)"
@@ -204,7 +204,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   $global:LASTEXITCODE = $null
   $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
@@ -267,7 +267,7 @@ installed in the cluster …`, `deployment.apps/headlamp condition met`, then th
 - `MISSING: kubectl`: install it ([KUBECTL.md](KUBECTL.md)), then run the block again; nothing was
   installed.
 - `FAILED: cannot read the cluster`: kubectl could not read the VKS cluster; the error above says
-  why (`Unauthorized`: [get its kubeconfig again](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+  why (`Unauthorized`: [get its kubeconfig again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)).
   Nothing was installed.
 - `STOPPED: … not the add-on`: someone installed cert-manager another way; use another cluster.
 - `FAILED: Headlamp did not reach the cluster` or `did not start`: `vcf addon install list
@@ -276,7 +276,7 @@ installed in the cluster …`, `deployment.apps/headlamp condition met`, then th
   'cert-manager.io/v1/Issuer'`: cert-manager was not ready yet; the add-on retries by itself within
   minutes.
 - `FAILED: … add-on` with `Forbidden`: you need the edit or owner role on the vSphere Namespace.
-- `FAILED: the VCF CLI`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+- `FAILED: the VCF CLI`: [renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login).
 - `EXTERNAL-IP` stays `<pending>`: the Supervisor has no free load balancer address. With the
   Foundation Load Balancer, the vSphere Client shows its range (not which addresses are free):
   **Supervisor Management** → **Supervisors** → your Supervisor → **Configure** → **Supervisor** →
@@ -467,13 +467,13 @@ The browser may ask again later, and does when the certificate changes (step 9).
 
 Everyone with a vCenter SSO login to the cluster pastes that login's token into Headlamp; Headlamp
 then has exactly that user's rights. You hold **Can edit** or **Owner** (Prerequisites), so you use
-6.1, and skip steps 1 and 2 of [ACCESS.md, "The person's own SSO
-account"](ACCESS.md#the-persons-own-sso-account). People with narrower rights from that section use
+6.1, and skip steps 1 and 2 of [ADMIN-GRANT-ACCESS.md, "The person's own SSO
+account"](ADMIN-GRANT-ACCESS.md#the-persons-own-sso-account). People with narrower rights from that section use
 6.2: send them steps 5, 6.2 and 7, with the address and the fingerprint from step 4, and the name
-of their namespace (ACCESS.md step 2); they need kubectl and jq (PREREQS.md).
+of their namespace (ADMIN-GRANT-ACCESS.md step 2); they need kubectl and jq (PREREQS.md).
 
 First log in to the cluster with your SSO user, as in
-[ACCESS.md](ACCESS.md#the-persons-own-sso-account) step 3 (VCF CLI) or its optional kubectl
+[USER-LOGIN.md](USER-LOGIN.md#2-log-in-with-the-vcf-cli) step 2 (VCF CLI) or its optional kubectl
 vSphere plugin steps, so that `~/.kube/<cluster>-<SSO_USER>.kubeconfig` holds the login. Set `SSO_USER`
 in the blocks below to the name that login used, letter for letter as in that login.
 The token works only for this cluster and ends 10 hours after that login; the length cannot be
@@ -514,11 +514,11 @@ if [ -z "$SSO_USER_OK" ]; then
 elif ! command -v jq >/dev/null 2>&1; then
   echo "MISSING: jq (PREREQS.md)"
 elif [ -z "$T" ] || [ -z "$E" ]; then
-  echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_USER_KUBECONFIG}; log in first (ACCESS.md)"
+  echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_USER_KUBECONFIG}; log in first (USER-LOGIN.md)"
 elif [ "$E" -le "$(date +%s)" ]; then
-  echo "ENDED: that login has ended; log in again (ACCESS.md)"
+  echo "ENDED: that login has ended; log in again (USER-LOGIN.md)"
 elif [ "${AUD#vmware-tes:vc:vns:k8s:}" = "$AUD" ] || [ -z "${AUD#vmware-tes:vc:vns:k8s:}" ]; then
-  echo "FAILED: this login is for the Supervisor, not ${VKS_CLUSTER}; log in to the cluster again (ACCESS.md)"
+  echo "FAILED: this login is for the Supervisor, not ${VKS_CLUSTER}; log in to the cluster again (USER-LOGIN.md)"
 elif [ "$ALL" != yes ] && [ "${ALL#no}" = "$ALL" ]; then
   echo "FAILED: the cluster did not answer with this login (${ALL:-no answer}); kubectl --kubeconfig ${VKS_USER_KUBECONFIG} get pods shows why"
 else
@@ -551,11 +551,11 @@ $ALL = "$(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth can-i '*' '*' -A 2>$nul
 if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
   "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: ${SSO_USER}"
 } elseif (-not $T -or -not $E) {
-  "FAILED: no SSO login for $VKS_CLUSTER in $VKS_USER_KUBECONFIG; log in first (ACCESS.md)"
+  "FAILED: no SSO login for $VKS_CLUSTER in $VKS_USER_KUBECONFIG; log in first (USER-LOGIN.md)"
 } elseif ($E -le [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) {
-  "ENDED: that login has ended; log in again (ACCESS.md)"
+  "ENDED: that login has ended; log in again (USER-LOGIN.md)"
 } elseif (-not $AUD.StartsWith('vmware-tes:vc:vns:k8s:') -or $AUD.Length -le 'vmware-tes:vc:vns:k8s:'.Length) {
-  "FAILED: this login is for the Supervisor, not $VKS_CLUSTER; log in to the cluster again (ACCESS.md)"
+  "FAILED: this login is for the Supervisor, not $VKS_CLUSTER; log in to the cluster again (USER-LOGIN.md)"
 } elseif ($ALL -ne 'yes' -and -not $ALL.StartsWith('no')) {
   "FAILED: the cluster did not answer with this login ($(if ($ALL) { $ALL } else { 'no answer' })); kubectl --kubeconfig $VKS_USER_KUBECONFIG get pods shows why"
 } else {
@@ -580,21 +580,21 @@ terminal; log out of Headlamp when you are done.
 
 **If not:**
 - `STOPPED: SSO_USER is …`: set `SSO_USER` to the full name with `@` and the domain, as in your login
-  (ACCESS.md step 3).
+  (USER-LOGIN.md step 2).
 - `FAILED: this login is for the Supervisor …`: the file's current login is the Supervisor's; log in
-  to the cluster again (ACCESS.md step 3).
+  to the cluster again (USER-LOGIN.md step 2).
 - `FAILED: the cluster did not answer …`: the command it names shows why.
-- `FAILED: no SSO login …`: check that `SSO_USER` is letter for letter as in your login (ACCESS.md
-  step 3), then run that login again. A login through an external identity provider
-  (ACCESS.md, `vcf pinniped-auth`) keeps no token in the file: use step 8.
-- `ENDED: …`: run the login in ACCESS.md again.
+- `FAILED: no SSO login …`: check that `SSO_USER` is letter for letter as in your login (USER-LOGIN.md
+  step 2), then run that login again. A login through an external identity provider
+  (ADMIN-GRANT-ACCESS-IDP.md, `vcf pinniped-auth`) keeps no token in the file: use step 8.
+- `ENDED: …`: run the login in USER-LOGIN.md again.
 
 ### 6.2 As a person with narrower rights (they run it)
 
-Someone who got rights on the cluster through [ACCESS.md, "The person's own SSO
-account"](ACCESS.md#the-persons-own-sso-account) uses this block. Headlamp then has exactly that
+Someone who got rights on the cluster through [ADMIN-GRANT-ACCESS.md, "The person's own SSO
+account"](ADMIN-GRANT-ACCESS.md#the-persons-own-sso-account) uses this block. Headlamp then has exactly that
 user's rights. The token ends 10 hours after the login; nobody can end it sooner, only take the
-user's rights away (ACCESS.md). This block stops for an administrator: use 6.1.
+user's rights away (ADMIN-GRANT-ACCESS.md). This block stops for an administrator: use 6.1.
 
 Run this when you want to open Headlamp, after the SSO login above: Headlamp needs your login's
 token, and this prints it for step 7. It reads the token from
@@ -631,11 +631,11 @@ elif [ "$POD" = bad ]; then
 elif ! command -v jq >/dev/null 2>&1; then
   echo "MISSING: jq (PREREQS.md)"
 elif [ -z "$T" ] || [ -z "$E" ]; then
-  echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_USER_KUBECONFIG}; log in first (ACCESS.md)"
+  echo "FAILED: no SSO login for ${VKS_CLUSTER} in ${VKS_USER_KUBECONFIG}; log in first (USER-LOGIN.md)"
 elif [ "$E" -le "$(date +%s)" ]; then
-  echo "ENDED: that login has ended; log in again (ACCESS.md)"
+  echo "ENDED: that login has ended; log in again (USER-LOGIN.md)"
 elif [ "${AUD#vmware-tes:vc:vns:k8s:}" = "$AUD" ] || [ -z "${AUD#vmware-tes:vc:vns:k8s:}" ]; then
-  echo "FAILED: this login is for the Supervisor, not ${VKS_CLUSTER}; log in to the cluster again (ACCESS.md)"
+  echo "FAILED: this login is for the Supervisor, not ${VKS_CLUSTER}; log in to the cluster again (USER-LOGIN.md)"
 elif [ "$ALL" != yes ] && [ "${ALL#no}" = "$ALL" ]; then
   echo "FAILED: the cluster did not answer with this login (${ALL:-no answer}); kubectl --kubeconfig ${VKS_USER_KUBECONFIG} get pods shows why"
 elif [ "$ALL" = yes ]; then
@@ -643,7 +643,7 @@ elif [ "$ALL" = yes ]; then
 else
   U="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
   if [ "${POD#no}" != "$POD" ]; then
-    echo "WARNING: ${U} has no rights in namespace ${TEAM_NAMESPACE}; Headlamp will show nothing there. Check TEAM_NAMESPACE, or ask your cluster administrator for ACCESS.md step 2"
+    echo "WARNING: ${U} has no rights in namespace ${TEAM_NAMESPACE}; Headlamp will show nothing there. Check TEAM_NAMESPACE, or ask your cluster administrator for ADMIN-GRANT-ACCESS.md step 2"
   elif [ "${NSL#no}" != "$NSL" ]; then
     echo "NOTE: in Headlamp, add ${TEAM_NAMESPACE} under Settings > Cluster > Allowed namespaces (step 7)"
   fi
@@ -674,11 +674,11 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
 } elseif ($POD -eq 'bad') {
   "STOPPED: TEAM_NAMESPACE is the namespace your cluster administrator sent you (a-z, 0-9, -): ${TEAM_NAMESPACE}"
 } elseif (-not $T -or -not $E) {
-  "FAILED: no SSO login for $VKS_CLUSTER in $VKS_USER_KUBECONFIG; log in first (ACCESS.md)"
+  "FAILED: no SSO login for $VKS_CLUSTER in $VKS_USER_KUBECONFIG; log in first (USER-LOGIN.md)"
 } elseif ($E -le [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) {
-  "ENDED: that login has ended; log in again (ACCESS.md)"
+  "ENDED: that login has ended; log in again (USER-LOGIN.md)"
 } elseif (-not $AUD.StartsWith('vmware-tes:vc:vns:k8s:') -or $AUD.Length -le 'vmware-tes:vc:vns:k8s:'.Length) {
-  "FAILED: this login is for the Supervisor, not $VKS_CLUSTER; log in to the cluster again (ACCESS.md)"
+  "FAILED: this login is for the Supervisor, not $VKS_CLUSTER; log in to the cluster again (USER-LOGIN.md)"
 } elseif ($ALL -ne 'yes' -and -not $ALL.StartsWith('no')) {
   "FAILED: the cluster did not answer with this login ($(if ($ALL) { $ALL } else { 'no answer' })); kubectl --kubeconfig $VKS_USER_KUBECONFIG get pods shows why"
 } elseif ($ALL -eq 'yes') {
@@ -686,7 +686,7 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
 } else {
   $U = kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}'
   if ($POD.StartsWith('no')) {
-    "WARNING: $U has no rights in namespace ${TEAM_NAMESPACE}; Headlamp will show nothing there. Check TEAM_NAMESPACE, or ask your cluster administrator for ACCESS.md step 2"
+    "WARNING: $U has no rights in namespace ${TEAM_NAMESPACE}; Headlamp will show nothing there. Check TEAM_NAMESPACE, or ask your cluster administrator for ADMIN-GRANT-ACCESS.md step 2"
   } elseif ($NSL.StartsWith('no')) {
     "NOTE: in Headlamp, add $TEAM_NAMESPACE under Settings > Cluster > Allowed namespaces (step 7)"
   }
@@ -708,7 +708,7 @@ terminal.
 - The `STOPPED: SSO_USER is …`, `FAILED: …` and `ENDED: …` lines: as in step 6.1.
 - `WARNING: … has no rights in namespace …`: check `TEAM_NAMESPACE` (the name your administrator
   sent you); if it is right, the administrator has not given you rights yet: send them the name in
-  that line for ACCESS.md step 2. Headlamp would show you nothing until then.
+  that line for ADMIN-GRANT-ACCESS.md step 2. Headlamp would show you nothing until then.
 - `STOPPED: TEAM_NAMESPACE is …`: set it to your namespace's name.
 
 ## 7. Log in to Headlamp with the token (each person, administrator included)
@@ -1011,7 +1011,7 @@ Run this only when you need one of its changes: a DNS name in Headlamp's certifi
 Headlamp's address in the certificate (`CERT_WITH_IP`), or the Kubescape plugin (step 11.2). Each
 change gives the add-on all of its settings at once: a setting left out goes back to its default. So
 this block always writes the three in the table above. The block first makes your Supervisor login
-(`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
+(`SUPERVISOR_CONTEXT` from SUPERVISOR-LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
 that stays after the block. It writes the three settings to
 `~/.config/vks-guides/headlamp/addon-values.yaml` and gives them to the add-on. A new certificate is
 made when the name or address changes; Headlamp reads it only when it starts, so the block then
@@ -1038,7 +1038,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   mkdir -p "$DIR"
   IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get service headlamp -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
@@ -1102,7 +1102,7 @@ function Served($Ip) {
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   New-Item -ItemType Directory -Force -Path $DIR | Out-Null
   $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n headlamp get service headlamp -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
@@ -1151,7 +1151,7 @@ not change), and `certificate for headlamp.example.com <address>, SHA-256 finger
 installs the plugin.
 
 **If not:** `NOT YET: …`: cert-manager has not made the new certificate yet; run the block again.
-`FAILED: the add-on`: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login). The
+`FAILED: the add-on`: [renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login). The
 rollout does not finish, a pod stays `Pending`: the workers lack free CPU (each restart briefly
 runs two Headlamp pods).
 
@@ -1168,7 +1168,7 @@ Contour's address.
 Run this first, because the DNS record in 10.2 needs Contour's address. This installs the Contour
 add-on with its own load balancer address, and turns off the ports it would otherwise open on every
 node. A Contour that is already installed is left as it is, so you may run it again. The block first
-makes your Supervisor login (`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and
+makes your Supervisor login (`SUPERVISOR_CONTEXT` from SUPERVISOR-LOGIN.md) the active one for the VCF CLI and
 in its kubeconfig file, and that stays after the block. It prints Contour's address for step 10.2.
 Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 2.
 
@@ -1186,7 +1186,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   mkdir -p "$DIR"
   printf 'envoy:\n  hostPorts:\n    enable: false\n  service:\n    type: LoadBalancer\n' > "$DIR/contour-values.yaml"
@@ -1232,7 +1232,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   New-Item -ItemType Directory -Force -Path $DIR | Out-Null
   [IO.File]::WriteAllText("$DIR\contour-values.yaml", "envoy:`n  hostPorts:`n    enable: false`n  service:`n    type: LoadBalancer`n")
@@ -1386,7 +1386,7 @@ deployments: the Prometheus plugin shows them only when the Prometheus add-on is
 This installs Broadcom's Prometheus add-on, without its Alertmanager and Pushgateway, which the
 plugin does not use. Headlamp notices it and restarts within a minute with the Prometheus plugin;
 the plugin finds Prometheus by itself. The block first makes your Supervisor login
-(`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
+(`SUPERVISOR_CONTEXT` from SUPERVISOR-LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
 that stays after the block. Run it again and it skips an installed Prometheus. Set `VKS_NAMESPACE`
 and `VKS_CLUSTER` as in step 2, and `PROMETHEUS_STORAGE` to the size of Prometheus's disk (the
 add-on's own default is 150Gi). Skip this on a cluster where you follow
@@ -1409,7 +1409,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   mkdir -p "$DIR"
   printf 'deploycomponents:\n  alertmanager: false\n  pushgateway: false\nprometheus:\n  pvc:\n    storage: %s\n' "$PROMETHEUS_STORAGE" > "$DIR/prometheus-values.yaml"
@@ -1450,7 +1450,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   New-Item -ItemType Directory -Force -Path $DIR | Out-Null
   [IO.File]::WriteAllText("$DIR\prometheus-values.yaml", "deploycomponents:`n  alertmanager: false`n  pushgateway: false`nprometheus:`n  pvc:`n    storage: $PROMETHEUS_STORAGE`n")
@@ -1709,7 +1709,7 @@ roles `headlamp-namespace-lister`, `headlamp-prometheus-query` and `headlamp-kub
 cert-manager, Prometheus, Contour and Kubescape stay; the lines after the block remove them. SSO
 tokens from step 6 keep working until they end. When it ends with `NOT YET`, run it again in a few
 minutes; a second run goes on where the first stopped. The block first makes your Supervisor login
-(`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
+(`SUPERVISOR_CONTEXT` from SUPERVISOR-LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
 that stays after the block. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 2.
 
 <details>
@@ -1724,7 +1724,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   if ! command -v jq >/dev/null 2>&1; then
     echo "MISSING: jq (PREREQS.md)"
@@ -1770,7 +1770,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   vcf addon install delete headlamp --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
   if ($LASTEXITCODE -ne 0) { "(not deleted; on a second run the add-on is already gone, so this goes on)" }
@@ -1811,7 +1811,7 @@ deleted; …)`, and `removed: …` again.
 
 **If not:** `NOT YET: …`: the add-on is still being removed; run the block again. `FAILED: cannot
 read the bindings`: the roles stay; check the kubeconfig and run the block again. An error about
-the login at the first line: [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+the login at the first line: [renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login).
 
 **Remove Kubescape.** Run this after the block above if you installed Kubescape for its plugin
 (step 11.2) and nothing else in the cluster uses it. It uninstalls Kubescape with Helm, then
@@ -1852,7 +1852,7 @@ line prints nothing when Helm already removed it.
 
 **If not:** `Release not loaded` or `NotFound`: that part was already removed; the lines after it
 still run. `Unauthorized` or no connection: run
-[Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
+[Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
 **Remove an add-on.** Run this after the blocks above only for an add-on that this guide's step
 put in (it printed `Addon '<name>' is being installed`, not `already installed`): Prometheus (step
@@ -1860,7 +1860,7 @@ put in (it printed `Addon '<name>' is being installed`, not `already installed`)
 still uses the add-on, and stops if something does or if it cannot tell: for cert-manager any
 certificate or issuer, for Contour any HTTPProxy or Ingress, for Prometheus VCF Operations'
 monitoring on the cluster (the Supervisor's label `automated-monitoring` is `enabled`). Only then
-it makes your Supervisor login (`SUPERVISOR_CONTEXT` from LOGIN.md) the active one for the VCF CLI
+it makes your Supervisor login (`SUPERVISOR_CONTEXT` from SUPERVISOR-LOGIN.md) the active one for the VCF CLI
 and in its kubeconfig file, which stays after the block, and asks the Supervisor to remove the
 add-on. You then have the cluster without that add-on. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in
 step 2, and `ADDON` to `prometheus`, `contour` or `cert-manager`.
@@ -1900,7 +1900,7 @@ else
     VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
     if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
       printf '%s\n' "$VCF_USE"
-      echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+      echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
     else
       vcf addon install delete "$ADDON" --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y
     fi
@@ -1946,7 +1946,7 @@ if (-not $KIND) {
     $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
     if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
       $VCF_USE
-      "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+      "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
     } else {
       vcf addon install delete $ADDON --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
     }
@@ -1963,11 +1963,11 @@ if (-not $KIND) {
   own guide's clean-up step).
 - `FAILED: cannot check what uses …` with `the server doesn't have a resource type`: the add-on's
   definitions are gone, so it is already removed. With `Unauthorized` or no connection: run
-  [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) or
-  [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login) first.
+  [Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) or
+  [renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login) first.
 - `Error: clusterAddon for addon <ADDON> … not found`: it is already removed.
 - `FAILED: the VCF CLI …` or `Unable to read password from terminal` (Windows: `The handle is
-  invalid`): [renew the Supervisor login](LOGIN.md#renew-the-supervisor-login) and run this again.
+  invalid`): [renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login) and run this again.
 - `Forbidden`: you need the edit or owner role on the vSphere Namespace.
 
 The files this guide saved stay in `~/.config/vks-guides/headlamp` (PowerShell:

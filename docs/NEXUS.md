@@ -36,7 +36,7 @@ Run the steps in order. Who does what:
 ## Prerequisites
 
 - a VKS cluster for Nexus, made as below;
-- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md)),
+- the [VCF CLI](VCF.md) with the context `SUPERVISOR_CONTEXT` ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)),
   for the cert-manager add-on (step 2), and the Supervisor kubeconfig
   `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` for step 11;
 - [kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md), and
@@ -66,7 +66,7 @@ The cluster for Nexus:
    ([CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)).
    To change its size later, see [CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional).
 3. Save its kubeconfig as `~/.kube/<cluster name>.kubeconfig`
-   ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)); it is `<file>` in the **If not:** lines.
+   ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)); it is `<file>` in the **If not:** lines.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 [its other hosts](PREREQS.md#registry-hosts-for-a-firewall)):
@@ -103,7 +103,7 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 WORKERS='!node-role.kubernetes.io/control-plane'
 if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
 elif ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
-elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (LOGIN.md)"
+elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"
 elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide \
      && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l "$WORKERS" --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu')" \
      && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu')" \
@@ -139,7 +139,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $global:LASTEXITCODE = $null; $MISS = $false
 if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
-elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
+elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
 else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
 if ($LASTEXITCODE -eq 0) { $N = @(kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu') }
 if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A '--field-selector=status.phase!=Succeeded,status.phase!=Failed' --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu') }
@@ -1589,7 +1589,7 @@ certificate:
 the cluster does not change yet. You get the Secret that the cluster's setting (below) points at.
 It needs the **Namespaces Edit** role on the vSphere Namespace. Set `VKS_NAMESPACE` to the
 cluster's vSphere Namespace and `VKS_CLUSTER` to the pulling cluster's name. Set
-`SUPERVISOR_CONTEXT` to the name of your Supervisor login from LOGIN.md.
+`SUPERVISOR_CONTEXT` to the name of your Supervisor login from SUPERVISOR-LOGIN.md.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1657,7 +1657,7 @@ twice, and keeps the Secret's other keys. You get the CA under the new key; then
 cluster <cluster name>` (it opens the cluster in a text editor; saving starts the node update,
 below). Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in the block above, and `NEXUS_CA_KEY` to a key the
 Secret does not have yet. Set `SUPERVISOR_CONTEXT` to the name of your Supervisor login from
-LOGIN.md.
+SUPERVISOR-LOGIN.md.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1736,7 +1736,7 @@ Supervisor, and stops if the cluster has that setting already. You get a cluster
 Nexus's CA once VKS has updated them. VKS updates every node: it replaces some and may update others
 in place (a cluster with one control-plane node and one worker had both replaced in about 5
 minutes), so pods move. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as above. Set `SUPERVISOR_CONTEXT` to
-the name of your Supervisor login from LOGIN.md.
+the name of your Supervisor login from SUPERVISOR-LOGIN.md.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1989,7 +1989,7 @@ this block with `-n default` changed.
 **If not:**
 - `FAILED: the Secret nexus-pull was not made` with `Unauthorized` or `provide credentials` above
   it: the login in `<file>` has expired; save the kubeconfig again
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)), type the password and run this block
+  ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)), type the password and run this block
   again.
 - `FAILED: the test pod was not made`: the cluster refused the pod; the error above says why.
 - `NO ANSWER: …`: the node did not try to pull in 2 minutes; check that the cluster's nodes are
@@ -2414,7 +2414,7 @@ if (-not $V) { "Nexus's volumes are gone" } else { "STILL THERE: $V" }
 **If not:** `STILL THERE: …`: `kubectl --kubeconfig <file> describe pv <name>` shows why. Do not
 delete the cluster until it is gone. `STILL THERE: (the check failed …)`: kubectl could not read the
 cluster; the error above says why (`Unauthorized`: the file has expired, [get it
-again](LOGIN.md#get-the-vks-clusters-kubeconfig)). Then run the block again.
+again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)). Then run the block again.
 
 **What stays:** VKS clusters that pull from Nexus can no longer do so; a new CA made by step 5 is a
 different CA: after a new install, give each pulling cluster the new CA under a new key (step 11,

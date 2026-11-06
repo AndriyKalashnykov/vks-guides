@@ -15,7 +15,7 @@
 > - [Supervisor Service Supported Input Parameters and Day 2 Alternations](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-harbor-as-vcf-service/using-harbor-as-a-vcf-service/supervisor-service-supported-input-parameters-and-day-2-alternations.html) (what each value allows after install)
 
 You install Harbor in the vSphere Client; the blocks before and after need
-[kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md) and a [Supervisor login](LOGIN.md).
+[kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md) and a [Supervisor login](SUPERVISOR-LOGIN.md).
 Written for VCF 9.1.1 and Harbor Service 2.15.2 on a Supervisor with vSphere Distributed Switch
 networking and the Foundation Load Balancer (not NSX). Upgrading Harbor is not covered.
 
@@ -26,19 +26,19 @@ runtimes. Do it before you create VKS clusters, or in a maintenance window.
 The blocks keep their files in `~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>` (PowerShell:
 `$HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT>`). Run them all on the same machine. Each
 Supervisor gets its own folder, named after `SUPERVISOR_CONTEXT`. `SUPERVISOR_CONTEXT` is the name
-of your Supervisor login from [LOGIN.md](LOGIN.md#create-supervisor-context-with-ca) (`supervisor`
+of your Supervisor login from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca) (`supervisor`
 unless you chose another); every block sets it, keep the same value in all of them.
 
 ## Prerequisites
 
 - a vCenter administrator's SSO user (it may manage Supervisor Services and read Secrets, Kubernetes'
-  stored passwords and keys, on the Supervisor), with a [Supervisor login](LOGIN.md) ([VCF CLI](VCF.md));
+  stored passwords and keys, on the Supervisor), with a [Supervisor login](SUPERVISOR-LOGIN.md) ([VCF CLI](VCF.md));
 - a Broadcom support account that can download **vSphere Supervisor Services**;
 - [kubectl](KUBECTL.md), [jq, curl and openssl](PREREQS.md); for step 13 on Windows, `openssl.exe`
   from [Git for Windows](https://git-scm.com/install/);
 - for step 10's podman or docker login (optional): [podman or docker](PREREQS.md#podman-and-docker-optional);
 - for step 11: a VKS cluster ([CLUSTER.md](CLUSTER.md)) and its kubeconfig
-  ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+  ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig));
 - a storage class with room for Harbor's five volumes: 58 GiB (about 62 GB) with step 4's sizes (images 50Gi,
   Trivy 5Gi, three of 1Gi; more if you raise them), and one free load-balancer address;
 - someone who can create a DNS record.
@@ -73,7 +73,7 @@ first.
 
 Run this first, before you install, and again whenever you come back to this guide. It asks the
 Supervisor, with your Supervisor login's file (`~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig`, from
-[LOGIN.md](LOGIN.md)), whether it already runs a Harbor, and changes nothing there. On this
+[SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)), whether it already runs a Harbor, and changes nothing there. On this
 machine it saves the Supervisor's ID in `supervisor-uid` (every later block checks it, so one
 Supervisor's files are never used on another) and, if no Harbor runs, leaves a small note: step 14
 reads that note before you uninstall, so you never remove a Harbor that someone else installed.
@@ -181,7 +181,7 @@ Harbor; the vSphere Client lists it with the vSphere Namespaces), then
 you need.
 
 **If not:**
-- `FAILED: …` under `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+- `FAILED: …` under `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login).
   Under `Forbidden`: log in as a vCenter administrator.
 - `namespace/svc-harbor-…` and `recorded: nothing …`: this Supervisor already runs a Harbor that
   you did not install. Use it, and do not install a second one.
@@ -192,7 +192,7 @@ you need.
     and run this block again. Delete the `.old-<date>` folder later, only once you know its Harbor is gone.
   - Otherwise this folder holds the files of the Supervisor that this context name was used for
     before. Log in to this Supervisor under another name
-    ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)) and set `SUPERVISOR_CONTEXT` to it in
+    ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca)) and set `SUPERVISOR_CONTEXT` to it in
     every block.
 - `FAILED: … holds Harbor files of an unknown Supervisor (…)`: the folder has Harbor's files but
   no `supervisor-uid`; nothing was written. If its hostname is this Supervisor's Harbor, run
@@ -405,7 +405,7 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get storageclass -o custom-columns=N
 **Expect:** one name per line, for example `wcp-vmfs`.
 
 **If not:** `error: You must be logged in to the server (Unauthorized)`: run [Renew the
-Supervisor login](LOGIN.md#renew-the-supervisor-login), then the block again.
+Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then the block again.
 
 ### Write the file
 
@@ -947,7 +947,7 @@ if ($LASTEXITCODE -ne 0 -or -not $SUP) {
 **Expect:** `copied to the clipboard`.
 
 **If not:**
-- `FAILED: …` under `Unauthorized`: run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login).
+- `FAILED: …` under `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login).
   `FAILED: … has no supervisor-uid …`: run step 1 first. `FAILED: … belongs to another
   Supervisor (…)`: see step 1's **If not**. Nothing was copied.
 - `No clipboard program here: …`: on a Debian or Ubuntu desktop install one (`sudo apt-get
@@ -1166,7 +1166,7 @@ else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n ($NS[0] -replace '^namespa
 
 **If not:**
 - `FAILED: cannot list …` under `Unauthorized`: run [Renew the Supervisor
-  login](LOGIN.md#renew-the-supervisor-login), then the block again.
+  login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then the block again.
 - `FAILED: Harbor namespaces …: ''`: the service is not installed (step 6); two names: see *Fix
   common problems*.
 - A volume that stays `Pending`: as in the list above the block.
@@ -1918,7 +1918,7 @@ An answer such as *not found*, *unauthorized* or *access denied* is the good res
 reached Harbor and trusted it. Any other answer names the problem. Set `VKS_CLUSTER` to the VKS
 cluster's name and `HARBOR_PROJECT` to your project. The block uses the cluster's kubeconfig (the
 file that lets kubectl reach it), `~/.kube/<VKS_CLUSTER>.kubeconfig`, from
-[LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig).
+[SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -2039,8 +2039,8 @@ spec:
 `OK: the nodes resolve <your Harbor name> and trust its certificate`.
 
 **If not:**
-- `FAILED: … is missing`: run step 4, or LOGIN.md's
-  [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig).
+- `FAILED: … is missing`: run step 4, or SUPERVISOR-LOGIN.md's
+  [Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
 - `DNS: …`: the DNS server the nodes use does not have the record (step 7).
 - `NAME: …`: the address answers with a certificate for another name: the DNS server the nodes
   use leads to another server (step 7's check uses your machine's DNS, not theirs), or Harbor's
@@ -2948,7 +2948,7 @@ says how to stop.
 
 | symptom | fix |
 |---|---|
-| `error: You must be logged in to the server (Unauthorized)`, or a block says Harbor is not installed right after it was | Run [Renew the Supervisor login](LOGIN.md#renew-the-supervisor-login), then the block again. |
+| `error: You must be logged in to the server (Unauthorized)`, or a block says Harbor is not installed right after it was | Run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then the block again. |
 | `Harbor namespaces on this Supervisor: '<two names>'` | One of them is still being removed after an uninstall: wait, then run the block again. |
 | **Validate** shows **Signature Verification** failed | The manifest is not Broadcom's file, or was edited: download it again (step 2). |
 | The paste into **YAML Service Config** is one long line, or the install fails with a YAML error | The clipboard lost the line breaks (some remote-desktop programs do that). Open `harbor-data-values.yml` in an editor on the browser's machine and copy from there. |
@@ -3122,7 +3122,7 @@ elseif (-not $BIND_HOSTNAME -or $BIND_HOSTNAME -cne $N) {
 
 **If not:**
 - The hostname is not this Supervisor's Harbor: the folder belongs to another Supervisor. Log in
-  to that one under its own `SUPERVISOR_CONTEXT` ([LOGIN.md](LOGIN.md#create-supervisor-context-with-ca)),
+  to that one under its own `SUPERVISOR_CONTEXT` ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca)),
   or move the folder aside (`mv ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT> ~/.config/vks-guides/harbor-<SUPERVISOR_CONTEXT>.old-<date>`;
   PowerShell: `Rename-Item $HOME\.config\vks-guides\harbor-<SUPERVISOR_CONTEXT> harbor-<SUPERVISOR_CONTEXT>.old-<date>`).
 - `FAILED: … already has a supervisor-uid`: the folder is bound already; run step 1, and see its

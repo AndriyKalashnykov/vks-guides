@@ -55,7 +55,7 @@ The blocks keep their files in `~/.config/vks-guides/observability` (PowerShell:
 ## Prerequisites
 
 - [MONITORING.md](MONITORING.md) steps 1 to 7, or steps 1 to 3 and 9, and [Helm](HELM.md);
-- the [VCF CLI](VCF.md) with its plugins and a [Supervisor login](LOGIN.md), for the Fluent Bit
+- the [VCF CLI](VCF.md) with its plugins and a [Supervisor login](SUPERVISOR-LOGIN.md), for the Fluent Bit
   add-on;
 - [kubectl](KUBECTL.md), [curl and jq](PREREQS.md);
 - 10 GiB more storage for Loki, inside the vSphere Namespace's storage limit, if one is set;
@@ -95,7 +95,7 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 ## 1. Check the cluster
 
 Run this first, to see that the cluster is ready for this guide. It reads the cluster through its
-kubeconfig from LOGIN.md (`~/.kube/<VKS_CLUSTER>.kubeconfig`) and changes nothing. Set
+kubeconfig from SUPERVISOR-LOGIN.md (`~/.kube/<VKS_CLUSTER>.kubeconfig`) and changes nothing. Set
 `VKS_CLUSTER` to the VKS cluster's name. It checks two things the later steps depend on:
 
 - Grafana from MONITORING.md runs with its helper that loads new data sources (step 8 uses it
@@ -631,12 +631,12 @@ EOF
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   if [ -n "$BAD_NAME" ]; then
     echo "FAILED: set LOGS_FQDN to Log Management's DNS name (LOGGING.md step 3), or leave it empty"
   elif ! kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw /version >/dev/null; then
-    echo "FAILED: cannot reach the VKS cluster; get its kubeconfig again (LOGIN.md)"
+    echo "FAILED: cannot reach the VKS cluster; get its kubeconfig again (SUPERVISOR-LOGIN.md)"
   elif kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit >/dev/null 2>&1; then
     MOUNTS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit \
     -o jsonpath='{.spec.template.spec.volumes[*].secret.secretName}' 2>/dev/null || true)"
@@ -718,7 +718,7 @@ if ($LOGS_FQDN) {
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   $OK = $true
   if ($LOGS_FQDN -and ($LOGS_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $LOGS_FQDN -eq 'logs.example.test')) {
@@ -727,7 +727,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   }
   if ($OK) {
     kubectl --kubeconfig $VKS_KUBECONFIG get --raw /version | Out-Null
-    if ($LASTEXITCODE -ne 0) { "FAILED: cannot reach the VKS cluster; get its kubeconfig again (LOGIN.md)"; $OK = $false }
+    if ($LASTEXITCODE -ne 0) { "FAILED: cannot reach the VKS cluster; get its kubeconfig again (SUPERVISOR-LOGIN.md)"; $OK = $false }
   }
   if ($OK) {
     kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging get daemonset fluent-bit 2>$null | Out-Null
@@ -1288,7 +1288,7 @@ For this step you need:
 
 - a vCenter administrator for steps 11.1 to 11.4, and for step 11.5 the Supervisor's kubeconfig
   of a user with the Edit role on the vSphere Namespace (or of a vCenter administrator)
-  ([LOGIN.md](LOGIN.md)), saved as `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` (PowerShell:
+  ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)), saved as `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` (PowerShell:
   `$HOME\.kube\<SUPERVISOR_CONTEXT>.kubeconfig`);
 - a Broadcom support portal account for the download;
 - a Supervisor that reaches `projects.packages.broadcom.com`;
@@ -1376,7 +1376,7 @@ with an empty `AUTOMATED-MONITORING` column, or `disabled`.
 
 **If not:**
 - `FAILED: …` under `Unauthorized`: run [Renew the Supervisor
-  login](LOGIN.md#renew-the-supervisor-login). Under `Forbidden`: log in as a vCenter administrator.
+  login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login). Under `Forbidden`: log in as a vCenter administrator.
 - `namespace/svc-metrics-aggregator-…` and `recorded: nothing …`: the service is already
   installed. Skip to step 11.5.
 
@@ -1591,7 +1591,7 @@ the Supervisor already labelled), then both `successfully rolled out`.
 
 **If not:**
 - `FAILED: cannot read the VKS cluster`: run
-  [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
+  [Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 - `FAILED: this cluster runs MONITORING.md from before …`: do what it says, then run this again.
 - `must have value 'enabled' or 'disabled'`: the label value is lowercase only.
 - `Forbidden`: log in to the Supervisor as a user with the Edit role on the vSphere Namespace, or
@@ -1965,7 +1965,7 @@ if ($LASTEXITCODE -eq 0 -and $SUP) {
 **Expect:** `record removed`.
 
 **If not:** `FAILED: cannot read the Supervisor` under `Unauthorized`: run [Renew the Supervisor
-login](LOGIN.md#renew-the-supervisor-login), then this block again. Under `Forbidden`: log in as a
+login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then this block again. Under `Forbidden`: log in as a
 vCenter administrator.
 
 What stays behind: the add-on records (AddonInstalls) in `vmware-system-vks-public` on the

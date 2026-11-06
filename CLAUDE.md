@@ -3,18 +3,21 @@
 Copy-paste how-to guides for VMware vSphere Kubernetes Service (VKS), VCF 9.x. README.md links six
 group pages (docs/GET-STARTED.md, ACCESS-SIGN-IN.md, CLUSTERS.md, IMAGES.md, GITOPS-CICD.md, OPERATE.md);
 each lists its guides, the order to follow and its "Tested on" rows (a new guide gets a row in its
-group's two tables). The guides in docs/: PREREQS.md, KUBECTL.md, VCF.md, LOGIN.md, ACCESS.md, ACCESS-IDP.md, KUBECONFIG.md, KEYCLOAK.md, KEYCLOAK-VKS.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md, NEXUS.md,
+group's two tables). The guides in docs/: PREREQS.md, KUBECTL.md, VCF.md, SUPERVISOR-LOGIN.md, USER-LOGIN.md, ADMIN-GRANT-ACCESS.md, ADMIN-GRANT-ACCESS-IDP.md, KUBECONFIG.md, KEYCLOAK.md, KEYCLOAK-VKS.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md, NEXUS.md,
 GITEA.md, TEKTON.md, GITLAB.md, CICD.md, OCTOPUS.md, ADDONS.md, HEADLAMP.md, HELM.md, MONITORING.md, LOGGING.md, OBSERVABILITY.md (screenshots in
 docs/img/). Readers paste
 blocks; there is nothing to build.
 
 ## Rules
 
+- LOGIN.md, ACCESS.md and ACCESS-IDP.md are moved-guide stubs: a title, one line naming the new
+  guide, and links from the old sections to their new homes; no NOTE, Prerequisites, blocks or
+  Tested on row; not in the guide list or on group pages.
 - No Makefile, mise, env file or helper script. Each block sets the variables it uses at its top
   and works on its own; never rely on a variable from an earlier block. The one exception is
   IMAGE-DOCKER.md (owner's choice): a short docker-on-Linux walkthrough whose blocks share the
   values of its first block, run in one terminal, with no error handling, no block labels, no
-  download timeouts, and plain `kubectl` (the terminal's default kubeconfig, set by LOGIN.md's *Make
+  download timeouts, and plain `kubectl` (the terminal's default kubeconfig, set by SUPERVISOR-LOGIN.md's *Make
   it the default in this terminal* in each new terminal, no `--kubeconfig`); a
   `kubectl config current-context` line comes before each block that changes the cluster. Its
   blocks still get **Expect:** and **If not:**.
@@ -115,7 +118,7 @@ blocks; there is nothing to build.
 - A behaviour change is run for real before README's "Tested on" table claims it. On the owner's
   nested-vsphere-lab the agent logs in itself, only through that checkout's make targets, which read
   the lab's own secrets, so it never handles the password and never asks the owner. On this host
-  the guides' login is the VCF CLI context `supervisor` recording LOGIN.md's file
+  the guides' login is the VCF CLI context `supervisor` recording SUPERVISOR-LOGIN.md's file
   `~/.kube/supervisor.kubeconfig` (check: `yq '.contexts[] | select(.name=="supervisor") |
   .clusterOpts.path' ~/.config/vcf/config.yaml`). Renew it with `make vcf-context-refresh
   VCF_REFRESH_CONTEXT=supervisor`; it sends nothing while the token has more than 5 minutes left.
@@ -128,7 +131,7 @@ blocks; there is nothing to build.
   VCF_CONTEXT=supervisor` (they overwrite the lab's own kubeconfig), or any `vcf context refresh`
   not run through `make vcf-context-refresh` (vcf writes the file `KUBECONFIG` names,
   `~/.kube/config` when unset, and re-records it). `make walkbox-login
-  WALKBOX_OS=ubuntu|photon|almalinux|windows` logs a walkbox in (LOGIN.md's files:
+  WALKBOX_OS=ubuntu|photon|almalinux|windows` logs a walkbox in (SUPERVISOR-LOGIN.md's files:
   `~/.kube/supervisor.kubeconfig`, context `supervisor`); use it whenever a walkbox run needs the
   SSO password (one attempt per run: mind the lock-out).
 - Coordinate every lab use with the nested-vsphere-lab session (find it with ListAgents, message

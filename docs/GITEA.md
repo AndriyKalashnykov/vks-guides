@@ -22,7 +22,7 @@ The blocks keep their files in `~/.config/vks-guides/gitea` (PowerShell:
 ## Prerequisites
 
 - a VKS cluster with a default storage class and the workers below ([CLUSTER.md](CLUSTER.md)),
-  and its kubeconfig ([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig));
+  and its kubeconfig ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig));
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md), [git](https://git-scm.com/install/), and for
   step 4 option B [Helm](HELM.md);
 - for step 8, one free load-balancer address.
@@ -54,7 +54,7 @@ its nodes (the cluster's VMs) are `Ready`, which storage class the cluster uses 
 vSphere storage policy that Gitea's volume comes from), and that the cluster has no `gitea`
 namespace yet (a namespace inside the VKS cluster, which step 2 creates). Set `VKS_CLUSTER` to your
 VKS cluster's name; the block reads its kubeconfig from `.kube` in your home folder
-([LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig)).
+([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -111,7 +111,7 @@ if ($LASTEXITCODE -eq 0) {
 - `gitea namespace: 1` before you ran step 2: the cluster already has a `gitea` namespace. Use
   another cluster, or remove it with step 9 if it is an earlier run of this guide.
 - `FAILED: cannot read the cluster`: run
-  [Get the VKS cluster's kubeconfig](LOGIN.md#get-the-vks-clusters-kubeconfig) first.
+  [Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) first.
 
 ## 2. Create the namespace
 
@@ -161,7 +161,7 @@ metadata:
 **Expect:** `namespace/gitea created` (`unchanged` on a second run).
 
 **If not:** `Forbidden`: your kubeconfig is not the cluster's administrator; use the one from
-[LOGIN.md](LOGIN.md#get-the-vks-clusters-kubeconfig).
+[SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
 
 ## 3. Create Gitea's keys
 
@@ -1228,7 +1228,7 @@ foreach ($i in 1..36) {
 
 **If not:**
 - `volumes left from gitea: unknown`: kubectl could not read the volumes. Fix the error above
-  (often an expired login: [LOGIN.md](LOGIN.md)), then run this again.
+  (often an expired login: [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)), then run this again.
 - `volumes left from gitea:` more than 0: the storage class keeps volumes (step 1 printed
   `reclaim Retain`). Delete them with `kubectl --kubeconfig <the VKS kubeconfig> delete pv <name>`
   when you no longer need the data.

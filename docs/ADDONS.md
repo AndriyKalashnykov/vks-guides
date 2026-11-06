@@ -30,7 +30,7 @@ The steps:
 ## Prerequisites
 
 - for steps 1 and 2: the [VCF CLI](VCF.md) with your Supervisor login (the VCF CLI context
-  `SUPERVISOR_CONTEXT`, made in [LOGIN.md](LOGIN.md)).
+  `SUPERVISOR_CONTEXT`, made in [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)).
 - for step 2: a VKS cluster ([CLUSTER.md](CLUSTER.md)), and the names of its vSphere Namespace and
   of the cluster.
 
@@ -96,7 +96,7 @@ changes](KUBECONFIG.md#what-each-vcf-context-command-changes)), then lists the a
 Supervisor's catalog, with a short description of each; it changes nothing on the Supervisor or in
 any VKS cluster. You then have the add-on names, such as `cert-manager`, that the guides in [Add-ons
 in these guides](#add-ons-in-these-guides) install; running it again only lists them again. Set
-`SUPERVISOR_CONTEXT` to the name of your Supervisor login from [LOGIN.md](LOGIN.md) (`supervisor`
+`SUPERVISOR_CONTEXT` to the name of your Supervisor login from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md) (`supervisor`
 unless you chose another name).
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -106,7 +106,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   vcf addon available list
 fi
@@ -119,7 +119,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   vcf addon available list
 }
@@ -129,7 +129,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 management` and `headlamp  Web UI for Kubernetes (Headlamp).`.
 
 **If not:** `Unable to read password from terminal` (Windows: `The handle is invalid`): your login
-has ended; [renew it](LOGIN.md#renew-the-supervisor-login) and run this again.
+has ended; [renew it](SUPERVISOR-LOGIN.md#renew-the-supervisor-login) and run this again.
 
 ## 2. See what a cluster has
 
@@ -141,7 +141,7 @@ Supervisor or in the cluster. You then have a row per add-on: whether it is read
 may remove or upgrade it with `vcf addon`; if an add-on a guide needs is not listed, that guide
 installs it. Set `VKS_NAMESPACE` to the vSphere Namespace that holds the cluster (its name in
 vCenter), `VKS_CLUSTER` to the VKS cluster's name, and `SUPERVISOR_CONTEXT` to the name of your
-Supervisor login from [LOGIN.md](LOGIN.md) (`supervisor` unless you chose another name). For a
+Supervisor login from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md) (`supervisor` unless you chose another name). For a
 second cluster, change `VKS_CLUSTER` and `VKS_NAMESPACE` and run it again.
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -154,7 +154,7 @@ SUPERVISOR_CONTEXT="supervisor"
 VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
 if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
-  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"
 fi
@@ -170,7 +170,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $VCF_USE = ($null | vcf context use $SUPERVISOR_CONTEXT 2>&1 | ForEach-Object { "$_" }) -join "`n"
 if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT}'")) {
   $VCF_USE
-  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (LOGIN.md), then run this again"
+  "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE
 }
@@ -184,7 +184,7 @@ cluster may show only `NotAllowed` rows. The core add-ons are not listed; `--sho
 them.
 
 **If not:** `Unable to read password from terminal` (Windows: `The handle is invalid`): [renew your
-login](LOGIN.md#renew-the-supervisor-login) and run this again. A `READY` that stays `False`:
+login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login) and run this again. A `READY` that stays `False`:
 `vcf addon install get <name> --cluster-name <your cluster> -n <your vSphere Namespace>` shows
 why.
 
