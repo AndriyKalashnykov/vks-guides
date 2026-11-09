@@ -101,7 +101,7 @@ log in with the kubectl vSphere plugin instead
 ### 1. Give the person a role on the vSphere Namespace (vCenter administrator)
 
 Give the person's SSO user the **Can view** role (**Namespaces View**) on the vSphere Namespace
-([NAMESPACE.md](NAMESPACE.md) step 4). Not **Can edit** or **Owner**: those make them an
+([NAMESPACE.md](NAMESPACE.md#4-give-users-a-role) step 4). Not **Can edit** or **Owner**: those make them an
 administrator of every VKS cluster in the namespace. Then send the person the Supervisor's
 address, the vSphere Namespace's and the cluster's names, and the vCenter CA file
 ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca), step 1), and send the cluster
@@ -175,7 +175,7 @@ The person uses the login with [USER-LOGIN.md](USER-LOGIN.md)'s
 - Cluster administrator: delete the RoleBinding from step 2 (`kubectl --kubeconfig <admin file> -n
   team-a delete rolebinding sso-alice-vsphere.local-edit`); it stops at once.
 - vCenter administrator: remove the person's role on the vSphere Namespace
-  ([NAMESPACE.md](NAMESPACE.md) step 4), and disable the SSO user if they should lose vCenter as
+  ([NAMESPACE.md](NAMESPACE.md#4-give-users-a-role) step 4), and disable the SSO user if they should lose vCenter as
   well.
 
 If the person's check in [USER-LOGIN.md step 3](USER-LOGIN.md#3-use-the-login) still answers `yes`

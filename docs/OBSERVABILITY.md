@@ -62,7 +62,7 @@ The blocks keep their files in `~/.config/vks-guides/observability` (PowerShell:
 - for step 11, what [its
   list](#11-let-vcf-operations-collect-the-clusters-kubernetes-metrics-optional) names.
 
-**The VKS cluster to make.** The cluster from [MONITORING.md](MONITORING.md), one control-plane
+**The VKS cluster to make.** The cluster from [MONITORING.md](MONITORING.md#prerequisites), one control-plane
 node and one worker, both `best-effort-medium` (2 CPUs, 8 GB), is enough for
 this guide and its sample app. This guide's pods reserve about 0.4 CPU and 0.7 GiB of memory on the
 worker, Fluent Bit's 0.2 CPU and 256 MiB included; Fluent Bit reserves the same on the
@@ -362,7 +362,7 @@ Remove-Item -Force -ErrorAction SilentlyContinue "$CHART.new"
 - `FAILED: helm install` after `client connection lost` and lines ending in `not ready`: the
   connection to the cluster dropped while Helm waited. Run the block again.
 - The volume stays `Pending`: no default storage class, or no room under the vSphere
-  Namespace's storage limit ([NAMESPACE.md](NAMESPACE.md) step 7).
+  Namespace's storage limit ([NAMESPACE.md](NAMESPACE.md#7-set-a-storage-limit-optional-and-check-the-status) step 7).
 
 ## 4. Install Jaeger
 

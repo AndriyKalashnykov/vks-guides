@@ -379,7 +379,7 @@ renames that file), then `runs: vcf pinniped-auth` and `saved …`.
   file; the file you had is unchanged.
 - `FAILED: … is as it was`, under a `mv` or `Move-Item` error: the file could not be replaced (the
   error says why); the new one stays as `….new`.
-- No answer for minutes: the cluster is not ready yet ([CLUSTER.md](CLUSTER.md)), or your role
+- No answer for minutes: the cluster is not ready yet ([CLUSTER.md](CLUSTER.md#6-wait-for-the-cluster)), or your role
   cannot read the cluster's details; ask for **Can edit**.
 
 Send the people the file, the namespace from step 3 and the cluster's address (the file's `server:`

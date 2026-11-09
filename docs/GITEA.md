@@ -107,7 +107,7 @@ if ($LASTEXITCODE -eq 0) {
   ([git-scm.com](https://git-scm.com/install/); on AlmaLinux 10, `sudo dnf install -y git`; on
   Photon OS 5, `sudo tdnf install -y git`), open a new terminal, and run this again. On macOS,
   `git` may open a dialog that installs the Command Line Tools; let it finish.
-- `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
+- `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md#7-get-the-kubeconfig-and-check-the-cluster) step 7.
 - `gitea namespace: 1` before you ran step 2: the cluster already has a `gitea` namespace. Use
   another cluster, or remove it with step 9 if it is an earlier run of this guide.
 - `FAILED: cannot read the cluster`: run
@@ -233,7 +233,7 @@ then steps 2 and 3, first: they keep their data differently, and nothing carries
 
 Both blocks read the cluster's Service address range (the internal addresses the cluster gives its
 Services, the fixed addresses of programs inside it), so that Gitea may call build tools inside the
-cluster later ([CICD.md](CICD.md) step 7). On a cluster older than Kubernetes v1.33, which cannot
+cluster later ([CICD.md](CICD.md#7-build-on-every-push) step 7). On a cluster older than Kubernetes v1.33, which cannot
 show it, set `SERVICE_RANGE` to the range the cluster was created with (CLUSTER.md: `10.96.0.0/12`).
 
 ### A. With this guide's YAML (recommended)
@@ -1228,7 +1228,7 @@ foreach ($i in 1..36) {
 
 **If not:**
 - `volumes left from gitea: unknown`: kubectl could not read the volumes. Fix the error above
-  (often an expired login: [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)), then run this again.
+  (often an expired login: [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)), then run this again.
 - `volumes left from gitea:` more than 0: the storage class keeps volumes (step 1 printed
   `reclaim Retain`). Delete them with `kubectl --kubeconfig <the VKS kubeconfig> delete pv <name>`
   when you no longer need the data.

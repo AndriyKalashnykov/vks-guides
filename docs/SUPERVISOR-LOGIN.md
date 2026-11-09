@@ -1073,6 +1073,6 @@ $V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o jso
 To let someone else work in the VKS cluster without its administrator file, give them access
 with [ADMIN-GRANT-ACCESS.md](ADMIN-GRANT-ACCESS.md); they log in with
 [USER-LOGIN.md](USER-LOGIN.md). Which kubeconfig files may be handed over:
-[KUBECONFIG.md](KUBECONFIG.md).
+[KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over).
 
 Back to [README](../README.md).

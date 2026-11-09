@@ -24,7 +24,7 @@ other steps are the same, and where their blocks set `GIT_SERVER="gitea"`, chang
 
 | | With Gitea and Tekton | With GitLab |
 |---|---|---|
-| done first | [HARBOR.md](HARBOR.md) 1-9; [ARGOCD.md](ARGOCD.md) 1-4; a VKS cluster from [ARGOCD.md](ARGOCD.md) 5 and 6, or from [CLUSTER.md](CLUSTER.md); [ARGOCD.md](ARGOCD.md) 7; [GITEA.md](GITEA.md) 1-8; [TEKTON.md](TEKTON.md) 1 and 2 (A) or 1 and 3 (B) | [HARBOR.md](HARBOR.md) 1-9; a VKS cluster from [CLUSTER.md](CLUSTER.md) step 9 with the `workers:` part below; [ARGOCD.md](ARGOCD.md) 1-4 and 7; [GITLAB.md](GITLAB.md) 1-8 |
+| done first | [HARBOR.md](HARBOR.md) 1-9; [ARGOCD.md](ARGOCD.md) 1-4; a VKS cluster from [ARGOCD.md](ARGOCD.md#5-let-argocd-manage-your-vsphere-namespace) 5 and 6, or from [CLUSTER.md](CLUSTER.md); [ARGOCD.md](ARGOCD.md#7-add-the-vks-cluster-to-argocd) 7; [GITEA.md](GITEA.md) 1-8; [TEKTON.md](TEKTON.md) 1 and 2 (A) or 1 and 3 (B) | [HARBOR.md](HARBOR.md) 1-9; a VKS cluster from [CLUSTER.md](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file) step 9 with the `workers:` part below; [ARGOCD.md](ARGOCD.md) 1-4 and 7; [GITLAB.md](GITLAB.md) 1-8 |
 | builds in | namespace `cicd-ci` | namespace `gitlab-runner` (GITLAB.md's runner) |
 | writes back from | a Tekton Task with a Gitea bot user's token | a second, locked runner with a project access token |
 | starts on a push | a signed Gitea webhook (step 7) | by itself |
@@ -50,11 +50,11 @@ The blocks keep their files in `~/.config/vks-guides/cicd` (PowerShell:
   ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)) and your Supervisor kubeconfig;
 - with GitLab, a worker with its own disk for container images: on a worker's default disk (about
   15 GiB, whatever its VM class), GitLab and the build filled it and GitLab was evicted. Make the
-  cluster with [CLUSTER.md](CLUSTER.md) step 9 and the `workers:` part below, then do the table's
+  cluster with [CLUSTER.md](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file) step 9 and the `workers:` part below, then do the table's
   steps that use the cluster on it. Adding the disk to an existing cluster was not tested.
-- the Git server's port-forward running in its own terminal ([GITEA.md](GITEA.md) step 6, or
-  [GITLAB.md](GITLAB.md) step 5) and its load-balancer address ([GITEA.md](GITEA.md) step 8, or
-  [GITLAB.md](GITLAB.md) step 7). On a jump box over SSH, start that port-forward in the `ssh -L`
+- the Git server's port-forward running in its own terminal ([GITEA.md](GITEA.md#6-open-gitea) step 6, or
+  [GITLAB.md](GITLAB.md#5-open-gitlab) step 5) and its load-balancer address ([GITEA.md](GITEA.md#8-let-other-machines-clone-optional) step 8, or
+  [GITLAB.md](GITLAB.md#7-let-other-machines-clone-optional) step 7). On a jump box over SSH, start that port-forward in the `ssh -L`
   session its step's **From a jump box over SSH** describes; with GitLab, steps 6 and 8 open its
   pages in your laptop's browser through it. Run this guide's blocks in one other terminal (on a
   jump box: a plain `ssh`, without `-L`).
@@ -193,14 +193,14 @@ Namespace>` among the names.
 - `FAILED: … is missing`: run this on the machine where you did HARBOR.md, or copy that folder
   here.
 - `FAILED: … has no supervisor-uid` or `… belongs to another Supervisor (…)`: `SUPERVISOR_CONTEXT`
-  must name the Supervisor that Harbor runs on; see [HARBOR.md](HARBOR.md) step 1.
-- `Harbor <name>:` other than `200`: see [HARBOR.md](HARBOR.md) step 9.
+  must name the Supervisor that Harbor runs on; see [HARBOR.md](HARBOR.md#1-check-the-supervisor) step 1.
+- `Harbor <name>:` other than `200`: see [HARBOR.md](HARBOR.md#9-save-harbors-ca-and-log-in) step 9.
 - A `0` for your Git server, or `Tekton Triggers objects:` under 3 with Gitea and Tekton: do its
   guide first (the table above); for Tekton, [TEKTON.md](TEKTON.md) step 1, then step 2 (A) or
   step 3 (B).
 - `namespace cicd-demo: 1`: an earlier run of this guide is still there; remove it with step 9.
-- `ArgoCD destinations:` empty, or an error before it: log in again ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)), or add
-  the cluster with [ARGOCD.md](ARGOCD.md) step 7. If the cluster is there under another name, put
+- `ArgoCD destinations:` empty, or an error before it: log in again ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#renew-the-supervisor-login)), or add
+  the cluster with [ARGOCD.md](ARGOCD.md#7-add-the-vks-cluster-to-argocd) step 7. If the cluster is there under another name, put
   that name in step 5's `DESTINATION`.
 
 ## 2. Create the namespaces
@@ -1408,7 +1408,7 @@ kubectl --kubeconfig $VKS_KUBECONFIG -n cicd-demo get pods --no-headers -o 'cust
   means a file in `deploy` names another namespace or kind.
 - `page at …: nothing` and pods `ErrImagePull`: see `kubectl --kubeconfig <the VKS kubeconfig> -n
   cicd-demo describe pods`; `unauthorized` points at `harbor-pull` (step 3), `x509` at the nodes'
-  trust of Harbor ([HARBOR.md](HARBOR.md) steps 8 and 11).
+  trust of Harbor ([HARBOR.md](HARBOR.md#8-check-that-the-vks-cluster-nodes-were-updated) steps 8 and 11).
 - `FAILED: no load-balancer address`: do GITEA.md step 8 or GITLAB.md step 7.
 
 ## 6. Build it once
@@ -2731,7 +2731,7 @@ back to …` and `group cicd: none`; Harbor `404`.
   secret harbor-push` and `… delete configmap harbor-ca`); step 3 would otherwise keep the expired
   robot.
 - `FAILED: the Application is still there` after `timed out waiting for the condition`: ArgoCD
-  cannot reach the cluster or cannot delete the app. See [ARGOCD.md](ARGOCD.md) step 9's **If not**,
+  cannot reach the cluster or cannot delete the app. See [ARGOCD.md](ARGOCD.md#9-clean-up-optional) step 9's **If not**,
   then run this again.
 - `Harbor cicd-demo: 412`: the project still holds something; delete it in Harbor's web page
   (**Projects** → `cicd-demo`), then run this again.

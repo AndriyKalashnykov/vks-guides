@@ -193,7 +193,7 @@ Pick one:
    ```
 
    **Expect:** a path like `/mnt/c/Users/<you>/Downloads`. Use it as `DOWNLOAD_DIR` in
-   [Install the VCF CLI](VCF.md).
+   [Install the VCF CLI](VCF.md#2-install-vcf-and-its-plugins).
 
    **If not:** an `ls` error instead of a path: run this in the Ubuntu terminal of step 2, or find
    the folder under `/mnt/c/Users/`.

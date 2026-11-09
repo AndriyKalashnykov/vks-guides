@@ -152,7 +152,7 @@ if ($LASTEXITCODE -eq 0) {
 A's pods ask for about 400m in all, B's for 200m, each at most 100m on one worker.
 
 **If not:**
-- Less free CPU: add a worker or use a larger VM class ([CLUSTER.md](CLUSTER.md)), or remove
+- Less free CPU: add a worker or use a larger VM class ([CLUSTER.md](CLUSTER.md#10-resize-the-cluster-optional)), or remove
   something you no longer need from the cluster.
 - `Tekton: the VKS add-on`: A is installed; go on with step 2's second block. `Tekton: release
   files v1.17.1`: B is installed; go to step 4.

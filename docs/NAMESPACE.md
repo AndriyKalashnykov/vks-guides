@@ -60,7 +60,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
    left) choose **Supervisor Management**, then the **Supervisors** tab.
 2. Find your Supervisor's row. **Config Status** must show **Running**. The **Control Plane Node
    Address** column holds the Supervisor's address: that is `SUPERVISOR_ENDPOINT` in
-   [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md).
+   [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-the-context).
 
    ![The Supervisors tab of Supervisor Management: one row, Config Status Running, and the Control Plane Node Address column](img/namespace/01-supervisors.jpg)
 
@@ -438,7 +438,7 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 
 **If not:**
 - `NotFound`: check `VKS_NAMESPACE`. Do not remove a namespace you cannot see here.
-- A VKS cluster, VM, volume or pod is listed: delete it first ([CLUSTER.md](CLUSTER.md) deletes a
+- A VKS cluster, VM, volume or pod is listed: delete it first ([CLUSTER.md](CLUSTER.md#8-delete-the-cluster-optional) deletes a
   VKS cluster). A deleted cluster leaves its apps' volumes here; see
   [Delete the cluster](CLUSTER.md#8-delete-the-cluster-optional).
 
