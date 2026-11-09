@@ -73,12 +73,14 @@ next block, which uses it and removes it.
 
 **Linux, macOS, WSL (bash or zsh):**
 
+<!-- lab-step: user-vcf-password -->
 ```sh
 printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
 ```
 
 **Windows (PowerShell):**
 
+<!-- lab-step: user-vcf-password-windows -->
 ```powershell
 $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 ```
