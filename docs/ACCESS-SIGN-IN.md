@@ -1,7 +1,7 @@
 # Identity and access
 
 These need a VKS cluster ([vSphere Namespaces and VKS clusters](CLUSTERS.md)) and its
-administrator kubeconfig ([Log in](SUPERVISOR-LOGIN.md#vks-cluster)); the people you give access log in with
+administrator kubeconfig ([SUPERVISOR-LOGIN.md, VKS cluster](SUPERVISOR-LOGIN.md#vks-cluster)); the people you give access log in with
 [USER-LOGIN.md](USER-LOGIN.md). Single sign-on uses an external identity provider:
 any OpenID Connect (OIDC) provider your organization runs. These guides use Keycloak as the example
 provider; without one, run it first ([Run an OIDC identity provider](KEYCLOAK-VKS.md)). For sign-in
