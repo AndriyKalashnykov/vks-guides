@@ -45,8 +45,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 | from | to | port | for |
 |---|---|---|---|
 | your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl to the cluster (steps 2 and 3) |
-| the person's machine | the VKS cluster's API address | 6443 | the person's kubectl (step 4) |
-| the person's machine, and the browser they sign in with | Keycloak | its HTTPS port (443) | the code and the sign-in (step 4) |
+| the person's machine | the VKS cluster's API address | 6443 | the person's kubectl ([USER-IDP-LOGIN.md step 5](USER-IDP-LOGIN.md#5-sign-in-with-kubelogin)) |
+| the person's machine, and the browser they sign in with | Keycloak | its HTTPS port (443) | the code and the sign-in ([USER-IDP-LOGIN.md step 5](USER-IDP-LOGIN.md#5-sign-in-with-kubelogin)) |
 | the VKS cluster's control-plane nodes | Keycloak | its HTTPS port (443) | checking the person's Keycloak login |
 
 The file you hand over holds no secret, so it may be sent openly; the person's token cache
@@ -162,7 +162,9 @@ and CA from your administrator kubeconfig, and a login through kubelogin with a 
 (kubelogin prints an address with a code; the person opens it in a browser and signs in to
 Keycloak), checking Keycloak's certificate against the Keycloak CA. Its context (the cluster, user
 and namespace kubectl uses by default) starts in the team's namespace. You get one file for the
-whole group: send it to the group's members (it holds no secret); each does step 4. Set
+whole group: send it to the group's members (it holds no secret), with the Keycloak CA file for
+their browsers and [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md); each signs in with its
+[step 5](USER-IDP-LOGIN.md#5-sign-in-with-kubelogin). Set
 `ADMIN_KUBECONFIG` and `VKS_CLUSTER_NAMESPACE` as in step 2, `KEYCLOAK_ISSUER` to the issuer and
 `KEYCLOAK_CA` to the CA file from the Keycloak administrator, and `NAME` to a name for the file. Run
 it again and it replaces that file.
@@ -247,92 +249,19 @@ if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubect
 
 ## 4. Log in (the person)
 
-The person runs this on their machine, once the administrator has sent them the file from step 3, to
-log in to the cluster with their Keycloak user. Install [kubectl](KUBECTL.md) and
-[kubelogin](PREREQS.md#kubelogin-optional) first, and save the file where `KEYCLOAK_KUBECONFIG`
-points. It checks both tools and the file, then asks the cluster who you are; that first command
-starts the Keycloak sign-in below. You get a login that later kubectl commands with this file use.
-Run it again while your Keycloak session lasts and it only prints who you are; after that, it asks
-for a new code.
-
-**Linux, macOS, WSL (bash or zsh):**
-
-```sh
-KEYCLOAK_KUBECONFIG="$HOME/.kube/my-vks-cluster-keycloak.kubeconfig"
-
-if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
-elif ! kubectl oidc-login version >/dev/null 2>&1; then echo "MISSING: kubelogin (PREREQS.md, kubelogin)"
-elif [ ! -s "$KEYCLOAK_KUBECONFIG" ]; then echo "MISSING: $KEYCLOAK_KUBECONFIG (the file from your administrator)"
-else kubectl --kubeconfig "$KEYCLOAK_KUBECONFIG" auth whoami
-fi
-```
-
-**Windows (PowerShell):**
-
-```powershell
-$KEYCLOAK_KUBECONFIG = "$HOME\.kube\my-vks-cluster-keycloak.kubeconfig"
-
-if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" } elseif (-not (Get-Command kubectl-oidc_login -ErrorAction SilentlyContinue)) { "MISSING: kubelogin (PREREQS.md, kubelogin)" } elseif (-not (Test-Path $KEYCLOAK_KUBECONFIG)) { "MISSING: $KEYCLOAK_KUBECONFIG (the file from your administrator)" } else { kubectl --kubeconfig $KEYCLOAK_KUBECONFIG auth whoami }
-```
-
-kubelogin prints `Please visit the following URL in your browser:` and a Keycloak address that ends
-in `user_code=XXXX-XXXX`. Open it in a browser on any machine, and open only an address your own
-kubectl printed. Sign in to Keycloak:
-
-![Keycloak's sign-in page of the realm: Username or email, Password, Sign In](img/keycloak/06-person-signin.jpg)
-
-At your first sign in with a temporary password, Keycloak asks for a new one:
-
-![Update password: You need to change your password to activate your account, New Password, Confirm password](img/keycloak/07-update-password.jpg)
-
-Answer **Grant Access to kubectl (oidc-login, device code)** with **Yes**:
-
-![Grant Access to kubectl (oidc-login, device code): User profile, Email address, User roles, Yes and No](img/keycloak/08-grant-access.jpg)
-
-The page then says **Device Login Successful**, and kubectl answers. Later commands renew the login
-by themselves while your Keycloak session lasts.
-
-![Device Login Successful: You may close this browser window and go back to your device](img/keycloak/09-device-login-successful.jpg)
-
-**Expect:** `Username  keycloak:<you>`, a `UID` line, and `Groups` that include `keycloak:team-a`;
-`kubectl --kubeconfig "$KEYCLOAK_KUBECONFIG" get pods` then answers for `team-a`.
-
-**If not:**
-- `MISSING: …`: install that tool, or save the file under that name.
-- `x509: certificate signed by unknown authority` from kubelogin: `KEYCLOAK_CA` in step 3 is not the
-  CA of Keycloak's certificate, or Keycloak's certificate changed; ask for a new file.
-- `could not load the certificate`: `KEYCLOAK_CA` in step 3 was not a certificate; ask for a new
-  file.
-- `Unauthorized`: the cluster does not accept the login. Its control-plane nodes cannot reach
-  Keycloak (its name and port, see the table), or the issuer, CA or client name in step 1 differs
-  from Keycloak's.
-- `Forbidden`: your groups are not the one given rights in step 2. A group shown as
-  `keycloak:/team-a` means **Full group path** is on in Keycloak.
+The person signs in with [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md)'s
+[step 5](USER-IDP-LOGIN.md#5-sign-in-with-kubelogin), after its steps 1 and 2. When they report
+`x509: certificate signed by unknown authority` or `could not load the certificate` from kubelogin:
+`KEYCLOAK_CA` in step 3 was not the CA of Keycloak's certificate, or Keycloak's certificate changed;
+send a new file. `Unauthorized`: the cluster's control-plane nodes cannot reach Keycloak (its name
+and port, see the table), or the issuer, CA or client name in step 1 differs from Keycloak's.
+`Forbidden`: their groups are not the one given rights in step 2; a group shown as
+`keycloak:/team-a` means **Full group path** is on in Keycloak.
 
 ## 5. Log out (the person)
 
-The person runs this to log out on this machine, for example on a shared jump box. It deletes their
-cached Keycloak tokens (`~/.kube/cache/oidc-login`); the kubeconfig file stays. The next kubectl
-command with that file asks for a new code, as in step 4.
-
-**Linux, macOS, WSL (bash or zsh):**
-
-```sh
-kubectl oidc-login clean
-```
-
-**Windows (PowerShell):**
-
-```powershell
-kubectl oidc-login clean
-```
-
-**Expect:** `Deleted the token cache from …/.kube/cache/oidc-login`, then a line about the keyring
-(`Could not delete the token cache from the keyring: …` where there is none). The next command asks
-for a new code.
-
-**If not:** `Error: unknown command "oidc-login" for "kubectl"`: kubelogin is not installed on
-this machine ([PREREQS.md](PREREQS.md#kubelogin-optional)).
+The person logs out with [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md)'s
+[step 6](USER-IDP-LOGIN.md#6-log-out-part-b).
 
 ## 6. Take access away (cluster administrator)
 

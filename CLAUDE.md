@@ -3,7 +3,7 @@
 Copy-paste how-to guides for VMware vSphere Kubernetes Service (VKS), VCF 9.x. README.md links six
 group pages (docs/GET-STARTED.md, ACCESS-SIGN-IN.md, CLUSTERS.md, IMAGES.md, GITOPS-CICD.md, OPERATE.md);
 each lists its guides, the order to follow and its "Tested on" rows (a new guide gets a row in its
-group's two tables). The guides in docs/: PREREQS.md, KUBECTL.md, VCF.md, SUPERVISOR-LOGIN.md, USER-LOGIN.md, ADMIN-GRANT-ACCESS.md, ADMIN-GRANT-ACCESS-IDP.md, KUBECONFIG.md, KEYCLOAK.md, KEYCLOAK-VKS.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md, NEXUS.md,
+group's two tables). The guides in docs/: PREREQS.md, KUBECTL.md, VCF.md, SUPERVISOR-LOGIN.md, USER-LOGIN.md, USER-KUBECONFIG.md, USER-IDP-LOGIN.md, ADMIN-GRANT-ACCESS.md, ADMIN-GRANT-ACCESS-IDP.md, KUBECONFIG.md, KEYCLOAK.md, KEYCLOAK-VKS.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md, NEXUS.md,
 GITEA.md, TEKTON.md, GITLAB.md, CICD.md, OCTOPUS.md, ADDONS.md, HEADLAMP.md, HELM.md, MONITORING.md, LOGGING.md, OBSERVABILITY.md (screenshots in
 docs/img/). Readers paste
 blocks; there is nothing to build.
@@ -19,14 +19,21 @@ blocks; there is nothing to build.
   taken away: a change to any of those rows or behaviours updates both pictures and their alt text in the same PR.
   The same holds for the five per-way pictures `docs/img/access/way-<way>-light.svg`/`-dark.svg` at the top of
   each way's chapter (SSO, ServiceAccount token, administrator token, certificate; the IdP group in
-  ADMIN-GRANT-ACCESS-IDP.md): a change to that chapter's steps or take-away updates its picture in the same PR.
+  ADMIN-GRANT-ACCESS-IDP.md): a change that makes a label untrue, or moves what a label describes to another
+  guide, updates that picture in the same PR.
   Every label in them is a statement from the guides: no versions, durations, paths or commands.
 - LOGIN.md, ACCESS.md and ACCESS-IDP.md are moved-guide pages (owner): a title, then "Who are you? Start
   here", a table that sends each kind of reader (an administrator who logs in, an administrator who gives
   access, a person with an SSO account, a person sent a kubeconfig file, a person who signs in with an
-  identity provider) to the guide and step they need, then "Where the old guide went": one line naming the
-  new guide and links from the old sections to their new homes. The three tables are the same: change them
-  together. No NOTE, Prerequisites, blocks or Tested on row; not in the guide list or on group pages.
+  identity provider, a tool or pipeline with a token file) to the guide and step they need, then "Where the
+  old guide went": one line naming the new guide and links from the old sections to their new homes. The
+  three tables are the same: change them together. No NOTE, Prerequisites, blocks or Tested on row; not in
+  the guide list or on group pages.
+- The person's steps live in the three person guides: USER-LOGIN.md (own SSO account), USER-KUBECONFIG.md (a
+  sent file with a token or a certificate) and USER-IDP-LOGIN.md (an identity provider). An admin guide's
+  step for the person is a pointer line that sends them there, plus only what the administrator must do or
+  diagnose (precedent: ADMIN-GRANT-ACCESS.md's SSO steps 3 and 4). A section moved to another guide keeps its
+  heading, byte for byte, with that pointer to its new home, so that old links keep resolving.
 - No Makefile, mise, env file or helper script. Each block sets the variables it uses at its top
   and works on its own; never rely on a variable from an earlier block. The one exception is
   IMAGE-DOCKER.md (owner's choice): a short docker-on-Linux walkthrough whose blocks share the
@@ -42,7 +49,9 @@ blocks; there is nothing to build.
   the `curl` alias), `Expand-Archive`, `Get-FileHash`, installs to
   `%LOCALAPPDATA%\Programs\vks-tools`. A block pair where either block is 15 lines or more
   sits in two `<details>` cuts whose `<summary><b>…</b></summary>` is the label. PREREQS.md
-  blocks sit under OS headings and have no label, besides its three tool checks.
+  blocks sit under OS headings and have no label, besides its three tool checks. A step that trusts a CA
+  in the browser's store, whose commands differ per OS (KEYCLOAK-VKS.md step 8, USER-IDP-LOGIN.md step
+  2), leads each block with **Linux:**, **macOS:**, **WSL:** and **Windows (PowerShell):** instead.
 - In a PowerShell block, `elseif` and `else` never start a line: write `} elseif (…) {` and `} else {`. Typed
   line by line into a console, PowerShell 5.1 runs a complete top-level `if { }` at its line end, so the next
   line fails as "The term 'elseif' is not recognized" and its branch never runs (MEASURED 2026-11-10, PowerShell
@@ -54,7 +63,9 @@ blocks; there is nothing to build.
   was run. Where a command differs per distribution, the text or PREREQS.md names it.
 - Each guide opens with a `> [!NOTE]` callout, first line `**Official … documentation … for this
   guide**`, listing the official docs it follows (Broadcom VCF 9.1 TechDocs; kubernetes.io or the
-  tool's own docs where Broadcom has none). Open a link before adding it.
+  tool's own docs where Broadcom has none). Open a link before adding it. Exception (owner, 2026-11-10):
+  USER-KUBECONFIG.md and USER-IDP-LOGIN.md have no NOTE at the top; the same list is their last chapter,
+  `## References`, before "Back to README".
 - Each guide has a `## Prerequisites` chapter right after its intro: the guides to do first, each
   tool as a link to its guide (KUBECTL.md, VCF.md, HELM.md) or PREREQS.md (never its install),
   what this guide alone needs (roles, resources, load-balancer addresses), and a table

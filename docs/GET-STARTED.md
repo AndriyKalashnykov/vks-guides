@@ -26,8 +26,12 @@ Do them in this order:
    `vcf` and `kubectl` keep your logins.
 9. [Install Helm](HELM.md), only for the guides that install apps with it.
 
-Given access to a VKS cluster by its administrator? You need only Prerequisites, kubectl and the VCF
-CLI, then [Log in to a VKS cluster you were given access to](USER-LOGIN.md).
+Given access to a VKS cluster by its administrator? You need only Prerequisites and kubectl, then one
+guide: with your own SSO account, the VCF CLI and
+[Log in to a VKS cluster you were given access to](USER-LOGIN.md); with a kubeconfig file you were
+sent, [Use a kubeconfig file you were given](USER-KUBECONFIG.md); with your organization's identity
+provider, [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) (its part A, a file
+that runs `vcf`, needs the VCF CLI too; part B needs kubelogin).
 
 | guide | what it is |
 |---|---|
@@ -36,6 +40,8 @@ CLI, then [Log in to a VKS cluster you were given access to](USER-LOGIN.md).
 | [Install the VCF CLI](VCF.md) | VMware's command-line tool, for logging in to the Supervisor and managing VKS clusters |
 | [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | your SSO login to the Supervisor, and the kubeconfig `kubectl` uses to reach your VKS cluster |
 | [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | for a person a VKS cluster's administrator gave access: the login with their own SSO user, and using it |
+| [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | for a person or a tool sent a file with a token or a certificate: check it, use it, what to do when it stops working or leaks |
+| [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) | for a person whose identity provider group was given access: trust the CAs, sign in in a browser, log out |
 | [Kubeconfig files](KUBECONFIG.md) | what each kubeconfig the guides make holds, which ones may be handed over, how to use and merge them, and how `vcf` and `kubectl` keep your logins |
 | [Install Helm](HELM.md) | the Kubernetes package manager, for installing charts such as the monitoring stack |
 
@@ -52,6 +58,8 @@ On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines:
 | [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | ✅ | ✅ | ✅ | part | ✅ | ✅ |
 | [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | part | — | — | — | — | — |
+| [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | — | — | — | — | — | — |
+| [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) | — | — | — | — | — | — |
 | [Kubeconfig files](KUBECONFIG.md) | ✅ | — | — | — | ✅ | — |
 | [Install Helm](HELM.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 

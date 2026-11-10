@@ -12,6 +12,9 @@ The administrator of a VKS cluster gave you access to it with your own vCenter S
 with the VCF CLI, which writes your own kubeconfig, then work with kubectl in the namespace you were
 given. A login lasts 10 hours; your rights stay until the administrator takes them away.
 
+Not an SSO user? [Who are you? Start here](LOGIN.md#who-are-you-start-here) sends you to the guide
+for a kubeconfig file you were sent, or for your organization's identity provider.
+
 The steps:
 
 1. [What to ask your administrator for](#1-what-to-ask-your-administrator-for)
@@ -54,10 +57,10 @@ vCenter lists it, the cluster administrator your namespace):
 
 Other ways in:
 
-- Your identity provider group was given access: log in with
-  [ADMIN-GRANT-ACCESS-IDP.md step 5](ADMIN-GRANT-ACCESS-IDP.md#5-log-in-the-person) instead.
-- You were sent a kubeconfig file (a token or a certificate): use it as
-  [KUBECONFIG.md](KUBECONFIG.md#2-use-a-file) says.
+- Your identity provider group was given access: sign in with
+  [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md) instead.
+- You were sent a kubeconfig file (a token or a certificate): use it with
+  [USER-KUBECONFIG.md](USER-KUBECONFIG.md).
 - You have **Can edit** or **Owner** on the vSphere Namespace: you are a cluster administrator,
   and [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md) applies too.
 
@@ -272,7 +275,7 @@ replaces [step 2](#2-log-in-with-the-vcf-cli) of this guide; steps 1, 3 and 4 st
 ### 1. Windows and macOS: trust the vCenter CA (the person, once)
 
 Do this once on Windows or macOS, before steps 2 and 3 below, and before a browser sign-in through the
-Supervisor ([ADMIN-GRANT-ACCESS-IDP.md step 5](ADMIN-GRANT-ACCESS-IDP.md#5-log-in-the-person)): there the browser, the plugin, and on Windows the download in step 2,
+Supervisor ([USER-IDP-LOGIN.md step 3](USER-IDP-LOGIN.md#3-sign-in-through-the-supervisor)): there the browser, the plugin, and on Windows the download in step 2,
 check the Supervisor's certificate against your user's trusted CAs, not `SUPERVISOR_CA`. It adds
 the vCenter CA from [step 1](#1-what-to-ask-your-administrator-for) above, saved as `~/.kube/vcenter-ca.pem`, to your user's trusted CAs. You then
 trust certificates the vCenter CA signed, the Supervisor's among them, as this user. Windows asks

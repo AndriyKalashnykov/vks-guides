@@ -1348,7 +1348,7 @@ keytool -importcert -noprompt -alias keycloak-ca -file /etc/keycloak-tls/ca.crt 
 
 Then give the person their username and the temporary password, through a password manager's
 share or another private channel, and the kubeconfig from [KEYCLOAK.md](KEYCLOAK.md#3-make-the-persons-kubeconfig-cluster-administrator) step 3. At
-their first sign in (KEYCLOAK.md step 4), Keycloak asks them for a new password.
+their first sign in ([USER-IDP-LOGIN.md step 5](USER-IDP-LOGIN.md#5-sign-in-with-kubelogin)), Keycloak asks them for a new password.
 
 **If not:**
 - `STOPPED: type the temporary password first`: run the one-line block above, then this one, in
@@ -1589,7 +1589,7 @@ the names the provider's **VIEW SETTINGS** shows, or else the vCenter API's name
 
 | setting | value |
 |---|---|
-| **Provider Name** (`display_name`) | `keycloak`; ADMIN-GRANT-ACCESS-IDP.md (steps 1, 2 and 5) uses it |
+| **Provider Name** (`display_name`) | `keycloak`; ADMIN-GRANT-ACCESS-IDP.md (steps 1 and 2) and USER-IDP-LOGIN.md (step 3) use it |
 | **Issuer URL** (`issuer_URL`) | `https://<KEYCLOAK_HOST>/realms/<REALM>`, exactly as Keycloak prints it (step 7's check with your realm for `master`), no `/` at the end |
 | **Client ID** (`client_ID`) | `supervisor` |
 | client secret (`client_secret`) | the secret from 11.2 |

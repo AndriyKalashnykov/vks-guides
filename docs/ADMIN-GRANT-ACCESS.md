@@ -49,8 +49,8 @@ Who does what:
 |---|---|---|
 | cluster administrator | holds the VKS cluster's administrator kubeconfig ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#vks-cluster)) | gives rights inside the cluster, makes the files and sends them |
 | vCenter administrator | administers vCenter and the Supervisor | gives roles on the vSphere Namespace |
-| the person | gets the access | logs in ([USER-LOGIN.md](USER-LOGIN.md)), or uses the file they were sent |
-| a tool | a CI/CD pipeline, a deployment tool or a script, with no person behind it | uses the token file it was given; makes no login of its own and never renews; the cluster administrator renews the file before it ends |
+| the person | gets the access | logs in ([USER-LOGIN.md](USER-LOGIN.md)), or uses the file they were sent ([USER-KUBECONFIG.md](USER-KUBECONFIG.md)) |
+| a tool | a CI/CD pipeline, a deployment tool or a script, with no person behind it | uses the token file it was given ([USER-KUBECONFIG.md](USER-KUBECONFIG.md#a-ci-pipeline)); makes no login of its own and never renews; the cluster administrator renews the file before it ends |
 
 **The ways:**
 
@@ -84,7 +84,8 @@ how to hand it over, use and merge it: [KUBECONFIG.md](KUBECONFIG.md).
 - vCenter administrator (SSO way): the vCenter CA
   ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca), step 1);
 - the person or tool: [kubectl](KUBECTL.md) (every way); for the SSO way, what
-  [USER-LOGIN.md](USER-LOGIN.md#prerequisites) lists.
+  [USER-LOGIN.md](USER-LOGIN.md#prerequisites) lists; for a file you send, what
+  [USER-KUBECONFIG.md](USER-KUBECONFIG.md#prerequisites) lists.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):
 
@@ -405,12 +406,10 @@ Remove-Variable TOKEN
 ### 2. Hand it over and use it (cluster administrator, then the team or tool)
 
 Send `SERVICE_ACCOUNT_KUBECONFIG` to the team as a secret: whoever has a copy acts as the ServiceAccount
-([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)). The team saves it in their `.kube` folder,
-readable only by them, and uses it with `--kubeconfig` or `KUBECONFIG`
-([KUBECONFIG.md](KUBECONFIG.md#2-use-a-file)). It needs only [kubectl](KUBECTL.md) and a way to
-the cluster's API address on port 6443 (the file's `server:` line): no password, SSO account or
-VCF CLI. Its commands act in `VKS_CLUSTER_NAMESPACE` (with `"*"`: in `default`) unless they name another namespace. For a pipeline,
-store the file as one of the pipeline's secrets.
+([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)), with the namespace `VKS_CLUSTER_NAMESPACE` (with
+`"*"`: that it is the whole cluster), the day the token ends and the cluster's address (the file's
+`server:` line). The team or tool saves, checks and uses it with
+[USER-KUBECONFIG.md](USER-KUBECONFIG.md).
 
 <a id="renew-it"></a>
 
@@ -698,70 +697,12 @@ and `everything in every namespace: yes`.
 
 ### 2. Hand it over and use it on another machine (cluster administrator, then the tool or person)
 
-Send `SERVICE_ACCOUNT_KUBECONFIG` as a secret ([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)). The file
-needs no password, no SSO account and no VCF CLI: only [kubectl](KUBECTL.md) and a way to the
-cluster's API address on port 6443 (the file's `server:` line). Save it in your `.kube` folder under
-the name it came with, `<cluster>-<SERVICE_ACCOUNT_NAME>.kubeconfig` (for example
-`my-vks-cluster-cluster-admin-ci.kubeconfig`; Windows: `$HOME\.kube\…`).
-
-Run this once on the machine that received the file, before a tool relies on it. It makes the file
-readable only by you and shows who it acts as. It then creates a test namespace `CHECK_NAMESPACE`
-inside the cluster with a ConfigMap (a small object that holds settings) in it, changes the
-ConfigMap and reads it back, then deletes that namespace again. You then know the file can create,
-change and delete in the cluster; afterwards use it with `--kubeconfig` or `KUBECONFIG`
-([KUBECONFIG.md](KUBECONFIG.md#2-use-a-file)). Set `VKS_CLUSTER` and `SERVICE_ACCOUNT_NAME` to the names the
-cluster administrator used, as in the file's name.
-
-**Linux, macOS, WSL (bash or zsh):**
-
-```sh
-VKS_CLUSTER="my-vks-cluster"
-SERVICE_ACCOUNT_NAME="cluster-admin-ci"
-SERVICE_ACCOUNT_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SERVICE_ACCOUNT_NAME}.kubeconfig"
-CHECK_NAMESPACE="access-check"
-
-k() { kubectl --kubeconfig "$SERVICE_ACCOUNT_KUBECONFIG" "$@"; }
-chmod 600 "$SERVICE_ACCOUNT_KUBECONFIG"
-echo "acts as: $(k auth whoami -o jsonpath='{.status.userInfo.username}')"
-k create namespace "$CHECK_NAMESPACE"
-k -n "$CHECK_NAMESPACE" create configmap check --from-literal=step=created --save-config
-k -n "$CHECK_NAMESPACE" create configmap check --from-literal=step=updated --dry-run=client -o yaml | k apply -f -
-echo "read back: $(k -n "$CHECK_NAMESPACE" get configmap check -o jsonpath='{.data.step}')"
-k delete namespace "$CHECK_NAMESPACE"
-```
-
-**Windows (PowerShell):**
-
-```powershell
-$VKS_CLUSTER = "my-vks-cluster"
-$SERVICE_ACCOUNT_NAME = "cluster-admin-ci"
-$SERVICE_ACCOUNT_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-${SERVICE_ACCOUNT_NAME}.kubeconfig"
-$CHECK_NAMESPACE = "access-check"
-
-function k { $input | kubectl --kubeconfig $SERVICE_ACCOUNT_KUBECONFIG @args }
-icacls $SERVICE_ACCOUNT_KUBECONFIG /inheritance:r /grant:r "${env:USERNAME}:F" | Out-Null
-"acts as: $(k auth whoami -o jsonpath='{.status.userInfo.username}')"
-k create namespace $CHECK_NAMESPACE
-k -n $CHECK_NAMESPACE create configmap check --from-literal=step=created --save-config
-k -n $CHECK_NAMESPACE create configmap check --from-literal=step=updated --dry-run=client -o yaml | k apply -f -
-"read back: $(k -n $CHECK_NAMESPACE get configmap check -o jsonpath='{.data.step}')"
-k delete namespace $CHECK_NAMESPACE
-```
-
-**Expect:** `acts as: system:serviceaccount:kubeconfig-access:cluster-admin-ci`,
-`namespace/access-check created`, `configmap/check created`, `configmap/check configured`,
-`read back: updated`, then `namespace "access-check" deleted`.
-
-**If not:**
-- `Unable to connect to the server` or `i/o timeout`: this machine cannot reach the `server:`
-  address on port 6443 (Prerequisites, firewall).
-- `x509: certificate signed by unknown authority`: the file was changed, is for another cluster, or
-  a proxy between this machine and the cluster replaces the certificate; ask for the file again, or
-  reach the cluster without the proxy.
-- `Unauthorized`: the access was taken away, or a token with days has ended; ask for a new file.
-- `already exists`: a test namespace of that name is there; set `CHECK_NAMESPACE` to another name.
-- `No such file` (Windows: `cannot find`): set `VKS_CLUSTER` and `SERVICE_ACCOUNT_NAME` to the names in the saved
-  file's name.
+Send `SERVICE_ACCOUNT_KUBECONFIG` as a secret ([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)), with
+the day the token ends (with `DAYS="never"`: that it does not end) and the cluster's address (the
+file's `server:` line). The tool or person saves, checks and uses it with
+[USER-KUBECONFIG.md](USER-KUBECONFIG.md), whose
+[step 5](USER-KUBECONFIG.md#5-check-that-a-whole-cluster-file-can-change-things-whole-cluster-file-only)
+checks that the file can create, change and delete in the cluster.
 
 ### 3. Renew the administrator token (cluster administrator)
 
@@ -939,10 +880,9 @@ cluster signs for at most a year), and run the block again.
 ### 2. Hand it over and use it (cluster administrator, then the person)
 
 Send `PERSON_KUBECONFIG` to the person as a secret: it holds their key
-([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)). They save it in their `.kube` folder, readable
-only by them, and use it with `--kubeconfig` or `KUBECONFIG`
-([KUBECONFIG.md](KUBECONFIG.md#2-use-a-file)): they need only [kubectl](KUBECTL.md), no password.
-Its commands act in `VKS_CLUSTER_NAMESPACE` (with `"*"`: in `default`) unless they name another namespace.
+([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)), with the namespace `VKS_CLUSTER_NAMESPACE` (with
+`"*"`: that it is the whole cluster), the `notAfter` date from step 1 and the cluster's address (the
+file's `server:` line). They save, check and use it with [USER-KUBECONFIG.md](USER-KUBECONFIG.md).
 
 ### 3. Renew the certificate (cluster administrator)
 
