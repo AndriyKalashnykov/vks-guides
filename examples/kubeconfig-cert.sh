@@ -25,9 +25,12 @@ VKS_CLUSTER_NAMESPACE="team-a"
 DAYS="120"
 PERSON_KUBECONFIG="$HOME/${VKS_CLUSTER}-${PERSON}.kubeconfig"
 
+STAMP="$(mktemp)"
 adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
 if [ -z "$VKS_CLUSTER_NAMESPACE" ]; then
   echo 'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set the namespace, or "*" for cluster-admin on the whole cluster; nothing was changed'
+elif ! [ "$DAYS" -ge 1 ] 2>/dev/null || [ "${DAYS#0}" != "$DAYS" ] || [ "$DAYS" -gt 366 ]; then
+  echo "STOPPED: DAYS is a number of days, 1 to 366: $DAYS; nothing was changed"
 else
 NAME="${PERSON}-$(date +%Y%m%d%H%M%S)"
 CSR="kubeconfig-${NAME}"
@@ -52,17 +55,17 @@ if [ -n "$CERT" ] && [ -n "$SERVER" ] && [ -n "$CA" ] \
   if [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
     echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${NAME} gets cluster-admin on the whole cluster"
     adm create clusterrolebinding "${NAME}-cluster-admin" --clusterrole=cluster-admin --user="$NAME" >/dev/null
-    KC_NS="default"
+    CTX_NS="default"
   else
     adm create namespace "$VKS_CLUSTER_NAMESPACE" --dry-run=client -o yaml | adm apply -f - >/dev/null
     adm -n "$VKS_CLUSTER_NAMESPACE" create rolebinding "${NAME}-edit" --clusterrole=edit --user="$NAME" >/dev/null
-    KC_NS="$VKS_CLUSTER_NAMESPACE"
+    CTX_NS="$VKS_CLUSTER_NAMESPACE"
   fi
   rm -f "$PERSON_KUBECONFIG"
   ( umask 077
     printf 'apiVersion: v1\nkind: Config\nclusters:\n- name: %s\n  cluster:\n    server: %s\n    certificate-authority-data: %s\nusers:\n- name: %s\n  user:\n    client-certificate-data: %s\n    client-key-data: %s\ncontexts:\n- name: %s\n  context:\n    cluster: %s\n    user: %s\n    namespace: %s\ncurrent-context: %s\n' \
       "$NAME" "$SERVER" "$CA" "$NAME" "$CERT" "$(base64 < "$TMP/key.pem" | tr -d '\n')" \
-      "$NAME" "$NAME" "$NAME" "$KC_NS" "$NAME" > "$PERSON_KUBECONFIG" )
+      "$NAME" "$NAME" "$NAME" "$CTX_NS" "$NAME" > "$PERSON_KUBECONFIG" )
   openssl x509 -in "$TMP/cert.pem" -noout -subject -enddate
   if [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
     echo "everything in every namespace: $(kubectl --kubeconfig "$PERSON_KUBECONFIG" auth can-i '*' '*' --all-namespaces)"
@@ -75,8 +78,9 @@ fi
 adm delete csr "$CSR" --ignore-not-found >/dev/null; rm -rf "$TMP"
 fi
 
-if [ -s "$PERSON_KUBECONFIG" ] && [ -n "${KC_NS:-}" ]; then
+if [ "$$PERSON_KUBECONFIG" -nt "$STAMP" ]; then
   echo
   echo "Next: write down the name on the subject= line (step 4 needs it), then send $PERSON_KUBECONFIG"
   echo "to the person as a secret (it holds their key)."
 fi
+rm -f "$STAMP"

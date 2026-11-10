@@ -210,7 +210,8 @@ only `~/.kube/config`; your login is in its own file, `~/.kube/<cluster>-<SSO_US
 This points `KUBECONFIG` at that file for this terminal, so every `kubectl` command in it uses your
 login ([KUBECONFIG.md](KUBECONFIG.md#2-use-a-file)), then shows who you are and whether you may
 deploy in the namespace you were given. Set `SSO_USER` and `VKS_CLUSTER` as in your login, and
-`VKS_CLUSTER_NAMESPACE` to that namespace.
+`VKS_CLUSTER_NAMESPACE` to that namespace (if you were given the whole cluster, any namespace, for example
+`default`).
 
 **Linux, macOS, WSL (bash or zsh):**
 

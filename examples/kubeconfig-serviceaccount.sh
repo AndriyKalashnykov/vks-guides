@@ -27,6 +27,7 @@ ROLE="edit"
 DAYS="120"
 SERVICE_ACCOUNT_KUBECONFIG="$HOME/${VKS_CLUSTER}-${SERVICE_ACCOUNT_NAME}.kubeconfig"
 
+STAMP="$(mktemp)"
 adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
 TOKEN=""
 if [ -z "$VKS_CLUSTER_NAMESPACE" ]; then
@@ -40,12 +41,12 @@ if [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
   echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME} gets cluster-admin on the whole cluster"
   adm create clusterrolebinding "${SERVICE_ACCOUNT_NAME}-cluster-admin" --clusterrole=cluster-admin \
     --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
-  KC_NS="default"
+  CTX_NS="default"
 else
   adm create namespace "$VKS_CLUSTER_NAMESPACE" --dry-run=client -o yaml | adm apply -f - >/dev/null
   adm -n "$VKS_CLUSTER_NAMESPACE" create rolebinding "${SERVICE_ACCOUNT_NAME}-${ROLE}" --clusterrole="$ROLE" \
     --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
-  KC_NS="$VKS_CLUSTER_NAMESPACE"
+  CTX_NS="$VKS_CLUSTER_NAMESPACE"
 fi
 TOKEN="$(adm -n "$SA_NAMESPACE" create token "$SERVICE_ACCOUNT_NAME" --duration="$((DAYS * 24))h")"
 SERVER="$(adm config view --minify -o jsonpath='{.clusters[0].cluster.server}')"
@@ -54,7 +55,7 @@ if [ -n "$TOKEN" ] && [ -n "$SERVER" ] && [ -n "$CA" ]; then
   rm -f "$SERVICE_ACCOUNT_KUBECONFIG"
   ( umask 077
     printf 'apiVersion: v1\nkind: Config\nclusters:\n- name: %s\n  cluster:\n    server: %s\n    certificate-authority-data: %s\nusers:\n- name: %s\n  user:\n    token: %s\ncontexts:\n- name: %s\n  context:\n    cluster: %s\n    user: %s\n    namespace: %s\ncurrent-context: %s\n' \
-      "$SERVICE_ACCOUNT_NAME" "$SERVER" "$CA" "$SERVICE_ACCOUNT_NAME" "$TOKEN" "$SERVICE_ACCOUNT_NAME" "$SERVICE_ACCOUNT_NAME" "$SERVICE_ACCOUNT_NAME" "$KC_NS" "$SERVICE_ACCOUNT_NAME" > "$SERVICE_ACCOUNT_KUBECONFIG" )
+      "$SERVICE_ACCOUNT_NAME" "$SERVER" "$CA" "$SERVICE_ACCOUNT_NAME" "$TOKEN" "$SERVICE_ACCOUNT_NAME" "$SERVICE_ACCOUNT_NAME" "$SERVICE_ACCOUNT_NAME" "$CTX_NS" "$SERVICE_ACCOUNT_NAME" > "$SERVICE_ACCOUNT_KUBECONFIG" )
   P="$(printf '%s' "$TOKEN" | cut -d. -f2 | tr '_-' '/+')"
   while [ $(( ${#P} % 4 )) -ne 0 ]; do P="$P="; done
   EXP="$(printf '%s' "$P" | base64 -d 2>/dev/null | sed -n 's/.*"exp":\([0-9]*\).*/\1/p')"
@@ -72,8 +73,9 @@ fi
 fi
 unset TOKEN
 
-if [ -s "$SERVICE_ACCOUNT_KUBECONFIG" ] && [ -n "${KC_NS:-}" ]; then
+if [ "$$SERVICE_ACCOUNT_KUBECONFIG" -nt "$STAMP" ]; then
   echo
   echo "Next: send $SERVICE_ACCOUNT_KUBECONFIG to the team or tool as a secret (it holds the token)."
   echo "To try it here: kubectl --kubeconfig \"$SERVICE_ACCOUNT_KUBECONFIG\" auth whoami"
 fi
+rm -f "$STAMP"
