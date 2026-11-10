@@ -213,7 +213,7 @@ Without the VCF CLI, the person logs in with the kubectl vSphere plugin (optiona
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="img/access/way-serviceaccount-dark.svg">
-  <img src="img/access/way-serviceaccount-light.svg" width="1200" alt="A ServiceAccount token: the cluster administrator alone makes a login that belongs to no person, with the ServiceAccount in its own namespace SA_NAMESPACE, where the team has no rights (with &quot;*&quot; it has), and its RoleBinding in the team&#x27;s namespace VKS_CLUSTER_NAMESPACE; with &quot;*&quot; the login gets the whole cluster, cluster-admin with edit or read-only with view. Taking it away deletes the ServiceAccount, its bindings and, for one namespace, the token Secrets in it, so every copy of the file stops, but tokens and workloads the team made keep working, and with &quot;*&quot; and edit so do logins made with it as a cluster administrator.">
+  <img src="img/access/way-serviceaccount-light.svg" width="1200" alt="A ServiceAccount token: the cluster administrator alone makes a login that belongs to no person, with the ServiceAccount in its own namespace SA_NAMESPACE, where the team has no rights (with &quot;*&quot; it has), and its RoleBinding in the team&#x27;s namespace VKS_CLUSTER_NAMESPACE; with &quot;*&quot; the login gets the whole cluster, cluster-admin with edit or read-only with view. Taking it away deletes the ServiceAccount, its ClusterRoleBindings and every RoleBinding whose subject is it, and the token Secrets only in the namespaces where it had a RoleBinding, so every copy of the file stops, but tokens and workloads the team made keep working, and with &quot;*&quot; and edit so do logins made with it as a cluster administrator.">
 </picture>
 
 Pick this for a CI pipeline, a deployment tool, or a team that shares one login, in one namespace (or,
@@ -492,19 +492,21 @@ a new one.
 ### 4. Take the ServiceAccount token away (cluster administrator)
 
 Do this when the team or tool should lose its access, or a copy of the file may have leaked. It
-deletes the team's ServiceAccount and **every ServiceAccount token Secret (a stored token that does
-not end) in `VKS_CLUSTER_NAMESPACE`, also those the team did not make** (with `edit`, the team could have
-made lasting ones). Every copy of the file then answers `Unauthorized` within about 15 seconds, and
-making a ServiceAccount of the same name again does not bring the copies back. It deletes the
-login's ClusterRoleBindings (`-cluster-admin` and `-view`, whichever an earlier `"*"` run made) and, in
-the namespace, its RoleBindings (`-edit` and `-view`), whatever `ROLE` step 1 used; the team's
-namespace stays: delete it when the team's work in it is no longer needed. With `"*"`, the token
-Secrets are not swept. It then says `FAILED` if a RoleBinding in any namespace still names the login
-(a `VKS_CLUSTER_NAMESPACE` other than step 1's deletes nothing there), asks the
-cluster whether that login may still list pods in every namespace (and, with a namespace, in it) and
-checks that the ServiceAccount is gone; with `"*"` and `edit`, logins made with it as a cluster
-administrator keep working. An empty `VKS_CLUSTER_NAMESPACE` stops the block before it deletes
-anything. Set `SERVICE_ACCOUNT_NAME`, `VKS_CLUSTER_NAMESPACE`, `SA_NAMESPACE`, `VKS_CLUSTER` and
+deletes the team's ServiceAccount, the login's ClusterRoleBindings (`-cluster-admin` and `-view`,
+whichever an earlier `"*"` run made), and every RoleBinding in any namespace whose subject is this
+ServiceAccount, whatever `ROLE` step 1 used. **In the namespaces where it had such a RoleBinding, it
+also deletes every ServiceAccount token Secret (a stored token that does not end), also those the
+team did not make** (with `edit` there, the team could have made lasting ones). It finds those
+namespaces itself: if `VKS_CLUSTER_NAMESPACE` had no such RoleBinding, it says so and deletes nothing
+there. If it cannot read the RoleBindings, it deletes none and sweeps nothing, says `FAILED`, and
+still deletes the ServiceAccount and its ClusterRoleBindings. Every copy of the file then answers
+`Unauthorized` within about 15 seconds, and making a ServiceAccount of the same name again does not
+bring the copies back. The team's namespace stays: delete it when the team's work in it is no longer
+needed. It then says `FAILED` if a RoleBinding still names the login, asks the cluster whether that
+login may still list pods in every namespace (and, with a namespace, in it) and checks that the
+ServiceAccount is gone; with `"*"` and `edit`, logins made with it as a cluster administrator keep
+working. An empty `VKS_CLUSTER_NAMESPACE` stops the block before it deletes anything. Set
+`SERVICE_ACCOUNT_NAME`, `VKS_CLUSTER_NAMESPACE`, `SA_NAMESPACE`, `VKS_CLUSTER` and
 `ADMIN_KUBECONFIG` to what step 1 used.
 
 <details>
@@ -517,22 +519,34 @@ SERVICE_ACCOUNT_NAME="cicd-account"
 VKS_CLUSTER_NAMESPACE="team-a"
 SA_NAMESPACE="kubeconfig-access"
 
+rbs() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{" "}{range .subjects[*]}{.kind}/{.namespace}/{.name}{","}{end}{"\n"}{end}'; }
+mine() { printf '%s\n' "$1" | awk -v w="ServiceAccount/${SA_NAMESPACE}/${SERVICE_ACCOUNT_NAME}" -v n="ServiceAccount//${SERVICE_ACCOUNT_NAME}" -v sn="$SA_NAMESPACE" '{k = split($3, s, ","); for (i = 1; i <= k; i++) if (s[i] == w || (s[i] == n && $1 == sn)) {print $1 "/" $2; break}}'; }
 if [ -z "$VKS_CLUSTER_NAMESPACE" ]; then
   echo 'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set it to what step 1 used (a namespace, or "*"); nothing was deleted'
 else
   kubectl --kubeconfig "$ADMIN_KUBECONFIG" delete clusterrolebinding "${SERVICE_ACCOUNT_NAME}-cluster-admin" "${SERVICE_ACCOUNT_NAME}-view" --ignore-not-found
-  kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$SA_NAMESPACE" delete serviceaccount "$SERVICE_ACCOUNT_NAME"
-  if [ "$VKS_CLUSTER_NAMESPACE" != "*" ]; then
-    kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" delete rolebinding "${SERVICE_ACCOUNT_NAME}-edit" "${SERVICE_ACCOUNT_NAME}-view" --ignore-not-found
-    kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" delete secret --field-selector type=kubernetes.io/service-account-token
-    echo "may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" auth can-i list pods --as="system:serviceaccount:${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}")"
+  if RB="$(rbs)"; then
+    MATCH="$(mine "$RB")"
+    NSS="$(printf '%s\n' "$MATCH" | awk -F/ 'NF && seen[$1]++ == 0 {print $1}')"
+    printf '%s\n' "$MATCH" | while IFS= read -r M; do
+      if [ -n "$M" ]; then kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "${M%%/*}" delete rolebinding "${M#*/}" </dev/null; fi
+    done
+    printf '%s\n' "$NSS" | while IFS= read -r N; do
+      if [ -n "$N" ]; then echo "sweeping ServiceAccount token Secrets in $N"; kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$N" delete secret --field-selector type=kubernetes.io/service-account-token </dev/null; fi
+    done
+    HERE="$(printf '%s\n' "$NSS" | awk -v n="$VKS_CLUSTER_NAMESPACE" '$0 == n {print "yes"}')"
+    if [ "$VKS_CLUSTER_NAMESPACE" != "*" ] && [ -z "$HERE" ]; then echo "no RoleBinding of ${SERVICE_ACCOUNT_NAME} in ${VKS_CLUSTER_NAMESPACE}: nothing was deleted there"; fi
+  else
+    echo "FAILED: the RoleBindings could not be read (see the error above); no RoleBinding or token Secret was deleted"
   fi
-  if RB="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{" "}{range .subjects[*]}{.kind}/{.namespace}/{.name}{","}{end}{"\n"}{end}')"; then
-    LEFT="$(printf '%s\n' "$RB" | awk -v w="ServiceAccount/${SA_NAMESPACE}/${SERVICE_ACCOUNT_NAME}" -v n="ServiceAccount//${SERVICE_ACCOUNT_NAME}" -v sn="$SA_NAMESPACE" '{k = split($3, s, ","); for (i = 1; i <= k; i++) if (s[i] == w || (s[i] == n && $1 == sn)) {print $1 "/" $2; break}}')"
-    if [ -n "$LEFT" ]; then echo "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $LEFT (step 1 used that namespace: run this block again with it, which also deletes the token Secrets there)"; fi
+  kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$SA_NAMESPACE" delete serviceaccount "$SERVICE_ACCOUNT_NAME"
+  if RB="$(rbs)"; then
+    LEFT="$(mine "$RB")"
+    if [ -n "$LEFT" ]; then echo "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $LEFT (see the error above)"; fi
   else
     echo "FAILED: the RoleBindings could not be read (see the error above)"
   fi
+  if [ "$VKS_CLUSTER_NAMESPACE" != "*" ]; then echo "may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" auth can-i list pods --as="system:serviceaccount:${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}")"; fi
   echo "may still list pods in every namespace: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" auth can-i list pods --all-namespaces --as="system:serviceaccount:${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}")"
   O="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$SA_NAMESPACE" get serviceaccount "$SERVICE_ACCOUNT_NAME" -o name 2>&1)"
   case "$O" in
@@ -554,26 +568,35 @@ $SERVICE_ACCOUNT_NAME = "cicd-account"
 $VKS_CLUSTER_NAMESPACE = "team-a"
 $SA_NAMESPACE = "kubeconfig-access"
 
+function mine {
+  $global:RBOK = $false
+  $global:LASTEXITCODE = $null
+  $J = kubectl --kubeconfig $ADMIN_KUBECONFIG get rolebindings -A -o json
+  if ($LASTEXITCODE -ne 0) { return }
+  $W = "ServiceAccount/$SA_NAMESPACE/$SERVICE_ACCOUNT_NAME"
+  try { $L = @(@(($J | Out-String | ConvertFrom-Json).items) | Where-Object { $S = @($_.subjects | ForEach-Object { "$($_.kind)/$($_.namespace)/$($_.name)" }); ($S -contains $W) -or ($_.metadata.namespace -eq $SA_NAMESPACE -and $S -contains "ServiceAccount//$SERVICE_ACCOUNT_NAME") } | ForEach-Object { "$($_.metadata.namespace)/$($_.metadata.name)" }); $global:RBOK = $true; $L } catch { }
+}
 if (-not $VKS_CLUSTER_NAMESPACE) {
   'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set it to what step 1 used (a namespace, or "*"); nothing was deleted'
 } else {
   kubectl --kubeconfig $ADMIN_KUBECONFIG delete clusterrolebinding "$SERVICE_ACCOUNT_NAME-cluster-admin" "$SERVICE_ACCOUNT_NAME-view" --ignore-not-found
-  kubectl --kubeconfig $ADMIN_KUBECONFIG -n $SA_NAMESPACE delete serviceaccount $SERVICE_ACCOUNT_NAME
-  if ($VKS_CLUSTER_NAMESPACE -ne '*') {
-    kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE delete rolebinding "$SERVICE_ACCOUNT_NAME-edit" "$SERVICE_ACCOUNT_NAME-view" --ignore-not-found
-    kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE delete secret --field-selector type=kubernetes.io/service-account-token
-    "may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE auth can-i list pods "--as=system:serviceaccount:${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME")"
-  }
-  $global:LASTEXITCODE = $null
-  $J = kubectl --kubeconfig $ADMIN_KUBECONFIG get rolebindings -A -o json
-  if ($LASTEXITCODE -ne 0) {
-    'FAILED: the RoleBindings could not be read (see the error above)'
+  $MATCH = @(mine)
+  if (-not $RBOK) {
+    'FAILED: the RoleBindings could not be read (see the error above); no RoleBinding or token Secret was deleted'
   } else {
-    $W = "ServiceAccount/$SA_NAMESPACE/$SERVICE_ACCOUNT_NAME"
-    $LEFT = $null
-    try { $LEFT = @(@(($J | Out-String | ConvertFrom-Json).items) | Where-Object { $S = @($_.subjects | ForEach-Object { "$($_.kind)/$($_.namespace)/$($_.name)" }); ($S -contains $W) -or ($_.metadata.namespace -eq $SA_NAMESPACE -and $S -contains "ServiceAccount//$SERVICE_ACCOUNT_NAME") } | ForEach-Object { "$($_.metadata.namespace)/$($_.metadata.name)" }) } catch { 'FAILED: the RoleBindings could not be read (see the error above)' }
-    if ($LEFT.Count) { "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $($LEFT -join ' ') (step 1 used that namespace: run this block again with it, which also deletes the token Secrets there)" }
+    foreach ($M in $MATCH) { $P = $M.Split('/'); kubectl --kubeconfig $ADMIN_KUBECONFIG -n $P[0] delete rolebinding $P[1] }
+    $NSS = @($MATCH | ForEach-Object { $_.Split('/')[0] } | Select-Object -Unique)
+    foreach ($N in $NSS) { "sweeping ServiceAccount token Secrets in $N"; kubectl --kubeconfig $ADMIN_KUBECONFIG -n $N delete secret --field-selector type=kubernetes.io/service-account-token }
+    if ($VKS_CLUSTER_NAMESPACE -ne '*' -and $NSS -notcontains $VKS_CLUSTER_NAMESPACE) { "no RoleBinding of $SERVICE_ACCOUNT_NAME in ${VKS_CLUSTER_NAMESPACE}: nothing was deleted there" }
   }
+  kubectl --kubeconfig $ADMIN_KUBECONFIG -n $SA_NAMESPACE delete serviceaccount $SERVICE_ACCOUNT_NAME
+  $LEFT = @(mine)
+  if (-not $RBOK) {
+    'FAILED: the RoleBindings could not be read (see the error above)'
+  } elseif ($LEFT.Count) {
+    "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $($LEFT -join ' ') (see the error above)"
+  }
+  if ($VKS_CLUSTER_NAMESPACE -ne '*') { "may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE auth can-i list pods "--as=system:serviceaccount:${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME")" }
   "may still list pods in every namespace: $(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i list pods --all-namespaces "--as=system:serviceaccount:${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME")"
   $O = (kubectl --kubeconfig $ADMIN_KUBECONFIG -n $SA_NAMESPACE get serviceaccount $SERVICE_ACCOUNT_NAME -o name 2>&1) -join ' '
   if ($O -match 'NotFound') {
@@ -586,21 +609,26 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
 
 </details>
 
-**Expect:** `serviceaccount "cicd-account" deleted from kubeconfig-access namespace` (older kubectl:
-`serviceaccount "cicd-account" deleted`), `rolebinding.rbac.authorization.k8s.io "cicd-account-edit"
-deleted` (or `-view`), then a `deleted` line for each token Secret in `team-a`, or `No resources
-found`, and `may still list pods in team-a: no`. With `VKS_CLUSTER_NAMESPACE="*"`:
+**Expect:** `rolebinding.rbac.authorization.k8s.io "cicd-account-edit" deleted` (or `-view`), then
+`sweeping ServiceAccount token Secrets in team-a` and a `deleted` line for each token Secret there,
+or `No resources found`; then `serviceaccount "cicd-account" deleted from kubeconfig-access
+namespace` (older kubectl: `serviceaccount "cicd-account" deleted`) and `may still list pods in
+team-a: no`. With `VKS_CLUSTER_NAMESPACE="*"`: first
 `clusterrolebinding.rbac.authorization.k8s.io "cicd-account-cluster-admin" deleted` (or
-`"cicd-account-view"`), the ServiceAccount line. In both cases `may still list pods in every
-namespace: no` and `ServiceAccount gone: …`.
+`"cicd-account-view"`), then any RoleBinding and sweep lines, and the ServiceAccount line. In both
+cases `may still list pods in every namespace: no` and `ServiceAccount gone: …`.
 
 **If not:**
 - `Error from server (NotFound)`: the ServiceAccount is already gone, or `SERVICE_ACCOUNT_NAME` or `SA_NAMESPACE`
   is not what step 1 used.
 - `FAILED: the ServiceAccount is still there …`: read the error in that line (`Forbidden`: `ADMIN_KUBECONFIG` is
   not the cluster's administrator file) and run the block again.
-- `FAILED: a RoleBinding still names …`: step 1 used that namespace (`VKS_CLUSTER_NAMESPACE` was `"*"`
-  or another namespace, so nothing there was deleted); run the block again with it.
+- `FAILED: the RoleBindings could not be read …`: no RoleBinding or token Secret was deleted; fix
+  the error above (`Forbidden`: `ADMIN_KUBECONFIG` is not the cluster's administrator file) and run
+  the block again.
+- `no RoleBinding of … in team-a: nothing was deleted there`: step 1 used another namespace, or the
+  access was already taken away; the block found and cleaned the namespaces it had itself.
+- `FAILED: a RoleBinding still names …`: its delete failed (the error is above); run the block again.
 - `may still list pods …: yes`: another binding gives that login rights; find it with
   `kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings,clusterrolebindings -A -o wide | grep "$SERVICE_ACCOUNT_NAME"` and delete it.
 
