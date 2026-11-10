@@ -73,7 +73,7 @@ fi
 fi
 unset TOKEN
 
-if [ "$$SERVICE_ACCOUNT_KUBECONFIG" -nt "$STAMP" ]; then
+if [ "$SERVICE_ACCOUNT_KUBECONFIG" -nt "$STAMP" ]; then
   echo
   echo "Next: send $SERVICE_ACCOUNT_KUBECONFIG to the team or tool as a secret (it holds the token)."
   echo "To try it here: kubectl --kubeconfig \"$SERVICE_ACCOUNT_KUBECONFIG\" auth whoami"

@@ -78,7 +78,7 @@ fi
 adm delete csr "$CSR" --ignore-not-found >/dev/null; rm -rf "$TMP"
 fi
 
-if [ "$$PERSON_KUBECONFIG" -nt "$STAMP" ]; then
+if [ "$PERSON_KUBECONFIG" -nt "$STAMP" ]; then
   echo
   echo "Next: write down the name on the subject= line (step 4 needs it), then send $PERSON_KUBECONFIG"
   echo "to the person as a secret (it holds their key)."
