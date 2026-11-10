@@ -47,22 +47,6 @@ that runs `vcf`, needs the VCF CLI too; part B needs kubelogin).
 
 ## Tested on
 
-✅ every block run, "part" some blocks run, — not run.
-
-On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines:
-
-| guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
-|---|---|---|---|---|---|---|
-| [Prerequisites](PREREQS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Install kubectl](KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | ✅ | ✅ | ✅ | part | ✅ | ✅ |
-| [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | part | — | — | — | — | — |
-| [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | — | — | — | — | — | — |
-| [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) | — | — | — | — | — | — |
-| [Kubeconfig files](KUBECONFIG.md) | ✅ | — | — | — | ✅ | — |
-| [Install Helm](HELM.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-
-Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
+Where each guide in this group was run, on which OS and with which versions: [Tested on](TESTED.md#getting-started).
 
 Back to [README](../README.md).

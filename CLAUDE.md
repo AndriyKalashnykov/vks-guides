@@ -2,8 +2,9 @@
 
 Copy-paste how-to guides for VMware vSphere Kubernetes Service (VKS), VCF 9.x. README.md links six
 group pages (docs/GET-STARTED.md, ACCESS-SIGN-IN.md, CLUSTERS.md, IMAGES.md, GITOPS-CICD.md, OPERATE.md);
-each lists its guides, the order to follow and its "Tested on" rows (a new guide gets a row in its
-group's two tables). The guides in docs/: PREREQS.md, KUBECTL.md, VCF.md, SUPERVISOR-LOGIN.md, USER-LOGIN.md, USER-KUBECONFIG.md, USER-IDP-LOGIN.md, ADMIN-GRANT-ACCESS.md, ADMIN-GRANT-ACCESS-IDP.md, KUBECONFIG.md, KEYCLOAK.md, KEYCLOAK-VKS.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md, NEXUS.md,
+each lists its guides and the order to follow, and its `## Tested on` is one line linking its group's
+table in docs/TESTED.md (owner, 2026-11-10: one page holds every guide's cells; a new guide gets a row
+in its group page's guide table and one in its group's table in TESTED.md). The guides in docs/: PREREQS.md, KUBECTL.md, VCF.md, SUPERVISOR-LOGIN.md, USER-LOGIN.md, USER-KUBECONFIG.md, USER-IDP-LOGIN.md, ADMIN-GRANT-ACCESS.md, ADMIN-GRANT-ACCESS-IDP.md, KUBECONFIG.md, KEYCLOAK.md, KEYCLOAK-VKS.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md, NEXUS.md,
 GITEA.md, TEKTON.md, GITLAB.md, CICD.md, OCTOPUS.md, ADDONS.md, HEADLAMP.md, HELM.md, MONITORING.md, LOGGING.md, OBSERVABILITY.md (screenshots in
 docs/img/). Readers paste
 blocks; there is nothing to build.
@@ -59,7 +60,7 @@ blocks; there is nothing to build.
   A `.ps1` run and the parser (`ParseInput`) accept it, so neither catches it. `catch` and `finally` may start a
   line (the console waits for them).
 - Wherever several OSs appear (labels, sections, lists), the order is Linux, macOS, Windows.
-- Block labels name no distribution or OS version; the group pages' "Tested on" tables say what
+- Block labels name no distribution or OS version; docs/TESTED.md says what
   was run. Where a command differs per distribution, the text or PREREQS.md names it.
 - Each guide opens with its title and what it does, never with an official-docs box (owner, 2026-11-10).
   Its last chapter is `## References`, before "Back to README" (at the very end where a guide has no such
@@ -146,7 +147,7 @@ blocks; there is nothing to build.
   and reads the answer from the terminal, not stdin) swallows the pasted lines still waiting, so
   nothing may follow the compound command that runs it; the check of its result goes inside that
   compound (`if vcf cluster … && …; then`).
-- A behaviour change is run for real before README's "Tested on" table claims it. On the owner's
+- A behaviour change is run for real before docs/TESTED.md claims it. On the owner's
   nested-vsphere-lab the agent logs in itself, only through that checkout's make targets, which read
   the lab's own secrets, so it never handles the password and never asks the owner. On this host
   the guides' login is the VCF CLI context `supervisor` recording SUPERVISOR-LOGIN.md's file
