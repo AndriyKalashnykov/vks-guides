@@ -133,12 +133,21 @@ elif [ ! -f "$VCENTER_CA" ] || [ ! -s "$VCENTER_CA" ]; then
 else
   B64="$(printf '%s:%s' "$SSO_USER" "$SSO_PASSWORD" | base64 | tr -d '\n')"; unset SSO_PASSWORD
   TOK="$(printf 'header = "Authorization: Basic %s"\n' "$B64" | curl -sS --connect-timeout 20 --cacert "$VCENTER_CA" -X POST -K - "https://${VCENTER_FQDN}/api/session" | tr -d '"')"; unset B64
+  case "$TOK" in
+    ""|*"{"*|*" "*) LOGIN="no" ;;
+    *) LOGIN="yes" ;;
+  esac
   api() { printf 'header = "vmware-api-session-id: %s"\n' "$TOK" | curl -sS --connect-timeout 20 --cacert "$VCENTER_CA" -K - "$@"; }
-  SUP="$(api "https://${VCENTER_FQDN}/api/vcenter/namespaces/instances/v2/${VSPHERE_NAMESPACE}" | jq -r '.supervisor // empty' 2>/dev/null)"
-  IDP="$(api "https://${VCENTER_FQDN}/api/vcenter/namespace-management/supervisors/${SUP}/identity/providers" | jq -r --arg n "$IDP_NAME" '.[]? | select(.display_name == $n) | .provider' 2>/dev/null)"
+  SUP=""; IDP=""
+  if [ "$LOGIN" = "yes" ]; then SUP="$(api "https://${VCENTER_FQDN}/api/vcenter/namespaces/instances/v2/${VSPHERE_NAMESPACE}" | jq -r '.supervisor // empty' 2>/dev/null)"; fi
+  if [ -n "$SUP" ]; then IDP="$(api "https://${VCENTER_FQDN}/api/vcenter/namespace-management/supervisors/${SUP}/identity/providers" | jq -r --arg n "$IDP_NAME" '.[]? | select(.display_name == $n) | .provider' 2>/dev/null)"; fi
   URL="https://${VCENTER_FQDN}/api/vcenter/namespaces/instances/${VSPHERE_NAMESPACE}/access/no-domain/${KC_GROUP}?type=GROUP"
-  if [ -z "$SUP" ] || [ -z "$IDP" ]; then
-    echo "FAILED: no vCenter login, vSphere Namespace ${VSPHERE_NAMESPACE} or identity provider ${IDP_NAME} (see above)"
+  if [ "$LOGIN" = "no" ]; then
+    echo "FAILED: no vCenter session: the sign-in was refused or vCenter was not reached (answer: $TOK); a refused sign-in counts toward the SSO lock-out, so wait before you try again; nothing was changed"
+  elif [ -z "$SUP" ]; then
+    echo "FAILED: no vSphere Namespace ${VSPHERE_NAMESPACE} (or this user cannot read it); nothing was changed"
+  elif [ -z "$IDP" ]; then
+    echo "FAILED: no identity provider ${IDP_NAME} on the Supervisor of ${VSPHERE_NAMESPACE} (step 1); nothing was changed"
   else
     if [ "$ROLE" = "REMOVE" ]; then
       api -X DELETE "$URL"
@@ -149,7 +158,7 @@ else
     fi
     echo "now: $(api "$URL")"
   fi
-  api -X DELETE "https://${VCENTER_FQDN}/api/session"; unset TOK
+  if [ "$LOGIN" = "yes" ]; then api -X DELETE "https://${VCENTER_FQDN}/api/session"; fi; unset TOK
 fi
 ```
 
@@ -177,12 +186,17 @@ if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
   $TOK = ("header = `"Authorization: Basic $B64`"" | curl.exe -sS --connect-timeout 20 --ssl-no-revoke --cacert $VCENTER_CA -X POST -K - "https://$VCENTER_FQDN/api/session") -replace '"', ''
   Remove-Variable B64
   function api { "header = `"vmware-api-session-id: $TOK`"" | curl.exe -sS --connect-timeout 20 --ssl-no-revoke --cacert $VCENTER_CA -K - @args }
+  $LOGIN = ("$TOK" -ne '' -and "$TOK" -notmatch '[{ ]')
   $SUP = $null; $IDP = $null
-  try { $SUP = (api "https://$VCENTER_FQDN/api/vcenter/namespaces/instances/v2/$VSPHERE_NAMESPACE" | ConvertFrom-Json).supervisor } catch { }
+  if ($LOGIN) { try { $SUP = (api "https://$VCENTER_FQDN/api/vcenter/namespaces/instances/v2/$VSPHERE_NAMESPACE" | ConvertFrom-Json).supervisor } catch { } }
   if ($SUP) { $IDP = (@(api "https://$VCENTER_FQDN/api/vcenter/namespace-management/supervisors/$SUP/identity/providers" | ConvertFrom-Json) | Where-Object { $_.display_name -eq $IDP_NAME }).provider }
   $URL = "https://$VCENTER_FQDN/api/vcenter/namespaces/instances/$VSPHERE_NAMESPACE/access/no-domain/${KC_GROUP}?type=GROUP"
-  if (-not $SUP -or -not $IDP) {
-    "FAILED: no vCenter login, vSphere Namespace $VSPHERE_NAMESPACE or identity provider $IDP_NAME (see above)"
+  if (-not $LOGIN) {
+    "FAILED: no vCenter session: the sign-in was refused or vCenter was not reached (answer: $TOK); a refused sign-in counts toward the SSO lock-out, so wait before you try again; nothing was changed"
+  } elseif (-not $SUP) {
+    "FAILED: no vSphere Namespace $VSPHERE_NAMESPACE (or this user cannot read it); nothing was changed"
+  } elseif (-not $IDP) {
+    "FAILED: no identity provider $IDP_NAME on the Supervisor of $VSPHERE_NAMESPACE (step 1); nothing was changed"
   } else {
     if ($ROLE -eq "REMOVE") {
       api -X DELETE $URL
@@ -195,7 +209,7 @@ if (-not $SSO_PASSWORD -or $SSO_PASSWORD.Length -eq 0) {
     }
     "now: $(api $URL)"
   }
-  api -X DELETE "https://$VCENTER_FQDN/api/session" | Out-Null; Remove-Variable TOK
+  if ($LOGIN) { api -X DELETE "https://$VCENTER_FQDN/api/session" | Out-Null }; Remove-Variable TOK
 }
 ```
 
@@ -210,10 +224,17 @@ Kubernetes role in the vSphere Namespace (a RoleBinding `view:<prefix>:<group>`)
 - `FAILED: no password …`: run the password line, then this block.
 - `FAILED: not found: …`: save the vCenter CA first
   ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca), step 1).
-- `FAILED: no vCenter login, …` under `curl: (60)` or `SSL`: `VCENTER_CA` is not vCenter's CA.
-- `FAILED: no vCenter login, …` otherwise: check `SSO_USER` and `VCENTER_FQDN`, then run the
-  password line and this block again; mind the lock-out. Or check `VSPHERE_NAMESPACE` and `IDP_NAME`
-  (step 1).
+- `FAILED: no vCenter session …` under `curl: (60)` or `SSL`: `VCENTER_CA` is not vCenter's CA.
+- `FAILED: no vCenter session …` under another `curl:` error: this machine does not reach
+  `VCENTER_FQDN` on port 443.
+- `FAILED: no vCenter session …` with an `UNAUTHENTICATED` answer: the password or `SSO_USER` is
+  wrong. Each refused sign-in counts toward the SSO lock-out: check both, wait a few minutes, then run
+  the password line and this block again.
+- `FAILED: no vSphere Namespace …`: check `VSPHERE_NAMESPACE` (as vCenter lists it), and that
+  `SSO_USER` may read it.
+- `FAILED: no identity provider …`: no provider with that **Provider Name** is registered on that
+  Supervisor; check `IDP_NAME` (step 1), or register it first
+  ([KEYCLOAK-VKS.md step 11](KEYCLOAK-VKS.md#11-register-keycloak-with-the-supervisor-optional)).
 
 **Provider registered again:** after the provider was removed and registered again, run this block
 for each group again.
