@@ -200,8 +200,7 @@ or identity provider user does not take it away; only deleting the ServiceAccoun
 
 The ServiceAccount lives in its own namespace inside the VKS cluster, `SA_NAMESPACE`, where the
 team has no rights (so it cannot make more tokens for it), and gets its role in `VKS_CLUSTER_NAMESPACE`.
-Pick `DAYS` as short as the work allows: 30 by default, never more than 90 for a team; the cluster
-does not shorten it. Never give `edit` on a namespace that holds software with wider rights (step
+Pick `DAYS` as short as the work allows: 120 by default; the cluster does not shorten it. Never give `edit` on a namespace that holds software with wider rights (step
 4 says why).
 
 <a id="make-it"></a>
@@ -238,7 +237,7 @@ SERVICE_ACCOUNT_NAME="cicd-account"
 VKS_CLUSTER_NAMESPACE="team-a"
 SA_NAMESPACE="kubeconfig-access"
 ROLE="edit"
-DAYS="30"
+DAYS="120"
 SERVICE_ACCOUNT_KUBECONFIG="$HOME/${VKS_CLUSTER}-${SERVICE_ACCOUNT_NAME}.kubeconfig"
 
 adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
@@ -281,7 +280,7 @@ $SERVICE_ACCOUNT_NAME = "cicd-account"
 $VKS_CLUSTER_NAMESPACE = "team-a"
 $SA_NAMESPACE = "kubeconfig-access"
 $ROLE = "edit"
-$DAYS = 30
+$DAYS = 120
 $SERVICE_ACCOUNT_KUBECONFIG = "$HOME\${VKS_CLUSTER}-${SERVICE_ACCOUNT_NAME}.kubeconfig"
 
 function adm { $input | kubectl --kubeconfig $ADMIN_KUBECONFIG @args }
@@ -311,7 +310,7 @@ Remove-Variable TOKEN
 
 </details>
 
-**Expect:** `token ends in: 29 days` or `30 days` (for `DAYS="30"`),
+**Expect:** `token ends in: 119 days` or `120 days` (for `DAYS="120"`),
 `acts as: system:serviceaccount:kubeconfig-access:cicd-account`, `create deployments in team-a: yes`
 (`no` with `ROLE="view"`) and `list pods in kube-system: no`.
 
@@ -713,7 +712,7 @@ VKS_CLUSTER="my-vks-cluster"
 ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 PERSON="alice"
 VKS_CLUSTER_NAMESPACE="team-a"
-DAYS="30"
+DAYS="120"
 PERSON_KUBECONFIG="$HOME/${VKS_CLUSTER}-${PERSON}.kubeconfig"
 
 adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
