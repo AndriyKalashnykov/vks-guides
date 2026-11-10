@@ -57,12 +57,12 @@ Compare the ways:
 
 | way | set up by | they need | lasts | to take it away |
 |---|---|---|---|---|
-| [The person's own SSO account](#the-persons-own-sso-account) | the vCenter administrator, then the cluster administrator | kubectl, and the VCF CLI or the kubectl vSphere plugin | 10 hours per login | delete the person's RoleBinding and their role on the vSphere Namespace |
-| [A group from an external identity provider, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) (its own guide) | the identity provider's, vCenter and cluster administrators | kubectl and the VCF CLI | while the person's sign-in lasts | disable the user in the identity provider, or delete the group's RoleBinding (with `"*"`: its ClusterRoleBinding) and its role on the vSphere Namespace |
-| [A ServiceAccount token](#a-serviceaccount-token) | the cluster administrator | kubectl | the days you set | delete the ServiceAccount: every copy stops (with `"*"`: also its ClusterRoleBinding; not logins the holder made) |
+| [The person's own SSO account](#the-persons-own-sso-account) | the vCenter administrator, then the cluster administrator | kubectl, and the VCF CLI or the kubectl vSphere plugin | 10 hours per login | delete the person's RoleBinding and their role on the vSphere Namespace; with `edit`, ServiceAccount tokens and workloads they made keep working: delete the workloads, re-create ServiceAccounts with rights, restart what uses them; with **Can edit** or **Owner**: also logins they made |
+| [A group from an external identity provider, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) (its own guide) | the identity provider's, vCenter and cluster administrators | kubectl and the VCF CLI | while the person's sign-in lasts | disable the user in the identity provider, or delete the group's RoleBinding (with `"*"`: its ClusterRoleBinding) and its role on the vSphere Namespace; with `edit`, ServiceAccount tokens and workloads members made keep working: delete the workloads, re-create ServiceAccounts with rights, restart what uses them; with `"*"` or **Can edit**: also logins they made |
+| [A ServiceAccount token](#a-serviceaccount-token) | the cluster administrator | kubectl | the days you set | delete the ServiceAccount: every copy stops (with `"*"`: also its ClusterRoleBinding; not logins the holder made); with `edit`, tokens and workloads the team made keep working: delete the workloads, re-create ServiceAccounts with rights, restart what uses them |
 | [An administrator ServiceAccount token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster) | the cluster administrator | kubectl | the days you set (365 for a year), or until you take it away | delete its ClusterRoleBinding, token Secret and ServiceAccount: every copy stops (not logins the holder made) |
-| [A personal certificate](#a-personal-certificate) | the cluster administrator | kubectl | the days you set | cannot be withdrawn: delete its RoleBinding (with `"*"`: ClusterRoleBinding) and never bind its name again |
-| [An external identity provider on one cluster](KEYCLOAK.md) (its own guide) | the identity provider's and cluster administrators | kubectl and kubelogin | while the person's sign-in lasts | delete the group's RoleBinding |
+| [A personal certificate](#a-personal-certificate) | the cluster administrator | kubectl | the days you set | cannot be withdrawn: delete its RoleBinding (with `"*"`: ClusterRoleBinding) and never bind its name again; with `edit`, ServiceAccount tokens and workloads they made keep working: delete the workloads, re-create ServiceAccounts with rights, restart what uses them; with `"*"`: also logins they made |
+| [An external identity provider on one cluster](KEYCLOAK.md) (its own guide) | the identity provider's and cluster administrators | kubectl and kubelogin | while the person's sign-in lasts | delete the group's RoleBinding; with `edit`, ServiceAccount tokens and workloads members made keep working: delete the workloads, re-create ServiceAccounts with rights, restart what uses them |
 
 The SSO way hands out no kubeconfig: the person's login writes their own. The group way hands out a file
 with no secret, which only tells kubectl where to sign in. The two ServiceAccount ways and the
@@ -191,9 +191,9 @@ The person uses the login with [USER-LOGIN.md](USER-LOGIN.md)'s
 
 If the person's check in [USER-LOGIN.md step 3](USER-LOGIN.md#3-use-the-login) still answers `yes`
 afterwards, they also have rights through a group: a group with **Can edit** or **Owner** on the
-vSphere Namespace is an administrator of every VKS cluster in it. Take the person out of that group, or take the group's role away in vCenter.
+vSphere Namespace is an administrator of every VKS cluster in it. Take the person out of that group, or take the group's role away in vCenter. Logins they made as an administrator keep working.
 
-With `edit`, the person could make tokens for any ServiceAccount in that namespace and start workloads there; those keep working: delete them.
+With `edit`, the person could make tokens for any ServiceAccount in that namespace and start workloads there; those keep working: delete those workloads, re-create every ServiceAccount there that has rights, and restart the workloads that use those ServiceAccounts.
 
 <a id="the-kubectl-vsphere-plugin-instead-of-the-vcf-cli-optional-and-deprecated"></a>
 <a id="1-windows-and-macos-trust-the-vcenter-ca-the-person-once"></a>
@@ -514,7 +514,7 @@ and `ServiceAccount gone: …`.
 
 **What keeps working:** tokens the team made with `kubectl create token`, and workloads it started:
 delete the team's workloads, and delete and re-create any ServiceAccount in `VKS_CLUSTER_NAMESPACE` that
-has rights. So never give `edit` on a namespace that holds software with wider rights.
+has rights, then restart the workloads that use them. So never give `edit` on a namespace that holds software with wider rights.
 
 ## An administrator ServiceAccount token (whole cluster)
 
@@ -933,7 +933,7 @@ whether that name may still deploy (with `"*"`: do everything, and it says `FAIL
 names it); nothing else changes. The
 name then has no rights, but the certificate keeps proving the name until its end date (`notAfter`),
 so never give that name rights again. With `edit`, tokens they made for any ServiceAccount in `VKS_CLUSTER_NAMESPACE`, and
-workloads they started, keep working: delete them. With `"*"`, logins made with it as a cluster administrator keep working. Set `NAME` to the name from step 1's `subject=` line, and
+workloads they started, keep working: delete those workloads, re-create every ServiceAccount there that has rights, and restart the workloads that use those ServiceAccounts. With `"*"`, logins made with it as a cluster administrator keep working. Set `NAME` to the name from step 1's `subject=` line, and
 `VKS_CLUSTER`, `ADMIN_KUBECONFIG` and `VKS_CLUSTER_NAMESPACE` to what step 1 used.
 
 <details>

@@ -349,6 +349,6 @@ Delete the group's RoleBinding (`kubectl --kubeconfig <admin file> -n team-a del
 keycloak-team-a-edit`): access ends at once. Removing a person from the group, or disabling them in
 Keycloak, stops their next login; a token they already have works until it expires (Keycloak's
 **Access Token Lifespan**, 5 minutes by default). With `edit`, members could make tokens for any ServiceAccount
-in that namespace and start workloads there; those keep working: delete them.
+in that namespace and start workloads there; those keep working: delete those workloads, re-create every ServiceAccount there that has rights, and restart the workloads that use those ServiceAccounts.
 
 Back to [README](../README.md).

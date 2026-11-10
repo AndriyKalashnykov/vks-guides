@@ -14,6 +14,7 @@
 # | rights              | everything (system:masters bypasses RBAC)                                                 |
 # | namespaces used     | VSPHERE_NAMESPACE (where the Secret is)                                                   |
 # | take it away        | can't be taken from one holder: no binding to delete; a new Secret keeps old copies valid |
+# | keeps working       | everything: it cannot be taken away                                                       |
 # | renew               | run again: the same file, or a newer certificate after the cluster rotates it             |
 # | meant for           | the cluster's administrators only; the guides say not to send it                          |
 # | needs on this host  | admin Supervisor login with Can edit or Owner (Can view: Forbidden)                       |
