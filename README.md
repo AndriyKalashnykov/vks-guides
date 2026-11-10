@@ -55,11 +55,11 @@ container images and run them from the registry; deploy from Git with ArgoCD and
 Prometheus and Grafana, forward its logs to VCF Operations, and see its logs and traces in Grafana
 (Loki, Jaeger).
 
-**How each guide works.** It opens with the official Broadcom or upstream docs it follows, and what
-you need first: earlier guides, tools, and, where it needs them, the rights and the network
-connections to allow. Steps in the vSphere Client are shown with screenshots. Command-line steps are
-blocks you paste into bash, zsh or Windows PowerShell. After each step, **Expect:** shows what
-success looks like and **If not:** says what to do.
+**How each guide works.** It opens with what it does and what you need first: earlier guides,
+tools, and, where it needs them, the rights and the network connections to allow. Steps in the
+vSphere Client are shown with screenshots. Command-line steps are blocks you paste into bash, zsh or
+Windows PowerShell. After each step, **Expect:** shows what success looks like and **If not:** says
+what to do. Its last chapter, **References**, lists the official Broadcom or upstream docs it follows.
 
 ## How to use
 

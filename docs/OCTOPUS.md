@@ -1,14 +1,5 @@
 # Run Octopus Deploy in a VKS cluster
 
-> [!NOTE]
-> **Official Broadcom, Octopus, Microsoft, cert-manager and Kubernetes documentation for this guide**
->
-> - Broadcom: [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html) (cert-manager)
-> - Octopus: [Octopus Deploy Helm chart](https://github.com/OctopusDeploy/helm-charts/blob/main/charts/octopus-deploy/README.md), [SQL Server database](https://octopus.com/docs/installation/sql-database), [Performance](https://octopus.com/docs/administration/managing-infrastructure/performance) (sizing), [Master key](https://octopus.com/docs/security/data-encryption), [Environments](https://octopus.com/docs/infrastructure/environments), [Lifecycles](https://octopus.com/docs/releases/lifecycles), [Docker feeds](https://octopus.com/docs/packaging-applications/package-repositories/docker-registries)
-> - Microsoft: [SQL Server on Linux containers](https://learn.microsoft.com/en-us/sql/linux/sql-server-linux-docker-container-deployment), [Editions of SQL Server 2025](https://learn.microsoft.com/en-us/sql/sql-server/editions-and-components-of-sql-server-2025)
-> - cert-manager: [CA issuer](https://cert-manager.io/docs/configuration/ca/), [SelfSigned issuer](https://cert-manager.io/docs/configuration/selfsigned/)
-> - Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) (`restricted`)
-
 Octopus Deploy is a server that releases software to environments such as dev, test and prod, in
 order and with approvals. This runs Octopus Server, with Microsoft SQL Server Express for its
 data, in a VKS cluster, gives its web page an HTTPS certificate and an address, and creates the
@@ -1944,5 +1935,15 @@ are gone`. Run again, it prints `release: not found` and `namespaces "octopus" n
 - `STILL THERE: (the check failed …)`: kubectl could not read the cluster; the error above says why
   (`Unauthorized`: the file has expired, [get it again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)).
   Then run the block again.
+
+## References
+
+**Official Broadcom, Octopus, Microsoft, cert-manager and Kubernetes documentation for this guide**
+
+- Broadcom: [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html) (cert-manager)
+- Octopus: [Octopus Deploy Helm chart](https://github.com/OctopusDeploy/helm-charts/blob/main/charts/octopus-deploy/README.md), [SQL Server database](https://octopus.com/docs/installation/sql-database), [Performance](https://octopus.com/docs/administration/managing-infrastructure/performance) (sizing), [Master key](https://octopus.com/docs/security/data-encryption), [Environments](https://octopus.com/docs/infrastructure/environments), [Lifecycles](https://octopus.com/docs/releases/lifecycles), [Docker feeds](https://octopus.com/docs/packaging-applications/package-repositories/docker-registries)
+- Microsoft: [SQL Server on Linux containers](https://learn.microsoft.com/en-us/sql/linux/sql-server-linux-docker-container-deployment), [Editions of SQL Server 2025](https://learn.microsoft.com/en-us/sql/sql-server/editions-and-components-of-sql-server-2025)
+- cert-manager: [CA issuer](https://cert-manager.io/docs/configuration/ca/), [SelfSigned issuer](https://cert-manager.io/docs/configuration/selfsigned/)
+- Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) (`restricted`)
 
 Back to [README](../README.md).

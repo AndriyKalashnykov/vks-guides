@@ -1,12 +1,5 @@
 # Install Helm
 
-> [!NOTE]
-> **Official Helm documentation for this guide**
->
-> - [Installing Helm](https://helm.sh/docs/intro/install/) (from the binary releases)
-> - [Helm releases](https://github.com/helm/helm/releases) (versions and checksums)
-> - [Helm 3 End of Life](https://helm.sh/blog/helm-v3-end-of-life) (why this guide installs Helm 4)
-
 Helm is a program on your machine that installs ready-made app packages (*Helm charts*) into a VKS
 cluster; [MONITORING.md](MONITORING.md) and other guides use it.
 
@@ -124,5 +117,13 @@ Remove-Item -Recurse -Force $TMP
 - `note: … added to your PATH` (Windows): new terminals find `helm` from now on; nothing to do.
 - `WARNING: 'helm' on PATH is …`: another helm is found first. Remove it, or put `INSTALL_DIR`
   first in your `PATH`.
+
+## References
+
+**Official Helm documentation for this guide**
+
+- [Installing Helm](https://helm.sh/docs/intro/install/) (from the binary releases)
+- [Helm releases](https://github.com/helm/helm/releases) (versions and checksums)
+- [Helm 3 End of Life](https://helm.sh/blog/helm-v3-end-of-life) (why this guide installs Helm 4)
 
 Back to [README](../README.md).

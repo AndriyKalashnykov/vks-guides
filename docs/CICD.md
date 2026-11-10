@@ -1,16 +1,5 @@
 # Build and deploy on every push
 
-> [!NOTE]
-> **Official documentation for this guide**
->
-> - VKS 3.8: [Using builtin-generic-v3.8.0 Cluster Class with 3.8.0 and Later](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/usingbuiltingenericv380clusterclasswith380andlater.html) (`volumes`), [ClusterClass Variable Overrides](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/clusterclass-variable-overrides.html)
-> - Harbor 2.15: [Create Project Robot Accounts](https://goharbor.io/docs/2.15.0/working-with-projects/project-configuration/create-robot-accounts/)
-> - Argo CD 3.4: [Projects](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/projects/), [Automated Sync Policy](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/auto_sync/)
-> - Kaniko: [osscontainertools/kaniko](https://github.com/osscontainertools/kaniko) (`--registry-certificate`, `--digest-file`)
-> - Tekton: [Tasks](https://tekton.dev/docs/pipelines/tasks/), [PipelineRuns](https://tekton.dev/docs/pipelines/pipelineruns/), [EventListeners](https://tekton.dev/docs/triggers/eventlisteners/), [Interceptors](https://tekton.dev/docs/triggers/interceptors/)
-> - Gitea 28.2: [Webhooks](https://docs.gitea.com/usage/repository/webhooks/), [API Usage](https://docs.gitea.com/development/api-usage), [Configuration Cheat Sheet](https://docs.gitea.com/administration/config-cheat-sheet) (`[security] ALLOWED_HOST_LIST`)
-> - GitLab 19.5: [CI/CD YAML syntax](https://docs.gitlab.com/ci/yaml/), [Custom CI/CD configuration file](https://docs.gitlab.com/ci/pipelines/settings/), [Kubernetes executor](https://docs.gitlab.com/runner/executors/kubernetes/), [Feature flags](https://docs.gitlab.com/runner/configuration/feature-flags/), [Project access tokens](https://docs.gitlab.com/user/project/settings/project_access_tokens/)
-
 This ties the other guides together. You push a change to an app's Git repository; the cluster
 builds its image with Kaniko and pushes it to Harbor; the build writes the image's digest (its
 unique `sha256:` fingerprint) into a second repository, `deploy`; ArgoCD on the Supervisor sees the
@@ -2730,5 +2719,17 @@ back to …` and `group cicd: none`; Harbor `404`.
   (**Projects** → `cicd-demo`), then run this again.
 
 The local folders stay in `~/.config/vks-guides/cicd`; delete it if you do not need it.
+
+## References
+
+**Official documentation for this guide**
+
+- VKS 3.8: [Using builtin-generic-v3.8.0 Cluster Class with 3.8.0 and Later](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/usingbuiltingenericv380clusterclasswith380andlater.html) (`volumes`), [ClusterClass Variable Overrides](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/clusterclass-variable-overrides.html)
+- Harbor 2.15: [Create Project Robot Accounts](https://goharbor.io/docs/2.15.0/working-with-projects/project-configuration/create-robot-accounts/)
+- Argo CD 3.4: [Projects](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/projects/), [Automated Sync Policy](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/auto_sync/)
+- Kaniko: [osscontainertools/kaniko](https://github.com/osscontainertools/kaniko) (`--registry-certificate`, `--digest-file`)
+- Tekton: [Tasks](https://tekton.dev/docs/pipelines/tasks/), [PipelineRuns](https://tekton.dev/docs/pipelines/pipelineruns/), [EventListeners](https://tekton.dev/docs/triggers/eventlisteners/), [Interceptors](https://tekton.dev/docs/triggers/interceptors/)
+- Gitea 28.2: [Webhooks](https://docs.gitea.com/usage/repository/webhooks/), [API Usage](https://docs.gitea.com/development/api-usage), [Configuration Cheat Sheet](https://docs.gitea.com/administration/config-cheat-sheet) (`[security] ALLOWED_HOST_LIST`)
+- GitLab 19.5: [CI/CD YAML syntax](https://docs.gitlab.com/ci/yaml/), [Custom CI/CD configuration file](https://docs.gitlab.com/ci/pipelines/settings/), [Kubernetes executor](https://docs.gitlab.com/runner/executors/kubernetes/), [Feature flags](https://docs.gitlab.com/runner/configuration/feature-flags/), [Project access tokens](https://docs.gitlab.com/user/project/settings/project_access_tokens/)
 
 Back to [README](../README.md).

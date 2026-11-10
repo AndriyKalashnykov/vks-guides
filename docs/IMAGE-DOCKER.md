@@ -1,13 +1,5 @@
 # Build a container image with docker, push it and run it (short version) (Harbor example)
 
-> [!NOTE]
-> **Official documentation for this guide (Harbor, Docker and Kubernetes; Broadcom has none for
-> building images)**
->
-> - Harbor: [Pulling and Pushing Images](https://goharbor.io/docs/main/working-with-projects/working-with-images/pulling-pushing-images/), [Robot Accounts](https://goharbor.io/docs/main/administration/robot-accounts/)
-> - Docker: [Verify repository client with certificates](https://docs.docker.com/engine/security/certificates/)
-> - Kubernetes: [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
-
 This builds the web app in [`argocd/test-web-apps`](../argocd/test-web-apps) with docker on Linux,
 pushes it to a Harbor project (public, or private with step 5), and runs it in a VKS cluster.
 [IMAGE.md](IMAGE.md) is the full guide (podman, macOS, Windows, checks); this one has only the
@@ -349,3 +341,12 @@ sudo rm -r "/etc/docker/certs.d/$HARBOR_FQDN"
 
 The image stays in Harbor: delete it in Harbor's web page (**Projects** → your project →
 **Repositories**, tick `test-web-apps` → **DELETE**).
+
+## References
+
+**Official documentation for this guide (Harbor, Docker and Kubernetes; Broadcom has none for
+building images)**
+
+- Harbor: [Pulling and Pushing Images](https://goharbor.io/docs/main/working-with-projects/working-with-images/pulling-pushing-images/), [Robot Accounts](https://goharbor.io/docs/main/administration/robot-accounts/)
+- Docker: [Verify repository client with certificates](https://docs.docker.com/engine/security/certificates/)
+- Kubernetes: [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)

@@ -1,13 +1,5 @@
 # VKS add-ons
 
-> [!NOTE]
-> **Official Broadcom documentation (VCF 9.1, VKS 3.8) for this guide**
->
-> - [Managing Add-ons in VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters.html) and its [Core Add-ons](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/core-addons.html) page
-> - [Create a New AddonRepository Install Version](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/creating-and-updating-addonrepositoryinstalls/create-a-new-addonrepository-install-version-for-vks-37-and-later.html) (add-ons from your own registry)
-> - [VKS Add-ons Release Notes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/release-notes/vks-addons-release-notes.html) (the list, support tiers and compatibility)
-> - [VCF CLI command reference: addon](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/building-your-cloud-applications/getting-started-with-the-tools-for-building-applications/installing-and-using-vcf-cli-v9/command-reference2/addon.html) (VCF 9.0 page; there is no 9.1 copy)
-
 A VKS cluster is a set of virtual machines that runs Kubernetes. On its own it runs apps, but most
 teams also need common software beside them: a way to reach apps by name (ingress), certificates,
 logs, metrics, backups, a service mesh, a web console. **Add-ons** are that software, packaged and
@@ -187,5 +179,14 @@ them.
 login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login) and run this again. A `READY` that stays `False`:
 `vcf addon install get <name> --cluster-name <your cluster> -n <your vSphere Namespace>` shows
 why.
+
+## References
+
+**Official Broadcom documentation (VCF 9.1, VKS 3.8) for this guide**
+
+- [Managing Add-ons in VKS Clusters](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters.html) and its [Core Add-ons](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/core-addons.html) page
+- [Create a New AddonRepository Install Version](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/creating-and-updating-addonrepositoryinstalls/create-a-new-addonrepository-install-version-for-vks-37-and-later.html) (add-ons from your own registry)
+- [VKS Add-ons Release Notes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/release-notes/vks-addons-release-notes.html) (the list, support tiers and compatibility)
+- [VCF CLI command reference: addon](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/building-your-cloud-applications/getting-started-with-the-tools-for-building-applications/installing-and-using-vcf-cli-v9/command-reference2/addon.html) (VCF 9.0 page; there is no 9.1 copy)
 
 Back to [README](../README.md).

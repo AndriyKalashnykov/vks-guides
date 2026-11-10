@@ -1,14 +1,5 @@
 # Build a container image, push it to a registry and run it in a VKS cluster (Harbor example)
 
-> [!NOTE]
-> **Official documentation for this guide (Harbor, Docker, Podman and Kubernetes; Broadcom has none
-> for building images)**
->
-> - Harbor: [Pulling and Pushing Images](https://goharbor.io/docs/main/working-with-projects/working-with-images/pulling-pushing-images/), [Robot Accounts](https://goharbor.io/docs/main/administration/robot-accounts/)
-> - Docker: [Verify repository client with certificates](https://docs.docker.com/engine/security/certificates/), Docker Desktop FAQs for [Mac](https://docs.docker.com/desktop/troubleshoot-and-support/faqs/macfaqs/) and [Windows](https://docs.docker.com/desktop/troubleshoot-and-support/faqs/windowsfaqs/) (certificates)
-> - Podman: [containers-certs.d](https://github.com/podman-container-tools/container-libs/blob/main/image/docs/containers-certs.d.5.md), [Install a certificate authority](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md), [podman machine set](https://docs.podman.io/en/latest/markdown/podman-machine-set.1.html)
-> - Kubernetes: [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
-
 This builds the web app in [`argocd/test-web-apps`](../argocd/test-web-apps) into an image with
 podman or docker, pushes it to a Harbor project, runs it in a VKS cluster from Harbor, and opens
 it in a browser and with `curl`. An image is an app packed with everything it needs to run; a
@@ -938,5 +929,15 @@ The image stays in Harbor: delete it in Harbor's web page (**Projects** → your
   `Harbor CA` → **Delete**, then:
   - podman: `podman machine stop` and `podman machine start`;
   - docker: quit Docker Desktop and start it again.
+
+## References
+
+**Official documentation for this guide (Harbor, Docker, Podman and Kubernetes; Broadcom has none
+for building images)**
+
+- Harbor: [Pulling and Pushing Images](https://goharbor.io/docs/main/working-with-projects/working-with-images/pulling-pushing-images/), [Robot Accounts](https://goharbor.io/docs/main/administration/robot-accounts/)
+- Docker: [Verify repository client with certificates](https://docs.docker.com/engine/security/certificates/), Docker Desktop FAQs for [Mac](https://docs.docker.com/desktop/troubleshoot-and-support/faqs/macfaqs/) and [Windows](https://docs.docker.com/desktop/troubleshoot-and-support/faqs/windowsfaqs/) (certificates)
+- Podman: [containers-certs.d](https://github.com/podman-container-tools/container-libs/blob/main/image/docs/containers-certs.d.5.md), [Install a certificate authority](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md), [podman machine set](https://docs.podman.io/en/latest/markdown/podman-machine-set.1.html)
+- Kubernetes: [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
 
 Back to [README](../README.md).

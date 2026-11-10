@@ -1,15 +1,5 @@
 # Send a VKS cluster's logs to VCF Operations
 
-> [!NOTE]
-> **Official Broadcom documentation (VCF 9.1 and 9.0) for this guide**
->
-> - [Install Fluent Bit Addon using VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/installing-standard-packages-on-tkg-cluster-using-tkr-for-vsphere-8-x/install-fluent-bit/install-fluent-bit-addon.html) (VCF 9.0 page; there is no 9.1 copy)
-> - [Fluent Bit Package Reference](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/standard-package-reference/fluent-bit-package-reference.html) (the values and the CA Secret; VCF 9.0 page)
-> - [VKS Add-ons Release Notes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/release-notes/vks-addons-release-notes.html) (Fluent Bit versions and support tier)
-> - [Log Collection Architecture](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/log-analysis/centralized-log-collection-architecture.html) (Log Management in VCF Operations)
-> - [Set up the Windows system to collect logs in VCF Operations](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/log-analysis/overview-of-log-management-agents/install-fluent-bit-on-windows-server-for-vcf-operations-for-logs.html) (the Fluent Bit output this guide uses)
-> - [Agent Authentication for Log Ingestion](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/log-analysis/overview-of-log-management-agents/agent-authentication-for-log-ingestion.html)
-
 This installs Broadcom's Fluent Bit add-on (Product tier) on a VKS cluster. Fluent Bit is a small
 program that collects the logs of every app on a node and sends them on; an add-on is software
 that Broadcom packages and tests for VKS, installed into a cluster from the Supervisor
@@ -635,5 +625,16 @@ away within a minute.
 
 **If not:** a login error (`Unauthorized`, `Unable to read password from terminal` (Windows:
 `The handle is invalid`), `provide credentials`) or `context … not found`: as in step 1.
+
+## References
+
+**Official Broadcom documentation (VCF 9.1 and 9.0) for this guide**
+
+- [Install Fluent Bit Addon using VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/installing-standard-packages-on-tkg-cluster-using-tkr-for-vsphere-8-x/install-fluent-bit/install-fluent-bit-addon.html) (VCF 9.0 page; there is no 9.1 copy)
+- [Fluent Bit Package Reference](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/standard-package-reference/fluent-bit-package-reference.html) (the values and the CA Secret; VCF 9.0 page)
+- [VKS Add-ons Release Notes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/release-notes/vks-addons-release-notes.html) (Fluent Bit versions and support tier)
+- [Log Collection Architecture](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/log-analysis/centralized-log-collection-architecture.html) (Log Management in VCF Operations)
+- [Set up the Windows system to collect logs in VCF Operations](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/log-analysis/overview-of-log-management-agents/install-fluent-bit-on-windows-server-for-vcf-operations-for-logs.html) (the Fluent Bit output this guide uses)
+- [Agent Authentication for Log Ingestion](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/infrastructure-operations/log-analysis/overview-of-log-management-agents/agent-authentication-for-log-ingestion.html)
 
 Back to [README](../README.md).

@@ -1,14 +1,5 @@
 # Install kubectl
 
-> [!NOTE]
-> **Official Kubernetes, Broadcom and Apple documentation for this guide**
->
-> - [Install and Set Up kubectl on Linux](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
-> - [Install and Set Up kubectl on macOS](https://kubernetes.io/docs/tasks/tools/install-kubectl-macos/)
-> - [Install and Set Up kubectl on Windows](https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/)
-> - [The Kubernetes CLI Tools for vSphere download package (vsphere-plugin.zip) cannot be downloaded from the Web UI](https://knowledge.broadcom.com/external/article/414343/the-kubernetes-cli-tools-for-vsphere-dow.html) (Broadcom KB 414343: the Supervisor's download links)
-> - [Using Intel-based apps on a Mac with Apple silicon](https://support.apple.com/en-us/102527) (Rosetta)
-
 `kubectl` is the command-line tool for the Supervisor and your VKS clusters (both are
 Kubernetes). Install it once for each user, on each machine where you paste the guides' blocks. Use **one** of
 the two ways:
@@ -263,5 +254,15 @@ Remove-Item -Recurse -Force $TMP
 
 **Another vCenter's Supervisor:** use that vCenter's CA file (SUPERVISOR-LOGIN.md, step 1) as
 `SUPERVISOR_CA`, and on Windows as `Import-Certificate`'s `-FilePath`.
+
+## References
+
+**Official Kubernetes, Broadcom and Apple documentation for this guide**
+
+- [Install and Set Up kubectl on Linux](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
+- [Install and Set Up kubectl on macOS](https://kubernetes.io/docs/tasks/tools/install-kubectl-macos/)
+- [Install and Set Up kubectl on Windows](https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/)
+- [The Kubernetes CLI Tools for vSphere download package (vsphere-plugin.zip) cannot be downloaded from the Web UI](https://knowledge.broadcom.com/external/article/414343/the-kubernetes-cli-tools-for-vsphere-dow.html) (Broadcom KB 414343: the Supervisor's download links)
+- [Using Intel-based apps on a Mac with Apple silicon](https://support.apple.com/en-us/102527) (Rosetta)
 
 Back to [README](../README.md).

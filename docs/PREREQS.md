@@ -1,19 +1,5 @@
 # Prerequisites
 
-> [!NOTE]
-> **Official documentation for this guide**
->
-> - Ubuntu: [Install and manage packages](https://ubuntu.com/server/docs/how-to/software/package-management/)
-> - AlmaLinux 10: Red Hat's [Installing packages](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/managing_software_with_the_dnf_tool/installing-rhel-content#installing-packages)
-> - Photon OS 5: [tdnf Commands](https://vmware.github.io/photon/docs-v5/administration-guide/managing-packages-with-tdnf/standard-syntax-for-tndf/commands/)
-> - Arch Linux: [pacman](https://wiki.archlinux.org/title/Pacman), [System maintenance](https://wiki.archlinux.org/title/System_maintenance) (why `-Syu`), [Docker](https://wiki.archlinux.org/title/Docker), [Podman](https://wiki.archlinux.org/title/Podman), [Package signing](https://wiki.archlinux.org/title/Pacman/Package_signing)
-> - Homebrew: [Installation](https://docs.brew.sh/Installation); jq: [Download jq](https://jqlang.org/download/)
-> - Microsoft: [Starting Windows PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/starting-windows-powershell?view=powershell-5.1), [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Working across Windows and Linux file systems](https://learn.microsoft.com/en-us/windows/wsl/filesystems)
-> - curl: [curl shipped by Microsoft](https://curl.se/windows/microsoft.html) (`curl.exe` in Windows)
-> - sudo: [Sudo Manual](https://www.sudo.ws/docs/man/sudo.man/) (`-v`)
-> - Docker: [Install on Ubuntu](https://docs.docker.com/engine/install/ubuntu/), [Install on RHEL](https://docs.docker.com/engine/install/rhel/), [Linux post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/), [Install Docker Desktop on Windows](https://docs.docker.com/desktop/setup/install/windows-install/); Photon OS 5: [Docker Containers](https://vmware.github.io/photon/docs-v5/administration-guide/containers/docker-containers/); Colima: [README](https://github.com/abiosoft/colima)
-> - Podman: [Podman Installation](https://podman.io/docs/installation), [Podman for Windows](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-for-windows.md)
-
 The small command-line tools the other guides' blocks use: `curl`, `tar`, `unzip` (Photon OS:
 `bsdtar`), `jq`, `openssl`, on your machine: the laptop, workstation or jump box where you paste
 the blocks. Required: do the section for your OS, then run [Check](#check), before
@@ -623,5 +609,20 @@ from more hosts than its name; allow these too (measured, all TCP 443):
 | `registry.gitlab.com` | `gitlab.com`, `cdn.registry.gitlab-static.net` |
 | `projects.packages.broadcom.com` | nothing else |
 | `mcr.microsoft.com` | `*.data.mcr.microsoft.com` (a host near you, for example `eastus.data.mcr.microsoft.com`) |
+
+## References
+
+**Official documentation for this guide**
+
+- Ubuntu: [Install and manage packages](https://ubuntu.com/server/docs/how-to/software/package-management/)
+- AlmaLinux 10: Red Hat's [Installing packages](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/managing_software_with_the_dnf_tool/installing-rhel-content#installing-packages)
+- Photon OS 5: [tdnf Commands](https://vmware.github.io/photon/docs-v5/administration-guide/managing-packages-with-tdnf/standard-syntax-for-tndf/commands/)
+- Arch Linux: [pacman](https://wiki.archlinux.org/title/Pacman), [System maintenance](https://wiki.archlinux.org/title/System_maintenance) (why `-Syu`), [Docker](https://wiki.archlinux.org/title/Docker), [Podman](https://wiki.archlinux.org/title/Podman), [Package signing](https://wiki.archlinux.org/title/Pacman/Package_signing)
+- Homebrew: [Installation](https://docs.brew.sh/Installation); jq: [Download jq](https://jqlang.org/download/)
+- Microsoft: [Starting Windows PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/starting-windows-powershell?view=powershell-5.1), [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Working across Windows and Linux file systems](https://learn.microsoft.com/en-us/windows/wsl/filesystems)
+- curl: [curl shipped by Microsoft](https://curl.se/windows/microsoft.html) (`curl.exe` in Windows)
+- sudo: [Sudo Manual](https://www.sudo.ws/docs/man/sudo.man/) (`-v`)
+- Docker: [Install on Ubuntu](https://docs.docker.com/engine/install/ubuntu/), [Install on RHEL](https://docs.docker.com/engine/install/rhel/), [Linux post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/), [Install Docker Desktop on Windows](https://docs.docker.com/desktop/setup/install/windows-install/); Photon OS 5: [Docker Containers](https://vmware.github.io/photon/docs-v5/administration-guide/containers/docker-containers/); Colima: [README](https://github.com/abiosoft/colima)
+- Podman: [Podman Installation](https://podman.io/docs/installation), [Podman for Windows](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-for-windows.md)
 
 Back to [README](../README.md).

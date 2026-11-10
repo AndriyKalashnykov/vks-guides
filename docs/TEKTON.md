@@ -1,15 +1,5 @@
 # Run Tekton in a VKS cluster
 
-> [!NOTE]
-> **Official Broadcom, Tekton and Kubernetes documentation for this guide**
->
-> - Broadcom: [VMware vSphere Kubernetes Service 3.8 Release Notes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/release-notes/vks-release-notes/vmware-tanzu-kubernetes-grid-service-38-release-notes.html) (the Helm-based add-ons, `vcf addon`), [VKS Add-ons Release Notes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/release-notes/vks-addons-release-notes.html) (Tekton Operator version and support tier)
-> - Tekton: [Tekton Operator](https://tekton.dev/docs/operator/), [TektonConfig](https://tekton.dev/docs/operator/tektonconfig/)
-> - Tekton: [Install Tekton Pipelines](https://tekton.dev/docs/installation/pipelines/), [Install and set up Tekton Triggers](https://tekton.dev/docs/installation/triggers/), releases [Pipelines v1.17.1](https://github.com/tektoncd/pipeline/releases/tag/v1.17.1) and [Triggers v0.37.2](https://github.com/tektoncd/triggers/releases/tag/v0.37.2)
-> - Tekton: [Tasks](https://tekton.dev/docs/pipelines/tasks/), [Pipelines](https://tekton.dev/docs/pipelines/pipelines/), [PipelineRuns](https://tekton.dev/docs/pipelines/pipelineruns/), [Additional Configuration Options](https://tekton.dev/docs/pipelines/additional-configs/) (restricted pod security)
-> - Tekton: [EventListeners](https://tekton.dev/docs/triggers/eventlisteners/), [TriggerBindings](https://tekton.dev/docs/triggers/triggerbindings/), [TriggerTemplates](https://tekton.dev/docs/triggers/triggertemplates/)
-> - Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/), [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
-
 This installs Tekton into a VKS cluster. Tekton is a CI/CD engine: it runs each task of a build as a
 pod (one or more containers that Kubernetes runs together on a worker node), and each step of a task
 as one container in that pod. It then runs a pipeline (tasks that run in the order you set) with two
@@ -1636,5 +1626,16 @@ if ($LASTEXITCODE -ne 0) {
 - `STOPPED: … objects outside tekton-demo`: list them with `kubectl --kubeconfig <the VKS
   kubeconfig> get <kind> -A`; delete them first if they are yours.
 - `STOPPED: cannot …` or `FAILED: cannot …`: see the error above it, and run the block again.
+
+## References
+
+**Official Broadcom, Tekton and Kubernetes documentation for this guide**
+
+- Broadcom: [VMware vSphere Kubernetes Service 3.8 Release Notes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/release-notes/vks-release-notes/vmware-tanzu-kubernetes-grid-service-38-release-notes.html) (the Helm-based add-ons, `vcf addon`), [VKS Add-ons Release Notes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/release-notes/vks-addons-release-notes.html) (Tekton Operator version and support tier)
+- Tekton: [Tekton Operator](https://tekton.dev/docs/operator/), [TektonConfig](https://tekton.dev/docs/operator/tektonconfig/)
+- Tekton: [Install Tekton Pipelines](https://tekton.dev/docs/installation/pipelines/), [Install and set up Tekton Triggers](https://tekton.dev/docs/installation/triggers/), releases [Pipelines v1.17.1](https://github.com/tektoncd/pipeline/releases/tag/v1.17.1) and [Triggers v0.37.2](https://github.com/tektoncd/triggers/releases/tag/v0.37.2)
+- Tekton: [Tasks](https://tekton.dev/docs/pipelines/tasks/), [Pipelines](https://tekton.dev/docs/pipelines/pipelines/), [PipelineRuns](https://tekton.dev/docs/pipelines/pipelineruns/), [Additional Configuration Options](https://tekton.dev/docs/pipelines/additional-configs/) (restricted pod security)
+- Tekton: [EventListeners](https://tekton.dev/docs/triggers/eventlisteners/), [TriggerBindings](https://tekton.dev/docs/triggers/triggerbindings/), [TriggerTemplates](https://tekton.dev/docs/triggers/triggertemplates/)
+- Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/), [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
 
 Back to [README](../README.md).

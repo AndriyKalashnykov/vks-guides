@@ -1,15 +1,5 @@
 # Monitor a VKS cluster with Prometheus and Grafana
 
-> [!NOTE]
-> **Official chart, Kubernetes and Broadcom documentation for this guide**
->
-> - [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/README.md) (the chart this guide installs)
-> - [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/)
-> - [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/) (Grafana)
-> - [Prometheus Package Reference](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/standard-package-reference/prometheus-package-reference.html) (Broadcom's Prometheus add-on, the supported alternative; VCF 9.0 page, there is no 9.1 copy)
-> - Argo CD 3.4: [Helm](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/helm/), [Sync Options](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/sync-options/) (Server-Side Apply), [Automated Sync Policy](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/auto_sync/) (step 9)
-> - [Observability on VKS](https://www.vmware.com/docs/observability-vks) and its [examples](https://github.com/vmware/vks-consumption-models/tree/main/observability-consumption-model) (VMware's design this guide follows)
-
 This installs kube-prometheus-stack 92.13.1 into a VKS cluster: Prometheus 3.15.0, Alertmanager
 0.34.1, Grafana 13.2.4, the Prometheus Operator 0.94.1, node-exporter 1.12.1 and
 kube-state-metrics 2.20.0. The chart is upstream (prometheus-community); Broadcom does not
@@ -1143,5 +1133,16 @@ if ($LASTEXITCODE -ne 0) {
   `namespace/tanzu-system-monitoring`: leave the objects; Broadcom's Prometheus add-on may use them.
 - `FAILED: cannot read the cluster`, `Unauthorized`: run
   [Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) first.
+
+## References
+
+**Official chart, Kubernetes and Broadcom documentation for this guide**
+
+- [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/README.md) (the chart this guide installs)
+- [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/)
+- [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/) (Grafana)
+- [Prometheus Package Reference](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-0/managing-vsphere-kuberenetes-service-clusters-and-workloads/installing-standard-packages-on-tkg-service-clusters/standard-package-reference/prometheus-package-reference.html) (Broadcom's Prometheus add-on, the supported alternative; VCF 9.0 page, there is no 9.1 copy)
+- Argo CD 3.4: [Helm](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/helm/), [Sync Options](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/sync-options/) (Server-Side Apply), [Automated Sync Policy](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/auto_sync/) (step 9)
+- [Observability on VKS](https://www.vmware.com/docs/observability-vks) and its [examples](https://github.com/vmware/vks-consumption-models/tree/main/observability-consumption-model) (VMware's design this guide follows)
 
 Back to [README](../README.md).

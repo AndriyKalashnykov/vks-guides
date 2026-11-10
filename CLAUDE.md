@@ -12,7 +12,7 @@ blocks; there is nothing to build.
 
 - `examples/` (owner's choice) holds runnable admin scripts built from guide blocks (`kubeconfig-*.sh`,
   `rolebinding-idp-group.sh`) and `examples/README.md` comparing them. They use the guides' placeholder values
-  (no lab values), are not guides (no NOTE, Prerequisites or Tested on row, not on group pages), and must follow
+  (no lab values), are not guides (no References, Prerequisites or Tested on row, not on group pages), and must follow
   the guide blocks they copy: a change to such a block updates its script in the same PR.
 - `docs/img/access/which-way-in-light.svg` and `-dark.svg` (in ADMIN-GRANT-ACCESS.md under **Which way for
   which customer**, light and dark through `<picture>`) draw that chooser, the compare table and how each way is
@@ -27,7 +27,7 @@ blocks; there is nothing to build.
   access, a person with an SSO account, a person sent a kubeconfig file, a person who signs in with an
   identity provider, a tool or pipeline with a token file) to the guide and step they need, then "Where the
   old guide went": one line naming the new guide and links from the old sections to their new homes. The
-  three tables are the same: change them together. No NOTE, Prerequisites, blocks or Tested on row; not in
+  three tables are the same: change them together. No References, Prerequisites, blocks or Tested on row; not in
   the guide list or on group pages.
 - The person's steps live in the three person guides: USER-LOGIN.md (own SSO account), USER-KUBECONFIG.md (a
   sent file with a token or a certificate) and USER-IDP-LOGIN.md (an identity provider). An admin guide's
@@ -61,11 +61,11 @@ blocks; there is nothing to build.
 - Wherever several OSs appear (labels, sections, lists), the order is Linux, macOS, Windows.
 - Block labels name no distribution or OS version; the group pages' "Tested on" tables say what
   was run. Where a command differs per distribution, the text or PREREQS.md names it.
-- Each guide opens with a `> [!NOTE]` callout, first line `**Official … documentation … for this
-  guide**`, listing the official docs it follows (Broadcom VCF 9.1 TechDocs; kubernetes.io or the
-  tool's own docs where Broadcom has none). Open a link before adding it. Exception (owner, 2026-11-10):
-  USER-KUBECONFIG.md and USER-IDP-LOGIN.md have no NOTE at the top; the same list is their last chapter,
-  `## References`, before "Back to README".
+- Each guide opens with its title and what it does, never with an official-docs box (owner, 2026-11-10).
+  Its last chapter is `## References`, before "Back to README" (at the very end where a guide has no such
+  line): the official docs it follows (Broadcom VCF 9.1 TechDocs; kubernetes.io or the tool's own docs
+  where Broadcom has none), with a first line `**Official … documentation … for this guide**` where the
+  list carries a version. Open a link before adding it.
 - Each guide has a `## Prerequisites` chapter right after its intro: the guides to do first, each
   tool as a link to its guide (KUBECTL.md, VCF.md, HELM.md) or PREREQS.md (never its install),
   what this guide alone needs (roles, resources, load-balancer addresses), and a table
