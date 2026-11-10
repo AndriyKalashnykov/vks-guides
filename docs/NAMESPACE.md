@@ -60,7 +60,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
    left) choose **Supervisor Management**, then the **Supervisors** tab.
 2. Find your Supervisor's row. **Config Status** must show **Running**. The **Control Plane Node
    Address** column holds the Supervisor's address: that is `SUPERVISOR_ENDPOINT` in
-   [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-the-context).
+   [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca).
 
    ![The Supervisors tab of Supervisor Management: one row, Config Status Running, and the Control Plane Node Address column](img/namespace/01-supervisors.jpg)
 
