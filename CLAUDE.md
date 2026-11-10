@@ -24,7 +24,9 @@ blocks; there is nothing to build.
   each way's chapter (SSO, ServiceAccount token, administrator token, certificate; the IdP group in
   ADMIN-GRANT-ACCESS-IDP.md): a change that makes a label untrue, or moves what a label describes to another
   guide, updates that picture in the same PR.
-  Every label in them is a statement from the guides: no versions, durations, paths or commands.
+  Every label in them is a statement from the guides or docs/GLOSSARY.md: no versions, durations, paths or commands.
+- docs/GLOSSARY.md and docs/TESTED.md are not guides: no References, Prerequisites or Tested on row; they are
+  not in the guide list or on a group page.
 - LOGIN.md, ACCESS.md and ACCESS-IDP.md are moved-guide pages (owner): a title, then "Who are you? Start
   here", a table that sends each kind of reader (an administrator who logs in, an administrator who gives
   access, a person with an SSO account, a person sent a kubeconfig file, a person who signs in with an

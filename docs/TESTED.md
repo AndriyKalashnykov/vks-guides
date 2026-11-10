@@ -4,7 +4,8 @@ Where each guide was run, by group; each group's page lists its guides and the o
 
 ✅ every block run, "part" some blocks run, — not run.
 
-On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines:
+On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines.
+Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
 
 ## Getting started
 
@@ -78,7 +79,5 @@ Group page: [Operations and observability](OPERATE.md).
 | [Monitor a VKS cluster](MONITORING.md) | part | part | part | — | part | part |
 | [Send logs to VCF Operations](LOGGING.md) | part | part | part | — | part | — |
 | [Logs and traces in Grafana](OBSERVABILITY.md) | part | ✅ | part | — | part | part |
-
-Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
 
 Back to [README](../README.md).

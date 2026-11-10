@@ -1594,7 +1594,7 @@ the names the provider's **VIEW SETTINGS** shows, or else the vCenter API's name
 **Expect:** the Identity Providers page shows a card **keycloak**, and its **VIEW SETTINGS** the
 values above. To check a sign-in, run the
 [ADMIN-GRANT-ACCESS-IDP.md steps](ADMIN-GRANT-ACCESS-IDP.md)
-1 to 4 for one group, then [USER-IDP-LOGIN.md step 3](USER-IDP-LOGIN.md#3-sign-in-through-the-supervisor):
+1 to 4 for one group, then [USER-IDP-LOGIN.md step 3](USER-IDP-LOGIN.md#3-sign-in-through-the-supervisor), after its steps 1 and 2:
 the person is `keycloak-sv:<user>`, in `keycloak-sv:<group>`.
 
 **If not:**
