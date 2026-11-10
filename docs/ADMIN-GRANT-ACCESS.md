@@ -120,7 +120,7 @@ and delete most things in it. The person can then deploy in that namespace: send
 Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
 from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
 elsewhere), `VKS_CLUSTER_NAMESPACE` to the team's namespace (one namespace: an empty value or `"*"` stops
-the block; a person gets the whole cluster only from **Can edit** on the vSphere Namespace, which makes
+the block; with their SSO account, a person gets the whole cluster only from **Can edit** on the vSphere Namespace, which makes
 them administrator of every VKS cluster in it, so step 1 does not give it), and `SSO_USER` to the person's SSO user
 name exactly as vCenter lists it, letter case included: logins ignore letter case, the cluster does
 not (vCenter's own `administrator@vsphere.local` is `sso:Administrator@vsphere.local` there), and
