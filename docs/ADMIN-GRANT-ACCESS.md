@@ -195,7 +195,7 @@ Without the VCF CLI, the person logs in with the kubectl vSphere plugin (optiona
 Pick this for a CI pipeline, a deployment tool, or a team that shares one login, in one namespace.
 The file holds a token for a ServiceAccount (a login inside the cluster that belongs to no person):
 whoever has a copy acts in the cluster as that ServiceAccount
-(`system:serviceaccount:kubeconfig-access:team-a`), not as a person. Removing or disabling an SSO
+(`system:serviceaccount:kubeconfig-access:cicd-account`), not as a person. Removing or disabling an SSO
 or identity provider user does not take it away; only deleting the ServiceAccount does (step 4).
 
 The ServiceAccount lives in its own namespace inside the VKS cluster, `SA_NAMESPACE`, where the
@@ -234,7 +234,7 @@ elsewhere), `SERVICE_ACCOUNT_NAME` to a name for the team or tool, `VKS_CLUSTER_
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-SERVICE_ACCOUNT_NAME="team-a"
+SERVICE_ACCOUNT_NAME="cicd-account"
 VKS_CLUSTER_NAMESPACE="team-a"
 SA_NAMESPACE="kubeconfig-access"
 ROLE="edit"
@@ -277,7 +277,7 @@ unset TOKEN
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $ADMIN_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-$SERVICE_ACCOUNT_NAME = "team-a"
+$SERVICE_ACCOUNT_NAME = "cicd-account"
 $VKS_CLUSTER_NAMESPACE = "team-a"
 $SA_NAMESPACE = "kubeconfig-access"
 $ROLE = "edit"
@@ -312,7 +312,7 @@ Remove-Variable TOKEN
 </details>
 
 **Expect:** `token ends in: 29 days` or `30 days` (for `DAYS="30"`),
-`acts as: system:serviceaccount:kubeconfig-access:team-a`, `create deployments in team-a: yes`
+`acts as: system:serviceaccount:kubeconfig-access:cicd-account`, `create deployments in team-a: yes`
 (`no` with `ROLE="view"`) and `list pods in kube-system: no`.
 
 **If not:**
@@ -356,7 +356,7 @@ used.
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-SERVICE_ACCOUNT_NAME="team-a"
+SERVICE_ACCOUNT_NAME="cicd-account"
 VKS_CLUSTER_NAMESPACE="team-a"
 SA_NAMESPACE="kubeconfig-access"
 
@@ -369,7 +369,7 @@ kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" delete secr
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $ADMIN_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-$SERVICE_ACCOUNT_NAME = "team-a"
+$SERVICE_ACCOUNT_NAME = "cicd-account"
 $VKS_CLUSTER_NAMESPACE = "team-a"
 $SA_NAMESPACE = "kubeconfig-access"
 
@@ -377,8 +377,8 @@ kubectl --kubeconfig $ADMIN_KUBECONFIG -n $SA_NAMESPACE delete serviceaccount $S
 kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE delete secret --field-selector type=kubernetes.io/service-account-token
 ```
 
-**Expect:** `serviceaccount "team-a" deleted from kubeconfig-access namespace` (older kubectl:
-`serviceaccount "team-a" deleted`), then a `deleted` line for each token Secret in `team-a`, or
+**Expect:** `serviceaccount "cicd-account" deleted from kubeconfig-access namespace` (older kubectl:
+`serviceaccount "cicd-account" deleted`), then a `deleted` line for each token Secret in `team-a`, or
 `No resources found`.
 
 **If not:**

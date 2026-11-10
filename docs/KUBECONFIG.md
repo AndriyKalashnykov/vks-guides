@@ -44,7 +44,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 |---|---|---|---|---|---|---|
 | `~/.kube/<SUPERVISOR_CONTEXT>.kubeconfig` | [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca) (`vcf context create`) | your SSO token | act as you on the Supervisor | 10 hours | `Unauthorized` (logged in at 08:00: from 18:00); [renew the login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login) | no |
 | `~/.kube/<cluster>.kubeconfig` | [Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig), or [Download it](SUPERVISOR-LOGIN.md#download-the-vks-clusters-kubeconfig-from-the-vsphere-client) | the cluster's administrator certificate and key | be the cluster's administrator | until the date in its certificate, at most a year, or until the cluster is deleted; a copy cannot be withdrawn | `Unauthorized` (a cluster made on 2026-11-04: from 2027-11-04); [get it again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) | no |
-| `~/<cluster>-<team>.kubeconfig` | [A ServiceAccount token](ADMIN-GRANT-ACCESS.md#a-serviceaccount-token) | a ServiceAccount token | act as that ServiceAccount | `DAYS` (30 by default), or until the ServiceAccount is deleted | `Unauthorized` (made on 2026-11-04 with `DAYS=30`: from 2026-12-04); before then, [renew it](ADMIN-GRANT-ACCESS.md#3-renew-the-teams-token-cluster-administrator) and send the team the new file | to the team only |
+| `~/<cluster>-<SERVICE_ACCOUNT_NAME>.kubeconfig` | [A ServiceAccount token](ADMIN-GRANT-ACCESS.md#a-serviceaccount-token) | a ServiceAccount token | act as that ServiceAccount | `DAYS` (30 by default), or until the ServiceAccount is deleted | `Unauthorized` (made on 2026-11-04 with `DAYS=30`: from 2026-12-04); before then, [renew it](ADMIN-GRANT-ACCESS.md#3-renew-the-teams-token-cluster-administrator) and send the team the new file | to the team only |
 | `~/<cluster>-<SERVICE_ACCOUNT_NAME>.kubeconfig` | [An administrator ServiceAccount token](ADMIN-GRANT-ACCESS.md#an-administrator-serviceaccount-token-whole-cluster) | a ServiceAccount token, no password | everything in the cluster, as that ServiceAccount | `DAYS` (365 for a year), or never; until you take it away | with `DAYS=365` made on 2026-11-04: `Unauthorized` from 2027-11-04; before then, [renew it](ADMIN-GRANT-ACCESS.md#3-renew-the-administrator-token-cluster-administrator); with `never`: it does not expire | to that tool or person only |
 | `~/<cluster>-<person>.kubeconfig` | [A personal certificate](ADMIN-GRANT-ACCESS.md#a-personal-certificate) | a certificate and key | act as that person | `DAYS` (30 by default); cannot be withdrawn | `Unauthorized` (made on 2026-11-04 with `DAYS=30`: from 2026-12-04); before then, [renew it](ADMIN-GRANT-ACCESS.md#3-renew-the-certificate-cluster-administrator): a new file, and the old name's rights taken away | to that person only |
 | `~/.kube/<cluster>-<SSO_USER>.kubeconfig` | [The person's own SSO account](ADMIN-GRANT-ACCESS.md#the-persons-own-sso-account) | the person's SSO token | act as that person | 10 hours | `Unauthorized` (logged in at 08:00: from 18:00); the person logs in again ([step 2](USER-LOGIN.md#2-log-in-with-the-vcf-cli), or [the plugin's step 3](USER-LOGIN.md#3-log-in-with-the-plugin-the-person)) | no |
@@ -130,7 +130,7 @@ Set `HANDOUT` to the saved file:
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-HANDOUT="$HOME/.kube/my-vks-cluster-team-a.kubeconfig"
+HANDOUT="$HOME/.kube/my-vks-cluster-cicd-account.kubeconfig"
 
 chmod 600 "$HANDOUT" && ls -l "$HANDOUT"
 ```
@@ -138,7 +138,7 @@ chmod 600 "$HANDOUT" && ls -l "$HANDOUT"
 **Windows (PowerShell):**
 
 ```powershell
-$HANDOUT = "$HOME\.kube\my-vks-cluster-team-a.kubeconfig"
+$HANDOUT = "$HOME\.kube\my-vks-cluster-cicd-account.kubeconfig"
 
 icacls $HANDOUT /inheritance:r /grant:r "${env:USERNAME}:F"
 icacls $HANDOUT
