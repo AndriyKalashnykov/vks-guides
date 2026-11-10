@@ -283,6 +283,7 @@ you to confirm with **Yes**; on macOS, run the line under **macOS** below instea
 
 **Windows (PowerShell):**
 
+<!-- lab-step: vcenter-ca-windows -->
 ```powershell
 Import-Certificate -FilePath "$HOME\.kube\vcenter-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
 ```

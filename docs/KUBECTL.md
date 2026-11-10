@@ -89,6 +89,7 @@ fi; rm -rf "$TMP"
 <details>
 <summary><b>Windows (PowerShell)</b></summary>
 
+<!-- lab-step: kubectl-windows -->
 ```powershell
 $KUBECTL_VERSION = ""                    # empty = latest stable; or e.g. v1.37.1
 $INSTALL_DIR = "$env:LOCALAPPDATA\Programs\vks-tools"

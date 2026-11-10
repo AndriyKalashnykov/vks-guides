@@ -132,6 +132,7 @@ fi; rm -rf "$TMP"
 <details>
 <summary><b>Windows (PowerShell)</b></summary>
 
+<!-- lab-step: vcf-install-windows -->
 ```powershell
 $VCF_CLI_SHA256 = ""                     # SHA2 of the CLI file from the download page
 $VCF_PLUGINS_SHA256 = ""                 # SHA2 of the plugin bundle from the download page
