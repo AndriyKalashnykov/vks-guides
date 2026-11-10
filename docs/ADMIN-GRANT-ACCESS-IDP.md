@@ -229,18 +229,22 @@ member then has those rights; step 4 makes their file. Run it once per group and
 same group, role and namespace again it answers `already exists`. To change the role, delete the
 old RoleBinding first (below).
 
-With `VKS_CLUSTER_NAMESPACE="*"` it gives the group `cluster-admin` on the whole cluster instead (a
-ClusterRoleBinding named `<KC_PREFIX>-<KC_GROUP>-cluster-admin`) and prints a `WARNING`; `ROLE` is then
-not used. This is for a group whose role on the vSphere Namespace is **Can view**: **Can edit** already
-makes every member an administrator of the clusters. A cluster administrator can make other logins that
-keep working after step 8. An empty `VKS_CLUSTER_NAMESPACE` stops the block before it changes anything.
+With `VKS_CLUSTER_NAMESPACE="*"` it gives the group the whole cluster instead and prints a `WARNING`:
+with `ROLE="edit"`, `cluster-admin` (a ClusterRoleBinding named `<KC_PREFIX>-<KC_GROUP>-cluster-admin`);
+with `ROLE="view"`, read-only (a ClusterRoleBinding `<KC_PREFIX>-<KC_GROUP>-view` to the built-in `view`
+role): every member reads every namespace, pod logs included (they can hold credentials), but not
+Secrets or nodes. This is for a group whose role on the vSphere Namespace is **Can view**: **Can edit** already
+makes every member an administrator of the clusters. A cluster administrator (`"*"` with `edit`) can
+make other logins that keep working after step 8. An empty `VKS_CLUSTER_NAMESPACE`, or a `ROLE` other
+than `edit` or `view`, stops the block before it changes anything.
 
 Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
 from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
 elsewhere), `KC_PREFIX` to the prefix from step 1, `KC_GROUP` to the group's name from step 2,
 `VKS_CLUSTER_NAMESPACE` to the team's namespace (or `"*"` for the whole cluster) and `ROLE` to `edit` or `view`.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -250,20 +254,39 @@ KC_GROUP="k8s-devs"
 VKS_CLUSTER_NAMESPACE="team-a"
 ROLE="edit"
 
+adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
+G="${KC_PREFIX}:${KC_GROUP}"
+case "$ROLE" in
+  edit|view) ROLE_OK="yes" ;;
+  *) ROLE_OK="no" ;;
+esac
 if [ -z "$VKS_CLUSTER_NAMESPACE" ]; then
-  echo 'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set the namespace, or "*" for cluster-admin on the whole cluster; nothing was changed'
+  echo 'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set the namespace, or "*" for the whole cluster (cluster-admin with edit, read-only with view); nothing was changed'
+elif [ "$ROLE_OK" = "no" ]; then
+  echo 'STOPPED: ROLE is edit or view; nothing was changed'
+elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
+  echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": group ${G} gets cluster-admin on the whole cluster"
+  adm create clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-cluster-admin" --clusterrole=cluster-admin --group="$G"
+  echo "group may do everything: $(adm auth can-i '*' '*' --all-namespaces --as=group-check --as-group="$G")"
 elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
-  echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": group ${KC_PREFIX}:${KC_GROUP} gets cluster-admin on the whole cluster"
-  kubectl --kubeconfig "$ADMIN_KUBECONFIG" create clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-cluster-admin" --clusterrole=cluster-admin --group="${KC_PREFIX}:${KC_GROUP}"
-  echo "group may do everything: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" auth can-i '*' '*' --all-namespaces --as=group-check --as-group="${KC_PREFIX}:${KC_GROUP}")"
+  echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": group ${G} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  adm create clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-view" --clusterrole=view --group="$G"
+  echo "group may list pods in kube-system: $(adm auth can-i list pods -n kube-system --as=group-check --as-group="$G")"
+  echo "group may list namespaces: $(adm auth can-i list namespaces --as=group-check --as-group="$G")"
+  echo "group may get secrets in kube-system: $(adm auth can-i get secrets -n kube-system --as=group-check --as-group="$G")"
+  echo "group may list nodes: $(adm auth can-i list nodes --as=group-check --as-group="$G")"
+  echo "group may create deployments in default: $(adm auth can-i create deployments -n default --as=group-check --as-group="$G")"
 else
-  kubectl --kubeconfig "$ADMIN_KUBECONFIG" create namespace "$VKS_CLUSTER_NAMESPACE" --dry-run=client -o yaml | kubectl --kubeconfig "$ADMIN_KUBECONFIG" apply -f - >/dev/null
-  kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" create rolebinding "${KC_PREFIX}-${KC_GROUP}-${ROLE}" --clusterrole="$ROLE" --group="${KC_PREFIX}:${KC_GROUP}"
-  echo "group may create deployments in $VKS_CLUSTER_NAMESPACE: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments --as=group-check --as-group="${KC_PREFIX}:${KC_GROUP}")"
+  if ! adm get namespace "$VKS_CLUSTER_NAMESPACE" >/dev/null 2>&1; then adm create namespace "$VKS_CLUSTER_NAMESPACE" >/dev/null; fi
+  adm -n "$VKS_CLUSTER_NAMESPACE" create rolebinding "${KC_PREFIX}-${KC_GROUP}-${ROLE}" --clusterrole="$ROLE" --group="$G"
+  echo "group may create deployments in $VKS_CLUSTER_NAMESPACE: $(adm -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments --as=group-check --as-group="$G")"
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
@@ -273,31 +296,49 @@ $KC_GROUP = "k8s-devs"
 $VKS_CLUSTER_NAMESPACE = "team-a"
 $ROLE = "edit"
 
+function adm { kubectl --kubeconfig $ADMIN_KUBECONFIG @args }
+$G = "${KC_PREFIX}:$KC_GROUP"
 if (-not $VKS_CLUSTER_NAMESPACE) {
-  'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set the namespace, or "*" for cluster-admin on the whole cluster; nothing was changed'
+  'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set the namespace, or "*" for the whole cluster (cluster-admin with edit, read-only with view); nothing was changed'
+} elseif (-not ($ROLE -ceq 'edit' -or $ROLE -ceq 'view')) {
+  'STOPPED: ROLE is edit or view; nothing was changed'
+} elseif ($VKS_CLUSTER_NAMESPACE -eq '*' -and $ROLE -ceq 'edit') {
+  "WARNING: VKS_CLUSTER_NAMESPACE is `"*`": group $G gets cluster-admin on the whole cluster"
+  adm create clusterrolebinding "$KC_PREFIX-$KC_GROUP-cluster-admin" --clusterrole=cluster-admin "--group=$G"
+  "group may do everything: $(adm auth can-i '*' '*' --all-namespaces --as=group-check "--as-group=$G")"
 } elseif ($VKS_CLUSTER_NAMESPACE -eq '*') {
-  "WARNING: VKS_CLUSTER_NAMESPACE is `"*`": group ${KC_PREFIX}:$KC_GROUP gets cluster-admin on the whole cluster"
-  kubectl --kubeconfig $ADMIN_KUBECONFIG create clusterrolebinding "$KC_PREFIX-$KC_GROUP-cluster-admin" --clusterrole=cluster-admin "--group=${KC_PREFIX}:$KC_GROUP"
-  "group may do everything: $(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i '*' '*' --all-namespaces --as=group-check "--as-group=${KC_PREFIX}:$KC_GROUP")"
+  "WARNING: VKS_CLUSTER_NAMESPACE is `"*`": group $G gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  adm create clusterrolebinding "$KC_PREFIX-$KC_GROUP-view" --clusterrole=view "--group=$G"
+  "group may list pods in kube-system: $(adm auth can-i list pods -n kube-system --as=group-check "--as-group=$G")"
+  "group may list namespaces: $(adm auth can-i list namespaces --as=group-check "--as-group=$G")"
+  "group may get secrets in kube-system: $(adm auth can-i get secrets -n kube-system --as=group-check "--as-group=$G")"
+  "group may list nodes: $(adm auth can-i list nodes --as=group-check "--as-group=$G")"
+  "group may create deployments in default: $(adm auth can-i create deployments -n default --as=group-check "--as-group=$G")"
 } else {
-  kubectl --kubeconfig $ADMIN_KUBECONFIG create namespace $VKS_CLUSTER_NAMESPACE --dry-run=client -o yaml | kubectl --kubeconfig $ADMIN_KUBECONFIG apply -f - | Out-Null
-  kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE create rolebinding "$KC_PREFIX-$KC_GROUP-$ROLE" "--clusterrole=$ROLE" "--group=${KC_PREFIX}:$KC_GROUP"
-  "group may create deployments in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE auth can-i create deployments --as=group-check "--as-group=${KC_PREFIX}:$KC_GROUP")"
+  kubectl --kubeconfig $ADMIN_KUBECONFIG get namespace $VKS_CLUSTER_NAMESPACE 2>$null | Out-Null
+  if ($LASTEXITCODE -ne 0) { adm create namespace $VKS_CLUSTER_NAMESPACE | Out-Null }
+  adm -n $VKS_CLUSTER_NAMESPACE create rolebinding "$KC_PREFIX-$KC_GROUP-$ROLE" "--clusterrole=$ROLE" "--group=$G"
+  "group may create deployments in ${VKS_CLUSTER_NAMESPACE}: $(adm -n $VKS_CLUSTER_NAMESPACE auth can-i create deployments --as=group-check "--as-group=$G")"
 }
 ```
 
+</details>
+
 **Expect:** `rolebinding.rbac.authorization.k8s.io/keycloak-sv-k8s-devs-edit created` and `group may create
-deployments in team-a: yes` (`no` with `ROLE="view"`); with `VKS_CLUSTER_NAMESPACE="*"`, the `WARNING` line,
-`clusterrolebinding.rbac.authorization.k8s.io/keycloak-sv-k8s-devs-cluster-admin created` and `group may do
-everything: yes`. The check asks the cluster as a member of the group would be asked; it works at once,
-also for people already signed in.
+deployments in team-a: yes` (`no` with `ROLE="view"`). With `VKS_CLUSTER_NAMESPACE="*"`, the `WARNING` line,
+then with `ROLE="edit"` `clusterrolebinding.rbac.authorization.k8s.io/keycloak-sv-k8s-devs-cluster-admin created`
+and `group may do everything: yes`; with `ROLE="view"`
+`clusterrolebinding.rbac.authorization.k8s.io/keycloak-sv-k8s-devs-view created`, `group may list pods in
+kube-system: yes`, `group may list namespaces: yes`, `group may get secrets in kube-system: no`, `group
+may list nodes: no` and `group may create deployments in default: no`. The check asks the cluster as a
+member of the group would be asked; it works at once, also for people already signed in.
 
-**If not:** `already exists`: the group already has it. `STOPPED: VKS_CLUSTER_NAMESPACE is empty`: set
-it and run the block again.
+**If not:** `already exists`: the group already has it. `STOPPED: …`: set `VKS_CLUSTER_NAMESPACE`, or
+`ROLE` to `edit` or `view` (in small letters), and run the block again. `group may create deployments in
+default: yes` with `"*"` and `view`: an earlier run with `edit` left
+`keycloak-sv-k8s-devs-cluster-admin` (or a RoleBinding in `default`); delete it (step 8).
 
-To take it away, delete that RoleBinding (`kubectl --kubeconfig <admin file> -n team-a delete
-rolebinding keycloak-sv-k8s-devs-edit`), or with `"*"` the ClusterRoleBinding (`kubectl --kubeconfig
-<admin file> delete clusterrolebinding keycloak-sv-k8s-devs-cluster-admin`).
+To take it away, delete the group's bindings as in [step 8](#8-take-the-groups-access-away-cluster-administrator-vcenter-administrator).
 
 ## 4. Make the group's kubeconfig and hand it over (cluster administrator)
 
@@ -407,7 +448,7 @@ renames that file), then `runs: vcf pinniped-auth` and `saved …`.
 - No answer for minutes: the cluster is not ready yet ([CLUSTER.md](CLUSTER.md#6-wait-for-the-cluster)), or your role
   cannot read the cluster's details; ask for **Can edit**.
 
-Send the people the file, the namespace from step 3 (with `"*"`: tell them they have the whole cluster)
+Send the people the file, the namespace from step 3 (with `"*"`: tell them they have the whole cluster, read-only with `view`)
 and the cluster's address (the file's `server:` line), so that they can check the file before they use it.
 Also send them [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md) and the two CA files its browser needs (the
 vCenter CA and the identity provider's CA; they hold no secret).
@@ -440,12 +481,17 @@ those keep working: delete those workloads, re-create every ServiceAccount there
 
 ## 8. Take the group's access away (cluster administrator, vCenter administrator)
 
-- Cluster administrator: delete the group's RoleBinding, or with `"*"` its ClusterRoleBinding (step 3), then
-  check as a member of the group: `kubectl --kubeconfig <admin file> auth can-i create deployments -n team-a
-  --as=group-check --as-group=keycloak-sv:k8s-devs` answers `no` (with `"*"`: `auth can-i '*' '*'
-  --all-namespaces …` answers `no`).
+- Cluster administrator: delete the group's bindings from step 3, whatever `ROLE` it used: its
+  ClusterRoleBindings (`kubectl --kubeconfig <admin file> delete clusterrolebinding
+  keycloak-sv-k8s-devs-cluster-admin keycloak-sv-k8s-devs-view --ignore-not-found`) and, in each
+  namespace step 3 used, its RoleBindings (`kubectl --kubeconfig <admin file> -n team-a delete
+  rolebinding keycloak-sv-k8s-devs-edit keycloak-sv-k8s-devs-view --ignore-not-found`). Then check as a
+  member of the group: `kubectl --kubeconfig <admin file> auth can-i list pods --all-namespaces
+  --as=group-check --as-group=keycloak-sv:k8s-devs` and `kubectl --kubeconfig <admin file> auth can-i
+  list pods -n team-a --as=group-check --as-group=keycloak-sv:k8s-devs` both answer `no`.
 - vCenter administrator: run step 2 with `ROLE="REMOVE"`. For a group with **Can edit**, that role
-  is what made it an administrator of the clusters. Logins members made as an administrator keep working.
+  is what made it an administrator of the clusters. Logins members made as an administrator (with
+  **Can edit**, or `"*"` and `edit`) keep working.
 
 With `edit`, members could make tokens for any ServiceAccount in that namespace and start workloads there;
 those keep working: delete those workloads, re-create every ServiceAccount there that has rights, and restart the workloads that use those ServiceAccounts.
