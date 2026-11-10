@@ -12,7 +12,7 @@
 # | identity            | each person's identity-provider account, in a group                                      |
 # | what the file holds | no secret: only where to sign in; each person signs in in a browser                      |
 # | the cluster sees    | KC_PREFIX:<user>, in KC_PREFIX:KC_GROUP                                                  |
-# | rights              | ROLE for the group in VKS_CLUSTER_NAMESPACE, or cluster-admin when it is empty (WARNING) |
+# | rights              | ROLE for the group in VKS_CLUSTER_NAMESPACE, or cluster-admin with "*" (WARNING) |
 # | namespaces used     | VSPHERE_NAMESPACE (export), VKS_CLUSTER_NAMESPACE (rights)                               |
 # | take it away        | disable the person in the identity provider, or delete the group's binding               |
 # | renew               | nothing: each person signs in again                                                      |
