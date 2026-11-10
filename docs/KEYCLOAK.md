@@ -136,10 +136,7 @@ $KEYCLOAK_GROUP = "team-a"
 $VKS_CLUSTER_NAMESPACE = "team-a"
 
 function adm { $input | kubectl --kubeconfig $ADMIN_KUBECONFIG @args }
-if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" }
-elseif (-not (Test-Path $ADMIN_KUBECONFIG)) { "MISSING: $ADMIN_KUBECONFIG" }
-elseif (-not $VKS_CLUSTER_NAMESPACE -or $VKS_CLUSTER_NAMESPACE -eq '*') { "STOPPED: VKS_CLUSTER_NAMESPACE must name one namespace here: '$VKS_CLUSTER_NAMESPACE'; nothing was changed" }
-else {
+if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" } elseif (-not (Test-Path $ADMIN_KUBECONFIG)) { "MISSING: $ADMIN_KUBECONFIG" } elseif (-not $VKS_CLUSTER_NAMESPACE -or $VKS_CLUSTER_NAMESPACE -eq '*') { "STOPPED: VKS_CLUSTER_NAMESPACE must name one namespace here: '$VKS_CLUSTER_NAMESPACE'; nothing was changed" } else {
   adm create namespace $VKS_CLUSTER_NAMESPACE --dry-run=client -o yaml | adm apply -f - | Out-Null
   adm -n $VKS_CLUSTER_NAMESPACE create rolebinding "keycloak-$KEYCLOAK_GROUP-edit" --clusterrole=edit "--group=keycloak:$KEYCLOAK_GROUP" --dry-run=client -o yaml | adm apply -f -
   "create deployments in ${VKS_CLUSTER_NAMESPACE}: $(adm auth can-i create deployments -n $VKS_CLUSTER_NAMESPACE --as=keycloak:test "--as-group=keycloak:$KEYCLOAK_GROUP")"
@@ -214,10 +211,7 @@ $VKS_CLUSTER_NAMESPACE = "team-a"
 $NAME = "my-vks-cluster-keycloak"
 $KEYCLOAK_KUBECONFIG = "$HOME\.kube\$NAME.kubeconfig"
 
-if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" }
-elseif (-not (Test-Path $ADMIN_KUBECONFIG)) { "MISSING: $ADMIN_KUBECONFIG" }
-elseif (-not (Select-String -Quiet -Path $KEYCLOAK_CA -Pattern 'BEGIN CERTIFICATE' -ErrorAction SilentlyContinue)) { "NOT A PEM FILE: $KEYCLOAK_CA (the CA from the Keycloak administrator)" }
-else {
+if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" } elseif (-not (Test-Path $ADMIN_KUBECONFIG)) { "MISSING: $ADMIN_KUBECONFIG" } elseif (-not (Select-String -Quiet -Path $KEYCLOAK_CA -Pattern 'BEGIN CERTIFICATE' -ErrorAction SilentlyContinue)) { "NOT A PEM FILE: $KEYCLOAK_CA (the CA from the Keycloak administrator)" } else {
   $SERVER = kubectl --kubeconfig $ADMIN_KUBECONFIG config view --minify -o jsonpath='{.clusters[0].cluster.server}'
   $CA = kubectl --kubeconfig $ADMIN_KUBECONFIG config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}'
   $KC_CA = [Convert]::ToBase64String([IO.File]::ReadAllBytes($KEYCLOAK_CA))
@@ -278,10 +272,7 @@ fi
 ```powershell
 $KEYCLOAK_KUBECONFIG = "$HOME\.kube\my-vks-cluster-keycloak.kubeconfig"
 
-if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" }
-elseif (-not (Get-Command kubectl-oidc_login -ErrorAction SilentlyContinue)) { "MISSING: kubelogin (PREREQS.md, kubelogin)" }
-elseif (-not (Test-Path $KEYCLOAK_KUBECONFIG)) { "MISSING: $KEYCLOAK_KUBECONFIG (the file from your administrator)" }
-else { kubectl --kubeconfig $KEYCLOAK_KUBECONFIG auth whoami }
+if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" } elseif (-not (Get-Command kubectl-oidc_login -ErrorAction SilentlyContinue)) { "MISSING: kubelogin (PREREQS.md, kubelogin)" } elseif (-not (Test-Path $KEYCLOAK_KUBECONFIG)) { "MISSING: $KEYCLOAK_KUBECONFIG (the file from your administrator)" } else { kubectl --kubeconfig $KEYCLOAK_KUBECONFIG auth whoami }
 ```
 
 kubelogin prints `Please visit the following URL in your browser:` and a Keycloak address that ends

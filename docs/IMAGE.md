@@ -103,9 +103,7 @@ $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 
 $SRC = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}\harbor-ca.crt"
 $N = "$((Get-Content "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
-if (-not ((Get-Item -LiteralPath $SRC -ErrorAction SilentlyContinue).Length -gt 0)) { "FAILED: no $SRC (HARBOR.md step 9); download the CA below" }
-elseif ($HARBOR_FQDN -cne $N) { "FAILED: HARBOR_FQDN ($HARBOR_FQDN) is not this folder's Harbor ($(if ($N) { $N } else { 'none' })); nothing copied" }
-else {
+if (-not ((Get-Item -LiteralPath $SRC -ErrorAction SilentlyContinue).Length -gt 0)) { "FAILED: no $SRC (HARBOR.md step 9); download the CA below" } elseif ($HARBOR_FQDN -cne $N) { "FAILED: HARBOR_FQDN ($HARBOR_FQDN) is not this folder's Harbor ($(if ($N) { $N } else { 'none' })); nothing copied" } else {
   $X = $null
   try {
     $X = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $SRC -ErrorAction Stop
@@ -424,9 +422,7 @@ $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 $SRC = "https://raw.githubusercontent.com/AndriyKalashnykov/vks-guides/666cba94ba517ac79d1c2ec505226192962477a3/argocd/test-web-apps"
 $IMG = "$HARBOR_FQDN/$HARBOR_PROJECT/test-web-apps:v1-$CONTAINER_ENGINE"
 $ERR = ''
-if ($CONTAINER_ENGINE -cnotmatch '^(podman|docker)$') { $ERR = 'CONTAINER_ENGINE must be podman or docker' }
-elseif (-not (Get-Command "$CONTAINER_ENGINE.exe" -ErrorAction SilentlyContinue)) { $ERR = "$CONTAINER_ENGINE not found (Prerequisites)" }
-else {
+if ($CONTAINER_ENGINE -cnotmatch '^(podman|docker)$') { $ERR = 'CONTAINER_ENGINE must be podman or docker' } elseif (-not (Get-Command "$CONTAINER_ENGINE.exe" -ErrorAction SilentlyContinue)) { $ERR = "$CONTAINER_ENGINE not found (Prerequisites)" } else {
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$IMAGE_DIR\new"
   New-Item -ItemType Directory -Force -Path "$IMAGE_DIR\new\app", "$IMAGE_DIR\new\k8s" | Out-Null
   foreach ($f in 'app/Dockerfile', 'app/index.html', 'k8s/namespace.yaml', 'k8s/deployment.yaml', 'k8s/service.yaml') {
@@ -436,8 +432,7 @@ else {
 }
 $PAGE = "$IMAGE_DIR\new\app\index.html"
 if (-not $ERR -and -not (Select-String -Path $PAGE -Pattern '^<h1>test-web-apps v1</h1>$' -CaseSensitive -Quiet)) { $ERR = 'index.html is not the expected page' }
-if ($ERR) { "FAILED: $ERR" }
-else {
+if ($ERR) { "FAILED: $ERR" } else {
   $T = [IO.File]::ReadAllText($PAGE) -replace '<h1>test-web-apps v1</h1>', "<h1>test-web-apps v1, from Harbor ($CONTAINER_ENGINE)</h1>"
   [IO.File]::WriteAllText($PAGE, $T)
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$IMAGE_DIR\app", "$IMAGE_DIR\k8s"
@@ -547,14 +542,12 @@ $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 $IMG = "$HARBOR_FQDN/$HARBOR_PROJECT/test-web-apps:v1-$CONTAINER_ENGINE"
 $DIGEST_FILE = "$IMAGE_DIR\digest-$CONTAINER_ENGINE"
 Remove-Item -Force -ErrorAction SilentlyContinue $DIGEST_FILE
-if (-not $HARBOR_ROBOT_SECRET -or $HARBOR_ROBOT_SECRET.Length -eq 0) { "FAILED: no robot secret in this terminal; run the line above" }
-else {
+if (-not $HARBOR_ROBOT_SECRET -or $HARBOR_ROBOT_SECRET.Length -eq 0) { "FAILED: no robot secret in this terminal; run the line above" } else {
   $B = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($HARBOR_ROBOT_SECRET)
   try { [Runtime.InteropServices.Marshal]::PtrToStringBSTR($B) | & $CONTAINER_ENGINE login -u $HARBOR_ROBOT --password-stdin $HARBOR_FQDN }
   finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($B) }
   if ($LASTEXITCODE -eq 0) {
-    if ($CONTAINER_ENGINE -eq 'podman') { podman push --digestfile $DIGEST_FILE $IMG }
-    else {
+    if ($CONTAINER_ENGINE -eq 'podman') { podman push --digestfile $DIGEST_FILE $IMG } else {
       docker push $IMG
       if ($LASTEXITCODE -eq 0) {
         $D = @(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' $IMG) |
@@ -564,8 +557,7 @@ else {
     }
     & $CONTAINER_ENGINE logout $HARBOR_FQDN
   }
-  if (Test-Path $DIGEST_FILE) { "pushed: $($IMG -replace ':[^:/]*$', '')@$(Get-Content -Raw $DIGEST_FILE)" }
-  else { "FAILED: the push (see the error above)" }
+  if (Test-Path $DIGEST_FILE) { "pushed: $($IMG -replace ':[^:/]*$', '')@$(Get-Content -Raw $DIGEST_FILE)" } else { "FAILED: the push (see the error above)" }
 }
 Remove-Variable -ErrorAction SilentlyContinue HARBOR_ROBOT_SECRET
 ```
@@ -675,9 +667,7 @@ $IMAGE_DIR = "$HOME\.config\vks-guides\image"
 
 $VKS_KUBECONFIG = "$HOME\.kube\$VKS_CLUSTER.kubeconfig"
 $global:LASTEXITCODE = $null
-if (-not $HARBOR_PULL_SECRET -or $HARBOR_PULL_SECRET.Length -eq 0) { "FAILED: no pull robot secret in this terminal; run the line above" }
-elseif (-not (Test-Path $VKS_KUBECONFIG) -or -not (Test-Path "$IMAGE_DIR\k8s\namespace.yaml")) { "FAILED: $VKS_KUBECONFIG or $IMAGE_DIR\k8s\namespace.yaml is missing (step 3)" }
-else {
+if (-not $HARBOR_PULL_SECRET -or $HARBOR_PULL_SECRET.Length -eq 0) { "FAILED: no pull robot secret in this terminal; run the line above" } elseif (-not (Test-Path $VKS_KUBECONFIG) -or -not (Test-Path "$IMAGE_DIR\k8s\namespace.yaml")) { "FAILED: $VKS_KUBECONFIG or $IMAGE_DIR\k8s\namespace.yaml is missing (step 3)" } else {
   (Get-Content "$IMAGE_DIR\k8s\namespace.yaml") -creplace '^  name: test-web-apps$', "  name: $APP_NAMESPACE" | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
   if ($LASTEXITCODE -eq 0) {
     $B = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($HARBOR_PULL_SECRET)
@@ -690,8 +680,7 @@ else {
          data = @{ '.dockerconfigjson' = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($CFG)) } } |
         ConvertTo-Json -Depth 5 | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
     } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($B); $P = $null; $AUTH = $null; $CFG = $null }
-  }
-  else { "FAILED: the namespace $APP_NAMESPACE was not made (see the error above)" }
+  } else { "FAILED: the namespace $APP_NAMESPACE was not made (see the error above)" }
 }
 Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 ```
@@ -790,9 +779,7 @@ if (-not $DIGEST -or -not (Test-Path "$K\deployment.yaml") -or -not (Test-Path $
   $PULL = ($LASTEXITCODE -eq 0)
   "image: $IMG"; "pull secret: $(if ($PULL) { 'harbor-pull' } else { 'none' })"
   $DEP = foreach ($l in Get-Content "$K\deployment.yaml") {
-    if ($l -ceq '  namespace: test-web-apps') { "  namespace: $APP_NAMESPACE" }
-    elseif ($l -cmatch '^          image: ') { "          image: $IMG" }
-    else { $l; if ($PULL -and $l -ceq '      automountServiceAccountToken: false') { '      imagePullSecrets:'; '        - name: harbor-pull' } }
+    if ($l -ceq '  namespace: test-web-apps') { "  namespace: $APP_NAMESPACE" } elseif ($l -cmatch '^          image: ') { "          image: $IMG" } else { $l; if ($PULL -and $l -ceq '      automountServiceAccountToken: false') { '      imagePullSecrets:'; '        - name: harbor-pull' } }
   }
   @((Get-Content "$K\namespace.yaml") -creplace '^  name: test-web-apps$', "  name: $APP_NAMESPACE") + '---' +
     ((Get-Content "$K\service.yaml") -creplace '^  namespace: test-web-apps$', "  namespace: $APP_NAMESPACE") + '---' + $DEP |
@@ -871,8 +858,7 @@ while (-not $IP -and $n -lt 24) {
   $n++
   $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n $APP_NAMESPACE get service test-web-apps -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>$null
 }
-if (-not $IP) { "FAILED: the Service has no external IP after 2 minutes" }
-else {
+if (-not $IP) { "FAILED: the Service has no external IP after 2 minutes" } else {
   "address: http://$IP/"
   $H = curl.exe -sS --connect-timeout 10 --max-time 20 "http://$IP/" | Out-String
   if ($H -match '<h1>(.*)</h1>') { "page: $($Matches[1])" }
