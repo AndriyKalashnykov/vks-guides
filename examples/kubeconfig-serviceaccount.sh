@@ -50,16 +50,23 @@ if ! adm get namespace "$SA_NAMESPACE" >/dev/null 2>&1; then adm create namespac
 adm -n "$SA_NAMESPACE" create serviceaccount "$SERVICE_ACCOUNT_NAME" --dry-run=client -o yaml | adm apply -f - >/dev/null
 if [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
   echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME} gets cluster-admin on the whole cluster"
+  O="$(adm delete clusterrolebinding "${SERVICE_ACCOUNT_NAME}-view" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${SERVICE_ACCOUNT_NAME}-view"; fi
   adm create clusterrolebinding "${SERVICE_ACCOUNT_NAME}-cluster-admin" --clusterrole=cluster-admin \
     --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
   CTX_NS="default"
 elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
   echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  O="$(adm delete clusterrolebinding "${SERVICE_ACCOUNT_NAME}-cluster-admin" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${SERVICE_ACCOUNT_NAME}-cluster-admin"; fi
   adm create clusterrolebinding "${SERVICE_ACCOUNT_NAME}-view" --clusterrole=view \
     --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
   CTX_NS="default"
 else
   if ! adm get namespace "$VKS_CLUSTER_NAMESPACE" >/dev/null 2>&1; then adm create namespace "$VKS_CLUSTER_NAMESPACE" >/dev/null; fi
+  OTHER="view"; if [ "$ROLE" = "view" ]; then OTHER="edit"; fi
+  O="$(adm -n "$VKS_CLUSTER_NAMESPACE" delete rolebinding "${SERVICE_ACCOUNT_NAME}-${OTHER}" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed RoleBinding ${SERVICE_ACCOUNT_NAME}-${OTHER} in ${VKS_CLUSTER_NAMESPACE}"; fi
   adm -n "$VKS_CLUSTER_NAMESPACE" create rolebinding "${SERVICE_ACCOUNT_NAME}-${ROLE}" --clusterrole="$ROLE" \
     --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
   CTX_NS="$VKS_CLUSTER_NAMESPACE"

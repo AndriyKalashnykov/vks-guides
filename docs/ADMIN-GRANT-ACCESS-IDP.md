@@ -247,8 +247,11 @@ makes the namespace `VKS_CLUSTER_NAMESPACE` inside the VKS cluster (a folder for
 the vSphere Namespace) if it is not there, and a RoleBinding (the record that gives a group a role
 in one namespace) that gives the group `ROLE` in it: `edit` to deploy, `view` to read only. Every
 member then has those rights; step 4 makes their file. Run it once per group and namespace; for the
-same group, role and namespace again it answers `already exists`. To change the role, delete the
-old RoleBinding first (below).
+same group, role and namespace again it answers `already exists`. Run it with another `ROLE` and it
+replaces the binding of the same kind and prints `removed …`: with a namespace, `-edit` and `-view` in
+that namespace; with `"*"`, the `-cluster-admin` and `-view` ClusterRoleBindings. A run with a
+namespace leaves the group's ClusterRoleBindings, and a `"*"` run its RoleBindings: step 8 deletes
+both kinds.
 
 With `VKS_CLUSTER_NAMESPACE="*"` it gives the group the whole cluster instead and prints a `WARNING`:
 with `ROLE="edit"`, `cluster-admin` (a ClusterRoleBinding named `<KC_PREFIX>-<KC_GROUP>-cluster-admin`);
@@ -287,10 +290,14 @@ elif [ "$ROLE_OK" = "no" ]; then
   echo 'STOPPED: ROLE is edit or view; nothing was changed'
 elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
   echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": group ${G} gets cluster-admin on the whole cluster"
+  O="$(adm delete clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-view" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${KC_PREFIX}-${KC_GROUP}-view"; fi
   adm create clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-cluster-admin" --clusterrole=cluster-admin --group="$G"
   echo "group may do everything: $(adm auth can-i '*' '*' --all-namespaces --as=group-check --as-group="$G")"
 elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
   echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": group ${G} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  O="$(adm delete clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-cluster-admin" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${KC_PREFIX}-${KC_GROUP}-cluster-admin"; fi
   adm create clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-view" --clusterrole=view --group="$G"
   echo "group may list pods in kube-system: $(adm auth can-i list pods -n kube-system --as=group-check --as-group="$G")"
   echo "group may list namespaces: $(adm auth can-i list namespaces --as=group-check --as-group="$G")"
@@ -299,6 +306,9 @@ elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
   echo "group may create deployments in default: $(adm auth can-i create deployments -n default --as=group-check --as-group="$G")"
 else
   if ! adm get namespace "$VKS_CLUSTER_NAMESPACE" >/dev/null 2>&1; then adm create namespace "$VKS_CLUSTER_NAMESPACE" >/dev/null; fi
+  OTHER="view"; if [ "$ROLE" = "view" ]; then OTHER="edit"; fi
+  O="$(adm -n "$VKS_CLUSTER_NAMESPACE" delete rolebinding "${KC_PREFIX}-${KC_GROUP}-${OTHER}" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed RoleBinding ${KC_PREFIX}-${KC_GROUP}-${OTHER} in ${VKS_CLUSTER_NAMESPACE}"; fi
   adm -n "$VKS_CLUSTER_NAMESPACE" create rolebinding "${KC_PREFIX}-${KC_GROUP}-${ROLE}" --clusterrole="$ROLE" --group="$G"
   echo "group may create deployments in $VKS_CLUSTER_NAMESPACE: $(adm -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments --as=group-check --as-group="$G")"
 fi
@@ -325,10 +335,14 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
   'STOPPED: ROLE is edit or view; nothing was changed'
 } elseif ($VKS_CLUSTER_NAMESPACE -eq '*' -and $ROLE -ceq 'edit') {
   "WARNING: VKS_CLUSTER_NAMESPACE is `"*`": group $G gets cluster-admin on the whole cluster"
+  $O = adm delete clusterrolebinding "$KC_PREFIX-$KC_GROUP-view" --ignore-not-found
+  if ($O) { "removed ClusterRoleBinding $KC_PREFIX-$KC_GROUP-view" }
   adm create clusterrolebinding "$KC_PREFIX-$KC_GROUP-cluster-admin" --clusterrole=cluster-admin "--group=$G"
   "group may do everything: $(adm auth can-i '*' '*' --all-namespaces --as=group-check "--as-group=$G")"
 } elseif ($VKS_CLUSTER_NAMESPACE -eq '*') {
   "WARNING: VKS_CLUSTER_NAMESPACE is `"*`": group $G gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  $O = adm delete clusterrolebinding "$KC_PREFIX-$KC_GROUP-cluster-admin" --ignore-not-found
+  if ($O) { "removed ClusterRoleBinding $KC_PREFIX-$KC_GROUP-cluster-admin" }
   adm create clusterrolebinding "$KC_PREFIX-$KC_GROUP-view" --clusterrole=view "--group=$G"
   "group may list pods in kube-system: $(adm auth can-i list pods -n kube-system --as=group-check "--as-group=$G")"
   "group may list namespaces: $(adm auth can-i list namespaces --as=group-check "--as-group=$G")"
@@ -338,6 +352,9 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
 } else {
   kubectl --kubeconfig $ADMIN_KUBECONFIG get namespace $VKS_CLUSTER_NAMESPACE 2>$null | Out-Null
   if ($LASTEXITCODE -ne 0) { adm create namespace $VKS_CLUSTER_NAMESPACE | Out-Null }
+  $OTHER = 'view'; if ($ROLE -ceq 'view') { $OTHER = 'edit' }
+  $O = adm -n $VKS_CLUSTER_NAMESPACE delete rolebinding "$KC_PREFIX-$KC_GROUP-$OTHER" --ignore-not-found
+  if ($O) { "removed RoleBinding $KC_PREFIX-$KC_GROUP-$OTHER in $VKS_CLUSTER_NAMESPACE" }
   adm -n $VKS_CLUSTER_NAMESPACE create rolebinding "$KC_PREFIX-$KC_GROUP-$ROLE" "--clusterrole=$ROLE" "--group=$G"
   "group may create deployments in ${VKS_CLUSTER_NAMESPACE}: $(adm -n $VKS_CLUSTER_NAMESPACE auth can-i create deployments --as=group-check "--as-group=$G")"
 }
@@ -351,14 +368,16 @@ then with `ROLE="edit"` `clusterrolebinding.rbac.authorization.k8s.io/keycloak-s
 and `group may do everything: yes`; with `ROLE="view"`
 `clusterrolebinding.rbac.authorization.k8s.io/keycloak-sv-k8s-devs-view created`, `group may list pods in
 kube-system: yes`, `group may list namespaces: yes`, `group may get secrets in kube-system: no`, `group
-may list nodes: no` and `group may create deployments in default: no`. The check asks the cluster as a
-member of the group would be asked; it works at once, also for people already signed in.
+may list nodes: no` and `group may create deployments in default: no`. A re-run with another `ROLE`
+also prints `removed …` for the binding it replaced, and the checks then match the new `ROLE`. The
+check asks the cluster as a member of the group would be asked; it works at once, also for people
+already signed in.
 
 **If not:** `already exists`: the group already has it. `STOPPED: …`: set `VKS_CLUSTER_NAMESPACE`, or
 `ROLE` to `edit` or `view` (in small letters), and run the block again. `group may create deployments in
-default: yes` with `"*"` and `view`: an earlier run with `edit` left
-`keycloak-sv-k8s-devs-cluster-admin` (or a RoleBinding in `default`); delete only it with `kubectl
---kubeconfig <admin file> delete clusterrolebinding keycloak-sv-k8s-devs-cluster-admin`. A `yes`
+default: yes` with `"*"` and `view`: an earlier run with `VKS_CLUSTER_NAMESPACE="default"` and `edit`
+left a RoleBinding there; delete only it with `kubectl --kubeconfig <admin file> -n default delete
+rolebinding keycloak-sv-k8s-devs-edit`. A `yes`
 where `no` is expected: an older binding for that group is still there: find it with `kubectl
 --kubeconfig <admin file> get rolebindings,clusterrolebindings -A -o wide | grep keycloak-sv:k8s-devs`
 and delete it.

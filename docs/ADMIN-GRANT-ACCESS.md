@@ -247,8 +247,10 @@ it is and what it may do.
 
 You then have one file, `SERVICE_ACCOUNT_KUBECONFIG`, for that team or tool: send it to them (step 2). Run it
 again for the same team and it writes a new file with a new token in its place; copies of the old
-file keep working until the old token ends (step 3). A changed `ROLE` adds a second RoleBinding and
-keeps the old one: delete `<SERVICE_ACCOUNT_NAME>-<old role>` first.
+file keep working until the old token ends (step 3). Run it with another `ROLE` and it replaces the
+binding of the same kind and prints `removed …`: with a namespace, `-edit` and `-view` in that
+namespace; with `"*"`, the `-cluster-admin` and `-view` ClusterRoleBindings. A run with a namespace
+leaves the login's ClusterRoleBindings, and a `"*"` run its RoleBindings: step 4 deletes both kinds.
 
 With `VKS_CLUSTER_NAMESPACE="*"` the login gets the whole cluster instead, and the block prints a
 `WARNING`: with `ROLE="edit"`, `cluster-admin` (a ClusterRoleBinding named
@@ -297,16 +299,23 @@ if ! adm get namespace "$SA_NAMESPACE" >/dev/null 2>&1; then adm create namespac
 adm -n "$SA_NAMESPACE" create serviceaccount "$SERVICE_ACCOUNT_NAME" --dry-run=client -o yaml | adm apply -f - >/dev/null
 if [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
   echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME} gets cluster-admin on the whole cluster"
+  O="$(adm delete clusterrolebinding "${SERVICE_ACCOUNT_NAME}-view" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${SERVICE_ACCOUNT_NAME}-view"; fi
   adm create clusterrolebinding "${SERVICE_ACCOUNT_NAME}-cluster-admin" --clusterrole=cluster-admin \
     --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
   CTX_NS="default"
 elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
   echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  O="$(adm delete clusterrolebinding "${SERVICE_ACCOUNT_NAME}-cluster-admin" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${SERVICE_ACCOUNT_NAME}-cluster-admin"; fi
   adm create clusterrolebinding "${SERVICE_ACCOUNT_NAME}-view" --clusterrole=view \
     --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
   CTX_NS="default"
 else
   if ! adm get namespace "$VKS_CLUSTER_NAMESPACE" >/dev/null 2>&1; then adm create namespace "$VKS_CLUSTER_NAMESPACE" >/dev/null; fi
+  OTHER="view"; if [ "$ROLE" = "view" ]; then OTHER="edit"; fi
+  O="$(adm -n "$VKS_CLUSTER_NAMESPACE" delete rolebinding "${SERVICE_ACCOUNT_NAME}-${OTHER}" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed RoleBinding ${SERVICE_ACCOUNT_NAME}-${OTHER} in ${VKS_CLUSTER_NAMESPACE}"; fi
   adm -n "$VKS_CLUSTER_NAMESPACE" create rolebinding "${SERVICE_ACCOUNT_NAME}-${ROLE}" --clusterrole="$ROLE" \
     --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
   CTX_NS="$VKS_CLUSTER_NAMESPACE"
@@ -377,15 +386,22 @@ if ($LASTEXITCODE -ne 0) { adm create namespace $SA_NAMESPACE | Out-Null }
 adm -n $SA_NAMESPACE create serviceaccount $SERVICE_ACCOUNT_NAME --dry-run=client -o yaml | adm apply -f - | Out-Null
 if ($VKS_CLUSTER_NAMESPACE -eq '*' -and $ROLE -ceq 'edit') {
   "WARNING: VKS_CLUSTER_NAMESPACE is `"*`": ${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME gets cluster-admin on the whole cluster"
+  $O = adm delete clusterrolebinding "$SERVICE_ACCOUNT_NAME-view" --ignore-not-found
+  if ($O) { "removed ClusterRoleBinding $SERVICE_ACCOUNT_NAME-view" }
   adm create clusterrolebinding "$SERVICE_ACCOUNT_NAME-cluster-admin" --clusterrole=cluster-admin "--serviceaccount=${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME" --dry-run=client -o yaml | adm apply -f - | Out-Null
   $CTX_NS = "default"
 } elseif ($VKS_CLUSTER_NAMESPACE -eq '*') {
   "WARNING: VKS_CLUSTER_NAMESPACE is `"*`": ${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  $O = adm delete clusterrolebinding "$SERVICE_ACCOUNT_NAME-cluster-admin" --ignore-not-found
+  if ($O) { "removed ClusterRoleBinding $SERVICE_ACCOUNT_NAME-cluster-admin" }
   adm create clusterrolebinding "$SERVICE_ACCOUNT_NAME-view" --clusterrole=view "--serviceaccount=${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME" --dry-run=client -o yaml | adm apply -f - | Out-Null
   $CTX_NS = "default"
 } else {
   kubectl --kubeconfig $ADMIN_KUBECONFIG get namespace $VKS_CLUSTER_NAMESPACE 2>$null | Out-Null
   if ($LASTEXITCODE -ne 0) { adm create namespace $VKS_CLUSTER_NAMESPACE | Out-Null }
+  $OTHER = 'view'; if ($ROLE -ceq 'view') { $OTHER = 'edit' }
+  $O = adm -n $VKS_CLUSTER_NAMESPACE delete rolebinding "$SERVICE_ACCOUNT_NAME-$OTHER" --ignore-not-found
+  if ($O) { "removed RoleBinding $SERVICE_ACCOUNT_NAME-$OTHER in $VKS_CLUSTER_NAMESPACE" }
   adm -n $VKS_CLUSTER_NAMESPACE create rolebinding "$SERVICE_ACCOUNT_NAME-$ROLE" "--clusterrole=$ROLE" "--serviceaccount=${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME" --dry-run=client -o yaml | adm apply -f - | Out-Null
   $CTX_NS = $VKS_CLUSTER_NAMESPACE
 }
@@ -429,7 +445,8 @@ Remove-Variable TOKEN
 (`no` with `ROLE="view"`) and `list pods in kube-system: no`. With `VKS_CLUSTER_NAMESPACE="*"`: the
 `WARNING` line first; with `ROLE="edit"`, `everything in every namespace: yes`; with `ROLE="view"`,
 `list pods in kube-system: yes`, `list namespaces: yes`, `get secrets in kube-system: no`,
-`list nodes: no` and `create deployments in default: no`.
+`list nodes: no` and `create deployments in default: no`. A re-run with another `ROLE` also prints
+`removed …` for the binding it replaced, and the checks then match the new `ROLE`.
 
 **If not:**
 - `FAILED: …` with `Forbidden` or `Unauthorized` above it: `ADMIN_KUBECONFIG` is not the cluster's
@@ -441,9 +458,9 @@ Remove-Variable TOKEN
   ClusterRoleBinding (`<SERVICE_ACCOUNT_NAME>-cluster-admin` or `<SERVICE_ACCOUNT_NAME>-view`); remove
   only it with `kubectl --kubeconfig "$ADMIN_KUBECONFIG" delete clusterrolebinding
   <SERVICE_ACCOUNT_NAME>-cluster-admin <SERVICE_ACCOUNT_NAME>-view --ignore-not-found`.
-- `create deployments in default: yes` with `"*"` and `view`: an earlier run with `edit` left
-  `<SERVICE_ACCOUNT_NAME>-cluster-admin` (or a RoleBinding in `default`); remove it with
-  `kubectl --kubeconfig "$ADMIN_KUBECONFIG" delete clusterrolebinding <SERVICE_ACCOUNT_NAME>-cluster-admin`.
+- `create deployments in default: yes` with `"*"` and `view`: an earlier run with
+  `VKS_CLUSTER_NAMESPACE="default"` and `edit` left a RoleBinding there; remove only it with
+  `kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n default delete rolebinding <SERVICE_ACCOUNT_NAME>-edit`.
 - A `yes` where `no` is expected: an older binding for that login is still there: find it with
   `kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings,clusterrolebindings -A -o wide | grep <SERVICE_ACCOUNT_NAME>`
   and delete it.

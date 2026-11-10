@@ -41,10 +41,14 @@ elif [ "$ROLE_OK" = "no" ]; then
   echo 'STOPPED: ROLE is edit or view; nothing was changed'
 elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
   echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": group ${G} gets cluster-admin on the whole cluster"
+  O="$(adm delete clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-view" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${KC_PREFIX}-${KC_GROUP}-view"; fi
   adm create clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-cluster-admin" --clusterrole=cluster-admin --group="$G"
   echo "group may do everything: $(adm auth can-i '*' '*' --all-namespaces --as=group-check --as-group="$G")"
 elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
   echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": group ${G} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  O="$(adm delete clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-cluster-admin" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${KC_PREFIX}-${KC_GROUP}-cluster-admin"; fi
   adm create clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-view" --clusterrole=view --group="$G"
   echo "group may list pods in kube-system: $(adm auth can-i list pods -n kube-system --as=group-check --as-group="$G")"
   echo "group may list namespaces: $(adm auth can-i list namespaces --as=group-check --as-group="$G")"
@@ -53,6 +57,9 @@ elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
   echo "group may create deployments in default: $(adm auth can-i create deployments -n default --as=group-check --as-group="$G")"
 else
   if ! adm get namespace "$VKS_CLUSTER_NAMESPACE" >/dev/null 2>&1; then adm create namespace "$VKS_CLUSTER_NAMESPACE" >/dev/null; fi
+  OTHER="view"; if [ "$ROLE" = "view" ]; then OTHER="edit"; fi
+  O="$(adm -n "$VKS_CLUSTER_NAMESPACE" delete rolebinding "${KC_PREFIX}-${KC_GROUP}-${OTHER}" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed RoleBinding ${KC_PREFIX}-${KC_GROUP}-${OTHER} in ${VKS_CLUSTER_NAMESPACE}"; fi
   adm -n "$VKS_CLUSTER_NAMESPACE" create rolebinding "${KC_PREFIX}-${KC_GROUP}-${ROLE}" --clusterrole="$ROLE" --group="$G"
   echo "group may create deployments in $VKS_CLUSTER_NAMESPACE: $(adm -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments --as=group-check --as-group="$G")"
 fi
