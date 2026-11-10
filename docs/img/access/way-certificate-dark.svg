@@ -64,7 +64,7 @@
 <circle cx="434.3" cy="664.5" r="2.6" fill="#60A5FA"/>
 <text font-size="13" fill="#E2E8F0" data-bg="#132338"><tspan x="443.3" y="669.0" data-nl="">Whether that name may still list pods in every</tspan><tspan x="443.3" y="686.0" data-nl="">namespace, and in its namespace</tspan></text>
 <circle cx="434.3" cy="704.5" r="2.6" fill="#60A5FA"/>
-<text font-size="13" fill="#E2E8F0" data-bg="#132338"><tspan x="443.3" y="709.0" data-nl="">With "*": FAILED if a RoleBinding still names it</tspan></text>
+<text font-size="13" fill="#E2E8F0" data-bg="#132338"><tspan x="443.3" y="709.0" data-nl="">FAILED if a RoleBinding still names it</tspan></text>
 <rect x="794.7" y="617" width="365.3" height="225.0" rx="10" fill="#2A1F0E" stroke="#F59E0B" stroke-width="1.2"/>
 <text font-size="14" fill="#E2E8F0" data-bg="#2A1F0E" font-weight="700"><tspan x="838.7" y="642.0" data-nl="">What keeps working</tspan></text>
 <circle cx="816.7" cy="637" r="13" fill="#F59E0B"/>

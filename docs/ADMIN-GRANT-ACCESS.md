@@ -472,7 +472,8 @@ making a ServiceAccount of the same name again does not bring the copies back. I
 login's ClusterRoleBindings (`-cluster-admin` and `-view`, whichever an earlier `"*"` run made) and, in
 the namespace, its RoleBindings (`-edit` and `-view`), whatever `ROLE` step 1 used; the team's
 namespace stays: delete it when the team's work in it is no longer needed. With `"*"`, the token
-Secrets are not swept, and it says `FAILED` if a RoleBinding still names the login. It then asks the
+Secrets are not swept. It then says `FAILED` if a RoleBinding in any namespace still names the login
+(a `VKS_CLUSTER_NAMESPACE` other than step 1's deletes nothing there), asks the
 cluster whether that login may still list pods in every namespace (and, with a namespace, in it) and
 checks that the ServiceAccount is gone; with `"*"` and `edit`, logins made with it as a cluster
 administrator keep working. An empty `VKS_CLUSTER_NAMESPACE` stops the block before it deletes
@@ -498,7 +499,8 @@ else
     kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" delete rolebinding "${SERVICE_ACCOUNT_NAME}-edit" "${SERVICE_ACCOUNT_NAME}-view" --ignore-not-found
     kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" delete secret --field-selector type=kubernetes.io/service-account-token
     echo "may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" auth can-i list pods --as="system:serviceaccount:${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}")"
-  elif RB="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name')"; then
+  fi
+  if RB="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name')"; then
     LEFT="$(printf '%s\n' "$RB" | awk -v n="$SERVICE_ACCOUNT_NAME" '{k = split($3, s, ","); for (i = 1; i <= k; i++) if (s[i] == n) print $1 "/" $2}')"
     if [ -n "$LEFT" ]; then echo "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $LEFT (step 1 used that namespace: run this block again with it, which also deletes the token Secrets there)"; fi
   else
@@ -534,15 +536,14 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
     kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE delete rolebinding "$SERVICE_ACCOUNT_NAME-edit" "$SERVICE_ACCOUNT_NAME-view" --ignore-not-found
     kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE delete secret --field-selector type=kubernetes.io/service-account-token
     "may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE auth can-i list pods "--as=system:serviceaccount:${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME")"
+  }
+  $global:LASTEXITCODE = $null
+  $RB = kubectl --kubeconfig $ADMIN_KUBECONFIG get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name'
+  if ($LASTEXITCODE -ne 0) {
+    'FAILED: the RoleBindings could not be read (see the error above)'
   } else {
-    $global:LASTEXITCODE = $null
-    $RB = kubectl --kubeconfig $ADMIN_KUBECONFIG get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name'
-    if ($LASTEXITCODE -ne 0) {
-      'FAILED: the RoleBindings could not be read (see the error above)'
-    } else {
-      $LEFT = @($RB | Where-Object { (($_ -split '\s+')[2] -split ',') -contains $SERVICE_ACCOUNT_NAME } | ForEach-Object { $f = $_ -split '\s+'; "$($f[0])/$($f[1])" })
-      if ($LEFT.Count) { "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $($LEFT -join ' ') (step 1 used that namespace: run this block again with it, which also deletes the token Secrets there)" }
-    }
+    $LEFT = @($RB | Where-Object { (($_ -split '\s+')[2] -split ',') -contains $SERVICE_ACCOUNT_NAME } | ForEach-Object { $f = $_ -split '\s+'; "$($f[0])/$($f[1])" })
+    if ($LEFT.Count) { "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $($LEFT -join ' ') (step 1 used that namespace: run this block again with it, which also deletes the token Secrets there)" }
   }
   "may still list pods in every namespace: $(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i list pods --all-namespaces "--as=system:serviceaccount:${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME")"
   $O = (kubectl --kubeconfig $ADMIN_KUBECONFIG -n $SA_NAMESPACE get serviceaccount $SERVICE_ACCOUNT_NAME -o name 2>&1) -join ' '
@@ -569,7 +570,8 @@ namespace: no` and `ServiceAccount gone: …`.
   is not what step 1 used.
 - `FAILED: the ServiceAccount is still there …`: read the error in that line (`Forbidden`: `ADMIN_KUBECONFIG` is
   not the cluster's administrator file) and run the block again.
-- `FAILED: a RoleBinding still names …` (with `"*"`): step 1 used that namespace; run the block again with it.
+- `FAILED: a RoleBinding still names …`: step 1 used that namespace (`VKS_CLUSTER_NAMESPACE` was `"*"`
+  or another namespace, so nothing there was deleted); run the block again with it.
 - `may still list pods …: yes`: another binding gives that login rights; find it with
   `kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings,clusterrolebindings -A -o wide | grep "$SERVICE_ACCOUNT_NAME"` and delete it.
 
@@ -966,8 +968,9 @@ new file, and take the old name's rights away (step 4).
 Do this when the person should lose access, or has a new certificate from step 3. It deletes the
 name's ClusterRoleBindings (`-cluster-admin` and `-view`, whichever step 1 made with
 `VKS_CLUSTER_NAMESPACE="*"`) and, in the namespace, its RoleBindings (`-edit` and `-view`), whatever
-`ROLE` step 1 used, then asks the cluster whether that name may still list pods in every namespace
-(and, with a namespace, in it; with `"*"` it says `FAILED` if a RoleBinding still names it); nothing
+`ROLE` step 1 used, then says `FAILED` if a RoleBinding in any namespace still names it (a
+`VKS_CLUSTER_NAMESPACE` other than step 1's deletes nothing there) and asks the cluster whether that
+name may still list pods in every namespace (and, with a namespace, in it); nothing
 else changes. The
 name then has no rights, but the certificate keeps proving the name until its end date (`notAfter`),
 so never give that name rights again. With `edit`, tokens they made for any ServiceAccount in `VKS_CLUSTER_NAMESPACE`, and
@@ -990,7 +993,8 @@ else
   if [ "$VKS_CLUSTER_NAMESPACE" != "*" ]; then
     kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" delete rolebinding "${NAME}-edit" "${NAME}-view" --ignore-not-found
     echo "${NAME} may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" auth can-i list pods --as="$NAME")"
-  elif RB="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name')"; then
+  fi
+  if RB="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name')"; then
     LEFT="$(printf '%s\n' "$RB" | awk -v n="$NAME" '{k = split($3, s, ","); for (i = 1; i <= k; i++) if (s[i] == n) print $1 "/" $2}')"
     if [ -n "$LEFT" ]; then echo "FAILED: ${NAME} still has a RoleBinding: $LEFT (run this block again with that namespace)"; fi
   else
@@ -1018,15 +1022,14 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
   if ($VKS_CLUSTER_NAMESPACE -ne '*') {
     kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE delete rolebinding "$NAME-edit" "$NAME-view" --ignore-not-found
     "$NAME may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE auth can-i list pods "--as=$NAME")"
+  }
+  $global:LASTEXITCODE = $null
+  $RB = kubectl --kubeconfig $ADMIN_KUBECONFIG get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name'
+  if ($LASTEXITCODE -ne 0) {
+    'FAILED: the RoleBindings could not be read (see the error above)'
   } else {
-    $global:LASTEXITCODE = $null
-    $RB = kubectl --kubeconfig $ADMIN_KUBECONFIG get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name'
-    if ($LASTEXITCODE -ne 0) {
-      'FAILED: the RoleBindings could not be read (see the error above)'
-    } else {
-      $LEFT = @($RB | Where-Object { (($_ -split '\s+')[2] -split ',') -contains $NAME } | ForEach-Object { $f = $_ -split '\s+'; "$($f[0])/$($f[1])" })
-      if ($LEFT.Count) { "FAILED: $NAME still has a RoleBinding: $($LEFT -join ' ') (run this block again with that namespace)" }
-    }
+    $LEFT = @($RB | Where-Object { (($_ -split '\s+')[2] -split ',') -contains $NAME } | ForEach-Object { $f = $_ -split '\s+'; "$($f[0])/$($f[1])" })
+    if ($LEFT.Count) { "FAILED: $NAME still has a RoleBinding: $($LEFT -join ' ') (run this block again with that namespace)" }
   }
   "$NAME may still list pods in every namespace: $(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i list pods --all-namespaces "--as=$NAME")"
 }
@@ -1043,8 +1046,9 @@ team-a: no`; with `VKS_CLUSTER_NAMESPACE="*"`,
 **If not:** no `deleted` line: the binding is already gone, or `NAME` or
 `VKS_CLUSTER_NAMESPACE` is not what step 1 printed and used. `may still …: yes`:
 another binding gives that name rights; find it with `kubectl --kubeconfig "$ADMIN_KUBECONFIG" get
-rolebindings,clusterrolebindings -A -o wide | grep "$NAME"` and delete it. `FAILED: … still has a RoleBinding: team-a/…`
-(with `"*"`): step 1 used that namespace; run the block again with it.
+rolebindings,clusterrolebindings -A -o wide | grep "$NAME"` and delete it. `FAILED: … still has a RoleBinding: team-a/…`:
+step 1 used that namespace (`VKS_CLUSTER_NAMESPACE` was `"*"` or another namespace, so nothing there
+was deleted); run the block again with it.
 
 ## Glossary
 
