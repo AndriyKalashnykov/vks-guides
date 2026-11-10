@@ -21,9 +21,12 @@ blocks; there is nothing to build.
   each way's chapter (SSO, ServiceAccount token, administrator token, certificate; the IdP group in
   ADMIN-GRANT-ACCESS-IDP.md): a change to that chapter's steps or take-away updates its picture in the same PR.
   Every label in them is a statement from the guides: no versions, durations, paths or commands.
-- LOGIN.md, ACCESS.md and ACCESS-IDP.md are moved-guide stubs: a title, one line naming the new
-  guide, and links from the old sections to their new homes; no NOTE, Prerequisites, blocks or
-  Tested on row; not in the guide list or on group pages.
+- LOGIN.md, ACCESS.md and ACCESS-IDP.md are moved-guide pages (owner): a title, then "Who are you? Start
+  here", a table that sends each kind of reader (an administrator who logs in, an administrator who gives
+  access, a person with an SSO account, a person sent a kubeconfig file, a person who signs in with an
+  identity provider) to the guide and step they need, then "Where the old guide went": one line naming the
+  new guide and links from the old sections to their new homes. The three tables are the same: change them
+  together. No NOTE, Prerequisites, blocks or Tested on row; not in the guide list or on group pages.
 - No Makefile, mise, env file or helper script. Each block sets the variables it uses at its top
   and works on its own; never rely on a variable from an earlier block. The one exception is
   IMAGE-DOCKER.md (owner's choice): a short docker-on-Linux walkthrough whose blocks share the
