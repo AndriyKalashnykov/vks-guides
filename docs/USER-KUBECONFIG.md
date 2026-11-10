@@ -36,7 +36,7 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 - the file, sent through a password manager's share or as an encrypted file, never by email, chat
   or a shared folder ([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over));
 - your namespace inside the VKS cluster (a folder for your team's workloads, not the vSphere
-  Namespace), or that the file is for the whole cluster;
+  Namespace), or that the file is for the whole cluster, and whether it may change things or only read;
 - the day it ends (or that it does not end);
 - the cluster's address, to check the file's `server:` line against in step 2.
 
@@ -47,7 +47,8 @@ You need no vCenter CA: the file holds the cluster's CA.
 Save the file in your `.kube` folder, for example as `my-vks-cluster-alice-20261110.kubeconfig`
 (Windows: `$HOME\.kube\…`). Run this once after saving it, before you or a tool rely on it. It makes
 the file readable only by you, shows its server and its kind of login without printing any secret,
-when it ends, who it acts as and what it may do in your namespace, then lists the pods there. It
+when it ends, who it acts as, what it may do in your namespace and whether it may read the whole
+cluster, then lists the pods there. It
 changes nothing on the cluster. Set `KUBECONFIG_FILE` to the saved file and `VKS_CLUSTER_NAMESPACE`
 to your namespace (for a whole-cluster file, any namespace, for example `default`).
 
@@ -86,7 +87,10 @@ else
       P="$(printf '%s' "$T" | cut -d. -f2 | tr '_-' '/+')"
       while [ $(( ${#P} % 4 )) -ne 0 ]; do P="$P="; done
       EXP="$(printf '%s' "$P" | base64 -d 2>/dev/null | sed -n 's/.*"exp":\([0-9]*\).*/\1/p')"
-      if [ -n "$EXP" ]; then echo "token ends in: $(( (EXP - $(date +%s)) / 86400 )) days"; else echo "token ends: no end date in the token (ask your administrator)"; fi
+      S=""; if [ -n "$EXP" ]; then S=$(( EXP - $(date +%s) )); fi
+      if [ -z "$S" ]; then echo "token ends: no end date in the token (ask your administrator)"
+      elif [ "$S" -ge 86400 ]; then echo "token ends in: $(( S / 86400 )) days"
+      else echo "token ends in: $(( S / 3600 )) hours"; fi
       unset T P
     fi
     if ! WHO="$(k auth whoami -o jsonpath='{.status.userInfo.username}')"; then
@@ -94,6 +98,7 @@ else
     else
       echo "acts as: $WHO"
       echo "create deployments in $VKS_CLUSTER_NAMESPACE: $(k -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments)"
+      echo "list pods in every namespace: $(k auth can-i list pods --all-namespaces)"
       k -n "$VKS_CLUSTER_NAMESPACE" get pods
     fi
   fi
@@ -134,7 +139,10 @@ $VKS_CLUSTER_NAMESPACE = "team-a"
       $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); while ($P.Length % 4) { $P += '=' }
       $EXP = ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json).exp
     } catch { $EXP = $null }
-    if ($EXP) { "token ends in: $([math]::Floor(($EXP - [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) / 86400)) days" } else { "token ends: no end date in the token (ask your administrator)" }
+    if ($EXP) {
+      $S = $EXP - [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+      if ($S -ge 86400) { "token ends in: $([math]::Floor($S / 86400)) days" } else { "token ends in: $([math]::Floor($S / 3600)) hours" }
+    } else { "token ends: no end date in the token (ask your administrator)" }
   } else {
     "FAILED: no token, certificate or sign-in command in this file; ask your administrator for it again"
     return
@@ -144,6 +152,7 @@ $VKS_CLUSTER_NAMESPACE = "team-a"
   if ($LASTEXITCODE -ne 0) { "FAILED: kubectl could not ask the cluster who you are (see the error above)"; return }
   "acts as: $WHO"
   "create deployments in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $KUBECONFIG_FILE -n $VKS_CLUSTER_NAMESPACE auth can-i create deployments)"
+  "list pods in every namespace: $(kubectl --kubeconfig $KUBECONFIG_FILE auth can-i list pods --all-namespaces)"
   kubectl --kubeconfig $KUBECONFIG_FILE -n $VKS_CLUSTER_NAMESPACE get pods
 }
 ```
@@ -151,10 +160,13 @@ $VKS_CLUSTER_NAMESPACE = "team-a"
 </details>
 
 **Expect:** `-rw-------` and your user (Windows: only your user with `(F)`); the `server:` line with
-the address you were sent; then one of `token: REDACTED` (a token: `token ends in: … days`) or
-`client-key-data: DATA+OMITTED` (a certificate: `subject=CN=…` and `notAfter=…`), and a
-`namespace:` line if the file names one. Then `acts as: …`, `create deployments in team-a: yes`
-(`no` with a read-only file), and the pods there or `No resources found in team-a namespace.`
+the address you were sent; then one of `token: REDACTED` (a token: `token ends in: … days`, or
+`… hours` under a day) or `client-key-data: DATA+OMITTED` (a certificate: `subject=CN=…` and
+`notAfter=…`), and a `namespace:` line if the file names one. Then `acts as: …`,
+`create deployments in team-a: yes` (`no` with a read-only file), `list pods in every namespace: no`
+for a file for one namespace (`yes` for a whole-cluster file; a read-only whole-cluster file shows
+`create deployments …: no` and `list pods in every namespace: yes`), and the pods there or
+`No resources found in team-a namespace.`
 
 **If not:**
 - `MISSING: …`: set `KUBECONFIG_FILE` to the saved file.
@@ -170,6 +182,10 @@ the address you were sent; then one of `token: REDACTED` (a token: `token ends i
   reach the cluster without the proxy.
 - `Unauthorized`, then `FAILED: kubectl could not ask the cluster who you are`: the file no longer works
   ([step 4](#4-when-it-stops-working)).
+- `token ends in: -… hours` (below zero): the token has ended; ask for a new file
+  ([step 4](#4-when-it-stops-working)).
+- `list pods in every namespace` is not what your administrator said (a file for one namespace
+  answering `yes`, or a whole-cluster file `no`): tell your administrator before you rely on it.
 - `no`, or `Forbidden` on the pods: the file has no rights in that namespace
   ([step 4](#4-when-it-stops-working)).
 
@@ -215,7 +231,7 @@ what you asked. Step 2 shows which kind of file you have:
 
 | your file (step 2 shows) | `Unauthorized` means | `Forbidden` means |
 |---|---|---|
-| a token, `token ends in: … days` (a whole-cluster file can have an end date too) | the token ended, or your administrator took the access away: ask for a new file | its rights were changed, or you asked outside its namespace (below) |
+| a token, `token ends in: … days` or `… hours` (a whole-cluster file can have an end date too) | the token ended, or your administrator took the access away: ask for a new file | its rights were changed, or you asked outside its namespace (below) |
 | a token, `token ends: no end date …` (an administrator token made to never end) | your administrator took the access away: ask for a new file | — |
 | a certificate, `notAfter=…` | it is past its end date (`notAfter`): ask for a new file | its rights were taken away, or moved to your new certificate: use the new file |
 | a file that signs in with a browser | the cluster does not accept the sign-in: [USER-IDP-LOGIN.md step 7](USER-IDP-LOGIN.md#7-forbidden-or-no-sign-in) (when the sign-in ends, the browser opens again instead) | you are not in the group, or the group has no rights: [USER-IDP-LOGIN.md step 7](USER-IDP-LOGIN.md#7-forbidden-or-no-sign-in) |
@@ -229,8 +245,10 @@ error line, the namespace, and when it began.
 
 ## 5. Check that a whole-cluster file can change things (whole-cluster file only)
 
-Only for a file for the whole cluster (an administrator token, or a ServiceAccount token made with `"*"`), once on the machine that received
-it, before a tool relies on it. It makes the file readable only by you and shows who it acts as. It
+Only for a whole-cluster file that may change things (an administrator token, or a ServiceAccount
+token or certificate made with `"*"` and `edit`), once on the machine that received it, before a tool
+relies on it; skip it for a read-only whole-cluster file (made with `"*"` and `view`), where its
+`Forbidden` is expected. It makes the file readable only by you and shows who it acts as. It
 then creates a test namespace `CHECK_NAMESPACE` inside the cluster with a ConfigMap (a small object
 that holds settings) in it, changes the ConfigMap and reads it back, then deletes that namespace
 again; if it could not create the namespace, it deletes nothing. You then know the file can create,
@@ -289,7 +307,8 @@ administrator chose), `namespace/access-check created`, `configmap/check created
 **If not:**
 - `AlreadyExists`, then `STOPPED: …`: a namespace of that name is there; set `CHECK_NAMESPACE` to
   another name.
-- `Forbidden`, then `STOPPED: …`: the file is not for the whole cluster; skip this step.
+- `Forbidden`, then `STOPPED: …`: the file is not for the whole cluster, or it is read-only (`view`);
+  skip this step.
 - `Unauthorized`: [step 4](#4-when-it-stops-working).
 - `No such file` (Windows: `cannot find`): set `KUBECONFIG_FILE` to the saved file.
 

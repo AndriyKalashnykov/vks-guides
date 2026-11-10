@@ -233,13 +233,13 @@ kubectl auth whoami
 kubectl -n $VKS_CLUSTER_NAMESPACE auth can-i create deployments
 ```
 
-**Expect:** `Username` with your `sso:…` name, then `yes`. Then use `kubectl -n team-a …` in this
-terminal.
+**Expect:** `Username` with your `sso:…` name, then `yes` (`no` if you were given read-only
+access, `view`). Then use `kubectl -n team-a …` in this terminal.
 
 **If not:**
 - `connection refused` to `localhost:8080`: the file is not there; check `SSO_USER` and
   `VKS_CLUSTER` against your login (`ls ~/.kube`).
-- `no`: you have no rights in that namespace yet: the cluster administrator has not given them
+- `no` where you should be able to deploy: you have no rights in that namespace yet: the cluster administrator has not given them
   ([ADMIN-GRANT-ACCESS.md step 2](ADMIN-GRANT-ACCESS.md#2-give-the-person-rights-inside-the-cluster-cluster-administrator)),
   or bound a name that differs from the `Username` above (often only in letter case). Send them that
   exact name.
