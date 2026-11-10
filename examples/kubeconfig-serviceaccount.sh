@@ -85,8 +85,8 @@ if [ -n "$TOKEN" ] && [ -n "$SERVER" ] && [ -n "$CA" ]; then
   S=""; if [ -n "$EXP" ]; then S=$(( EXP - $(date +%s) )); fi
   if [ -z "$S" ]; then echo "token ends in: unknown"
   elif [ "$S" -le 0 ]; then echo "token ends: it has ended"
-  elif [ "$S" -ge 86400 ]; then echo "token ends in: $(( S / 86400 )) days"
-  else echo "token ends in: $(( S / 3600 )) hours"; fi
+  elif [ "$S" -ge 86400 ]; then N=$(( S / 86400 )); U="days"; if [ "$N" -eq 1 ]; then U="day"; fi; echo "token ends in: $N $U"
+  else N=$(( S / 3600 )); U="hours"; if [ "$N" -eq 1 ]; then U="hour"; fi; echo "token ends in: $N $U"; fi
   echo "acts as: $(kf auth whoami -o jsonpath='{.status.userInfo.username}')"
   if [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
     echo "everything in every namespace: $(kf auth can-i '*' '*' --all-namespaces)"

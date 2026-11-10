@@ -90,8 +90,8 @@ else
       S=""; if [ -n "$EXP" ]; then S=$(( EXP - $(date +%s) )); fi
       if [ -z "$S" ]; then echo "token ends: no end date in the token (ask your administrator)"
       elif [ "$S" -le 0 ]; then echo "token ends: it has ended"
-      elif [ "$S" -ge 86400 ]; then echo "token ends in: $(( S / 86400 )) days"
-      else echo "token ends in: $(( S / 3600 )) hours"; fi
+      elif [ "$S" -ge 86400 ]; then N=$(( S / 86400 )); U="days"; if [ "$N" -eq 1 ]; then U="day"; fi; echo "token ends in: $N $U"
+      else N=$(( S / 3600 )); U="hours"; if [ "$N" -eq 1 ]; then U="hour"; fi; echo "token ends in: $N $U"; fi
       unset T P
     fi
     if ! WHO="$(k auth whoami -o jsonpath='{.status.userInfo.username}')"; then
@@ -142,7 +142,7 @@ $VKS_CLUSTER_NAMESPACE = "team-a"
     } catch { $EXP = $null }
     if ($EXP) {
       $S = $EXP - [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-      if ($S -le 0) { "token ends: it has ended" } elseif ($S -ge 86400) { "token ends in: $([math]::Floor($S / 86400)) days" } else { "token ends in: $([math]::Floor($S / 3600)) hours" }
+      if ($S -le 0) { "token ends: it has ended" } elseif ($S -ge 86400) { "token ends in: $([math]::Floor($S / 86400)) day$(if ([math]::Floor($S / 86400) -ne 1) { 's' })" } else { "token ends in: $([math]::Floor($S / 3600)) hour$(if ([math]::Floor($S / 3600) -ne 1) { 's' })" }
     } else { "token ends: no end date in the token (ask your administrator)" }
   } else {
     "FAILED: no token, certificate or sign-in command in this file; ask your administrator for it again"
@@ -183,7 +183,8 @@ for a file for one namespace (`yes` for a whole-cluster file; a read-only whole-
   reach the cluster without the proxy.
 - `Unauthorized`, then `FAILED: kubectl could not ask the cluster who you are`: the file no longer works
   ([step 4](#4-when-it-stops-working)).
-- `token ends: it has ended`: ask for a new file ([step 4](#4-when-it-stops-working)).
+- `token ends: it has ended`: ask for a new file ([step 4](#4-when-it-stops-working)); it can keep
+  working for a minute or so after that.
 - `list pods in every namespace` is not what your administrator said (a file for one namespace
   answering `yes`, or a whole-cluster file `no`): tell your administrator before you rely on it.
 - `no`, or `Forbidden` on the pods: the file has no rights in that namespace
