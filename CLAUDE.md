@@ -40,11 +40,12 @@ blocks; there is nothing to build.
   `%LOCALAPPDATA%\Programs\vks-tools`. A block pair where either block is 15 lines or more
   sits in two `<details>` cuts whose `<summary><b>…</b></summary>` is the label. PREREQS.md
   blocks sit under OS headings and have no label, besides its three tool checks.
-- In a PowerShell block, `elseif` and `else` never start a line: write `} elseif (…) {` and `} else {`. A
-  terminal paste reaches the console line by line, and PowerShell 5.1 runs a complete `if { }` at its line end,
-  so the next line fails as "The term 'elseif' is not recognized" and its branch never runs (MEASURED
-  2026-11-10, PowerShell 5.1.26100 with PSReadLine 2.0.0, typed into a console; a `.ps1` run and `ParseFile` accept
-  it, so neither catches it). `catch` and `finally` may start a line (the console waits for them).
+- In a PowerShell block, `elseif` and `else` never start a line: write `} elseif (…) {` and `} else {`. Typed
+  line by line into a console, PowerShell 5.1 runs a complete top-level `if { }` at its line end, so the next
+  line fails as "The term 'elseif' is not recognized" and its branch never runs (MEASURED 2026-11-10, PowerShell
+  5.1.26100 with PSReadLine 2.0.0; a terminal paste that sends each line with Enter is INFERRED to behave the same).
+  A `.ps1` run and the parser (`ParseInput`) accept it, so neither catches it. `catch` and `finally` may start a
+  line (the console waits for them).
 - Wherever several OSs appear (labels, sections, lists), the order is Linux, macOS, Windows.
 - Block labels name no distribution or OS version; the group pages' "Tested on" tables say what
   was run. Where a command differs per distribution, the text or PREREQS.md names it.
