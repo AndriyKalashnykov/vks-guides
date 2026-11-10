@@ -248,8 +248,13 @@ vcf plugin list
 **Expect:** `set in …` (or `set for your Windows user`), then the plugins, each `installed`, with
 no `essential plugins` or `telemetry:v9.0.2` line before them.
 
-**If not:** the lines still appear in a terminal opened before this block: close it; terminals
-opened after it have the setting.
+**If not:**
+- The lines still appear in a terminal opened before this block: close it; terminals opened after it
+  have the setting.
+- The plugins, then `[x] unable to list plugins from discovery source '<context>' … getting credentials:
+  exec …`: the plugins above are installed and fine; a saved `vcf` context's login no longer works. Run
+  `vcf context list`, then `vcf context delete <that context>` if you no longer need it, or log in to
+  it again ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md), [USER-LOGIN.md](USER-LOGIN.md)).
 
 **Why the lines appear:** `vcf` looks online for a plugin version Broadcom has not published; the
 variable stops that lookup. Broadcom does not document this variable.
