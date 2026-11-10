@@ -39,6 +39,11 @@ The steps:
 7. [Take one person's access away](#7-take-one-persons-access-away-identity-providers-administrator) (identity provider's administrator)
 8. [Take the group's access away](#8-take-the-groups-access-away-cluster-administrator-vcenter-administrator) (cluster administrator, vCenter administrator)
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/access/way-idp-group-dark.svg">
+  <img src="img/access/way-idp-group-light.svg" width="1200" alt="A group from an identity provider, through the Supervisor: the identity provider&#x27;s administrator makes the group, the vCenter administrator gives it a role on the vSphere Namespace, and the cluster administrator gives it rights in one namespace inside the VKS cluster and makes one file with no secret for the whole group, with which people sign in in a browser with their own account. One person loses access when the identity provider&#x27;s administrator disables them or ends their sessions, and a credential the cluster already gave them keeps working until it expires; the group loses it when the cluster administrator deletes its binding and the vCenter administrator removes its role.">
+</picture>
+
 ## Prerequisites
 
 - the identity provider registered on the Supervisor (for Keycloak:

@@ -8,6 +8,9 @@ provider; without one, run it first ([Run an OIDC identity provider](KEYCLOAK-VK
 through the Supervisor, register it there ([its step 11](KEYCLOAK-VKS.md#11-register-keycloak-with-the-supervisor-optional)) before
 [ADMIN-GRANT-ACCESS-IDP.md](ADMIN-GRANT-ACCESS-IDP.md).
 
+Not sure which way fits your customer? The picture in
+[Which way for which customer](ADMIN-GRANT-ACCESS.md#which-way-for-which-customer) picks it.
+
 | guide | what it is |
 |---|---|
 | [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | which way for which customer, and how to give a person, team or tool access to a VKS cluster and take it away: their vCenter SSO account, a ServiceAccount token or a personal certificate (each for one namespace or the whole cluster) |
