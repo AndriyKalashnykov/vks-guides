@@ -54,13 +54,13 @@ Run this first, to pick the Fluent Bit version that step 4 installs. It shows th
 versions your Supervisor offers and the add-ons your VKS cluster already has, and changes nothing on
 the Supervisor or the cluster. It makes your Supervisor login (`SUPERVISOR_CONTEXT`) the active one
 for the VCF CLI and in its kubeconfig file, and that stays after the block. You get the version
-names: copy one for step 4. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace and `VKS_CLUSTER`
+names: copy one for step 4. Set `VSPHERE_NAMESPACE` to the cluster's vSphere Namespace and `VKS_CLUSTER`
 to the VKS cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 
@@ -70,14 +70,14 @@ if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPE
   echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
   vcf addon available-releases list --addon-name fluent-bit
-  vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"
+  vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE"
 fi
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 
@@ -87,7 +87,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   vcf addon available-releases list --addon-name fluent-bit
-  vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE
+  vcf addon install list --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE
 }
 ```
 
@@ -267,13 +267,13 @@ Run this after step 3, to put Fluent Bit in your VKS cluster. It asks the Superv
 Broadcom's Fluent Bit add-on in the cluster, with the settings from step 3. It makes your Supervisor
 login (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and in its kubeconfig file, and that
 stays after the block. The Supervisor then sets Fluent Bit up on every node; it starts sending once
-step 5 gives it the CA. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 1, and `FLUENT_BIT_RELEASE`
+step 5 gives it the CA. Set `VSPHERE_NAMESPACE` and `VKS_CLUSTER` as in step 1, and `FLUENT_BIT_RELEASE`
 to the version name you copied there.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 FLUENT_BIT_RELEASE="fluent-bit.kubernetes.vmware.com.5.1.2-vmware.1-vks.1"
 LOGGING_DIR="$HOME/.config/vks-guides/logging"
@@ -284,7 +284,7 @@ if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPE
   printf '%s\n' "$VCF_USE"
   echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
-  vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+  vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" \
     --addon-release-name "$FLUENT_BIT_RELEASE" -f "$LOGGING_DIR/values.yaml" -y
 fi
 ```
@@ -292,7 +292,7 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $FLUENT_BIT_RELEASE = "fluent-bit.kubernetes.vmware.com.5.1.2-vmware.1-vks.1"
 $LOGGING_DIR = "$HOME\.config\vks-guides\logging"
@@ -303,7 +303,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   $VCF_USE
   "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
-  vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f "$LOGGING_DIR\values.yaml" -y
+  vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f "$LOGGING_DIR\values.yaml" -y
 }
 ```
 
@@ -503,7 +503,7 @@ and 3 with the new CA or name. Then this block replaces the CA certificate in th
 `tls-ca-cert`, asks the Supervisor to give Fluent Bit the new settings from step 3, and restarts
 Fluent Bit. It makes your Supervisor login (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and
 in its kubeconfig file, and that stays after the block. You then have the logs going to the new Log
-Management: check with step 6. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 1. If you also send
+Management: check with step 6. Set `VSPHERE_NAMESPACE` and `VKS_CLUSTER` as in step 1. If you also send
 logs to Loki ([OBSERVABILITY.md](OBSERVABILITY.md#5-send-the-logs-to-loki) step 5), this block replaces those settings too:
 run that step 5 again afterwards, with `LOGS_FQDN` set to the new name.
 
@@ -511,7 +511,7 @@ run that step 5 again afterwards, with `LOGS_FQDN` set to the new name.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 LOGGING_DIR="$HOME/.config/vks-guides/logging"
@@ -529,7 +529,7 @@ else
     printf '%s\n' "$VCF_USE"
     echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
   else
-    if vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+    if vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" \
          -f "$LOGGING_DIR/values.yaml" -y; then
       sleep 30
       kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
@@ -547,7 +547,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $LOGGING_DIR = "$HOME\.config\vks-guides\logging"
@@ -564,7 +564,7 @@ if (-not (Test-Path $CA -PathType Leaf) -or (Get-Item $CA).Length -eq 0) {
     $VCF_USE
     "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
   } else {
-    vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$LOGGING_DIR\values.yaml" -y
+    vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -f "$LOGGING_DIR\values.yaml" -y
     if ($LASTEXITCODE -eq 0) {
       Start-Sleep 30
       kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
@@ -595,13 +595,13 @@ Run this when the cluster's logs should stop going to VCF Operations. It asks th
 remove the Fluent Bit add-on from your VKS cluster. It makes your Supervisor login
 (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and in its kubeconfig file, and that stays
 after the block. You then have a cluster without Fluent Bit. If you also send logs to Loki
-([OBSERVABILITY.md](OBSERVABILITY.md#5-send-the-logs-to-loki) step 5), this stops those too. Set `VKS_NAMESPACE` and
+([OBSERVABILITY.md](OBSERVABILITY.md#5-send-the-logs-to-loki) step 5), this stops those too. Set `VSPHERE_NAMESPACE` and
 `VKS_CLUSTER` as in step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 
@@ -610,14 +610,14 @@ if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPE
   printf '%s\n' "$VCF_USE"
   echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
-  vcf addon install delete fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y
+  vcf addon install delete fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -y
 fi
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 
@@ -626,7 +626,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   $VCF_USE
   "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
-  vcf addon install delete fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+  vcf addon install delete fluent-bit --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -y
 }
 ```
 

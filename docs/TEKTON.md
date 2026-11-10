@@ -213,14 +213,14 @@ Supervisor to install the add-on, or to update it when it is already there. The 
 exposure is turned off: it needs cert-manager and a Gateway, which this guide does not set up. The
 block stops if the cluster already has another Tekton, and waits until the operator's two pods run
 in the namespace `tekton-operator` (a namespace inside the VKS cluster, not a vSphere Namespace).
-Set `VKS_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to its name, `TEKTON_RELEASE`
+Set `VSPHERE_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to its name, `TEKTON_RELEASE`
 to the release name above, and `SUPERVISOR_CONTEXT` as in the block above.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 TEKTON_RELEASE="tekton-operator.0.80.0-vmware.1-vks.1"
@@ -244,15 +244,15 @@ else
   elif printf '%s\n' "$C" | grep -qx 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev' \
        && [ "$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}')" != vmware-system-helm ]; then
     echo "STOPPED: this cluster has a Tekton Operator that is not the VKS add-on"
-  elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
+  elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -o json)"; then
     echo "FAILED: the VCF CLI (see the error above)"
   else
     OK=""
     if [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "tekton-operator")] | length')" = 1 ]; then
-      vcf addon install update tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+      vcf addon install update tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" \
         -f "$TEKTON_DIR/addon-values.yaml" -y && OK=1
     else
-      vcf addon install create tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+      vcf addon install create tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" \
         --addon-release-name "$TEKTON_RELEASE" -f "$TEKTON_DIR/addon-values.yaml" -y && OK=1
     fi
     D=""
@@ -280,7 +280,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $TEKTON_RELEASE = "tekton-operator.0.80.0-vmware.1-vks.1"
@@ -305,14 +305,14 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
             (kubectl --kubeconfig $VKS_KUBECONFIG get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}') -ne 'vmware-system-helm') {
     "STOPPED: this cluster has a Tekton Operator that is not the VKS add-on"
   } else {
-    $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
+    $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -o json | Out-String
     if ($LASTEXITCODE -ne 0) {
       "FAILED: the VCF CLI (see the error above)"
     } else {
       if (@(ConvertFrom-Json $L | ForEach-Object { $_ } | Where-Object { $_.addonName -eq 'tekton-operator' }).Count -eq 1) {
-        vcf addon install update tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$TEKTON_DIR\addon-values.yaml" -y
+        vcf addon install update tekton-operator --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -f "$TEKTON_DIR\addon-values.yaml" -y
       } else {
-        vcf addon install create tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $TEKTON_RELEASE -f "$TEKTON_DIR\addon-values.yaml" -y
+        vcf addon install create tekton-operator --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE --addon-release-name $TEKTON_RELEASE -f "$TEKTON_DIR\addon-values.yaml" -y
       }
       if ($LASTEXITCODE -ne 0) {
         "FAILED: the add-on (see the error above)"
@@ -1334,14 +1334,14 @@ Run this to remove Tekton when you installed it with A. The block makes your Sup
 (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and in its kubeconfig file, and that stays
 after the block. It turns Pipelines and Triggers off and waits until they are gone, then removes the
 add-on from the Supervisor and deletes the namespace `tekton-operator`. Last, it prints how many
-Tekton object types (CRDs) are left: 0 means Tekton is gone. Set `VKS_NAMESPACE` to the cluster's
+Tekton object types (CRDs) are left: 0 means Tekton is gone. Set `VSPHERE_NAMESPACE` to the cluster's
 vSphere Namespace, `VKS_CLUSTER` to its name, and `SUPERVISOR_CONTEXT` as in step 2.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 SUPERVISOR_CONTEXT="supervisor"
@@ -1358,7 +1358,7 @@ else
     echo "The Tekton add-on is not installed"
   elif [ "$(kubectl --kubeconfig "$VKS_KUBECONFIG" get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}')" != vmware-system-helm ]; then
     echo "STOPPED: this Tekton Operator is not the VKS add-on"
-  elif ! vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" >/dev/null; then
+  elif ! vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" >/dev/null; then
     echo "STOPPED: the VCF CLI (see the error above)"
   else
     L=""
@@ -1394,7 +1394,7 @@ else
           echo "FAILED: cannot list the operator's sets (see the error above)"
         elif [ -n "$W" ]; then
           echo "FAILED: the operator's sets are still there after 5 minutes:" $W
-        elif ! vcf addon install delete tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
+        elif ! vcf addon install delete tekton-operator --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -y; then
           echo "FAILED: the add-on (see the error above)"
         else
           kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace tekton-operator --ignore-not-found --timeout=5m
@@ -1416,7 +1416,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $SUPERVISOR_CONTEXT = "supervisor"
@@ -1435,7 +1435,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
     "The Tekton add-on is not installed"
   } elseif ((kubectl --kubeconfig $VKS_KUBECONFIG get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace}') -ne 'vmware-system-helm') {
     "STOPPED: this Tekton Operator is not the VKS add-on"
-  } elseif ((vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE | Out-Null) -or $LASTEXITCODE -ne 0) {
+  } elseif ((vcf addon install list --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE | Out-Null) -or $LASTEXITCODE -ne 0) {
     "STOPPED: the VCF CLI (see the error above)"
   } else {
     $L = @()
@@ -1478,7 +1478,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
           } elseif ($W.Count -gt 0) {
             "FAILED: the operator's sets are still there after 5 minutes: $W"
           } else {
-            vcf addon install delete tekton-operator --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+            vcf addon install delete tekton-operator --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -y
             if ($LASTEXITCODE -ne 0) {
               "FAILED: the add-on (see the error above)"
             } else {

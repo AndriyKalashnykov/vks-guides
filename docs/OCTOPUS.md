@@ -203,7 +203,7 @@ disk free.
 The certificate for Octopus's web page (step 5) comes from cert-manager, a Broadcom add-on of the
 VKS cluster ([what add-ons are](ADDONS.md)). Run [KEYCLOAK-VKS.md step
 2](KEYCLOAK-VKS.md#2-install-cert-manager) once, with `VKS_CLUSTER` changed from
-`my-keycloak-cluster` to Octopus's cluster and `VKS_NAMESPACE` to its vSphere Namespace. When the
+`my-keycloak-cluster` to Octopus's cluster and `VSPHERE_NAMESPACE` to its vSphere Namespace. When the
 add-on is there already, it changes nothing. That block makes your Supervisor login the active one
 for the VCF CLI and in its kubeconfig file, and that stays after it.
 

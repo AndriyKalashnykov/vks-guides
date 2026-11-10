@@ -569,7 +569,7 @@ you can filter by them in Grafana. It writes `fluent-bit-values.yaml`, then inst
 if it is already installed (by [LOGGING.md](LOGGING.md) or an earlier run of this step), updates and
 restarts it. It makes your Supervisor login (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI
 and in its kubeconfig file, and that stays after the block. You then have the logs in Loki; step 7
-checks them. Set `VKS_NAMESPACE` to the cluster's vSphere Namespace and `VKS_CLUSTER` as in step 1,
+checks them. Set `VSPHERE_NAMESPACE` to the cluster's vSphere Namespace and `VKS_CLUSTER` as in step 1,
 and also:
 
 - `FLUENT_BIT_RELEASE`: the newest name that `vcf addon available-releases list --addon-name
@@ -581,7 +581,7 @@ and also:
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 FLUENT_BIT_RELEASE="fluent-bit.kubernetes.vmware.com.5.1.2-vmware.1-vks.1"
 LOGS_FQDN=""
@@ -643,7 +643,7 @@ else
     case " $MOUNTS " in *" tls-ca-cert "*) TO_OPS=1 ;; *) TO_OPS="" ;; esac
     if [ -z "$LOGS_FQDN" ] && [ -n "$TO_OPS" ]; then
       echo "FAILED: the add-on also sends to Log Management (LOGGING.md); set LOGS_FQDN to its name"
-    elif vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -f "$V" -y; then
+    elif vcf addon install update fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -f "$V" -y; then
       sleep 30
       kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout restart daemonset/fluent-bit
       kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging rollout status daemonset/fluent-bit --timeout=10m
@@ -652,7 +652,7 @@ else
     fi
   elif [ -n "$LOGS_FQDN" ]; then
     echo "FAILED: LOGS_FQDN is set but the add-on is not installed; do LOGGING.md first, or leave LOGS_FQDN empty"
-  elif vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+  elif vcf addon install create fluent-bit --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" \
          --addon-release-name "$FLUENT_BIT_RELEASE" -f "$V" -y; then
     n=0
     until kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging get daemonset fluent-bit >/dev/null 2>&1 || [ "$n" -ge 40 ]; do
@@ -671,7 +671,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $FLUENT_BIT_RELEASE = "fluent-bit.kubernetes.vmware.com.5.1.2-vmware.1-vks.1"
 $LOGS_FQDN = ""
@@ -737,7 +737,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
     if ($INSTALLED -and $TO_OPS -and -not $LOGS_FQDN) {
       "FAILED: the add-on also sends to Log Management (LOGGING.md); set LOGS_FQDN to its name"
     } elseif ($INSTALLED) {
-      vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f $V -y
+      vcf addon install update fluent-bit --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -f $V -y
       if ($LASTEXITCODE -eq 0) {
         Start-Sleep 30
         kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging rollout restart daemonset/fluent-bit
@@ -748,7 +748,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
     } elseif ($LOGS_FQDN) {
       "FAILED: LOGS_FQDN is set but the add-on is not installed; do LOGGING.md first, or leave LOGS_FQDN empty"
     } else {
-      vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f $V -y
+      vcf addon install create fluent-bit --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE --addon-release-name $FLUENT_BIT_RELEASE -f $V -y
       if ($LASTEXITCODE -eq 0) {
         $n = 0
         do {
@@ -1504,14 +1504,14 @@ Operations' collection for your VKS cluster. It marks the cluster `enabled` on t
 a label (a tag on the cluster's object); the Supervisor then installs Broadcom's Telegraf and
 Prometheus add-ons in the cluster, which send its metrics to VCF Operations. The block waits until
 both run. It stops first if the cluster has an older install of MONITORING.md, which would clash
-with them. You then have the cluster sending metrics; step 11.6 checks them. Set `VKS_NAMESPACE` to
+with them. You then have the cluster sending metrics; step 11.6 checks them. Set `VSPHERE_NAMESPACE` to
 the cluster's vSphere Namespace and `VKS_CLUSTER` as in step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
@@ -1526,7 +1526,7 @@ if ! OLD="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n monitoring get deployment 
   echo "FAILED: cannot read the VKS cluster (see the error above)"
 elif [ -n "$OLD" ]; then
   echo "FAILED: this cluster runs MONITORING.md from before kube-state-metrics was renamed; run its steps 4 and 5 (or step 9) again first"
-elif kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
+elif kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" label clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
        addons.kubernetes.vmware.com/automated-monitoring=enabled --overwrite; then
   n=0
   until addons || [ "$n" -ge 40 ]; do
@@ -1549,7 +1549,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
@@ -1568,7 +1568,7 @@ if ($LASTEXITCODE -ne 0) {
 } elseif ($OLD) {
   "FAILED: this cluster runs MONITORING.md from before kube-state-metrics was renamed; run its steps 4 and 5 (or step 9) again first"
 } else {
-  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=enabled --overwrite
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=enabled --overwrite
   if ($LASTEXITCODE -ne 0) {
     "FAILED: label not set (see the error above)"
   } else {
@@ -1673,18 +1673,18 @@ add-on with LOGGING.md step 8.
 Run this when the cluster should stop sending metrics to VCF Operations. It sets your cluster's
 label to `disabled` on the Supervisor, waits a minute, and checks that the add-ons left the
 cluster. You then have the cluster without Broadcom's Telegraf and Prometheus add-ons. Set
-`VKS_NAMESPACE` and `VKS_CLUSTER` as in step 11.5.
+`VSPHERE_NAMESPACE` and `VKS_CLUSTER` as in step 11.5.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" label clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
   addons.kubernetes.vmware.com/automated-monitoring=disabled --overwrite \
   && sleep 60 \
   && kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace tanzu-system-telegraf tanzu-system-monitoring
@@ -1693,13 +1693,13 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" label clusters
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=disabled --overwrite
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE label clusters.cluster.x-k8s.io $VKS_CLUSTER addons.kubernetes.vmware.com/automated-monitoring=disabled --overwrite
 if ($LASTEXITCODE -eq 0) {
   Start-Sleep 60
   kubectl --kubeconfig $VKS_KUBECONFIG get namespace tanzu-system-telegraf tanzu-system-monitoring

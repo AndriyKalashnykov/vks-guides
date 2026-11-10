@@ -123,14 +123,14 @@ kubeconfig file, as step 1 does (that stays), and reads the cluster with its adm
 kubeconfig (the file kubectl reads to reach the cluster), `~/.kube/<cluster>.kubeconfig`. Headlamp
 takes one address from the Supervisor's load-balancer range. The block waits until Headlamp runs,
 then shows its address; run it again and it skips what is already installed. Next: step 3. Set
-`VKS_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to the cluster's name, and
+`VSPHERE_NAMESPACE` to the cluster's vSphere Namespace, `VKS_CLUSTER` to the cluster's name, and
 `HEADLAMP_RELEASE` to the release from step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 HEADLAMP_RELEASE="headlamp.kubernetes.vmware.com.0.45.0-vmware.2-vks.1"
@@ -143,7 +143,7 @@ if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPE
 else
   if ! command -v jq >/dev/null 2>&1; then
     echo "MISSING: jq (PREREQS.md)"
-  elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
+  elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -o json)"; then
     echo "FAILED: the VCF CLI (see the error above)"
   else
     OK=1
@@ -161,13 +161,13 @@ else
       echo "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
       OK=""
     else
-      vcf addon install create cert-manager --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y || OK=""
+      vcf addon install create cert-manager --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -y || OK=""
     fi
     if [ -z "$OK" ]; then
       echo "FAILED: no cert-manager add-on (see above)"
     elif [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "headlamp")] | length')" = 1 ]; then
       echo "headlamp: already installed"
-    elif ! vcf addon install create headlamp --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+    elif ! vcf addon install create headlamp --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" \
            --addon-release-name "$HEADLAMP_RELEASE" -y; then
       echo "FAILED: the headlamp add-on (see the error above)"
     else
@@ -195,7 +195,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $HEADLAMP_RELEASE = "headlamp.kubernetes.vmware.com.0.45.0-vmware.2-vks.1"
@@ -207,7 +207,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   $global:LASTEXITCODE = $null
-  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
+  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -o json | Out-String
   if ($LASTEXITCODE -ne 0) {
     "FAILED: the VCF CLI (see the error above)"
   } else {
@@ -226,7 +226,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
       "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
       $OK = $false
     } else {
-      vcf addon install create cert-manager --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+      vcf addon install create cert-manager --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -y
       $OK = $LASTEXITCODE -eq 0
     }
     if (-not $OK) {
@@ -234,7 +234,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
     } elseif ($A -contains 'headlamp') {
       "headlamp: already installed"
     } else {
-      vcf addon install create headlamp --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $HEADLAMP_RELEASE -y
+      vcf addon install create headlamp --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE --addon-release-name $HEADLAMP_RELEASE -y
       if ($LASTEXITCODE -ne 0) {
         "FAILED: the headlamp add-on (see the error above)"
       } else {
@@ -601,7 +601,7 @@ token, and this prints it for step 7. It reads the token from
 `~/.kube/<cluster>-<SSO_USER>.kubeconfig` and changes nothing; run it again to print the token
 again while the login lasts. It also checks your rights in the namespace your cluster administrator
 gave you, and says when Headlamp needs that namespace's name (step 7). Set `VKS_CLUSTER` to the
-cluster's name, `SSO_USER` to your SSO user name, as in step 6, and `TEAM_NAMESPACE` to the
+cluster's name, `SSO_USER` to your SSO user name, as in step 6, and `VKS_CLUSTER_NAMESPACE` to the
 namespace your administrator sent you.
 
 <details>
@@ -610,7 +610,7 @@ namespace your administrator sent you.
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 SSO_USER="alice@vsphere.local"
-TEAM_NAMESPACE="team-a"
+VKS_CLUSTER_NAMESPACE="team-a"
 VKS_USER_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 case "$SSO_USER" in */*|*\\*|*:*) SSO_USER_OK="" ;; *@*) SSO_USER_OK="yes" ;; *) SSO_USER_OK="" ;; esac
 T="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>/dev/null)"
@@ -619,15 +619,15 @@ E="${C%% *}"
 AUD="${C#* }"
 ALL="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth can-i '*' '*' -A 2>/dev/null)"
 NSL="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth can-i list namespaces 2>/dev/null)"
-if printf '%s' "$TEAM_NAMESPACE" | grep -qxE '[a-z0-9]([-a-z0-9]*[a-z0-9])?'; then
-  POD="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" -n "$TEAM_NAMESPACE" auth can-i list pods 2>/dev/null)"
+if printf '%s' "$VKS_CLUSTER_NAMESPACE" | grep -qxE '[a-z0-9]([-a-z0-9]*[a-z0-9])?'; then
+  POD="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" auth can-i list pods 2>/dev/null)"
 else
   POD=bad
 fi
 if [ -z "$SSO_USER_OK" ]; then
   printf '%s\n' "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: $SSO_USER"
 elif [ "$POD" = bad ]; then
-  printf '%s\n' "STOPPED: TEAM_NAMESPACE is the namespace your cluster administrator sent you (a-z, 0-9, -): $TEAM_NAMESPACE"
+  printf '%s\n' "STOPPED: VKS_CLUSTER_NAMESPACE is the namespace your cluster administrator sent you (a-z, 0-9, -): $VKS_CLUSTER_NAMESPACE"
 elif ! command -v jq >/dev/null 2>&1; then
   echo "MISSING: jq (PREREQS.md)"
 elif [ -z "$T" ] || [ -z "$E" ]; then
@@ -643,9 +643,9 @@ elif [ "$ALL" = yes ]; then
 else
   U="$(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
   if [ "${POD#no}" != "$POD" ]; then
-    echo "WARNING: ${U} has no rights in namespace ${TEAM_NAMESPACE}; Headlamp will show nothing there. Check TEAM_NAMESPACE, or ask your cluster administrator for ADMIN-GRANT-ACCESS.md step 2"
+    echo "WARNING: ${U} has no rights in namespace ${VKS_CLUSTER_NAMESPACE}; Headlamp will show nothing there. Check VKS_CLUSTER_NAMESPACE, or ask your cluster administrator for ADMIN-GRANT-ACCESS.md step 2"
   elif [ "${NSL#no}" != "$NSL" ]; then
-    echo "NOTE: in Headlamp, add ${TEAM_NAMESPACE} under Settings > Cluster > Allowed namespaces (step 7)"
+    echo "NOTE: in Headlamp, add ${VKS_CLUSTER_NAMESPACE} under Settings > Cluster > Allowed namespaces (step 7)"
   fi
   echo "token for ${U}:"
   echo "$T"
@@ -661,18 +661,18 @@ fi
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $SSO_USER = "alice@vsphere.local"
-$TEAM_NAMESPACE = "team-a"
+$VKS_CLUSTER_NAMESPACE = "team-a"
 $VKS_USER_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 $T = kubectl --kubeconfig $VKS_USER_KUBECONFIG config view --raw --minify -o jsonpath='{.users[0].user.token}' 2>$null
 $E = $null; $AUD = ""
 if ($T) { try { $P = $T.Split('.')[1].Replace('-', '+').Replace('_', '/'); $P += '=' * ((4 - $P.Length % 4) % 4); $J = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json; if ($J.exp -is [int] -or $J.exp -is [long] -or $J.exp -is [decimal] -or $J.exp -is [double]) { $E = $J.exp }; $AUD = "$(@($J.aud) | Where-Object { "$_".StartsWith('vmware-tes:vc:vns:k8s:') } | Select-Object -First 1)" } catch { } }
 $ALL = "$(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth can-i '*' '*' -A 2>$null)"
 $NSL = "$(kubectl --kubeconfig $VKS_USER_KUBECONFIG auth can-i list namespaces 2>$null)"
-$POD = if ($TEAM_NAMESPACE -cmatch '^[a-z0-9]([-a-z0-9]*[a-z0-9])?\z') { "$(kubectl --kubeconfig $VKS_USER_KUBECONFIG -n $TEAM_NAMESPACE auth can-i list pods 2>$null)" } else { 'bad' }
+$POD = if ($VKS_CLUSTER_NAMESPACE -cmatch '^[a-z0-9]([-a-z0-9]*[a-z0-9])?\z') { "$(kubectl --kubeconfig $VKS_USER_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE auth can-i list pods 2>$null)" } else { 'bad' }
 if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
   "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: ${SSO_USER}"
 } elseif ($POD -eq 'bad') {
-  "STOPPED: TEAM_NAMESPACE is the namespace your cluster administrator sent you (a-z, 0-9, -): ${TEAM_NAMESPACE}"
+  "STOPPED: VKS_CLUSTER_NAMESPACE is the namespace your cluster administrator sent you (a-z, 0-9, -): ${VKS_CLUSTER_NAMESPACE}"
 } elseif (-not $T -or -not $E) {
   "FAILED: no SSO login for $VKS_CLUSTER in $VKS_USER_KUBECONFIG; log in first (USER-LOGIN.md)"
 } elseif ($E -le [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) {
@@ -686,9 +686,9 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
 } else {
   $U = kubectl --kubeconfig $VKS_USER_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}'
   if ($POD.StartsWith('no')) {
-    "WARNING: $U has no rights in namespace ${TEAM_NAMESPACE}; Headlamp will show nothing there. Check TEAM_NAMESPACE, or ask your cluster administrator for ADMIN-GRANT-ACCESS.md step 2"
+    "WARNING: $U has no rights in namespace ${VKS_CLUSTER_NAMESPACE}; Headlamp will show nothing there. Check VKS_CLUSTER_NAMESPACE, or ask your cluster administrator for ADMIN-GRANT-ACCESS.md step 2"
   } elseif ($NSL.StartsWith('no')) {
-    "NOTE: in Headlamp, add $TEAM_NAMESPACE under Settings > Cluster > Allowed namespaces (step 7)"
+    "NOTE: in Headlamp, add $VKS_CLUSTER_NAMESPACE under Settings > Cluster > Allowed namespaces (step 7)"
   }
   "token for ${U}:"
   $T
@@ -706,10 +706,10 @@ terminal.
 **If not:**
 - `STOPPED: this SSO user is an administrator …`: use step 6.1.
 - The `STOPPED: SSO_USER is …`, `FAILED: …` and `ENDED: …` lines: as in step 6.1.
-- `WARNING: … has no rights in namespace …`: check `TEAM_NAMESPACE` (the name your administrator
+- `WARNING: … has no rights in namespace …`: check `VKS_CLUSTER_NAMESPACE` (the name your administrator
   sent you); if it is right, the administrator has not given you rights yet: send them the name in
   that line for ADMIN-GRANT-ACCESS.md step 2. Headlamp would show you nothing until then.
-- `STOPPED: TEAM_NAMESPACE is …`: set it to your namespace's name.
+- `STOPPED: VKS_CLUSTER_NAMESPACE is …`: set it to your namespace's name.
 
 ## 7. Log in to Headlamp with the token (each person, administrator included)
 
@@ -1017,7 +1017,7 @@ that stays after the block. It writes the three settings to
 made when the name or address changes; Headlamp reads it only when it starts, so the block then
 restarts it (some seconds away), and prints the certificate's names and fingerprint. The browser
 warns again for the new certificate: check its new fingerprint (steps 4 and 5). It restarts Headlamp
-only when Headlamp still shows an older certificate than the one in the cluster. Set `VKS_NAMESPACE`
+only when Headlamp still shows an older certificate than the one in the cluster. Set `VSPHERE_NAMESPACE`
 and `VKS_CLUSTER` as in step 2, `HEADLAMP_HOSTNAME` to your DNS name for Headlamp (step 10), or
 empty, which gives `headlamp.vks.example.com`, and `CERT_WITH_IP` and `KUBESCAPE_PLUGIN` to `yes`
 or `no`.
@@ -1026,7 +1026,7 @@ or `no`.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 HEADLAMP_HOSTNAME="headlamp.example.com"
@@ -1053,7 +1053,7 @@ else
   [ "$CERT_WITH_IP" != yes ] || WANT="${WANT}${IP}"
   if [ "$CERT_WITH_IP" = yes ] && [ -z "$IP" ]; then
     echo "FAILED: cannot read Headlamp's address (see the error above)"
-  elif ! vcf addon install update headlamp --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -f "$DIR/addon-values.yaml" -y; then
+  elif ! vcf addon install update headlamp --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -f "$DIR/addon-values.yaml" -y; then
     echo "FAILED: the add-on (see the error above)"
   else
     SAN=""
@@ -1082,7 +1082,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $HEADLAMP_HOSTNAME = "headlamp.example.com"           # empty: headlamp.vks.example.com
@@ -1116,7 +1116,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   if ($CERT_WITH_IP -eq 'yes' -and -not $IP) {
     "FAILED: cannot read Headlamp's address (see the error above)"
   } else {
-    vcf addon install update headlamp --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -f "$DIR\addon-values.yaml" -y
+    vcf addon install update headlamp --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -f "$DIR\addon-values.yaml" -y
     if ($LASTEXITCODE -ne 0) {
       "FAILED: the add-on (see the error above)"
     } else {
@@ -1170,13 +1170,13 @@ add-on with its own load balancer address, and turns off the ports it would othe
 node. A Contour that is already installed is left as it is, so you may run it again. The block first
 makes your Supervisor login (`SUPERVISOR_CONTEXT` from SUPERVISOR-LOGIN.md) the active one for the VCF CLI and
 in its kubeconfig file, and that stays after the block. It prints Contour's address for step 10.2.
-Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 2.
+Set `VSPHERE_NAMESPACE` and `VKS_CLUSTER` as in step 2.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 CONTOUR_RELEASE="contour.kubernetes.vmware.com.1.33.7-vmware.1-vks.1"
@@ -1192,13 +1192,13 @@ else
   printf 'envoy:\n  hostPorts:\n    enable: false\n  service:\n    type: LoadBalancer\n' > "$DIR/contour-values.yaml"
   if ! command -v jq >/dev/null 2>&1; then
     echo "MISSING: jq (PREREQS.md)"
-  elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
+  elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -o json)"; then
     echo "FAILED: the VCF CLI (see the error above)"
   else
     if [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "contour")] | length')" = 1 ]; then
       echo "contour: already installed; its settings are left as they are"
     else
-      vcf addon install create contour --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+      vcf addon install create contour --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" \
         --addon-release-name "$CONTOUR_RELEASE" -f "$DIR/contour-values.yaml" -y
     fi
     IP=""
@@ -1222,7 +1222,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $CONTOUR_RELEASE = "contour.kubernetes.vmware.com.1.33.7-vmware.1-vks.1"
@@ -1237,14 +1237,14 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   New-Item -ItemType Directory -Force -Path $DIR | Out-Null
   [IO.File]::WriteAllText("$DIR\contour-values.yaml", "envoy:`n  hostPorts:`n    enable: false`n  service:`n    type: LoadBalancer`n")
   $global:LASTEXITCODE = $null
-  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
+  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -o json | Out-String
   if ($LASTEXITCODE -ne 0) {
     "FAILED: the VCF CLI (see the error above)"
   } else {
     if (@(ConvertFrom-Json $L | ForEach-Object { $_ } | Where-Object { $_.addonName -eq 'contour' }).Count -eq 1) {
       "contour: already installed; its settings are left as they are"
     } else {
-      vcf addon install create contour --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $CONTOUR_RELEASE -f "$DIR\contour-values.yaml" -y
+      vcf addon install create contour --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE --addon-release-name $CONTOUR_RELEASE -f "$DIR\contour-values.yaml" -y
     }
     $IP = $null
     foreach ($i in 1..60) {
@@ -1387,7 +1387,7 @@ This installs Broadcom's Prometheus add-on, without its Alertmanager and Pushgat
 plugin does not use. Headlamp notices it and restarts within a minute with the Prometheus plugin;
 the plugin finds Prometheus by itself. The block first makes your Supervisor login
 (`SUPERVISOR_CONTEXT` from SUPERVISOR-LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
-that stays after the block. Run it again and it skips an installed Prometheus. Set `VKS_NAMESPACE`
+that stays after the block. Run it again and it skips an installed Prometheus. Set `VSPHERE_NAMESPACE`
 and `VKS_CLUSTER` as in step 2, and `PROMETHEUS_STORAGE` to the size of Prometheus's disk (the
 add-on's own default is 150Gi). Skip this on a cluster where you follow
 [MONITORING.md](MONITORING.md): it does not cover a cluster that runs this add-on (its step 1
@@ -1398,7 +1398,7 @@ counts it as a Prometheus already running). If VCF Operations' monitoring is on 
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 PROMETHEUS_RELEASE="prometheus.kubernetes.vmware.com.3.13.3-vmware.1-vks.1"
@@ -1415,11 +1415,11 @@ else
   printf 'deploycomponents:\n  alertmanager: false\n  pushgateway: false\nprometheus:\n  pvc:\n    storage: %s\n' "$PROMETHEUS_STORAGE" > "$DIR/prometheus-values.yaml"
   if ! command -v jq >/dev/null 2>&1; then
     echo "MISSING: jq (PREREQS.md)"
-  elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)"; then
+  elif ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -o json)"; then
     echo "FAILED: the VCF CLI (see the error above)"
   elif [ "$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "prometheus")] | length')" = 1 ]; then
     echo "prometheus: already installed"
-  elif ! vcf addon install create prometheus --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" \
+  elif ! vcf addon install create prometheus --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" \
          --addon-release-name "$PROMETHEUS_RELEASE" -f "$DIR/prometheus-values.yaml" -y; then
     echo "FAILED: the prometheus add-on (see the error above)"
   else
@@ -1439,7 +1439,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $PROMETHEUS_RELEASE = "prometheus.kubernetes.vmware.com.3.13.3-vmware.1-vks.1"
@@ -1455,13 +1455,13 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   New-Item -ItemType Directory -Force -Path $DIR | Out-Null
   [IO.File]::WriteAllText("$DIR\prometheus-values.yaml", "deploycomponents:`n  alertmanager: false`n  pushgateway: false`nprometheus:`n  pvc:`n    storage: $PROMETHEUS_STORAGE`n")
   $global:LASTEXITCODE = $null
-  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
+  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -o json | Out-String
   if ($LASTEXITCODE -ne 0) {
     "FAILED: the VCF CLI (see the error above)"
   } elseif (@(ConvertFrom-Json $L | ForEach-Object { $_ } | Where-Object { $_.addonName -eq 'prometheus' }).Count -eq 1) {
     "prometheus: already installed"
   } else {
-    vcf addon install create prometheus --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE --addon-release-name $PROMETHEUS_RELEASE -f "$DIR\prometheus-values.yaml" -y
+    vcf addon install create prometheus --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE --addon-release-name $PROMETHEUS_RELEASE -f "$DIR\prometheus-values.yaml" -y
     if ($LASTEXITCODE -ne 0) {
       "FAILED: the prometheus add-on (see the error above)"
     } else {
@@ -1710,13 +1710,13 @@ cert-manager, Prometheus, Contour and Kubescape stay; the lines after the block 
 tokens from step 6 keep working until they end. When it ends with `NOT YET`, run it again in a few
 minutes; a second run goes on where the first stopped. The block first makes your Supervisor login
 (`SUPERVISOR_CONTEXT` from SUPERVISOR-LOGIN.md) the active one for the VCF CLI and in its kubeconfig file, and
-that stays after the block. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 2.
+that stays after the block. Set `VSPHERE_NAMESPACE` and `VKS_CLUSTER` as in step 2.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 SUPERVISOR_CONTEXT="supervisor"
@@ -1729,7 +1729,7 @@ else
   if ! command -v jq >/dev/null 2>&1; then
     echo "MISSING: jq (PREREQS.md)"
   else
-    vcf addon install delete headlamp --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y \
+    vcf addon install delete headlamp --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -y \
       || echo "(not deleted; on a second run the add-on is already gone, so this goes on)"
     N=x
     for i in $(seq 60); do
@@ -1762,7 +1762,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $SUPERVISOR_CONTEXT = "supervisor"
@@ -1772,7 +1772,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   $VCF_USE
   "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
-  vcf addon install delete headlamp --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+  vcf addon install delete headlamp --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -y
   if ($LASTEXITCODE -ne 0) { "(not deleted; on a second run the add-on is already gone, so this goes on)" }
   $N = 'x'
   foreach ($i in 1..60) {
@@ -1862,14 +1862,14 @@ certificate or issuer, for Contour any HTTPProxy or Ingress, for Prometheus VCF 
 monitoring on the cluster (the Supervisor's label `automated-monitoring` is `enabled`). Only then
 it makes your Supervisor login (`SUPERVISOR_CONTEXT` from SUPERVISOR-LOGIN.md) the active one for the VCF CLI
 and in its kubeconfig file, which stays after the block, and asks the Supervisor to remove the
-add-on. You then have the cluster without that add-on. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in
+add-on. You then have the cluster without that add-on. Set `VSPHERE_NAMESPACE` and `VKS_CLUSTER` as in
 step 2, and `ADDON` to `prometheus`, `contour` or `cert-manager`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 ADDON="prometheus"
@@ -1886,7 +1886,7 @@ if [ -z "$KIND" ]; then
   echo "STOPPED: ADDON is prometheus, contour or cert-manager: $ADDON"
 else
   if [ "$KIND" = monitoring ]; then
-    USED="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" -o jsonpath='{.metadata.labels.addons\.kubernetes\.vmware\.com/automated-monitoring}')"; RC=$?
+    USED="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" -o jsonpath='{.metadata.labels.addons\.kubernetes\.vmware\.com/automated-monitoring}')"; RC=$?
     case "$USED" in enabled) USED="VCF Operations' monitoring is enabled on ${VKS_CLUSTER}" ;; *) USED="" ;; esac
   else
     USED="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get "$KIND" -A -o name)"; RC=$?
@@ -1902,7 +1902,7 @@ else
       printf '%s\n' "$VCF_USE"
       echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
     else
-      vcf addon install delete "$ADDON" --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y
+      vcf addon install delete "$ADDON" --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -y
     fi
   fi
 fi
@@ -1914,7 +1914,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $ADDON = "prometheus"
@@ -1932,7 +1932,7 @@ if (-not $KIND) {
 } else {
   $global:LASTEXITCODE = $null
   if ($KIND -eq 'monitoring') {
-    $LABEL = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER -o jsonpath='{.metadata.labels.addons\.kubernetes\.vmware\.com/automated-monitoring}'
+    $LABEL = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER -o jsonpath='{.metadata.labels.addons\.kubernetes\.vmware\.com/automated-monitoring}'
     $USED = @(if ($LABEL -eq 'enabled') { "VCF Operations' monitoring is enabled on $VKS_CLUSTER" })
   } else {
     $USED = @(kubectl --kubeconfig $VKS_KUBECONFIG get $KIND -A -o name)
@@ -1948,7 +1948,7 @@ if (-not $KIND) {
       $VCF_USE
       "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
     } else {
-      vcf addon install delete $ADDON --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+      vcf addon install delete $ADDON --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -y
     }
   }
 }

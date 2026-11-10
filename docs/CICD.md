@@ -38,7 +38,7 @@ other steps are the same, and where their blocks set `GIT_SERVER="gitea"`, chang
 
 The blocks keep their files in `~/.config/vks-guides/cicd` (PowerShell:
 `$HOME\.config\vks-guides\cicd`). `ARGOCD_NAMESPACE` is the vSphere Namespace that runs ArgoCD,
-`VKS_NAMESPACE` the one that holds the VKS cluster (as in [ARGOCD.md](ARGOCD.md)).
+`VSPHERE_NAMESPACE` the one that holds the VKS cluster (as in [ARGOCD.md](ARGOCD.md)).
 
 ## Prerequisites
 
@@ -1194,7 +1194,7 @@ creates:
 
 ArgoCD reads `deploy` through the Git server's load-balancer address. ARGOCD.md's own project and
 app stay as they are. Set `SUPERVISOR_CONTEXT` as in step 1, `ARGOCD_NAMESPACE` to the vSphere
-Namespace that runs ArgoCD, `VKS_NAMESPACE` to the one that holds the VKS cluster, `VKS_CLUSTER`
+Namespace that runs ArgoCD, `VSPHERE_NAMESPACE` to the one that holds the VKS cluster, `VKS_CLUSTER`
 to its name and `GIT_SERVER` as in step 2. You get the app running nginx's welcome page; the
 next block checks it.
 
@@ -1205,11 +1205,11 @@ next block checks it.
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 GIT_SERVER="gitea"
-DESTINATION="${VKS_CLUSTER}-${VKS_NAMESPACE}"
+DESTINATION="${VKS_CLUSTER}-${VSPHERE_NAMESPACE}"
 
 case "$GIT_SERVER" in
   gitea) IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get service gitea-public -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
@@ -1272,11 +1272,11 @@ fi
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $GIT_SERVER = "gitea"
-$DESTINATION = "${VKS_CLUSTER}-${VKS_NAMESPACE}"
+$DESTINATION = "${VKS_CLUSTER}-${VSPHERE_NAMESPACE}"
 
 if ($GIT_SERVER -eq 'gitea') {
   $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get service gitea-public -o jsonpath='{.status.loadBalancer.ingress[0].ip}'

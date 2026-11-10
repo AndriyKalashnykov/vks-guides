@@ -557,29 +557,29 @@ your SSO user can see your vSphere Namespace, and lists the VKS clusters in it
 (`clusters.cluster.x-k8s.io`, the Supervisor's list of VKS clusters). It changes nothing, so you
 may run it again at any time. The `NAME` column gives the cluster name that the next steps ask for
 as `VKS_CLUSTER`; next, get that cluster's kubeconfig ([VKS cluster](#vks-cluster)). Set
-`VKS_NAMESPACE` to your vSphere Namespace's name.
+`VSPHERE_NAMESPACE` to your vSphere Namespace's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
-  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VSPHERE_NAMESPACE" \
+  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get clusters.cluster.x-k8s.io
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE
-if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io }
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VSPHERE_NAMESPACE
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get clusters.cluster.x-k8s.io }
 ```
 
 **Expect:** your namespace, `Active`, then a table whose `NAME` column holds your VKS cluster.
@@ -587,8 +587,8 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 **If not:**
 - `… .kubeconfig: no such file or directory`: you are not logged in. Create the
   Supervisor context first.
-- `NotFound`: check `VKS_NAMESPACE`, or [create the namespace](NAMESPACE.md).
-- `Forbidden`: check `VKS_NAMESPACE` (a user who is not a vCenter administrator gets `Forbidden`
+- `NotFound`: check `VSPHERE_NAMESPACE`, or [create the namespace](NAMESPACE.md).
+- `Forbidden`: check `VSPHERE_NAMESPACE` (a user who is not a vCenter administrator gets `Forbidden`
   for a name that does not exist). Otherwise your SSO user has no role on this namespace, or got
   it after you logged in. Ask a vCenter administrator for the role, then [Log out](#log-out) and
   log in again.
@@ -886,14 +886,14 @@ cluster's shared administrator login
 ([what the file is](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client)): keep it
 private. When the file expires, run this again: it replaces the old file. Next:
 [Use the VKS cluster](#use-the-vks-cluster).
-Set `VKS_NAMESPACE` to your vSphere Namespace's name, and `VKS_CLUSTER` to a name from the `NAME`
+Set `VSPHERE_NAMESPACE` to your vSphere Namespace's name, and `VKS_CLUSTER` to a name from the `NAME`
 column of [Check your vSphere Namespace](#check-your-vsphere-namespace).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
@@ -904,7 +904,7 @@ if [ -e "$VKS_KUBECONFIG" ] \
    && ! kubectl --kubeconfig "$VKS_KUBECONFIG" config get-contexts -o name 2>/dev/null | grep -qxF -- "${VKS_CLUSTER}-admin@${VKS_CLUSTER}"; then
   echo "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
 elif ( umask 077
-     kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get secret "${VKS_CLUSTER}-kubeconfig" \
+     kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get secret "${VKS_CLUSTER}-kubeconfig" \
        -o go-template='{{.data.value | base64decode}}' > "$VKS_KUBECONFIG.new" ) \
    && kubectl --kubeconfig "$VKS_KUBECONFIG.new" config view >/dev/null 2>&1; then
   mv "$VKS_KUBECONFIG.new" "$VKS_KUBECONFIG"
@@ -921,7 +921,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"                     # from the NAME column above
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
@@ -931,7 +931,7 @@ if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFI
   "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
 } else {
   $global:LASTEXITCODE = $null
-  $KC = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" `
+  $KC = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" `
     -o go-template='{{.data.value | base64decode}}'
   if ($LASTEXITCODE -eq 0 -and $KC) {
     Set-Content -Encoding ascii -Path "$VKS_KUBECONFIG.new" -Value $KC

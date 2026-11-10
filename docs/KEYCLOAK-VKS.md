@@ -148,7 +148,7 @@ are](ADDONS.md)). It makes your Supervisor login (`SUPERVISOR_CONTEXT`) the acti
 CLI and in its kubeconfig file, and that stays after the block; it installs cert-manager with the
 VCF CLI when the cluster does not have it, and waits until it accepts certificate requests. You get
 cert-manager ready in the cluster. When the add-on is there already (for example from
-[HEADLAMP.md](HEADLAMP.md)), it changes nothing. Set `VKS_NAMESPACE` to the cluster's vSphere
+[HEADLAMP.md](HEADLAMP.md)), it changes nothing. Set `VSPHERE_NAMESPACE` to the cluster's vSphere
 Namespace, `VKS_CLUSTER` to its name, and `SUPERVISOR_CONTEXT` to the name of your Supervisor login
 from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md) (`supervisor` unless you chose another).
 
@@ -156,7 +156,7 @@ from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md) (`supervisor` unless you chose a
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 SUPERVISOR_CONTEXT="supervisor"
@@ -170,7 +170,7 @@ elif ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SU
   printf '%s\n' "$VCF_USE"
   echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
-  if ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -o json)" \
+  if ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -o json)" \
      || ! N="$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "cert-manager")] | length')" || [ -z "$N" ]; then
     echo "FAILED: the VCF CLI or jq (see the error above)"
   elif [ "$N" = 1 ]; then
@@ -181,7 +181,7 @@ else
     echo "FAILED: cannot read the cluster (see the error above)"
   elif ! printf '%s\n' "$C" | grep -qF '"certificates.cert-manager.io" not found'; then
     echo "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
-  elif vcf addon install create cert-manager --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE" -y; then
+  elif vcf addon install create cert-manager --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -y; then
     OK=""
     for i in $(seq 60); do
       if kubectl --kubeconfig "$VKS_KUBECONFIG" -n cert-manager get deployment cert-manager-webhook >/dev/null 2>&1 \
@@ -205,7 +205,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $SUPERVISOR_CONTEXT = "supervisor"
@@ -220,7 +220,7 @@ if ($M) {
   "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
   $global:LASTEXITCODE = $null
-  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -o json | Out-String
+  $L = vcf addon install list --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -o json | Out-String
   if ($LASTEXITCODE -ne 0 -or -not $L.Trim()) {
     "FAILED: the VCF CLI (see the error above)"
   } elseif (@(ConvertFrom-Json $L | ForEach-Object { $_ } | ForEach-Object { $_.addonName }) -contains 'cert-manager') {
@@ -231,7 +231,7 @@ if ($M) {
   } elseif ($LASTEXITCODE -eq 0) {
     "STOPPED: this cluster has a cert-manager that is not the add-on; this guide does not cover it"
   } else {
-    vcf addon install create cert-manager --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE -y
+    vcf addon install create cert-manager --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE -y
     if ($LASTEXITCODE -ne 0) {
       "FAILED: the cert-manager add-on (see the error above)"
     } else {
@@ -262,7 +262,7 @@ if ($M) {
 **If not:**
 - `MISSING: …` then `STOPPED: install what is MISSING …`: install that tool; nothing changed.
   `FAILED: the VCF CLI …`: log in to the Supervisor again
-  ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#renew-the-supervisor-login)), and check `VKS_NAMESPACE` and `VKS_CLUSTER`.
+  ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#renew-the-supervisor-login)), and check `VSPHERE_NAMESPACE` and `VKS_CLUSTER`.
 - `FAILED: cannot read the cluster`: kubectl could not read Keycloak's cluster; the error above says
   why (`Unauthorized`: [get its kubeconfig again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)).
   Nothing was installed.

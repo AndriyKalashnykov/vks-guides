@@ -805,7 +805,7 @@ Installing Harbor makes VKS update every node of your VKS clusters (a node is on
 cluster runs on; VKS calls it a machine), so that they trust Harbor. Run this right before you
 install, once for each vSphere Namespace (the namespace in vCenter) that holds VKS clusters. It
 saves the current list of machines in that vSphere Namespace in a file on this machine, and changes
-nothing on the Supervisor. Set `VKS_NAMESPACE` to that vSphere Namespace's name. You get the number
+nothing on the Supervisor. Set `VSPHERE_NAMESPACE` to that vSphere Namespace's name. You get the number
 of machines recorded; step 8 compares against this record to show when every node has been updated.
 Running it again for the same vSphere Namespace replaces its record, so run it again only right
 before an install or step 13's change, never while the nodes are being updated.
@@ -814,7 +814,7 @@ before an install or step 13's change, never while the nodes are being updated.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
@@ -826,16 +826,16 @@ elif [ -z "$REC" ]; then
   echo "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first"
 elif [ "$REC" != "$SUP" ]; then
   echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
-elif ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
-  echo "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
-elif ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get machines.cluster.x-k8s.io -o jsonpath="{range .items[*]}{.metadata.name} {.status.conditions[?(@.type=='UpToDate')].status} {.status.conditions[?(@.type=='UpToDate')].lastTransitionTime}{'\n'}{end}")"; then
-  echo "FAILED: cannot list the machines in $VKS_NAMESPACE (see the error above)"
+elif ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VSPHERE_NAMESPACE" >/dev/null; then
+  echo "FAILED: cannot read the namespace $VSPHERE_NAMESPACE (see the error above)"
+elif ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get machines.cluster.x-k8s.io -o jsonpath="{range .items[*]}{.metadata.name} {.status.conditions[?(@.type=='UpToDate')].status} {.status.conditions[?(@.type=='UpToDate')].lastTransitionTime}{'\n'}{end}")"; then
+  echo "FAILED: cannot list the machines in $VSPHERE_NAMESPACE (see the error above)"
 elif [ -z "$M" ]; then
-  echo "no machines in $VKS_NAMESPACE: nothing to record"
+  echo "no machines in $VSPHERE_NAMESPACE: nothing to record"
 else
   mkdir -p "$HARBOR_DIR"
-  printf '%s\n' "$M" > "$HARBOR_DIR/machines-$VKS_NAMESPACE.before"
-  echo "recorded $(printf '%s\n' "$M" | grep -c .) machines in $VKS_NAMESPACE"
+  printf '%s\n' "$M" > "$HARBOR_DIR/machines-$VSPHERE_NAMESPACE.before"
+  echo "recorded $(printf '%s\n' "$M" | grep -c .) machines in $VSPHERE_NAMESPACE"
 fi
 ```
 
@@ -845,7 +845,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
@@ -853,17 +853,17 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VSPHERE_NAMESPACE | Out-Null
 if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
 elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
 elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
-elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)" } else {
-  $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get machines.cluster.x-k8s.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.conditions[?(@.type==''UpToDate'')].status} {.status.conditions[?(@.type==''UpToDate'')].lastTransitionTime}{''\n''}{end}'
-  if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the machines in $VKS_NAMESPACE (see the error above)" }
-  elseif (-not ($M | Where-Object { $_ })) { "no machines in ${VKS_NAMESPACE}: nothing to record" } else {
+elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VSPHERE_NAMESPACE (see the error above)" } else {
+  $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get machines.cluster.x-k8s.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.conditions[?(@.type==''UpToDate'')].status} {.status.conditions[?(@.type==''UpToDate'')].lastTransitionTime}{''\n''}{end}'
+  if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the machines in $VSPHERE_NAMESPACE (see the error above)" }
+  elseif (-not ($M | Where-Object { $_ })) { "no machines in ${VSPHERE_NAMESPACE}: nothing to record" } else {
     New-Item -ItemType Directory -Force -Path $HARBOR_DIR | Out-Null
-    Set-Content -Encoding ascii -Path "$HARBOR_DIR\machines-$VKS_NAMESPACE.before" -Value $M
-    "recorded $(@($M | Where-Object { $_ }).Count) machines in $VKS_NAMESPACE"
+    Set-Content -Encoding ascii -Path "$HARBOR_DIR\machines-$VSPHERE_NAMESPACE.before" -Value $M
+    "recorded $(@($M | Where-Object { $_ }).Count) machines in $VSPHERE_NAMESPACE"
   }
 }
 ```
@@ -1263,19 +1263,19 @@ namespaces …: ''`: Harbor is not installed; two names: see *Fix common problem
 Your VKS cluster nodes can pull images from Harbor only after VKS has updated them to trust Harbor.
 Run this after the install, for each vSphere Namespace you recorded in step 6, until all its
 machines are updated. It lists the machines (nodes) in that vSphere Namespace and counts how many
-were updated since step 6's record; it changes nothing. Set `VKS_NAMESPACE` to that vSphere
+were updated since step 6's record; it changes nothing. Set `VSPHERE_NAMESPACE` to that vSphere
 Namespace's name. You get the list of machines, then `machines updated: <n> of <n>`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
-BEFORE="$HARBOR_DIR/machines-$VKS_NAMESPACE.before"
+BEFORE="$HARBOR_DIR/machines-$VSPHERE_NAMESPACE.before"
 REC="$(cat "$HARBOR_DIR/supervisor-uid" 2>/dev/null | tr -d '\r')"
 if ! SUP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace kube-system -o jsonpath='{.metadata.uid}')" || [ -z "$SUP" ]; then
   echo "FAILED: cannot read the Supervisor (see the error above)"
@@ -1285,12 +1285,12 @@ elif [ "$REC" != "$SUP" ]; then
   echo "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT"
 elif [ ! -s "$BEFORE" ]; then
   echo "FAILED: no record $BEFORE (Record the VKS cluster machines, step 6)"
-elif ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
-  echo "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
-elif ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get machines.cluster.x-k8s.io -o jsonpath="{range .items[*]}{.metadata.name} {.status.conditions[?(@.type=='UpToDate')].status} {.status.conditions[?(@.type=='UpToDate')].lastTransitionTime}{'\n'}{end}")"; then
-  echo "FAILED: cannot list the machines in $VKS_NAMESPACE (see the error above)"
+elif ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VSPHERE_NAMESPACE" >/dev/null; then
+  echo "FAILED: cannot read the namespace $VSPHERE_NAMESPACE (see the error above)"
+elif ! M="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get machines.cluster.x-k8s.io -o jsonpath="{range .items[*]}{.metadata.name} {.status.conditions[?(@.type=='UpToDate')].status} {.status.conditions[?(@.type=='UpToDate')].lastTransitionTime}{'\n'}{end}")"; then
+  echo "FAILED: cannot list the machines in $VSPHERE_NAMESPACE (see the error above)"
 else
-  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get machines.cluster.x-k8s.io
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get machines.cluster.x-k8s.io
   echo "machines updated: $(printf '%s\n' "$M" | grep -v -x -F -f "$BEFORE" | grep -c ' True ') of $(printf '%s\n' "$M" | grep -c .)"
 fi
 ```
@@ -1301,7 +1301,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
@@ -1309,16 +1309,16 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
-$BEFORE = "$HARBOR_DIR\machines-$VKS_NAMESPACE.before"
+$BEFORE = "$HARBOR_DIR\machines-$VSPHERE_NAMESPACE.before"
 if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
 elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
 elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
 elseif (-not (Test-Path $BEFORE)) { "FAILED: no record $BEFORE (Record the VKS cluster machines, step 6)" } else {
-  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
-  if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)" } else {
-    $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get machines.cluster.x-k8s.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.conditions[?(@.type==''UpToDate'')].status} {.status.conditions[?(@.type==''UpToDate'')].lastTransitionTime}{''\n''}{end}'
-    if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the machines in $VKS_NAMESPACE (see the error above)" } else {
-      kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get machines.cluster.x-k8s.io
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VSPHERE_NAMESPACE | Out-Null
+  if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VSPHERE_NAMESPACE (see the error above)" } else {
+    $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get machines.cluster.x-k8s.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.conditions[?(@.type==''UpToDate'')].status} {.status.conditions[?(@.type==''UpToDate'')].lastTransitionTime}{''\n''}{end}'
+    if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the machines in $VSPHERE_NAMESPACE (see the error above)" } else {
+      kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get machines.cluster.x-k8s.io
       $OLD = @(Get-Content $BEFORE | Where-Object { $_ })
       $NOW = @($M | Where-Object { $_ })
       "machines updated: $(@($NOW | Where-Object { ($OLD -cnotcontains $_) -and ($_ -cmatch ' True ') }).Count) of $($NOW.Count)"

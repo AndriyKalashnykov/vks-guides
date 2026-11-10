@@ -104,7 +104,7 @@ that namespace if it is missing, and a RoleBinding there: a rule that gives the 
 role (create and change apps in that namespace, not change who has access). Then it prints what a
 member may do there and that they may not list pods in `kube-system`. Set `ADMIN_KUBECONFIG` to your
 administrator kubeconfig of the cluster, `KEYCLOAK_GROUP` to the Keycloak group and
-`TEAM_NAMESPACE` to the team's namespace. Run it again for a second group; for the same group it
+`VKS_CLUSTER_NAMESPACE` to the team's namespace. Run it again for a second group; for the same group it
 changes nothing. Next: step 3.
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -112,16 +112,16 @@ changes nothing. Next: step 3.
 ```sh
 ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
 KEYCLOAK_GROUP="team-a"
-TEAM_NAMESPACE="team-a"
+VKS_CLUSTER_NAMESPACE="team-a"
 
 adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
 if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
 elif [ ! -s "$ADMIN_KUBECONFIG" ]; then echo "MISSING: $ADMIN_KUBECONFIG"
 else
-  adm create namespace "$TEAM_NAMESPACE" --dry-run=client -o yaml | adm apply -f - >/dev/null
-  adm -n "$TEAM_NAMESPACE" create rolebinding "keycloak-${KEYCLOAK_GROUP}-edit" --clusterrole=edit \
+  adm create namespace "$VKS_CLUSTER_NAMESPACE" --dry-run=client -o yaml | adm apply -f - >/dev/null
+  adm -n "$VKS_CLUSTER_NAMESPACE" create rolebinding "keycloak-${KEYCLOAK_GROUP}-edit" --clusterrole=edit \
     --group="keycloak:${KEYCLOAK_GROUP}" --dry-run=client -o yaml | adm apply -f -
-  echo "create deployments in $TEAM_NAMESPACE: $(adm auth can-i create deployments -n "$TEAM_NAMESPACE" --as=keycloak:test --as-group="keycloak:${KEYCLOAK_GROUP}")"
+  echo "create deployments in $VKS_CLUSTER_NAMESPACE: $(adm auth can-i create deployments -n "$VKS_CLUSTER_NAMESPACE" --as=keycloak:test --as-group="keycloak:${KEYCLOAK_GROUP}")"
   echo "list pods in kube-system: $(adm auth can-i list pods -n kube-system --as=keycloak:test --as-group="keycloak:${KEYCLOAK_GROUP}")"
 fi
 ```
@@ -131,15 +131,15 @@ fi
 ```powershell
 $ADMIN_KUBECONFIG = "$HOME\.kube\my-vks-cluster.kubeconfig"
 $KEYCLOAK_GROUP = "team-a"
-$TEAM_NAMESPACE = "team-a"
+$VKS_CLUSTER_NAMESPACE = "team-a"
 
 function adm { $input | kubectl --kubeconfig $ADMIN_KUBECONFIG @args }
 if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" }
 elseif (-not (Test-Path $ADMIN_KUBECONFIG)) { "MISSING: $ADMIN_KUBECONFIG" }
 else {
-  adm create namespace $TEAM_NAMESPACE --dry-run=client -o yaml | adm apply -f - | Out-Null
-  adm -n $TEAM_NAMESPACE create rolebinding "keycloak-$KEYCLOAK_GROUP-edit" --clusterrole=edit "--group=keycloak:$KEYCLOAK_GROUP" --dry-run=client -o yaml | adm apply -f -
-  "create deployments in ${TEAM_NAMESPACE}: $(adm auth can-i create deployments -n $TEAM_NAMESPACE --as=keycloak:test "--as-group=keycloak:$KEYCLOAK_GROUP")"
+  adm create namespace $VKS_CLUSTER_NAMESPACE --dry-run=client -o yaml | adm apply -f - | Out-Null
+  adm -n $VKS_CLUSTER_NAMESPACE create rolebinding "keycloak-$KEYCLOAK_GROUP-edit" --clusterrole=edit "--group=keycloak:$KEYCLOAK_GROUP" --dry-run=client -o yaml | adm apply -f -
+  "create deployments in ${VKS_CLUSTER_NAMESPACE}: $(adm auth can-i create deployments -n $VKS_CLUSTER_NAMESPACE --as=keycloak:test "--as-group=keycloak:$KEYCLOAK_GROUP")"
   "list pods in kube-system: $(adm auth can-i list pods -n kube-system --as=keycloak:test "--as-group=keycloak:$KEYCLOAK_GROUP")"
 }
 ```
@@ -162,7 +162,7 @@ and CA from your administrator kubeconfig, and a login through kubelogin with a 
 Keycloak), checking Keycloak's certificate against the Keycloak CA. Its context (the cluster, user
 and namespace kubectl uses by default) starts in the team's namespace. You get one file for the
 whole group: send it to the group's members (it holds no secret); each does step 4. Set
-`ADMIN_KUBECONFIG` and `TEAM_NAMESPACE` as in step 2, `KEYCLOAK_ISSUER` to the issuer and
+`ADMIN_KUBECONFIG` and `VKS_CLUSTER_NAMESPACE` as in step 2, `KEYCLOAK_ISSUER` to the issuer and
 `KEYCLOAK_CA` to the CA file from the Keycloak administrator, and `NAME` to a name for the file. Run
 it again and it replaces that file.
 
@@ -173,7 +173,7 @@ it again and it replaces that file.
 ADMIN_KUBECONFIG="$HOME/.kube/my-vks-cluster.kubeconfig"
 KEYCLOAK_ISSUER="https://keycloak.example.com/realms/my-realm"
 KEYCLOAK_CA="$HOME/keycloak-ca.pem"
-TEAM_NAMESPACE="team-a"
+VKS_CLUSTER_NAMESPACE="team-a"
 NAME="my-vks-cluster-keycloak"
 KEYCLOAK_KUBECONFIG="$HOME/.kube/${NAME}.kubeconfig"
 
@@ -190,7 +190,7 @@ elif SERVER="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" config view --minify -o 
       --exec-arg=oidc-login --exec-arg=get-token --exec-arg=--oidc-issuer-url="$KEYCLOAK_ISSUER" \
       --exec-arg=--oidc-client-id=kubernetes-device --exec-arg=--grant-type=device-code \
       --exec-arg=--skip-open-browser --exec-arg=--certificate-authority-data="$KC_CA" --exec-interactive-mode=IfAvailable \
-    && kcfg set-context "$NAME" --cluster="$NAME" --user=keycloak --namespace="$TEAM_NAMESPACE" && kcfg use-context "$NAME" \
+    && kcfg set-context "$NAME" --cluster="$NAME" --user=keycloak --namespace="$VKS_CLUSTER_NAMESPACE" && kcfg use-context "$NAME" \
     && echo "send this file: $KEYCLOAK_KUBECONFIG" || echo "FAILED: see the kubectl error above"
 else
   echo "FAILED: no server or CA read from $ADMIN_KUBECONFIG"
@@ -206,7 +206,7 @@ fi
 $ADMIN_KUBECONFIG = "$HOME\.kube\my-vks-cluster.kubeconfig"
 $KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/my-realm"
 $KEYCLOAK_CA = "$HOME\keycloak-ca.pem"
-$TEAM_NAMESPACE = "team-a"
+$VKS_CLUSTER_NAMESPACE = "team-a"
 $NAME = "my-vks-cluster-keycloak"
 $KEYCLOAK_KUBECONFIG = "$HOME\.kube\$NAME.kubeconfig"
 
@@ -228,7 +228,7 @@ else {
       --exec-arg=--oidc-client-id=kubernetes-device --exec-arg=--grant-type=device-code `
       --exec-arg=--skip-open-browser "--exec-arg=--certificate-authority-data=$KC_CA" --exec-interactive-mode=IfAvailable | Out-Null
     if ($LASTEXITCODE) { $OK = $false }
-    kubectl @K set-context $NAME "--cluster=$NAME" --user=keycloak "--namespace=$TEAM_NAMESPACE" | Out-Null; if ($LASTEXITCODE) { $OK = $false }
+    kubectl @K set-context $NAME "--cluster=$NAME" --user=keycloak "--namespace=$VKS_CLUSTER_NAMESPACE" | Out-Null; if ($LASTEXITCODE) { $OK = $false }
     kubectl @K use-context $NAME | Out-Null; if ($LASTEXITCODE) { $OK = $false }
     if ($OK) { "send this file: $KEYCLOAK_KUBECONFIG" } else { "FAILED: see the kubectl error above" }
   } else {
