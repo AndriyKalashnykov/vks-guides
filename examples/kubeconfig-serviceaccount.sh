@@ -77,6 +77,7 @@ if [ -n "$TOKEN" ] && [ -n "$SERVER" ] && [ -n "$CA" ]; then
   EXP="$(printf '%s' "$P" | base64 -d 2>/dev/null | sed -n 's/.*"exp":\([0-9]*\).*/\1/p')"
   S=""; if [ -n "$EXP" ]; then S=$(( EXP - $(date +%s) )); fi
   if [ -z "$S" ]; then echo "token ends in: unknown"
+  elif [ "$S" -le 0 ]; then echo "token ends: it has ended"
   elif [ "$S" -ge 86400 ]; then echo "token ends in: $(( S / 86400 )) days"
   else echo "token ends in: $(( S / 3600 )) hours"; fi
   echo "acts as: $(kf auth whoami -o jsonpath='{.status.userInfo.username}')"

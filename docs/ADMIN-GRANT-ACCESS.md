@@ -324,6 +324,7 @@ if [ -n "$TOKEN" ] && [ -n "$SERVER" ] && [ -n "$CA" ]; then
   EXP="$(printf '%s' "$P" | base64 -d 2>/dev/null | sed -n 's/.*"exp":\([0-9]*\).*/\1/p')"
   S=""; if [ -n "$EXP" ]; then S=$(( EXP - $(date +%s) )); fi
   if [ -z "$S" ]; then echo "token ends in: unknown"
+  elif [ "$S" -le 0 ]; then echo "token ends: it has ended"
   elif [ "$S" -ge 86400 ]; then echo "token ends in: $(( S / 86400 )) days"
   else echo "token ends in: $(( S / 3600 )) hours"; fi
   echo "acts as: $(kf auth whoami -o jsonpath='{.status.userInfo.username}')"
@@ -400,7 +401,7 @@ if ($TOKEN -and $SERVER -and $CA) {
   $P = $TOKEN.Split('.')[1].Replace('-', '+').Replace('_', '/'); while ($P.Length % 4) { $P += '=' }
   $EXP = ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json).exp
   $S = $EXP - [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-  if ($S -ge 86400) { "token ends in: $([math]::Floor($S / 86400)) days" } else { "token ends in: $([math]::Floor($S / 3600)) hours" }
+  if ($S -le 0) { "token ends: it has ended" } elseif ($S -ge 86400) { "token ends in: $([math]::Floor($S / 86400)) days" } else { "token ends in: $([math]::Floor($S / 3600)) hours" }
   "acts as: $(kf auth whoami -o jsonpath='{.status.userInfo.username}')"
   if ($VKS_CLUSTER_NAMESPACE -eq '*' -and $ROLE -ceq 'edit') {
     "everything in every namespace: $(kf auth can-i '*' '*' --all-namespaces)"
@@ -669,6 +670,7 @@ else
     EXP="$(printf '%s' "$P" | base64 -d 2>/dev/null | sed -n 's/.*"exp":\([0-9]*\).*/\1/p')"
     S=""; if [ -n "$EXP" ]; then S=$(( EXP - $(date +%s) )); fi
     if [ -n "$S" ] && [ "$S" -ge 86400 ]; then echo "token ends in: $(( S / 86400 )) days"
+    elif [ -n "$S" ] && [ "$S" -le 0 ]; then echo "token ends: it has ended"
     elif [ -n "$S" ]; then echo "token ends in: $(( S / 3600 )) hours"
     elif [ "$DAYS" = "never" ]; then echo "token ends: never (until you take it away)"
     else echo "token ends in: unknown"; fi
@@ -724,7 +726,7 @@ if ($DAYS -ne "never" -and ("$DAYS" -notmatch '^[1-9][0-9]{0,4}$' -or [int]"$DAY
       'contexts:', "- name: $SERVICE_ACCOUNT_NAME", '  context:', "    cluster: $SERVICE_ACCOUNT_NAME", "    user: $SERVICE_ACCOUNT_NAME", "current-context: $SERVICE_ACCOUNT_NAME")
     $P = $TOKEN.Split('.')[1].Replace('-', '+').Replace('_', '/'); while ($P.Length % 4) { $P += '=' }
     $EXP = ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json).exp
-    if ($EXP) { $S = $EXP - [DateTimeOffset]::UtcNow.ToUnixTimeSeconds(); if ($S -ge 86400) { "token ends in: $([math]::Floor($S / 86400)) days" } else { "token ends in: $([math]::Floor($S / 3600)) hours" } } elseif ($DAYS -eq "never") { "token ends: never (until you take it away)" } else { "token ends in: unknown" }
+    if ($EXP) { $S = $EXP - [DateTimeOffset]::UtcNow.ToUnixTimeSeconds(); if ($S -le 0) { "token ends: it has ended" } elseif ($S -ge 86400) { "token ends in: $([math]::Floor($S / 86400)) days" } else { "token ends in: $([math]::Floor($S / 3600)) hours" } } elseif ($DAYS -eq "never") { "token ends: never (until you take it away)" } else { "token ends in: unknown" }
     "acts as: $(kubectl --kubeconfig $SERVICE_ACCOUNT_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')"
     "everything in every namespace: $(kubectl --kubeconfig $SERVICE_ACCOUNT_KUBECONFIG auth can-i '*' '*' --all-namespaces)"
   } else {
