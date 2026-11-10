@@ -6,7 +6,7 @@ their own access, with only the rights they need, so that you never send the clu
 administrator kubeconfig and can take each access away on its own.
 
 Words like *vSphere Namespace*, *ServiceAccount* and *RoleBinding* are explained in the
-[Glossary](#glossary).
+[Glossary](GLOSSARY.md).
 
 <a id="which-way-for-which-customer"></a>
 
@@ -970,19 +970,7 @@ rolebindings,clusterrolebindings -A -o wide | grep "$NAME"` and delete it. `FAIL
 
 ## Glossary
 
-**The words used here** (more in [KUBECONFIG.md](KUBECONFIG.md#the-words-used-here)):
-
-| word | what it is |
-|---|---|
-| vSphere Namespace | the vCenter object on the Supervisor that holds VKS clusters; you give people roles on it in vCenter (**Can view**, **Can edit**, **Owner**) |
-| namespace | a folder inside one VKS cluster for a team's workloads, made with kubectl; not the vSphere Namespace |
-| kubeconfig | a file that tells kubectl the cluster's address and the login to use; a *context* in it pairs the two (the ServiceAccount and certificate files also name a namespace: `VKS_CLUSTER_NAMESPACE`, or `default` with `"*"`) |
-| ServiceAccount | a login that lives inside the cluster, not an SSO or identity provider user; here for a tool, a team, or a person who needs the whole cluster |
-| token | the key of one login, written into the kubeconfig: whoever holds a copy is that login |
-| `cluster-admin` | the built-in role for everything in the cluster |
-| `edit` | the built-in role to create, change and delete most things in one namespace, its Secrets included; it can act as any ServiceAccount there, but cannot change who has rights |
-| `view` | the built-in role to read most things in one namespace, but not Secrets or who has rights |
-| RoleBinding, ClusterRoleBinding | what gives a user, a group or a ServiceAccount a role: in one namespace, or in the whole cluster |
+The words used here are explained in the [Glossary](GLOSSARY.md).
 
 ## References
 

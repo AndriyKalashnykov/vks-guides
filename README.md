@@ -74,7 +74,8 @@ what to do. Its last chapter, **References**, lists the official Broadcom or ups
 
 The guides are in six groups. Start with Getting started, then vSphere Namespaces and VKS clusters;
 the other groups are optional, in any order once you have a VKS cluster. Each group's page lists
-its guides and the order to follow; [Tested on](docs/TESTED.md) says where each guide was run.
+its guides and the order to follow; [Tested on](docs/TESTED.md) says where each guide was run, and the [Glossary](docs/GLOSSARY.md)
+explains the words they use.
 
 | group | what it is for |
 |---|---|
