@@ -522,4 +522,7 @@ is refused. A credential the cluster already gave them keeps working until it ex
 - vCenter administrator: run step 2 with `ROLE="REMOVE"`. For a group with **Can edit**, that role
   is what made it an administrator of the clusters.
 
+With `edit`, members could make tokens for any ServiceAccount in that namespace and start workloads there;
+those keep working: delete them.
+
 Back to [README](../README.md).

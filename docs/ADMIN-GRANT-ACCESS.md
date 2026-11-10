@@ -193,6 +193,8 @@ If the person's check in [USER-LOGIN.md step 3](USER-LOGIN.md#3-use-the-login) s
 afterwards, they also have rights through a group: a group with **Can edit** or **Owner** on the
 vSphere Namespace is an administrator of every VKS cluster in it. Take the person out of that group, or take the group's role away in vCenter.
 
+With `edit`, the person could make tokens for any ServiceAccount in that namespace and start workloads there; those keep working: delete them.
+
 <a id="the-kubectl-vsphere-plugin-instead-of-the-vcf-cli-optional-and-deprecated"></a>
 <a id="1-windows-and-macos-trust-the-vcenter-ca-the-person-once"></a>
 <a id="2-install-the-kubectl-vsphere-plugin-the-person-once"></a>
@@ -930,7 +932,8 @@ ClusterRoleBinding; also a cluster-admin one left by an earlier `"*"` run), then
 whether that name may still deploy (with `"*"`: do everything, and it says `FAILED` if a RoleBinding still
 names it); nothing else changes. The
 name then has no rights, but the certificate keeps proving the name until its end date (`notAfter`),
-so never give that name rights again. With `"*"`, logins made with it as a cluster administrator keep working. Set `NAME` to the name from step 1's `subject=` line, and
+so never give that name rights again. With `edit`, tokens they made for any ServiceAccount in `VKS_CLUSTER_NAMESPACE`, and
+workloads they started, keep working: delete them. With `"*"`, logins made with it as a cluster administrator keep working. Set `NAME` to the name from step 1's `subject=` line, and
 `VKS_CLUSTER`, `ADMIN_KUBECONFIG` and `VKS_CLUSTER_NAMESPACE` to what step 1 used.
 
 <details>

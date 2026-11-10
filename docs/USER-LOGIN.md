@@ -40,8 +40,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 ## 1. What to ask your administrator for
 
-Ask your administrators for (the vCenter administrator sends the first three, the cluster administrator
-your namespace):
+Ask your administrators for (the vCenter administrator sends the first three and your SSO user name as
+vCenter lists it, the cluster administrator your namespace):
 
 - the Supervisor's IP address or DNS name;
 - the vSphere Namespace's name and the VKS cluster's name;
@@ -49,7 +49,7 @@ your namespace):
   real Supervisor); save it as `~/.kube/vcenter-ca.pem`;
 - the name of your namespace inside the VKS cluster (a folder for your team's workloads, not the
   vSphere Namespace);
-- your SSO user name exactly as vCenter lists it, letter case included: the administrator gives
+- your SSO user name exactly as vCenter lists it, letter case included: the cluster administrator gives
   that name rights, and you log in with it.
 
 Other ways in:
