@@ -14,6 +14,7 @@
 # | rights              | same as the VCF CLI login                                               |
 # | namespaces used     | VSPHERE_NAMESPACE                                                       |
 # | take it away        | delete the person's RoleBinding and their role on the vSphere Namespace |
+# | keeps working       | with edit: ServiceAccount tokens and workloads they made (delete them)  |
 # | renew               | run again (password)                                                    |
 # | meant for           | a person without the VCF CLI                                            |
 # | needs on this host  | the person's SSO password                                               |

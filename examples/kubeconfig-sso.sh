@@ -15,6 +15,7 @@
 # | rights              | what the admin bound to the name, or the person's group role on the vSphere Namespace (Can edit = cluster-admin) |
 # | namespaces used     | VSPHERE_NAMESPACE (where the cluster is)                                                                         |
 # | take it away        | delete the person's RoleBinding and their role on the vSphere Namespace                                          |
+# | keeps working       | with edit: ServiceAccount tokens and workloads the person made (delete them)                                     |
 # | renew               | run again (password)                                                                                             |
 # | meant for           | a person with a vCenter SSO account                                                                              |
 # | needs on this host  | the person's SSO password                                                                                        |

@@ -14,6 +14,7 @@
 # | rights              | ROLE (edit by default) in VKS_CLUSTER_NAMESPACE, or cluster-admin with "*" (WARNING)        |
 # | namespaces used     | SA_NAMESPACE (where it lives), VKS_CLUSTER_NAMESPACE (rights; "*": the whole cluster)       |
 # | take it away        | delete the ServiceAccount ("*": also its ClusterRoleBinding): Unauthorized within ~15 s    |
+# | keeps working       | with "*": logins made with it as a cluster administrator                                   |
 # | renew               | run again: a new token for the same ServiceAccount; old tokens work until they end           |
 # | meant for           | tools, pipelines, or a team sharing one login                                                |
 # | needs on this host  | admin kubeconfig (~/.kube/<cluster>.kubeconfig)                                              |
