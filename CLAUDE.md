@@ -19,7 +19,8 @@ blocks; there is nothing to build.
   taken away: a change to any of those rows or behaviours updates both pictures and their alt text in the same PR.
   The same holds for the five per-way pictures `docs/img/access/way-<way>-light.svg`/`-dark.svg` at the top of
   each way's chapter (SSO, ServiceAccount token, administrator token, certificate; the IdP group in
-  ADMIN-GRANT-ACCESS-IDP.md): a change to that chapter's steps or take-away updates its picture in the same PR.
+  ADMIN-GRANT-ACCESS-IDP.md): a change that makes a label untrue, or moves what a label describes to another
+  guide, updates that picture in the same PR.
   Every label in them is a statement from the guides: no versions, durations, paths or commands.
 - LOGIN.md, ACCESS.md and ACCESS-IDP.md are moved-guide pages (owner): a title, then "Who are you? Start
   here", a table that sends each kind of reader (an administrator who logs in, an administrator who gives
@@ -30,9 +31,9 @@ blocks; there is nothing to build.
   the guide list or on group pages.
 - The person's steps live in the three person guides: USER-LOGIN.md (own SSO account), USER-KUBECONFIG.md (a
   sent file with a token or a certificate) and USER-IDP-LOGIN.md (an identity provider). An admin guide's
-  step for the person is one line that sends them there (precedent: ADMIN-GRANT-ACCESS.md's SSO steps 3 and
-  4). A section moved to another guide keeps its heading, byte for byte, with a one-line pointer to its new
-  home, so that old links keep resolving.
+  step for the person is a pointer line that sends them there, plus only what the administrator must do or
+  diagnose (precedent: ADMIN-GRANT-ACCESS.md's SSO steps 3 and 4). A section moved to another guide keeps its
+  heading, byte for byte, with that pointer to its new home, so that old links keep resolving.
 - No Makefile, mise, env file or helper script. Each block sets the variables it uses at its top
   and works on its own; never rely on a variable from an earlier block. The one exception is
   IMAGE-DOCKER.md (owner's choice): a short docker-on-Linux walkthrough whose blocks share the

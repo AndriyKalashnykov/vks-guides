@@ -45,8 +45,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 | from | to | port | for |
 |---|---|---|---|
 | your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl to the cluster (steps 2 and 3) |
-| the person's machine | the VKS cluster's API address | 6443 | the person's kubectl (step 4) |
-| the person's machine, and the browser they sign in with | Keycloak | its HTTPS port (443) | the code and the sign-in (step 4) |
+| the person's machine | the VKS cluster's API address | 6443 | the person's kubectl ([USER-IDP-LOGIN.md step 5](USER-IDP-LOGIN.md#5-sign-in-with-kubelogin)) |
+| the person's machine, and the browser they sign in with | Keycloak | its HTTPS port (443) | the code and the sign-in ([USER-IDP-LOGIN.md step 5](USER-IDP-LOGIN.md#5-sign-in-with-kubelogin)) |
 | the VKS cluster's control-plane nodes | Keycloak | its HTTPS port (443) | checking the person's Keycloak login |
 
 The file you hand over holds no secret, so it may be sent openly; the person's token cache
@@ -163,7 +163,8 @@ and CA from your administrator kubeconfig, and a login through kubelogin with a 
 Keycloak), checking Keycloak's certificate against the Keycloak CA. Its context (the cluster, user
 and namespace kubectl uses by default) starts in the team's namespace. You get one file for the
 whole group: send it to the group's members (it holds no secret), with the Keycloak CA file for
-their browsers and [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md); each does step 4. Set
+their browsers and [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md); each signs in with its
+[step 5](USER-IDP-LOGIN.md#5-sign-in-with-kubelogin). Set
 `ADMIN_KUBECONFIG` and `VKS_CLUSTER_NAMESPACE` as in step 2, `KEYCLOAK_ISSUER` to the issuer and
 `KEYCLOAK_CA` to the CA file from the Keycloak administrator, and `NAME` to a name for the file. Run
 it again and it replaces that file.

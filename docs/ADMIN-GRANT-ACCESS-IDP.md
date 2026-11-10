@@ -65,11 +65,11 @@ servers must resolve the identity provider's name):
 | the vCenter administrator's machine | vCenter | 443 | [Give the group a role on the vSphere Namespace](#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator) |
 | the cluster administrator's machine | the VKS cluster's API address (in its kubeconfig) | 6443 | [Give the group rights](#3-give-the-group-rights-inside-the-vks-cluster-cluster-administrator) |
 | the cluster administrator's machine | the Supervisor's address | 443 | [Make the group's kubeconfig](#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) |
-| the person's machine | the Supervisor's address | 443 | the sign-in through the Supervisor ([step 5](#5-log-in-the-person)) |
+| the person's machine | the Supervisor's address | 443 | the sign-in through the Supervisor ([USER-IDP-LOGIN.md step 3](USER-IDP-LOGIN.md#3-sign-in-through-the-supervisor)) |
 | the person's machine | the VKS cluster's API address | 6443 | kubectl with the group's file |
-| the person's browser | the Supervisor's address, and the identity provider | 443 | [Log in (the person)](#5-log-in-the-person) |
-| the Supervisor's control plane | the identity provider | 443 (or the Issuer URL's port) | checking the sign-in ([step 5](#5-log-in-the-person)) |
-| the VKS cluster's control-plane nodes | the Supervisor's address | 443 | checking group sign-ins ([step 5](#5-log-in-the-person)) |
+| the person's browser | the Supervisor's address, and the identity provider | 443 | the person's sign-in ([USER-IDP-LOGIN.md step 3](USER-IDP-LOGIN.md#3-sign-in-through-the-supervisor)) |
+| the Supervisor's control plane | the identity provider | 443 (or the Issuer URL's port) | checking the sign-in ([USER-IDP-LOGIN.md step 3](USER-IDP-LOGIN.md#3-sign-in-through-the-supervisor)) |
+| the VKS cluster's control-plane nodes | the Supervisor's address | 443 | checking group sign-ins ([USER-IDP-LOGIN.md step 3](USER-IDP-LOGIN.md#3-sign-in-through-the-supervisor)) |
 
 ## 1. Read the provider name and prefix (vCenter administrator)
 

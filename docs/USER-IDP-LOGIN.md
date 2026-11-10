@@ -21,11 +21,15 @@ The steps:
 - [Prerequisites](PREREQS.md) for your OS, [kubectl](KUBECTL.md) and a browser;
 - part A also the [VCF CLI](VCF.md) (its download needs a Broadcom account: if you have none, ask
   your administrator for the two files, [VCF.md step 1](VCF.md#1-download-the-two-files)), and the
-  vCenter CA file, saved as `~/.kube/vcenter-ca.pem`;
+  vCenter CA file from your administrator
+  ([USER-LOGIN.md step 1](USER-LOGIN.md#1-what-to-ask-your-administrator-for)), saved as
+  `~/.kube/vcenter-ca.pem`;
 - part B also [kubelogin](PREREQS.md#kubelogin-optional);
 - from your administrator: the file, your namespace inside the VKS cluster (or that you have the
-  whole cluster), the cluster's address (the file's `server:` line), and the identity provider's CA
-  file, saved as `~/.kube/keycloak-ca.pem`.
+  whole cluster), the cluster's address (the file's `server:` line), and, if the identity provider's
+  pages use your organization's own CA (Keycloak in these guides does), that CA file, saved as
+  `~/.kube/keycloak-ca.pem` ([KEYCLOAK-VKS.md](KEYCLOAK-VKS.md#6-save-keycloaks-ca) hands it out as
+  `$HOME/keycloak-ca.pem`; this guide keeps it in `~/.kube`).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS):
 
@@ -43,14 +47,17 @@ The connections of the cluster and the Supervisor to the identity provider are y
 
 Save the file in your `.kube` folder. Run this once after saving it: it makes the file readable
 only by you, then shows which program it runs to sign in and which server it reaches. It changes
-nothing else. Set `KUBECONFIG_FILE` to the saved file.
+nothing else. Set `KUBECONFIG_FILE` to the saved file (a part B file is often named
+`my-vks-cluster-keycloak.kubeconfig`); steps 3 and 5 use the same file.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 KUBECONFIG_FILE="$HOME/.kube/my-vks-cluster-keycloak-sv.kubeconfig"
 
-chmod 600 "$KUBECONFIG_FILE" && kubectl --kubeconfig "$KUBECONFIG_FILE" config view -o jsonpath='runs: {.users[0].user.exec.command} {.users[0].user.exec.args[0]}{"\n"}server: {.clusters[0].cluster.server}{"\n"}'
+chmod 600 "$KUBECONFIG_FILE"
+echo "runs: $(kubectl --kubeconfig "$KUBECONFIG_FILE" config view -o jsonpath='{.users[0].user.exec.command} {.users[0].user.exec.args[0]}')"
+echo "server: $(kubectl --kubeconfig "$KUBECONFIG_FILE" config view -o jsonpath='{.clusters[0].cluster.server}')"
 ```
 
 **Windows (PowerShell):**
@@ -59,7 +66,8 @@ chmod 600 "$KUBECONFIG_FILE" && kubectl --kubeconfig "$KUBECONFIG_FILE" config v
 $KUBECONFIG_FILE = "$HOME\.kube\my-vks-cluster-keycloak-sv.kubeconfig"
 
 icacls $KUBECONFIG_FILE /inheritance:r /grant:r "${env:USERNAME}:F" | Out-Null
-kubectl --kubeconfig $KUBECONFIG_FILE config view -o jsonpath='runs: {.users[0].user.exec.command} {.users[0].user.exec.args[0]}{"\n"}server: {.clusters[0].cluster.server}{"\n"}'
+"runs: $(kubectl --kubeconfig $KUBECONFIG_FILE config view -o jsonpath='{.users[0].user.exec.command} {.users[0].user.exec.args[0]}')"
+"server: $(kubectl --kubeconfig $KUBECONFIG_FILE config view -o jsonpath='{.clusters[0].cluster.server}')"
 ```
 
 **Expect:** `server:` with the address you were sent, and one of:
@@ -77,20 +85,33 @@ kubectl --kubeconfig $KUBECONFIG_FILE config view -o jsonpath='runs: {.users[0].
 ## 2. Trust the CAs (once, on the machine whose browser you sign in with)
 
 The browser must trust the CA of each page it signs in on: for part A the Supervisor's (the vCenter
-CA, `~/.kube/vcenter-ca.pem`) and the identity provider's (`~/.kube/keycloak-ca.pem`); for part B the
-identity provider's only. Run the line for your OS once for each CA file, with `CA_FILE` set to the
-file and `CA_NAME` to a name for it in the list. A CA file holds no secret. On Windows and macOS the
-vCenter CA is the same step as [USER-LOGIN.md plugin step 1](USER-LOGIN.md#1-windows-and-macos-trust-the-vcenter-ca-the-person-once):
+CA, `~/.kube/vcenter-ca.pem`); for both parts the identity provider's (`~/.kube/keycloak-ca.pem`), if
+its pages use your organization's own CA (Keycloak in these guides does). Run the lines for your OS
+once for each CA file you have: on macOS, WSL and Windows set `CA_FILE` to that file. A CA file holds
+no secret. On Windows and macOS the vCenter CA is the same step as
+[USER-LOGIN.md plugin step 1](USER-LOGIN.md#1-windows-and-macos-trust-the-vcenter-ca-the-person-once):
 done once, it serves both.
 
 **Linux:** run this so that Chrome trusts the CA; Chrome uses its own certificate database in your
-home. This adds the CA to that database (it needs `certutil`:
+home. This adds the CA to that database under the name `CA_NAME` (it needs `certutil`:
 `sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on AlmaLinux,
-`sudo tdnf install -y nss` on Photon OS).
+`sudo tdnf install -y nss` on Photon OS). The identity provider's CA:
 
 ```sh
 CA_FILE="$HOME/.kube/keycloak-ca.pem"
-CA_NAME="Identity provider CA"
+CA_NAME="Keycloak CA"
+
+mkdir -p "$HOME/.pki/nssdb"
+[ -f "$HOME/.pki/nssdb/cert9.db" ] || certutil -d "sql:$HOME/.pki/nssdb" -N --empty-password
+certutil -d "sql:$HOME/.pki/nssdb" -A -t "C,," -n "$CA_NAME" -i "$CA_FILE" \
+  && certutil -d "sql:$HOME/.pki/nssdb" -L | grep "$CA_NAME"
+```
+
+For part A, also the vCenter CA, under its own name:
+
+```sh
+CA_FILE="$HOME/.kube/vcenter-ca.pem"
+CA_NAME="vCenter CA"
 
 mkdir -p "$HOME/.pki/nssdb"
 [ -f "$HOME/.pki/nssdb/cert9.db" ] || certutil -d "sql:$HOME/.pki/nssdb" -N --empty-password
@@ -132,18 +153,22 @@ $CA_FILE = "$HOME\.kube\keycloak-ca.pem"
 Import-Certificate -FilePath $CA_FILE -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
-**Expect:** Linux: a line with `CA_NAME` and `C,,`. macOS: no output after your password. WSL:
+**Expect:** Linux: a line with `Keycloak CA` (or `vCenter CA`) and `C,,`. macOS: no output after your password. WSL:
 `copied to /mnt/c/Users/<you>`. Windows: a line with the CA's thumbprint and its name (`CN=CA` for
 vCenter's own CA). Then the browser opens the page with no certificate warning (restart the browser
 first).
 
 **If not:**
 - `certutil: command not found`: install it (the package named above).
+- `SEC_ERROR_ADDING_CERT` (Linux): the database already holds another CA under that `CA_NAME`; run the
+  block again with a name of its own (`certutil -d "sql:$HOME/.pki/nssdb" -L` lists the names).
 - `FAILED: no Windows home folder found` (WSL): copy the CA file to Windows by hand, for example
   with Explorer at `\\wsl$`.
 - `UI is not allowed in this operation` (Windows): this PowerShell has no desktop to ask on (for
   example over SSH); run the line in Windows PowerShell on the desktop.
-- No CA file: ask your administrator for it.
+- No vCenter CA file (part A): ask your administrator for it. No CA file for the identity provider:
+  open its sign-in page; with no certificate warning, the browser already trusts it and you skip that
+  CA; with a warning, ask your administrator for the CA file.
 
 ## Part A: through the Supervisor (the file runs vcf)
 
@@ -174,7 +199,7 @@ cluster who you are and whether you may deploy in `VKS_CLUSTER_NAMESPACE`, signi
 needed; it changes nothing on the cluster. You then have a sign-in saved on this machine (step 4
 removes it), and see your name, your groups and your rights.
 
-Set `KC_KUBECONFIG` to where you saved the file and `VKS_CLUSTER_NAMESPACE` to the namespace inside the VKS
+Set `KC_KUBECONFIG` to the same file as `KUBECONFIG_FILE` in step 1 and `VKS_CLUSTER_NAMESPACE` to the namespace inside the VKS
 cluster that you were sent (if you were given the whole cluster, any namespace, for example `default`).
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -235,6 +260,8 @@ the one that signed in.
 ## Part B: on one cluster, with kubelogin (the file runs kubectl)
 
 ### 5. Sign in with kubelogin
+
+Set `KEYCLOAK_KUBECONFIG` to the same file as `KUBECONFIG_FILE` in step 1.
 
 Run this on your machine, once your administrator has sent you the file, to log in to the cluster
 with your Keycloak user. Install [kubectl](KUBECTL.md) and

@@ -89,9 +89,13 @@ else
       if [ -n "$EXP" ]; then echo "token ends in: $(( (EXP - $(date +%s)) / 86400 )) days"; else echo "token ends: no end date in the token (ask your administrator)"; fi
       unset T P
     fi
-    echo "acts as: $(k auth whoami -o jsonpath='{.status.userInfo.username}')"
-    echo "create deployments in $VKS_CLUSTER_NAMESPACE: $(k -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments)"
-    k -n "$VKS_CLUSTER_NAMESPACE" get pods
+    if ! WHO="$(k auth whoami -o jsonpath='{.status.userInfo.username}')"; then
+      echo "FAILED: the cluster did not answer (see the error above)"
+    else
+      echo "acts as: $WHO"
+      echo "create deployments in $VKS_CLUSTER_NAMESPACE: $(k -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments)"
+      k -n "$VKS_CLUSTER_NAMESPACE" get pods
+    fi
   fi
 fi
 ```
@@ -135,7 +139,10 @@ $VKS_CLUSTER_NAMESPACE = "team-a"
     "FAILED: no token, certificate or sign-in command in this file; ask your administrator for it again"
     return
   }
-  "acts as: $(kubectl --kubeconfig $KUBECONFIG_FILE auth whoami -o jsonpath='{.status.userInfo.username}')"
+  $global:LASTEXITCODE = $null
+  $WHO = kubectl --kubeconfig $KUBECONFIG_FILE auth whoami -o jsonpath='{.status.userInfo.username}'
+  if ($LASTEXITCODE -ne 0) { "FAILED: the cluster did not answer (see the error above)"; return }
+  "acts as: $WHO"
   "create deployments in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $KUBECONFIG_FILE -n $VKS_CLUSTER_NAMESPACE auth can-i create deployments)"
   kubectl --kubeconfig $KUBECONFIG_FILE -n $VKS_CLUSTER_NAMESPACE get pods
 }
@@ -155,12 +162,14 @@ the address you were sent; then one of `token: REDACTED` (a token: `token ends i
   the check still runs.
 - `server:` is not the address you were sent: do not use the file; ask your administrator.
 - `STOPPED: this file signs in with a browser`: use [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md).
-- `Unable to connect to the server` or `i/o timeout`: this machine cannot reach the `server:`
-  address on port 6443 (Prerequisites, firewall).
+- `Unable to connect to the server`, `The connection to the server … was refused` or `i/o timeout`,
+  then `FAILED: the cluster did not answer`: this machine cannot reach the `server:` address on port
+  6443 (Prerequisites, firewall), or the cluster is down.
 - `x509: certificate signed by unknown authority`: the file was changed, is for another cluster, or
   a proxy between this machine and the cluster replaces the certificate; ask for the file again, or
   reach the cluster without the proxy.
-- `Unauthorized`: the file no longer works ([step 4](#4-when-it-stops-working)).
+- `Unauthorized`, then `FAILED: the cluster did not answer`: the file no longer works
+  ([step 4](#4-when-it-stops-working)).
 - `no`, or `Forbidden` on the pods: the file has no rights in that namespace
   ([step 4](#4-when-it-stops-working)).
 
@@ -206,10 +215,10 @@ what you asked. Step 2 shows which kind of file you have:
 
 | your file (step 2 shows) | `Unauthorized` means | `Forbidden` means |
 |---|---|---|
-| a token, `token ends in: … days` | the token ended, or your administrator took the access away: ask for a new file | its rights were changed, or you asked outside its namespace (below) |
-| a token, `token ends: no end date …` (a whole-cluster file) | your administrator took the access away: ask for a new file | — |
+| a token, `token ends in: … days` (a whole-cluster file can have an end date too) | the token ended, or your administrator took the access away: ask for a new file | its rights were changed, or you asked outside its namespace (below) |
+| a token, `token ends: no end date …` (an administrator token made to never end) | your administrator took the access away: ask for a new file | — |
 | a certificate, `notAfter=…` | it is past its end date (`notAfter`): ask for a new file | its rights were taken away, or moved to your new certificate: use the new file |
-| a file that signs in with a browser | — (the browser opens again: sign in, [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md)) | you are not in the group, or the group has no rights: [USER-IDP-LOGIN.md step 7](USER-IDP-LOGIN.md#7-forbidden-or-no-sign-in) |
+| a file that signs in with a browser | the cluster does not accept the sign-in: [USER-IDP-LOGIN.md step 7](USER-IDP-LOGIN.md#7-forbidden-or-no-sign-in) (when the sign-in ends, the browser opens again instead) | you are not in the group, or the group has no rights: [USER-IDP-LOGIN.md step 7](USER-IDP-LOGIN.md#7-forbidden-or-no-sign-in) |
 
 `Forbidden` only in another namespace: your file acts in its own namespace; ask for that one with
 `-n`. To list what the file may do in a namespace:

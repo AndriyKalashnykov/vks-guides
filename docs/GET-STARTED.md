@@ -30,7 +30,8 @@ Given access to a VKS cluster by its administrator? You need only Prerequisites 
 guide: with your own SSO account, the VCF CLI and
 [Log in to a VKS cluster you were given access to](USER-LOGIN.md); with a kubeconfig file you were
 sent, [Use a kubeconfig file you were given](USER-KUBECONFIG.md); with your organization's identity
-provider, [Sign in with your organization's identity provider](USER-IDP-LOGIN.md).
+provider, [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) (its part A, a file
+that runs `vcf`, needs the VCF CLI too; part B needs kubelogin).
 
 | guide | what it is |
 |---|---|
