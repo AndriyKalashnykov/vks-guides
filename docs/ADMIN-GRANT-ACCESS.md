@@ -444,6 +444,9 @@ Remove-Variable TOKEN
 - `create deployments in default: yes` with `"*"` and `view`: an earlier run with `edit` left
   `<SERVICE_ACCOUNT_NAME>-cluster-admin` (or a RoleBinding in `default`); remove it with
   `kubectl --kubeconfig "$ADMIN_KUBECONFIG" delete clusterrolebinding <SERVICE_ACCOUNT_NAME>-cluster-admin`.
+- A `yes` where `no` is expected: an older binding for that login is still there: find it with
+  `kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings,clusterrolebindings -A -o wide | grep <SERVICE_ACCOUNT_NAME>`
+  and delete it.
 
 ### 2. Hand it over and use it (cluster administrator, then the team or tool)
 

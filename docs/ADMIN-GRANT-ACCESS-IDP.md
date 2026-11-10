@@ -358,7 +358,10 @@ member of the group would be asked; it works at once, also for people already si
 `ROLE` to `edit` or `view` (in small letters), and run the block again. `group may create deployments in
 default: yes` with `"*"` and `view`: an earlier run with `edit` left
 `keycloak-sv-k8s-devs-cluster-admin` (or a RoleBinding in `default`); delete only it with `kubectl
---kubeconfig <admin file> delete clusterrolebinding keycloak-sv-k8s-devs-cluster-admin`.
+--kubeconfig <admin file> delete clusterrolebinding keycloak-sv-k8s-devs-cluster-admin`. A `yes`
+where `no` is expected: an older binding for that group is still there: find it with `kubectl
+--kubeconfig <admin file> get rolebindings,clusterrolebindings -A -o wide | grep keycloak-sv:k8s-devs`
+and delete it.
 
 To take it away, delete the group's bindings as in [step 8](#8-take-the-groups-access-away-cluster-administrator-vcenter-administrator).
 
