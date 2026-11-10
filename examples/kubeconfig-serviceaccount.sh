@@ -43,6 +43,8 @@ if [ -z "$VKS_CLUSTER_NAMESPACE" ]; then
   echo 'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set the namespace, or "*" for the whole cluster (cluster-admin with edit, read-only with view); nothing was changed'
 elif [ "$ROLE_OK" = "no" ]; then
   echo 'STOPPED: ROLE is edit or view; nothing was changed'
+elif [ "$VKS_CLUSTER_NAMESPACE" = "$SA_NAMESPACE" ]; then
+  echo "STOPPED: VKS_CLUSTER_NAMESPACE must not be SA_NAMESPACE (${SA_NAMESPACE}): the team could read every token Secret stored there; nothing was changed"
 elif ! [ "$DAYS" -ge 1 ] 2>/dev/null || [ "${DAYS#0}" != "$DAYS" ] || [ "$DAYS" -gt 36500 ]; then
   echo "STOPPED: DAYS is a number of days, 1 to 36500: $DAYS; nothing was changed"
 else
