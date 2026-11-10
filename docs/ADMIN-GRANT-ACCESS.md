@@ -528,7 +528,7 @@ else
     echo "may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" auth can-i list pods --as="system:serviceaccount:${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}")"
   fi
   if RB="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{" "}{range .subjects[*]}{.kind}/{.namespace}/{.name}{","}{end}{"\n"}{end}')"; then
-    LEFT="$(printf '%s\n' "$RB" | awk -v w="ServiceAccount/${SA_NAMESPACE}/${SERVICE_ACCOUNT_NAME}" '{k = split($3, s, ","); for (i = 1; i <= k; i++) if (s[i] == w) print $1 "/" $2}')"
+    LEFT="$(printf '%s\n' "$RB" | awk -v w="ServiceAccount/${SA_NAMESPACE}/${SERVICE_ACCOUNT_NAME}" -v n="ServiceAccount//${SERVICE_ACCOUNT_NAME}" -v sn="$SA_NAMESPACE" '{k = split($3, s, ","); for (i = 1; i <= k; i++) if (s[i] == w || (s[i] == n && $1 == sn)) {print $1 "/" $2; break}}')"
     if [ -n "$LEFT" ]; then echo "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $LEFT (step 1 used that namespace: run this block again with it, which also deletes the token Secrets there)"; fi
   else
     echo "FAILED: the RoleBindings could not be read (see the error above)"
@@ -570,7 +570,8 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
     'FAILED: the RoleBindings could not be read (see the error above)'
   } else {
     $W = "ServiceAccount/$SA_NAMESPACE/$SERVICE_ACCOUNT_NAME"
-    $LEFT = @(@(($J | Out-String | ConvertFrom-Json).items) | Where-Object { @($_.subjects | ForEach-Object { "$($_.kind)/$($_.namespace)/$($_.name)" }) -contains $W } | ForEach-Object { "$($_.metadata.namespace)/$($_.metadata.name)" })
+    $LEFT = $null
+    try { $LEFT = @(@(($J | Out-String | ConvertFrom-Json).items) | Where-Object { $S = @($_.subjects | ForEach-Object { "$($_.kind)/$($_.namespace)/$($_.name)" }); ($S -contains $W) -or ($_.metadata.namespace -eq $SA_NAMESPACE -and $S -contains "ServiceAccount//$SERVICE_ACCOUNT_NAME") } | ForEach-Object { "$($_.metadata.namespace)/$($_.metadata.name)" }) } catch { 'FAILED: the RoleBindings could not be read (see the error above)' }
     if ($LEFT.Count) { "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $($LEFT -join ' ') (step 1 used that namespace: run this block again with it, which also deletes the token Secrets there)" }
   }
   "may still list pods in every namespace: $(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i list pods --all-namespaces "--as=system:serviceaccount:${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME")"
@@ -1060,7 +1061,8 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
     'FAILED: the RoleBindings could not be read (see the error above)'
   } else {
     $W = "User//$NAME"
-    $LEFT = @(@(($J | Out-String | ConvertFrom-Json).items) | Where-Object { @($_.subjects | ForEach-Object { "$($_.kind)/$($_.namespace)/$($_.name)" }) -contains $W } | ForEach-Object { "$($_.metadata.namespace)/$($_.metadata.name)" })
+    $LEFT = $null
+    try { $LEFT = @(@(($J | Out-String | ConvertFrom-Json).items) | Where-Object { @($_.subjects | ForEach-Object { "$($_.kind)/$($_.namespace)/$($_.name)" }) -contains $W } | ForEach-Object { "$($_.metadata.namespace)/$($_.metadata.name)" }) } catch { 'FAILED: the RoleBindings could not be read (see the error above)' }
     if ($LEFT.Count) { "FAILED: $NAME still has a RoleBinding: $($LEFT -join ' ') (run this block again with that namespace)" }
   }
   "$NAME may still list pods in every namespace: $(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i list pods --all-namespaces "--as=$NAME")"
