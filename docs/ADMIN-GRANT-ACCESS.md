@@ -692,8 +692,11 @@ example `alice-20261029223015`), valid for `DAYS` days. It approves the request,
 signs it, then deletes the request. It makes the namespace `VKS_CLUSTER_NAMESPACE` inside the VKS cluster
 if it is not there, and a RoleBinding (the record that gives a name a role in one namespace) that
 gives that name `edit` in it, and writes the kubeconfig, key included, readable only by you. With
-`VKS_CLUSTER_NAMESPACE=""` it gives the name `cluster-admin` on the whole cluster instead (a
-ClusterRoleBinding) and prints a `WARNING`: only for a person who must administer the cluster.
+`VKS_CLUSTER_NAMESPACE="*"` it gives the name `cluster-admin` on the whole cluster instead (a
+ClusterRoleBinding) and prints a `WARNING`: only for a person who must administer the cluster. A
+cluster administrator can make other logins (ServiceAccount tokens, certificates) that keep working after
+step 4, and this certificate cannot be withdrawn before its end date. An empty `VKS_CLUSTER_NAMESPACE`
+stops the block before it changes anything.
 
 You then have one file, `PERSON_KUBECONFIG`, for that person: send it (step 2). Each run makes a
 new name, so that you can take each certificate away alone; an older name keeps its rights until
@@ -702,7 +705,7 @@ step 4.
 Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
 from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
 elsewhere), `PERSON` to a short name for the person, `VKS_CLUSTER_NAMESPACE` to their namespace (or
-`""` for the whole cluster), and `DAYS` to as few days as they need.
+`"*"` for the whole cluster), and `DAYS` to as few days as they need.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -716,6 +719,9 @@ DAYS="120"
 PERSON_KUBECONFIG="$HOME/${VKS_CLUSTER}-${PERSON}.kubeconfig"
 
 adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
+if [ -z "$VKS_CLUSTER_NAMESPACE" ]; then
+  echo 'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set the namespace, or "*" for cluster-admin on the whole cluster; nothing was changed'
+else
 NAME="${PERSON}-$(date +%Y%m%d%H%M%S)"
 CSR="kubeconfig-${NAME}"
 adm delete csr "$CSR" --ignore-not-found >/dev/null
@@ -736,38 +742,43 @@ CA="$(adm config view --minify --raw -o jsonpath='{.clusters[0].cluster.certific
 adm get csr "$CSR" -o go-template='{{.status.certificate | base64decode}}' > "$TMP/cert.pem" 2>/dev/null
 if [ -n "$CERT" ] && [ -n "$SERVER" ] && [ -n "$CA" ] \
    && [ "$(openssl x509 -in "$TMP/cert.pem" -noout -pubkey)" = "$(openssl pkey -in "$TMP/key.pem" -pubout)" ]; then
-  if [ -n "$VKS_CLUSTER_NAMESPACE" ]; then
+  if [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
+    echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${NAME} gets cluster-admin on the whole cluster"
+    adm create clusterrolebinding "${NAME}-cluster-admin" --clusterrole=cluster-admin --user="$NAME" >/dev/null
+    KC_NS="default"
+  else
     adm create namespace "$VKS_CLUSTER_NAMESPACE" --dry-run=client -o yaml | adm apply -f - >/dev/null
     adm -n "$VKS_CLUSTER_NAMESPACE" create rolebinding "${NAME}-edit" --clusterrole=edit --user="$NAME" >/dev/null
-  else
-    echo "WARNING: VKS_CLUSTER_NAMESPACE is empty: ${NAME} gets cluster-admin on the whole cluster"
-    adm create clusterrolebinding "${NAME}-cluster-admin" --clusterrole=cluster-admin --user="$NAME" >/dev/null
+    KC_NS="$VKS_CLUSTER_NAMESPACE"
   fi
   rm -f "$PERSON_KUBECONFIG"
   ( umask 077
     printf 'apiVersion: v1\nkind: Config\nclusters:\n- name: %s\n  cluster:\n    server: %s\n    certificate-authority-data: %s\nusers:\n- name: %s\n  user:\n    client-certificate-data: %s\n    client-key-data: %s\ncontexts:\n- name: %s\n  context:\n    cluster: %s\n    user: %s\n    namespace: %s\ncurrent-context: %s\n' \
       "$NAME" "$SERVER" "$CA" "$NAME" "$CERT" "$(base64 < "$TMP/key.pem" | tr -d '\n')" \
-      "$NAME" "$NAME" "$NAME" "${VKS_CLUSTER_NAMESPACE:-default}" "$NAME" > "$PERSON_KUBECONFIG" )
+      "$NAME" "$NAME" "$NAME" "$KC_NS" "$NAME" > "$PERSON_KUBECONFIG" )
   openssl x509 -in "$TMP/cert.pem" -noout -subject -enddate
-  if [ -n "$VKS_CLUSTER_NAMESPACE" ]; then
-    echo "create deployments in $VKS_CLUSTER_NAMESPACE: $(kubectl --kubeconfig "$PERSON_KUBECONFIG" auth can-i create deployments)"
+  if [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
+    echo "everything in every namespace: $(kubectl --kubeconfig "$PERSON_KUBECONFIG" auth can-i '*' '*' --all-namespaces)"
   else
-    echo "everything in the cluster: $(kubectl --kubeconfig "$PERSON_KUBECONFIG" auth can-i '*' '*')"
+    echo "create deployments in $VKS_CLUSTER_NAMESPACE: $(kubectl --kubeconfig "$PERSON_KUBECONFIG" auth can-i create deployments)"
   fi
 else
   echo "FAILED: no matching certificate, server or CA (see the kubectl errors above)"
 fi
 adm delete csr "$CSR" --ignore-not-found >/dev/null; rm -rf "$TMP"
+fi
 ```
 
 </details>
 
 **Expect:** `subject=CN=alice-…` (or `subject=CN = alice-…`, `subject= /CN=alice-…`), `notAfter=` about `DAYS` days from
-now (the cluster signs for at most a year), and `create deployments in team-a: yes`. Write down the
-name: you need it to take the access away.
+now (the cluster signs for at most a year), and `create deployments in team-a: yes`; with
+`VKS_CLUSTER_NAMESPACE="*"` the `WARNING` line first and `everything in every namespace: yes`. Write down
+the name: you need it to take the access away.
 
 **If not:** `FAILED: …` with `Forbidden` or `Unauthorized` above it: `ADMIN_KUBECONFIG` is not the
-cluster's administrator file, or it has expired.
+cluster's administrator file, or it has expired. `STOPPED: VKS_CLUSTER_NAMESPACE is empty`: set it to the
+person's namespace, or to `"*"` for the whole cluster, and run the block again.
 
 ### 2. Hand it over and use it (cluster administrator, then the person)
 
@@ -785,10 +796,10 @@ new file, and take the old name's rights away (step 4).
 ### 4. Take the certificate away (cluster administrator)
 
 Do this when the person should lose access, or has a new certificate from step 3. It deletes the
-RoleBinding of the name from step 1 (with `VKS_CLUSTER_NAMESPACE=""`, its cluster-admin ClusterRoleBinding);
-nothing else changes. That name then has no rights in
-`VKS_CLUSTER_NAMESPACE`, but the certificate keeps proving the name until its end date (`notAfter`), so
-never give that name rights again. Set `NAME` to the name from step 1's `subject=` line, and
+RoleBinding of the name from step 1 (with `VKS_CLUSTER_NAMESPACE="*"`, its cluster-admin
+ClusterRoleBinding), then asks the cluster what that name may still do; nothing else changes. The
+name then has no rights, but the certificate keeps proving the name until its end date (`notAfter`),
+so never give that name rights again. Logins a cluster administrator made with it keep working. Set `NAME` to the name from step 1's `subject=` line, and
 `VKS_CLUSTER`, `ADMIN_KUBECONFIG` and `VKS_CLUSTER_NAMESPACE` to what step 1 used.
 
 **Linux, macOS, WSL (bash or zsh):**
@@ -799,10 +810,16 @@ ADMIN_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 NAME="alice-20261029223015"
 VKS_CLUSTER_NAMESPACE="team-a"
 
-if [ -n "$VKS_CLUSTER_NAMESPACE" ]; then
-  kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" delete rolebinding "${NAME}-edit"
+if [ -z "$VKS_CLUSTER_NAMESPACE" ]; then
+  echo 'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set it to what step 1 used (a namespace, or "*"); nothing was changed'
 else
-  kubectl --kubeconfig "$ADMIN_KUBECONFIG" delete clusterrolebinding "${NAME}-cluster-admin"
+  if [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
+    kubectl --kubeconfig "$ADMIN_KUBECONFIG" delete clusterrolebinding "${NAME}-cluster-admin"
+    echo "${NAME} may still do anything anywhere: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" auth can-i '*' '*' --all-namespaces --as="$NAME")"
+  else
+    kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" delete rolebinding "${NAME}-edit"
+    echo "${NAME} may still create deployments in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments --as="$NAME")"
+  fi
 fi
 ```
 
@@ -814,19 +831,29 @@ $ADMIN_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 $NAME = "alice-20261029223015"
 $VKS_CLUSTER_NAMESPACE = "team-a"
 
-if ($VKS_CLUSTER_NAMESPACE) {
-  kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE delete rolebinding "$NAME-edit"
+if (-not $VKS_CLUSTER_NAMESPACE) {
+  'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set it to what step 1 used (a namespace, or "*"); nothing was changed'
 } else {
-  kubectl --kubeconfig $ADMIN_KUBECONFIG delete clusterrolebinding "$NAME-cluster-admin"
+  if ($VKS_CLUSTER_NAMESPACE -eq '*') {
+    kubectl --kubeconfig $ADMIN_KUBECONFIG delete clusterrolebinding "$NAME-cluster-admin"
+    "$NAME may still do anything anywhere: $(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i '*' '*' --all-namespaces --as=$NAME)"
+  } else {
+    kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE delete rolebinding "$NAME-edit"
+    "$NAME may still create deployments in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE auth can-i create deployments --as=$NAME)"
+  }
 }
 ```
 
 **Expect:** `rolebinding.rbac.authorization.k8s.io "alice-20261029223015-edit" deleted` (newer
-kubectl: `… deleted from team-a namespace`); with `VKS_CLUSTER_NAMESPACE=""`,
-`clusterrolebinding.rbac.authorization.k8s.io "alice-20261029223015-cluster-admin" deleted`.
+kubectl: `… deleted from team-a namespace`); with `VKS_CLUSTER_NAMESPACE="*"`,
+`clusterrolebinding.rbac.authorization.k8s.io "alice-20261029223015-cluster-admin" deleted`. Then
+`alice-20261029223015 may still create deployments in team-a: no` (with `"*"`: `may still do anything
+anywhere: no`).
 
 **If not:** `Error from server (NotFound)`: the RoleBinding is already gone, or `NAME` or
-`VKS_CLUSTER_NAMESPACE` is not what step 1 printed and used.
+`VKS_CLUSTER_NAMESPACE` is not what step 1 printed and used. `may still …: yes`:
+another binding gives that name rights; find it with `kubectl --kubeconfig "$ADMIN_KUBECONFIG" get
+rolebindings,clusterrolebindings -A -o wide | grep "$NAME"` and delete it.
 
 ## Glossary
 
