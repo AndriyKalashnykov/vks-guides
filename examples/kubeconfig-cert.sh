@@ -14,7 +14,8 @@
 # | rights              | edit in VKS_CLUSTER_NAMESPACE, or cluster-admin with "*" (WARNING)                                                          |
 # | namespaces used     | one: VKS_CLUSTER_NAMESPACE ("*": the whole cluster, context namespace default)                                      |
 # | take it away        | can't be revoked: delete its binding and never bind that name again; the certificate keeps proving the name until it expires |
-# | keeps working       | with edit: ServiceAccount tokens and workloads the person made (delete them); with "*": also logins they made                |
+# | keeps working       | with edit: ServiceAccount tokens and workloads the person made (delete the workloads, re-create ServiceAccounts with         |
+# |                     | rights); with "*": also logins they made                                                                                     |
 # | renew               | run again: a new name and certificate; the old one needs its own take-away                                                   |
 # | meant for           | one person with no SSO or identity-provider account                                                                          |
 # | needs on this host  | admin kubeconfig (~/.kube/<cluster>.kubeconfig)                                                                              |

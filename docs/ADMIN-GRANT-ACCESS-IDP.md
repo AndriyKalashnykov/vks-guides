@@ -514,7 +514,7 @@ is refused. A credential the cluster already gave them keeps working until it ex
 - Before you enable a user again, sign them out, or their old sign-in can work again.
 
 With `edit`, the person could make tokens for any ServiceAccount in that namespace and start workloads there;
-those keep working: delete them.
+those keep working: delete those workloads and re-create every ServiceAccount there that has rights.
 
 ## 8. Take the group's access away (cluster administrator, vCenter administrator)
 
@@ -523,9 +523,9 @@ those keep working: delete them.
   --as=group-check --as-group=keycloak-sv:k8s-devs` answers `no` (with `"*"`: `auth can-i '*' '*'
   --all-namespaces …` answers `no`).
 - vCenter administrator: run step 2 with `ROLE="REMOVE"`. For a group with **Can edit**, that role
-  is what made it an administrator of the clusters.
+  is what made it an administrator of the clusters. Logins members made as an administrator keep working.
 
 With `edit`, members could make tokens for any ServiceAccount in that namespace and start workloads there;
-those keep working: delete them.
+those keep working: delete those workloads and re-create every ServiceAccount there that has rights.
 
 Back to [README](../README.md).
