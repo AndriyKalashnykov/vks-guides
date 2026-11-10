@@ -40,7 +40,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 ## 1. What to ask your administrator for
 
-Ask the VKS cluster's administrator for:
+Ask your administrators for (the vCenter administrator sends the first three, the cluster administrator
+your namespace):
 
 - the Supervisor's IP address or DNS name;
 - the vSphere Namespace's name and the VKS cluster's name;

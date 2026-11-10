@@ -418,7 +418,7 @@ RoleBinding and namespace stay; delete the namespace when the team's work in it 
 It also deletes the login's cluster-admin ClusterRoleBinding if an earlier `"*"` run made one (with
 `"*"`, the token Secrets are not swept, and it says `FAILED` if a RoleBinding still names the login), then
 asks the cluster whether that login may still do everything and checks that the ServiceAccount is gone;
-logins a cluster administrator made with it keep working. An empty `VKS_CLUSTER_NAMESPACE` stops the block before it deletes anything. Set
+with `"*"`, logins made with it as a cluster administrator keep working. An empty `VKS_CLUSTER_NAMESPACE` stops the block before it deletes anything. Set
 `SERVICE_ACCOUNT_NAME`, `VKS_CLUSTER_NAMESPACE`, `SA_NAMESPACE`, `VKS_CLUSTER` and `ADMIN_KUBECONFIG` to what step 1
 used.
 
@@ -548,8 +548,8 @@ old token ends. With `never` it gives the same token (step 3).
 
 Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
 from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
-elsewhere), `SERVICE_ACCOUNT_NAME` to a name for the tool or person, and `DAYS` to 1 to 36500 days (365 for a
-year) or `never`.
+elsewhere), `SERVICE_ACCOUNT_NAME` to a name for the tool or person, `SA_NAMESPACE` to the namespace that
+holds the ServiceAccount (made if it is not there), and `DAYS` to 1 to 36500 days (365 for a year) or `never`.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -930,7 +930,7 @@ ClusterRoleBinding; also a cluster-admin one left by an earlier `"*"` run), then
 whether that name may still deploy (with `"*"`: do everything, and it says `FAILED` if a RoleBinding still
 names it); nothing else changes. The
 name then has no rights, but the certificate keeps proving the name until its end date (`notAfter`),
-so never give that name rights again. Logins a cluster administrator made with it keep working. Set `NAME` to the name from step 1's `subject=` line, and
+so never give that name rights again. With `"*"`, logins made with it as a cluster administrator keep working. Set `NAME` to the name from step 1's `subject=` line, and
 `VKS_CLUSTER`, `ADMIN_KUBECONFIG` and `VKS_CLUSTER_NAMESPACE` to what step 1 used.
 
 <details>
