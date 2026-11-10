@@ -7,6 +7,15 @@ Step-by-step guides for VMware vSphere Kubernetes Service (VKS) on VCF 9.1. They
 vCenter administrators who are new to VKS and Kubernetes, and use standard Kubernetes terms, so
 Kubernetes engineers can use them as a reference too.
 
+## Who are you?
+
+- An administrator gave you access to a VKS cluster: [start here](docs/LOGIN.md#who-are-you-start-here),
+  or go to your guide: [your own SSO account](docs/USER-LOGIN.md),
+  [a kubeconfig file you were sent](docs/USER-KUBECONFIG.md),
+  [your organization's identity provider](docs/USER-IDP-LOGIN.md).
+- You administer vCenter or VKS clusters: [Getting started](docs/GET-STARTED.md), then
+  [give people and tools access](docs/ADMIN-GRANT-ACCESS.md).
+
 ## Before you start: do Prerequisites, then run its Check
 
 On each machine where you will paste the blocks, do [Prerequisites](docs/PREREQS.md) for its OS,

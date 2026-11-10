@@ -67,6 +67,8 @@ The sign-ins of the last two rows are kept elsewhere, also readable only by you:
 
 ## 1. See what a file holds
 
+Received a file from your administrator? [USER-KUBECONFIG.md](USER-KUBECONFIG.md) checks and uses it.
+
 Run this before you use a kubeconfig you were given, or before you send one, to know what it is
 worth. It lists the file's permissions and the lines that show its server and its kind of login,
 without printing any secret, and changes nothing. You then know who may read the file and whether
@@ -121,6 +123,9 @@ file with no secret (`yes`) may go by email or chat. A file with a token or a ke
 only`, `to that person only`) goes only through a password manager's share or as an encrypted
 file, never by email, chat or a shared folder; then delete your copy. The person saves it in their
 `.kube` folder.
+
+Received a file? [USER-KUBECONFIG.md](USER-KUBECONFIG.md) (a token or a key), or
+[USER-IDP-LOGIN.md](USER-IDP-LOGIN.md) (a file that runs `vcf` or kubelogin).
 
 The person who received the file runs this once after saving it, so that no other user of their
 machine can read it. It makes the file readable and writable only by them (Windows: only their user

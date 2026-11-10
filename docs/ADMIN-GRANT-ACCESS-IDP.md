@@ -34,8 +34,8 @@ The steps:
 2. [Give the group a role on the vSphere Namespace](#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator) (vCenter administrator)
 3. [Give the group rights inside the VKS cluster](#3-give-the-group-rights-inside-the-vks-cluster-cluster-administrator) (cluster administrator)
 4. [Make the group's kubeconfig and hand it over](#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) (cluster administrator)
-5. [Log in](#5-log-in-the-person) (the person)
-6. [Log out](#6-log-out-the-person) (the person)
+5. [Log in](USER-IDP-LOGIN.md#3-sign-in-through-the-supervisor) (the person, in its own guide)
+6. [Log out](USER-IDP-LOGIN.md#4-log-out-part-a) (the person, in its own guide)
 7. [Take one person's access away](#7-take-one-persons-access-away-identity-providers-administrator) (identity provider's administrator)
 8. [Take the group's access away](#8-take-the-groups-access-away-cluster-administrator-vcenter-administrator) (cluster administrator, vCenter administrator)
 
@@ -54,9 +54,8 @@ The steps:
   ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)), [kubectl](KUBECTL.md), and a Supervisor
   login with the **Can edit** role on the vSphere Namespace
   ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca));
-- the person: [kubectl](KUBECTL.md), the [VCF CLI](VCF.md) and a browser; on Windows and macOS,
-  the vCenter CA trusted by their user
-  ([USER-LOGIN.md, plugin step 1](USER-LOGIN.md#1-windows-and-macos-trust-the-vcenter-ca-the-person-once)).
+- the person: what [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md#prerequisites) lists for part A
+  (kubectl, the VCF CLI, a browser that trusts the vCenter CA and the identity provider's CA).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; the Supervisor's DNS
 servers must resolve the identity provider's name):
@@ -418,94 +417,20 @@ renames that file), then `runs: vcf pinniped-auth` and `saved …`.
 
 Send the people the file, the namespace from step 3 (with `"*"`: tell them they have the whole cluster)
 and the cluster's address (the file's `server:` line), so that they can check the file before they use it.
+Also send them [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md) and the two CA files its browser needs (the
+vCenter CA and the identity provider's CA; they hold no secret).
 
 ## 5. Log in (the person)
 
-You need kubectl and the [VCF CLI](VCF.md) (the file runs `vcf`; you do not log in with it), and a
-browser that trusts the identity provider's CA (for Keycloak:
-[KEYCLOAK-VKS.md step 8](KEYCLOAK-VKS.md#8-trust-keycloaks-ca-each-person-once)) and the vCenter CA
-(on Windows and macOS: [USER-LOGIN.md, plugin step 1](USER-LOGIN.md#1-windows-and-macos-trust-the-vcenter-ca-the-person-once)). Save the file in your `.kube` folder, readable only by you
-([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)).
-
-Before the first use, check that the file runs `vcf pinniped-auth` and that its `server:` is the
-cluster address you were sent ([KUBECONFIG.md](KUBECONFIG.md#1-see-what-a-file-holds)).
-
-The first command opens the browser: choose the provider (here **keycloak**), sign in with your
-account (in Keycloak: password, and one-time code if asked), and kubectl goes on. Later commands
-sign in again by themselves until your session at the identity provider ends.
-
-On a machine without a browser (over SSH, a jump box), the command prints a link instead: open it
-in the browser on your own computer, sign in, copy the code the last page shows, and paste it at
-`Optionally, paste your authorization code:`.
-
-![Choose an identity provider to log in: keycloak](img/access/03-choose-identity-provider.jpg)
-
-![Keycloak's sign-in page](img/access/04-keycloak-sign-in.jpg)
-
-![Without a browser: the last page shows the code to paste](img/access/05-finish-your-login.jpg)
-
-Run this the first time you use the file, and whenever you want to check your rights. It asks the
-cluster who you are and whether you may deploy in `VKS_CLUSTER_NAMESPACE`, signing you in first when
-needed; it changes nothing on the cluster. You then have a sign-in saved on this machine (step 6
-removes it), and see your name, your groups and your rights.
-
-Set `KC_KUBECONFIG` to where you saved the file and `VKS_CLUSTER_NAMESPACE` to the namespace inside the VKS
-cluster that you were sent (if you were given the whole cluster, any namespace, for example `default`).
-
-**Linux, macOS, WSL (bash or zsh):**
-
-```sh
-KC_KUBECONFIG="$HOME/.kube/my-vks-cluster-keycloak-sv.kubeconfig"
-VKS_CLUSTER_NAMESPACE="team-a"
-
-kubectl --kubeconfig "$KC_KUBECONFIG" auth whoami && kubectl --kubeconfig "$KC_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments
-```
-
-**Windows (PowerShell):**
-
-```powershell
-$KC_KUBECONFIG = "$HOME\.kube\my-vks-cluster-keycloak-sv.kubeconfig"
-$VKS_CLUSTER_NAMESPACE = "team-a"
-
-kubectl --kubeconfig $KC_KUBECONFIG auth whoami
-if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $KC_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE auth can-i create deployments }
-```
-
-**Expect:** `Username  <prefix>:<you>`, `Groups  [<prefix>:<group> system:authenticated]`, then
-`yes` (`no` with the `view` role).
-
-**If not:**
-- `executable file not found` or `"vcf": not found`: install the [VCF CLI](VCF.md).
-- `could not open browser` and a link: you are on a machine without a browser; see above.
-- `no` or `Forbidden`: the group has no rights in that namespace (step 3), or you are not in the
-  group at the identity provider.
-- The browser warns about the certificate: it does not trust the Supervisor's CA (the vCenter CA:
-  ask the vCenter administrator) or the identity provider's CA (ask the identity provider's
-  administrator).
+The person signs in with [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md)'s
+[step 3](USER-IDP-LOGIN.md#3-sign-in-through-the-supervisor), after its steps 1 and 2. When they
+report `no` or `Forbidden`: the group has no rights in that namespace (step 3), or they are not in
+the group at the identity provider.
 
 ## 6. Log out (the person)
 
-Do this when you are done on a shared machine. It deletes the VCF CLI's saved sign-in on this
-machine; nothing changes on the cluster. The next command then asks for a sign-in again. Also sign
-out of the identity provider in the browser.
-
-**Linux, macOS, WSL (bash or zsh):**
-
-```sh
-rm -f "$HOME/.config/vcf/pinniped/sessions.yaml" "$HOME/.config/vcf/pinniped/credentials.yaml"
-```
-
-**Windows (PowerShell):**
-
-```powershell
-Remove-Item -ErrorAction SilentlyContinue "$HOME\.config\vcf\pinniped\sessions.yaml", "$HOME\.config\vcf\pinniped\credentials.yaml"
-```
-
-**Expect:** no output; the next `kubectl --kubeconfig <your file> …` opens the sign-in (or prints
-the link).
-
-**If not:** the next command still answers without a sign-in: you ran it in another account than
-the one that signed in.
+The person logs out with [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md)'s
+[step 4](USER-IDP-LOGIN.md#4-log-out-part-a).
 
 ## 7. Take one person's access away (identity provider's administrator)
 
