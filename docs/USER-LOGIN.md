@@ -1,13 +1,5 @@
 # Log in to a VKS cluster you were given access to
 
-> [!NOTE]
-> **Official Broadcom documentation (VCF 9.1) for this guide**
->
-> - [Log in to a VKS Cluster Using vCenter SSO Credentials](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connecting-to-vsphere-with-tanzu-clusters/connect-to-a-tkg-service-cluster-as-a-vcenter-single-sign-on-user-with-kubectl/log-in-using-credentials.html)
-> - [Configure vSphere Namespace Permissions for vCenter Single Sign-On Users and Groups](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/configure-vsphere-namespace-persmissions-for-vcenter-sso-users-and-groups.html) (the role your administrator gives you)
-> - [VCF CLI command reference: context](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/command-reference2/system-commands%281%29/context2.html) (create)
-> - Broadcom [KB 435399](https://knowledge.broadcom.com/external/article/435399) and [KB 435635](https://knowledge.broadcom.com/external/article/435635) (the kubectl vSphere plugin)
-
 The administrator of a VKS cluster gave you access to it with your own vCenter SSO user. You log in
 with the VCF CLI, which writes your own kubeconfig, then work with kubectl in the namespace you were
 given. A login lasts 10 hours; your rights stay until the administrator takes them away.
@@ -283,6 +275,7 @@ you to confirm with **Yes**; on macOS, run the line under **macOS** below instea
 
 **Windows (PowerShell):**
 
+<!-- lab-step: vcenter-ca-windows -->
 ```powershell
 Import-Certificate -FilePath "$HOME\.kube\vcenter-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
 ```
@@ -475,5 +468,14 @@ writes the name in its own letter case, for example `sso:Alice@vsphere.local`).
 - `logged in as:` with `Unauthorized`: the login did not work; see the error above it.
 
 </details>
+
+## References
+
+**Official Broadcom documentation (VCF 9.1) for this guide**
+
+- [Log in to a VKS Cluster Using vCenter SSO Credentials](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connecting-to-vsphere-with-tanzu-clusters/connect-to-a-tkg-service-cluster-as-a-vcenter-single-sign-on-user-with-kubectl/log-in-using-credentials.html)
+- [Configure vSphere Namespace Permissions for vCenter Single Sign-On Users and Groups](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/configure-vsphere-namespace-persmissions-for-vcenter-sso-users-and-groups.html) (the role your administrator gives you)
+- [VCF CLI command reference: context](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/command-reference2/system-commands%281%29/context2.html) (create)
+- Broadcom [KB 435399](https://knowledge.broadcom.com/external/article/435399) and [KB 435635](https://knowledge.broadcom.com/external/article/435635) (the kubectl vSphere plugin)
 
 Back to [README](../README.md).

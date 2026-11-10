@@ -2,8 +2,11 @@
 
 Copy-paste how-to guides for VMware vSphere Kubernetes Service (VKS), VCF 9.x. README.md links six
 group pages (docs/GET-STARTED.md, ACCESS-SIGN-IN.md, CLUSTERS.md, IMAGES.md, GITOPS-CICD.md, OPERATE.md);
-each lists its guides, the order to follow and its "Tested on" rows (a new guide gets a row in its
-group's two tables). The guides in docs/: PREREQS.md, KUBECTL.md, VCF.md, SUPERVISOR-LOGIN.md, USER-LOGIN.md, USER-KUBECONFIG.md, USER-IDP-LOGIN.md, ADMIN-GRANT-ACCESS.md, ADMIN-GRANT-ACCESS-IDP.md, KUBECONFIG.md, KEYCLOAK.md, KEYCLOAK-VKS.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md, NEXUS.md,
+each lists its guides and the order to follow, and its `## Tested on` is one line linking its group's
+table in docs/TESTED.md (owner, 2026-11-10: one page holds every guide's cells; a new guide gets a row
+in its group page's guide table and one in its group's table in TESTED.md). docs/GLOSSARY.md is the one
+word list: a guide links it and keeps no glossary table of its own (ADMIN-GRANT-ACCESS.md's `## Glossary`
+and KUBECONFIG.md's `### The words used here` are one-line pointers kept for old links). The guides in docs/: PREREQS.md, KUBECTL.md, VCF.md, SUPERVISOR-LOGIN.md, USER-LOGIN.md, USER-KUBECONFIG.md, USER-IDP-LOGIN.md, ADMIN-GRANT-ACCESS.md, ADMIN-GRANT-ACCESS-IDP.md, KUBECONFIG.md, KEYCLOAK.md, KEYCLOAK-VKS.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md, NEXUS.md,
 GITEA.md, TEKTON.md, GITLAB.md, CICD.md, OCTOPUS.md, ADDONS.md, HEADLAMP.md, HELM.md, MONITORING.md, LOGGING.md, OBSERVABILITY.md (screenshots in
 docs/img/). Readers paste
 blocks; there is nothing to build.
@@ -12,7 +15,7 @@ blocks; there is nothing to build.
 
 - `examples/` (owner's choice) holds runnable admin scripts built from guide blocks (`kubeconfig-*.sh`,
   `rolebinding-idp-group.sh`) and `examples/README.md` comparing them. They use the guides' placeholder values
-  (no lab values), are not guides (no NOTE, Prerequisites or Tested on row, not on group pages), and must follow
+  (no lab values), are not guides (no References, Prerequisites or Tested on row, not on group pages), and must follow
   the guide blocks they copy: a change to such a block updates its script in the same PR.
 - `docs/img/access/which-way-in-light.svg` and `-dark.svg` (in ADMIN-GRANT-ACCESS.md under **Which way for
   which customer**, light and dark through `<picture>`) draw that chooser, the compare table and how each way is
@@ -21,13 +24,15 @@ blocks; there is nothing to build.
   each way's chapter (SSO, ServiceAccount token, administrator token, certificate; the IdP group in
   ADMIN-GRANT-ACCESS-IDP.md): a change that makes a label untrue, or moves what a label describes to another
   guide, updates that picture in the same PR.
-  Every label in them is a statement from the guides: no versions, durations, paths or commands.
+  Every label in them is a statement from the guides or docs/GLOSSARY.md: no versions, durations, paths or commands.
+- docs/GLOSSARY.md and docs/TESTED.md are not guides: no References, Prerequisites or Tested on row; they are
+  not in the guide list or on a group page.
 - LOGIN.md, ACCESS.md and ACCESS-IDP.md are moved-guide pages (owner): a title, then "Who are you? Start
   here", a table that sends each kind of reader (an administrator who logs in, an administrator who gives
   access, a person with an SSO account, a person sent a kubeconfig file, a person who signs in with an
   identity provider, a tool or pipeline with a token file) to the guide and step they need, then "Where the
   old guide went": one line naming the new guide and links from the old sections to their new homes. The
-  three tables are the same: change them together. No NOTE, Prerequisites, blocks or Tested on row; not in
+  three tables are the same: change them together. No References, Prerequisites, blocks or Tested on row; not in
   the guide list or on group pages.
 - The person's steps live in the three person guides: USER-LOGIN.md (own SSO account), USER-KUBECONFIG.md (a
   sent file with a token or a certificate) and USER-IDP-LOGIN.md (an identity provider). An admin guide's
@@ -59,13 +64,13 @@ blocks; there is nothing to build.
   A `.ps1` run and the parser (`ParseInput`) accept it, so neither catches it. `catch` and `finally` may start a
   line (the console waits for them).
 - Wherever several OSs appear (labels, sections, lists), the order is Linux, macOS, Windows.
-- Block labels name no distribution or OS version; the group pages' "Tested on" tables say what
+- Block labels name no distribution or OS version; docs/TESTED.md says what
   was run. Where a command differs per distribution, the text or PREREQS.md names it.
-- Each guide opens with a `> [!NOTE]` callout, first line `**Official … documentation … for this
-  guide**`, listing the official docs it follows (Broadcom VCF 9.1 TechDocs; kubernetes.io or the
-  tool's own docs where Broadcom has none). Open a link before adding it. Exception (owner, 2026-11-10):
-  USER-KUBECONFIG.md and USER-IDP-LOGIN.md have no NOTE at the top; the same list is their last chapter,
-  `## References`, before "Back to README".
+- Each guide opens with its title and what it does, never with an official-docs box (owner, 2026-11-10).
+  Its last chapter is `## References`, before "Back to README" (at the very end where a guide has no such
+  line): the official docs it follows (Broadcom VCF 9.1 TechDocs; kubernetes.io or the tool's own docs
+  where Broadcom has none), with a first line `**Official … documentation … for this guide**` where the
+  list carries a version. Open a link before adding it.
 - Each guide has a `## Prerequisites` chapter right after its intro: the guides to do first, each
   tool as a link to its guide (KUBECTL.md, VCF.md, HELM.md) or PREREQS.md (never its install),
   what this guide alone needs (roles, resources, load-balancer addresses), and a table
@@ -146,7 +151,7 @@ blocks; there is nothing to build.
   and reads the answer from the terminal, not stdin) swallows the pasted lines still waiting, so
   nothing may follow the compound command that runs it; the check of its result goes inside that
   compound (`if vcf cluster … && …; then`).
-- A behaviour change is run for real before README's "Tested on" table claims it. On the owner's
+- A behaviour change is run for real before docs/TESTED.md claims it. On the owner's
   nested-vsphere-lab the agent logs in itself, only through that checkout's make targets, which read
   the lab's own secrets, so it never handles the password and never asks the owner. On this host
   the guides' login is the VCF CLI context `supervisor` recording SUPERVISOR-LOGIN.md's file

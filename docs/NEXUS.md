@@ -1,13 +1,5 @@
 # Run Nexus Repository in a VKS cluster
 
-> [!NOTE]
-> **Official Broadcom, Sonatype, cert-manager and Kubernetes documentation for this guide**
->
-> - Broadcom: [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html) (cert-manager), [Cluster with Additional Trusted CA Certificates](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/v1beta1-example-cluster-with-additional-trusted-ca-certificates-for-ssl-tls.html), [KB 448189](https://knowledge.broadcom.com/external/article/448189/ssltls-server-certificates-specified-in.html) (trust the CA, not the server certificate)
-> - Sonatype: [System requirements](https://help.sonatype.com/en/sonatype-nexus-repository-system-requirements.html), [Install with a PostgreSQL database](https://help.sonatype.com/en/install-nexus-repository-with-a-postgresql-database.html), [Docker registry](https://help.sonatype.com/en/docker-registry.html) (path-based routing), [Docker reverse proxy strategies](https://help.sonatype.com/en/docker-repository-reverse-proxy-strategies.html), [EULA REST API](https://help.sonatype.com/en/eula-rest-api.html), [Security Management API](https://help.sonatype.com/en/security-management-api.html), [Repositories API](https://help.sonatype.com/en/repositories-api.html), [Backup and restore](https://help.sonatype.com/en/backup-and-restore.html), [3.87.0 release notes](https://help.sonatype.com/en/sonatype-nexus-repository-3-87-0-release-notes.html) (Community Edition limits)
-> - cert-manager: [CA issuer](https://cert-manager.io/docs/configuration/ca/), [SelfSigned issuer](https://cert-manager.io/docs/configuration/selfsigned/)
-> - Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) (`restricted`), [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
-
 Nexus Repository is a server for packages and container images: a registry. An image is an app
 packed with everything it needs to run; a cluster starts it as containers. This runs Nexus
 Repository Community Edition, with a PostgreSQL database for its data, in a VKS cluster, gives it
@@ -2401,5 +2393,14 @@ address instead of its own load balancer: install Contour as in [HEADLAMP.md ste
 give Nexus an HTTPProxy for its name with `timeoutPolicy` `response: infinity` and `idle: infinity`
 (Contour's default of 15 seconds breaks large pushes and pulls). The nodes of every VKS cluster that
 pulls must then resolve that name.
+
+## References
+
+**Official Broadcom, Sonatype, cert-manager and Kubernetes documentation for this guide**
+
+- Broadcom: [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html) (cert-manager), [Cluster with Additional Trusted CA Certificates](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/v1beta1-example-cluster-with-additional-trusted-ca-certificates-for-ssl-tls.html), [KB 448189](https://knowledge.broadcom.com/external/article/448189/ssltls-server-certificates-specified-in.html) (trust the CA, not the server certificate)
+- Sonatype: [System requirements](https://help.sonatype.com/en/sonatype-nexus-repository-system-requirements.html), [Install with a PostgreSQL database](https://help.sonatype.com/en/install-nexus-repository-with-a-postgresql-database.html), [Docker registry](https://help.sonatype.com/en/docker-registry.html) (path-based routing), [Docker reverse proxy strategies](https://help.sonatype.com/en/docker-repository-reverse-proxy-strategies.html), [EULA REST API](https://help.sonatype.com/en/eula-rest-api.html), [Security Management API](https://help.sonatype.com/en/security-management-api.html), [Repositories API](https://help.sonatype.com/en/repositories-api.html), [Backup and restore](https://help.sonatype.com/en/backup-and-restore.html), [3.87.0 release notes](https://help.sonatype.com/en/sonatype-nexus-repository-3-87-0-release-notes.html) (Community Edition limits)
+- cert-manager: [CA issuer](https://cert-manager.io/docs/configuration/ca/), [SelfSigned issuer](https://cert-manager.io/docs/configuration/selfsigned/)
+- Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) (`restricted`), [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
 
 Back to [README](../README.md).

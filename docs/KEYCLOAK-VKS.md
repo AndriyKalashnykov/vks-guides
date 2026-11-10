@@ -1,13 +1,5 @@
 # Run an OIDC identity provider in a VKS cluster (Keycloak example)
 
-> [!NOTE]
-> **Official Broadcom, Keycloak, cert-manager and Kubernetes documentation for this guide**
->
-> - Broadcom: [Register an External Identity Provider with Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/connecting-to-tkg-service-clusters-using-an-external-identity-provider/register-an-external-idp-with-supervisor.html) (step 11), [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html) (cert-manager)
-> - Keycloak: [Running Keycloak in a container](https://www.keycloak.org/server/containers), [Configuring TLS](https://www.keycloak.org/server/enabletls), [Configuring the hostname](https://www.keycloak.org/server/hostname), [Management interface](https://www.keycloak.org/server/management-interface), [Admin CLI](https://www.keycloak.org/docs/latest/server_admin/index.html#admin-cli), [Sizing CPU and memory](https://www.keycloak.org/high-availability/single-cluster/concepts-memory-and-cpu-sizing)
-> - cert-manager: [CA issuer](https://cert-manager.io/docs/configuration/ca/), [SelfSigned issuer](https://cert-manager.io/docs/configuration/selfsigned/)
-> - Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) (`restricted`)
-
 Keycloak is an open-source OpenID Connect (OIDC) identity provider: it keeps users and groups and
 signs people in. It is the example provider in these guides; with your own OIDC provider, skip this
 guide. Keycloak and PostgreSQL are upstream; Broadcom does not support them.
@@ -1602,7 +1594,8 @@ the names the provider's **VIEW SETTINGS** shows, or else the vCenter API's name
 **Expect:** the Identity Providers page shows a card **keycloak**, and its **VIEW SETTINGS** the
 values above. To check a sign-in, run the
 [ADMIN-GRANT-ACCESS-IDP.md steps](ADMIN-GRANT-ACCESS-IDP.md)
-1 to 5 for one group: the person is `keycloak-sv:<user>`, in `keycloak-sv:<group>`.
+1 to 4 for one group, then [USER-IDP-LOGIN.md step 3](USER-IDP-LOGIN.md#3-sign-in-through-the-supervisor), after its steps 1 and 2:
+the person is `keycloak-sv:<user>`, in `keycloak-sv:<group>`.
 
 **If not:**
 - The sign-in never reaches Keycloak's page, or fails after it: the Supervisor cannot resolve
@@ -1720,5 +1713,14 @@ seconds. Run again, it prints `namespaces "keycloak" not found` first.
 delete the cluster until it is gone. `STILL THERE: (the check failed …)`: kubectl could not read the
 cluster; the error above says why (`Unauthorized`: the file has expired, [get it
 again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)). Then run the block again.
+
+## References
+
+**Official Broadcom, Keycloak, cert-manager and Kubernetes documentation for this guide**
+
+- Broadcom: [Register an External Identity Provider with Supervisor](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/connecting-to-tkg-service-clusters-using-an-external-identity-provider/register-an-external-idp-with-supervisor.html) (step 11), [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html) (cert-manager)
+- Keycloak: [Running Keycloak in a container](https://www.keycloak.org/server/containers), [Configuring TLS](https://www.keycloak.org/server/enabletls), [Configuring the hostname](https://www.keycloak.org/server/hostname), [Management interface](https://www.keycloak.org/server/management-interface), [Admin CLI](https://www.keycloak.org/docs/latest/server_admin/index.html#admin-cli), [Sizing CPU and memory](https://www.keycloak.org/high-availability/single-cluster/concepts-memory-and-cpu-sizing)
+- cert-manager: [CA issuer](https://cert-manager.io/docs/configuration/ca/), [SelfSigned issuer](https://cert-manager.io/docs/configuration/selfsigned/)
+- Kubernetes: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) (`restricted`)
 
 Back to [README](../README.md).

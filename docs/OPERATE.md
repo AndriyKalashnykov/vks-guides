@@ -16,17 +16,6 @@ keep the other's output.
 
 ## Tested on
 
-✅ every block run, "part" some blocks run, — not run.
-
-On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines:
-
-| guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
-|---|---|---|---|---|---|---|
-| [Headlamp](HEADLAMP.md) | part | part | — | — | part | part |
-| [Monitor a VKS cluster](MONITORING.md) | part | part | part | — | part | part |
-| [Send logs to VCF Operations](LOGGING.md) | part | part | part | — | part | — |
-| [Logs and traces in Grafana](OBSERVABILITY.md) | part | ✅ | part | — | part | part |
-
-Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
+Where each guide in this group was run, on which OS and with which versions: [Tested on](TESTED.md#operations-and-observability).
 
 Back to [README](../README.md).

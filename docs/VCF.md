@@ -1,11 +1,5 @@
 # Install the VCF CLI and its plugins
 
-> [!NOTE]
-> **Official Broadcom documentation (VCF 9.1.1) for this guide**
->
-> - [Installing the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/install-the-vcf-cli%283%29.html) (install the downloaded binary)
-> - [Installing the VCF CLI in Internet Restricted Environments](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/installing-the-vcf-cli-in-internet-restricted-environments%282%29.html) (the download and the plugin bundle)
-
 `vcf` is VMware's command-line tool; you use it to [log in to the Supervisor](SUPERVISOR-LOGIN.md) (the
 Kubernetes control plane that vCenter runs when Workload Management is enabled; it holds your
 vSphere Namespaces). The plugin bundle adds its other commands (`vcf cluster`, `vcf addon`, …).
@@ -132,6 +126,7 @@ fi; rm -rf "$TMP"
 <details>
 <summary><b>Windows (PowerShell)</b></summary>
 
+<!-- lab-step: vcf-install-windows -->
 ```powershell
 $VCF_CLI_SHA256 = ""                     # SHA2 of the CLI file from the download page
 $VCF_PLUGINS_SHA256 = ""                 # SHA2 of the plugin bundle from the download page
@@ -265,5 +260,12 @@ first.
 
 Next: [Log in to the Supervisor](SUPERVISOR-LOGIN.md), or, given access to one VKS cluster,
 [USER-LOGIN.md](USER-LOGIN.md).
+
+## References
+
+**Official Broadcom documentation (VCF 9.1.1) for this guide**
+
+- [Installing the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/install-the-vcf-cli%283%29.html) (install the downloaded binary)
+- [Installing the VCF CLI in Internet Restricted Environments](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/installing-the-vcf-cli-in-internet-restricted-environments%282%29.html) (the download and the plugin bundle)
 
 Back to [README](../README.md).

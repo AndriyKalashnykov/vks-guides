@@ -22,17 +22,6 @@ Not sure which way fits your customer? The picture in
 
 ## Tested on
 
-✅ every block run, "part" some blocks run, — not run.
-
-On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines:
-
-| guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
-|---|---|---|---|---|---|---|
-| [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | part | part | part | — | part | part |
-| [Give an identity provider group access to VKS clusters, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) | part | — | — | — | — | — |
-| [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | part | part | part | — | part | part |
-| [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | ✅ | — | part | — | ✅ | — |
-
-Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
+Where each guide in this group was run, on which OS and with which versions: [Tested on](TESTED.md#identity-and-access).
 
 Back to [README](../README.md).

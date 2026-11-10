@@ -15,15 +15,6 @@ docker-on-Linux version.
 
 ## Tested on
 
-✅ every block run, "part" some blocks run, — not run.
-
-On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines:
-
-| guide | Ubuntu (bash, zsh) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
-|---|---|---|---|---|---|---|
-| [Build a container image, push it to a registry and run it in a VKS cluster](IMAGE.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
-| [Build a container image with docker, push it and run it (short version)](IMAGE-DOCKER.md) | ✅ | — | — | — | — | ✅ |
-
-Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
+Where each guide in this group was run, on which OS and with which versions: [Tested on](TESTED.md#container-images).
 
 Back to [README](../README.md).

@@ -1,13 +1,5 @@
 # OIDC sign-in on one VKS cluster, without the Supervisor (Keycloak example)
 
-> [!NOTE]
-> **Official Broadcom, Kubernetes, kubelogin and Keycloak documentation for this guide**
->
-> - Broadcom: [VKS 3.8.0 cluster class variables](https://developer.broadcom.com/xapis/vmware-vsphere-kubernetes-service/3.8.0/variable-docs.html) (`kubernetes.apiServerConfiguration.extraAuthentication`)
-> - Kubernetes: [Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/) (structured authentication configuration), [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) (the `edit` role)
-> - kubelogin: [README](https://github.com/int128/kubelogin), [Usage](https://github.com/int128/kubelogin/blob/master/docs/usage.md)
-> - Keycloak: [Device Authorization Grant](https://www.keycloak.org/docs/latest/server_admin/index.html#device-authorization-grant)
-
 The VKS cluster itself trusts an OpenID Connect (OIDC) identity provider: a sign-in service that
 proves who a person is, here Keycloak. A person logs in to one VKS cluster with their Keycloak user,
 in a browser on any machine, and needs only kubectl and kubelogin (a kubectl plugin that does the
@@ -270,5 +262,14 @@ keycloak-team-a-edit`): access ends at once. Removing a person from the group, o
 Keycloak, stops their next login; a token they already have works until it expires (Keycloak's
 **Access Token Lifespan**, 5 minutes by default). With `edit`, members could make tokens for any ServiceAccount
 in that namespace and start workloads there; those keep working: delete those workloads, re-create every ServiceAccount there that has rights, and restart the workloads that use those ServiceAccounts.
+
+## References
+
+**Official Broadcom, Kubernetes, kubelogin and Keycloak documentation for this guide**
+
+- Broadcom: [VKS 3.8.0 cluster class variables](https://developer.broadcom.com/xapis/vmware-vsphere-kubernetes-service/3.8.0/variable-docs.html) (`kubernetes.apiServerConfiguration.extraAuthentication`)
+- Kubernetes: [Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/) (structured authentication configuration), [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) (the `edit` role)
+- kubelogin: [README](https://github.com/int128/kubelogin), [Usage](https://github.com/int128/kubelogin/blob/master/docs/usage.md)
+- Keycloak: [Device Authorization Grant](https://www.keycloak.org/docs/latest/server_admin/index.html#device-authorization-grant)
 
 Back to [README](../README.md).

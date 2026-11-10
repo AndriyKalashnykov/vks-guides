@@ -229,7 +229,7 @@ error line, the namespace, and when it began.
 
 ## 5. Check that a whole-cluster file can change things (whole-cluster file only)
 
-Only for a file for the whole cluster (an administrator token), once on the machine that received
+Only for a file for the whole cluster (an administrator token, or a ServiceAccount token made with `"*"`), once on the machine that received
 it, before a tool relies on it. It makes the file readable only by you and shows who it acts as. It
 then creates a test namespace `CHECK_NAMESPACE` inside the cluster with a ConfigMap (a small object
 that holds settings) in it, changes the ConfigMap and reads it back, then deletes that namespace

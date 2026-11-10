@@ -1,14 +1,5 @@
 # Run GitLab in a VKS cluster
 
-> [!NOTE]
-> **Official GitLab, Git and Kubernetes documentation for this guide**
->
-> - GitLab 19.5: [Install GitLab in a Docker container](https://docs.gitlab.com/install/docker/installation/) (the image this guide runs), [Configure GitLab running in a Docker container](https://docs.gitlab.com/install/docker/configuration/) (`GITLAB_OMNIBUS_CONFIG`), [Running GitLab in a memory-constrained environment](https://docs.gitlab.com/omnibus/settings/memory_constrained_envs/)
-> - GitLab 19.5: [Reset a user's password](https://docs.gitlab.com/security/reset_user_password/) (`gitlab-rake`), [Sign-up restrictions](https://docs.gitlab.com/administration/settings/sign_up_restrictions/), [Create a project with git push](https://docs.gitlab.com/topics/git/project/), [Project visibility](https://docs.gitlab.com/user/public_access/)
-> - GitLab Runner 19.5: [GitLab Runner Helm chart](https://docs.gitlab.com/runner/install/kubernetes/), [Kubernetes executor](https://docs.gitlab.com/runner/executors/kubernetes/), [Create a project runner with a runner authentication token](https://docs.gitlab.com/ci/runners/runners_scope/#create-a-project-runner-with-a-runner-authentication-token)
-> - Git: [Install](https://git-scm.com/install/), [gitcredentials](https://git-scm.com/docs/gitcredentials) (why the push turns the credential helper off)
-> - Kubernetes: [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/), [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
-
 This runs GitLab Community Edition 19.5.1, a Git server (it stores your teams' code and its
 history) with CI/CD (it builds and tests the code with the jobs a
 project lists), in a VKS cluster: one pod
@@ -1119,5 +1110,15 @@ foreach ($i in 1..36) {
 
 The local repository and the runner chart stay in `~/.config/vks-guides/gitlab`; delete the folder
 if you do not need them.
+
+## References
+
+**Official GitLab, Git and Kubernetes documentation for this guide**
+
+- GitLab 19.5: [Install GitLab in a Docker container](https://docs.gitlab.com/install/docker/installation/) (the image this guide runs), [Configure GitLab running in a Docker container](https://docs.gitlab.com/install/docker/configuration/) (`GITLAB_OMNIBUS_CONFIG`), [Running GitLab in a memory-constrained environment](https://docs.gitlab.com/omnibus/settings/memory_constrained_envs/)
+- GitLab 19.5: [Reset a user's password](https://docs.gitlab.com/security/reset_user_password/) (`gitlab-rake`), [Sign-up restrictions](https://docs.gitlab.com/administration/settings/sign_up_restrictions/), [Create a project with git push](https://docs.gitlab.com/topics/git/project/), [Project visibility](https://docs.gitlab.com/user/public_access/)
+- GitLab Runner 19.5: [GitLab Runner Helm chart](https://docs.gitlab.com/runner/install/kubernetes/), [Kubernetes executor](https://docs.gitlab.com/runner/executors/kubernetes/), [Create a project runner with a runner authentication token](https://docs.gitlab.com/ci/runners/runners_scope/#create-a-project-runner-with-a-runner-authentication-token)
+- Git: [Install](https://git-scm.com/install/), [gitcredentials](https://git-scm.com/docs/gitcredentials) (why the push turns the credential helper off)
+- Kubernetes: [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/), [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
 
 Back to [README](../README.md).

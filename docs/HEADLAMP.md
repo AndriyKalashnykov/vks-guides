@@ -1,14 +1,5 @@
 # Headlamp: a web console for a VKS cluster
 
-> [!NOTE]
-> **Official Broadcom, Headlamp and Kubernetes documentation for this guide**
->
-> - Broadcom: [KB 446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html) (worker VM classes), [VKS Add-ons Release Notes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/release-notes/vks-addons-release-notes.html) (Headlamp version, support tier), [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html), [Configure an Installed Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/configure-an-installed-add-on-using-vcf-cli.html)
-> - Headlamp: [Installation](https://headlamp.dev/docs/latest/installation/) (service account tokens), [In-cluster](https://headlamp.dev/docs/latest/installation/in-cluster/)
-> - Kubernetes: [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) (the `view` and `edit` roles), [kubectl create token](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_create/kubectl_create_token/)
-> - Contour: [TLS Termination](https://projectcontour.io/docs/1.33/config/tls-termination/) (TLS session passthrough)
-> - Kubescape: [Installing in your cluster](https://kubescape.io/docs/install-operator/), [kubescape-operator chart](https://artifacthub.io/packages/helm/kubescape/kubescape-operator)
-
 Headlamp is a web page for looking at and changing what runs in a Kubernetes cluster: workloads,
 their logs, configuration, events, a map of how objects connect. This installs Broadcom's Headlamp
 add-on (a component Broadcom packages for VKS clusters and installs from the Supervisor; Ecosystem
@@ -1972,3 +1963,13 @@ if (-not $KIND) {
 
 The files this guide saved stay in `~/.config/vks-guides/headlamp` (PowerShell:
 `$HOME\.config\vks-guides\headlamp`); delete that folder to remove them.
+
+## References
+
+**Official Broadcom, Headlamp and Kubernetes documentation for this guide**
+
+- Broadcom: [KB 446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html) (worker VM classes), [VKS Add-ons Release Notes](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/release-notes/vks-addons-release-notes.html) (Headlamp version, support tier), [Install an Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/install-an-add-on-using-the-vcf-cli.html), [Configure an Installed Add-on Using the VCF CLI](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/managing-add-ons-in-vks-clusters/configure-an-installed-add-on-using-vcf-cli.html)
+- Headlamp: [Installation](https://headlamp.dev/docs/latest/installation/) (service account tokens), [In-cluster](https://headlamp.dev/docs/latest/installation/in-cluster/)
+- Kubernetes: [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) (the `view` and `edit` roles), [kubectl create token](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_create/kubectl_create_token/)
+- Contour: [TLS Termination](https://projectcontour.io/docs/1.33/config/tls-termination/) (TLS session passthrough)
+- Kubescape: [Installing in your cluster](https://kubescape.io/docs/install-operator/), [kubescape-operator chart](https://artifacthub.io/packages/helm/kubescape/kubescape-operator)

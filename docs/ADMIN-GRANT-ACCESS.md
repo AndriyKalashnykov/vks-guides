@@ -1,38 +1,30 @@
 # Give people and tools access to a VKS cluster
 
-> [!NOTE]
-> **Official Broadcom documentation (VCF 9.1), Kubernetes documentation and vCenter API reference for this guide**
->
-> - [Connect to the VKS Cluster Control Plane as a Kubernetes Administrator](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connect-to-the-tkg-service-cluster-control-plane-as-a-kubernetes-administrator.html) (the administrator kubeconfig)
-> - [Configure vSphere Namespace Permissions for vCenter Single Sign-On Users and Groups](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/configure-vsphere-namespace-persmissions-for-vcenter-sso-users-and-groups.html)
-> - Broadcom KB 423015: [Generate Non-Expiring Token in TKG cluster](https://knowledge.broadcom.com/external/article/423015/generate-nonexpiring-token-in-tkg-cluste.html) (written for Supervisor 8.x; the administrator ServiceAccount token)
-> - Kubernetes: [Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/) (ServiceAccount tokens, client certificates), [Certificates and Certificate Signing Requests](https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/), [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) (the `edit` and `view` roles)
-
 Your internal customers (application developers, testers, DevOps engineers and their pipelines)
 work in a VKS cluster with kubectl, the Kubernetes command-line tool. This guide gives each of them
 their own access, with only the rights they need, so that you never send the cluster's
 administrator kubeconfig and can take each access away on its own.
 
 Words like *vSphere Namespace*, *ServiceAccount* and *RoleBinding* are explained in the
-[Glossary](#glossary).
+[Glossary](GLOSSARY.md).
 
 <a id="which-way-for-which-customer"></a>
 
 **Which way for which customer:**
 
+| your customer | the way | why this way | page to send them |
+|---|---|---|---|
+| a developer, tester or DevOps engineer with a vCenter SSO account | [The person's own SSO account](#the-persons-own-sso-account) | they log in as themselves; you send no secret; you take it away in vCenter and the cluster | [USER-LOGIN.md](USER-LOGIN.md) |
+| people in your organization's identity provider (Keycloak in this guide) with no vCenter account | [A group from an external identity provider, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) (its own guide) | you give rights once, to a group; the identity provider decides who is in it; one file with no secret serves the whole group | [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md): steps 1 and 2, then part A ([step 3](USER-IDP-LOGIN.md#3-sign-in-through-the-supervisor)) |
+| a CI pipeline, a deployment tool, or a team that shares one login, in one namespace (or, with `"*"`, the whole cluster) | [A ServiceAccount token](#a-serviceaccount-token) | no person's account; works unattended for the days you set; deleting it stops every copy | a team: [USER-KUBECONFIG.md](USER-KUBECONFIG.md); a tool: [USER-KUBECONFIG.md, A CI pipeline](USER-KUBECONFIG.md#a-ci-pipeline); with `"*"`, also [step 5](USER-KUBECONFIG.md#5-check-that-a-whole-cluster-file-can-change-things-whole-cluster-file-only) |
+| a tool or a person that needs the whole cluster | [An administrator ServiceAccount token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster) | send it instead of the administrator kubeconfig: this one can be taken away | [USER-KUBECONFIG.md](USER-KUBECONFIG.md), with [step 5](USER-KUBECONFIG.md#5-check-that-a-whole-cluster-file-can-change-things-whole-cluster-file-only) |
+| one person with no SSO or identity provider account, for a limited time | [A personal certificate](#a-personal-certificate) | needs nothing but kubectl; it cannot be withdrawn before it ends, so keep `DAYS` as short as the work allows | [USER-KUBECONFIG.md](USER-KUBECONFIG.md) |
+| people in an identity provider that is not registered on the Supervisor | [An external identity provider on one cluster](KEYCLOAK.md) (its own guide) | a new cluster (VKS 3.8) is created to trust the provider; people need kubectl and kubelogin | [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md): steps 1 and 2, then part B ([step 5](USER-IDP-LOGIN.md#5-sign-in-with-kubelogin)) |
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="img/access/which-way-in-dark.svg">
   <img src="img/access/which-way-in-light.svg" width="1200" alt="A chart for vCenter administrators that picks the way to give someone access to a VKS cluster. Find the row that fits. 1: a tool or a person that must be able to do everything in the cluster gets an administrator token. 2: a pipeline, a tool or a team sharing one login in one namespace gets a ServiceAccount token. 3: a person with a vCenter SSO account uses their own account. 4: people in an identity provider registered on the Supervisor use their group through the Supervisor. 5: people in a provider that is not registered use the provider on one new cluster (a dashed row). 6: one person with no SSO or identity provider account, for a limited time, gets a personal certificate; deleting its binding stops its rights, but the certificate itself cannot be withdrawn. 7: never send the cluster&#x27;s built-in administrator file; send the row 1 token only if they need everything. Each row shows who sets it up, what the person installs, how long it lasts, how it is taken away and what you send. A band at the top warns that Can edit or Owner on the vSphere Namespace makes someone administrator of every VKS cluster in it and lets them download the file you never send, and that logins they made keep working when the role goes; rows 3 and 4 need a role from you, row 5 a new cluster. A strip explains one namespace versus the whole cluster; read-only access is one namespace at a time. Footnotes and a legend explain how each way is taken away.">
 </picture>
-
-| your customer | the way | why this way |
-|---|---|---|
-| a developer, tester or DevOps engineer with a vCenter SSO account | [The person's own SSO account](#the-persons-own-sso-account) | they log in as themselves; you send no secret; you take it away in vCenter and the cluster |
-| people in your organization's identity provider (Keycloak in this guide) with no vCenter account | [A group from an external identity provider, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) (its own guide) | you give rights once, to a group; the identity provider decides who is in it; one file with no secret serves the whole group |
-| a CI pipeline, a deployment tool, or a team that shares one login, in one namespace (or, with `"*"`, the whole cluster) | [A ServiceAccount token](#a-serviceaccount-token) | no person's account; works unattended for the days you set; deleting it stops every copy |
-| a tool or a person that needs the whole cluster | [An administrator ServiceAccount token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster) | send it instead of the administrator kubeconfig: this one can be taken away |
-| one person with no SSO or identity provider account, for a limited time | [A personal certificate](#a-personal-certificate) | needs nothing but kubectl; it cannot be withdrawn before it ends, so keep `DAYS` as short as the work allows |
-| people in an identity provider that is not registered on the Supervisor | [An external identity provider on one cluster](KEYCLOAK.md) (its own guide) | a new cluster (VKS 3.8) is created to trust the provider; people need kubectl and kubelogin |
 
 These ways give access to the cluster through kubectl. Add-ons with a web page have their own
 sign-in: Headlamp takes the person's SSO login or a token
@@ -49,13 +41,13 @@ Who does what:
 |---|---|---|
 | cluster administrator | holds the VKS cluster's administrator kubeconfig ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#vks-cluster)) | gives rights inside the cluster, makes the files and sends them |
 | vCenter administrator | administers vCenter and the Supervisor | gives roles on the vSphere Namespace |
-| the person | gets the access | logs in ([USER-LOGIN.md](USER-LOGIN.md)), or uses the file they were sent ([USER-KUBECONFIG.md](USER-KUBECONFIG.md)) |
+| the person | gets the access | logs in ([USER-LOGIN.md](USER-LOGIN.md)), signs in with an identity provider ([USER-IDP-LOGIN.md](USER-IDP-LOGIN.md)), or uses the file they were sent ([USER-KUBECONFIG.md](USER-KUBECONFIG.md)) |
 | a tool | a CI/CD pipeline, a deployment tool or a script, with no person behind it | uses the token file it was given ([USER-KUBECONFIG.md](USER-KUBECONFIG.md#a-ci-pipeline)); makes no login of its own and never renews; the cluster administrator renews the file before it ends |
 
 **The ways:**
 
 - [Their own SSO account](#the-persons-own-sso-account): [role](#1-give-the-person-a-role-on-the-vsphere-namespace-vcenter-administrator) → [rights](#2-give-the-person-rights-inside-the-cluster-cluster-administrator) → they [log in](#3-log-in-with-the-vcf-cli-the-person) → [take away](#5-take-it-away-cluster-administrator-vcenter-administrator)
-- [A group from an identity provider](ADMIN-GRANT-ACCESS-IDP.md) (its own guide): [provider name](ADMIN-GRANT-ACCESS-IDP.md#1-read-the-provider-name-and-prefix-vcenter-administrator) → [role](ADMIN-GRANT-ACCESS-IDP.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator) → [rights](ADMIN-GRANT-ACCESS-IDP.md#3-give-the-group-rights-inside-the-vks-cluster-cluster-administrator) → [kubeconfig](ADMIN-GRANT-ACCESS-IDP.md#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) → they [log in](ADMIN-GRANT-ACCESS-IDP.md#5-log-in-the-person) → [take away](ADMIN-GRANT-ACCESS-IDP.md#8-take-the-groups-access-away-cluster-administrator-vcenter-administrator)
+- [A group from an identity provider](ADMIN-GRANT-ACCESS-IDP.md) (its own guide): [provider name](ADMIN-GRANT-ACCESS-IDP.md#1-read-the-provider-name-and-prefix-vcenter-administrator) → [role](ADMIN-GRANT-ACCESS-IDP.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator) → [rights](ADMIN-GRANT-ACCESS-IDP.md#3-give-the-group-rights-inside-the-vks-cluster-cluster-administrator) → [kubeconfig](ADMIN-GRANT-ACCESS-IDP.md#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) → they [sign in](USER-IDP-LOGIN.md#1-which-file-you-have) → [take away](ADMIN-GRANT-ACCESS-IDP.md#8-take-the-groups-access-away-cluster-administrator-vcenter-administrator)
 - [A ServiceAccount token](#a-serviceaccount-token): [make](#1-make-the-serviceaccount-token-and-its-file-cluster-administrator) → [hand over](#2-hand-it-over-and-use-it-cluster-administrator-then-the-team-or-tool) → [renew](#3-renew-the-serviceaccount-token-cluster-administrator) → [take away](#4-take-the-serviceaccount-token-away-cluster-administrator)
 - [An administrator token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster): [make](#1-make-the-administrator-token-and-its-file-cluster-administrator) → [hand over](#2-hand-it-over-and-use-it-on-another-machine-cluster-administrator-then-the-tool-or-person) → [renew](#3-renew-the-administrator-token-cluster-administrator) → [take away](#4-take-the-administrator-token-away-cluster-administrator)
 - [A personal certificate](#a-personal-certificate): [make](#1-make-the-certificate-and-its-file-cluster-administrator) → [hand over](#2-hand-it-over-and-use-it-cluster-administrator-then-the-person) → [renew](#3-renew-the-certificate-cluster-administrator) → [take away](#4-take-the-certificate-away-cluster-administrator)
@@ -978,18 +970,15 @@ rolebindings,clusterrolebindings -A -o wide | grep "$NAME"` and delete it. `FAIL
 
 ## Glossary
 
-**The words used here** (more in [KUBECONFIG.md](KUBECONFIG.md#the-words-used-here)):
+The words used here are explained in the [Glossary](GLOSSARY.md).
 
-| word | what it is |
-|---|---|
-| vSphere Namespace | the vCenter object on the Supervisor that holds VKS clusters; you give people roles on it in vCenter (**Can view**, **Can edit**, **Owner**) |
-| namespace | a folder inside one VKS cluster for a team's workloads, made with kubectl; not the vSphere Namespace |
-| kubeconfig | a file that tells kubectl the cluster's address and the login to use; a *context* in it pairs the two (the ServiceAccount and certificate files also name a namespace: `VKS_CLUSTER_NAMESPACE`, or `default` with `"*"`) |
-| ServiceAccount | a login that lives inside the cluster, not an SSO or identity provider user; here for a tool, a team, or a person who needs the whole cluster |
-| token | the key of one login, written into the kubeconfig: whoever holds a copy is that login |
-| `cluster-admin` | the built-in role for everything in the cluster |
-| `edit` | the built-in role to create, change and delete most things in one namespace, its Secrets included; it can act as any ServiceAccount there, but cannot change who has rights |
-| `view` | the built-in role to read most things in one namespace, but not Secrets or who has rights |
-| RoleBinding, ClusterRoleBinding | what gives a user, a group or a ServiceAccount a role: in one namespace, or in the whole cluster |
+## References
+
+**Official Broadcom documentation (VCF 9.1), Kubernetes documentation and vCenter API reference for this guide**
+
+- [Connect to the VKS Cluster Control Plane as a Kubernetes Administrator](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/managing-vsphere-kuberenetes-service-clusters-and-workloads/configuring-identity-and-access-for-tkg-service-clusters/connect-to-the-tkg-service-cluster-control-plane-as-a-kubernetes-administrator.html) (the administrator kubeconfig)
+- [Configure vSphere Namespace Permissions for vCenter Single Sign-On Users and Groups](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/configuring-vsphere-namespaces-for-hosting-tkg-service-clusters/configure-vsphere-namespace-persmissions-for-vcenter-sso-users-and-groups.html)
+- Broadcom KB 423015: [Generate Non-Expiring Token in TKG cluster](https://knowledge.broadcom.com/external/article/423015/generate-nonexpiring-token-in-tkg-cluste.html) (written for Supervisor 8.x; the administrator ServiceAccount token)
+- Kubernetes: [Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/) (ServiceAccount tokens, client certificates), [Certificates and Certificate Signing Requests](https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/), [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) (the `edit` and `view` roles)
 
 Back to [README](../README.md).

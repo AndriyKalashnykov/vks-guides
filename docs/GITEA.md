@@ -1,14 +1,5 @@
 # Run Gitea in a VKS cluster
 
-> [!NOTE]
-> **Official Gitea, Git and Kubernetes documentation for this guide**
->
-> - Gitea 28.2: [Installation with Docker (rootless)](https://docs.gitea.com/installation/install-with-docker-rootless/) (the image this guide runs), [Use environment variables to set up Gitea](https://docs.gitea.com/administration/config-cheat-sheet/#use-environment-variables-to-setup-gitea), [Configuration Cheat Sheet](https://docs.gitea.com/administration/config-cheat-sheet/)
-> - Gitea 28.2: [Gitea Command Line](https://docs.gitea.com/administration/command-line/) (`gitea admin user`), [Push To Create](https://docs.gitea.com/usage/repository/push/)
-> - Gitea: [Helm chart for Gitea](https://gitea.com/gitea/helm-gitea) (step 4, option B)
-> - Git: [Install](https://git-scm.com/install/), [gitcredentials](https://git-scm.com/docs/gitcredentials) (why the push turns the credential helper off)
-> - Kubernetes: [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/), [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
-
 This runs Gitea 28.2.0, a Git server (it stores your teams' code and its history, with a web
 page) in a VKS cluster: one pod (Kubernetes' unit of a running program: one or more containers),
 its data in SQLite on a 5 GiB volume. Gitea is upstream; Broadcom does not support it. You reach
@@ -1235,5 +1226,15 @@ foreach ($i in 1..36) {
 
 The local repository stays in `~/.config/vks-guides/gitea/hello`; delete the folder if you do not
 need it.
+
+## References
+
+**Official Gitea, Git and Kubernetes documentation for this guide**
+
+- Gitea 28.2: [Installation with Docker (rootless)](https://docs.gitea.com/installation/install-with-docker-rootless/) (the image this guide runs), [Use environment variables to set up Gitea](https://docs.gitea.com/administration/config-cheat-sheet/#use-environment-variables-to-setup-gitea), [Configuration Cheat Sheet](https://docs.gitea.com/administration/config-cheat-sheet/)
+- Gitea 28.2: [Gitea Command Line](https://docs.gitea.com/administration/command-line/) (`gitea admin user`), [Push To Create](https://docs.gitea.com/usage/repository/push/)
+- Gitea: [Helm chart for Gitea](https://gitea.com/gitea/helm-gitea) (step 4, option B)
+- Git: [Install](https://git-scm.com/install/), [gitcredentials](https://git-scm.com/docs/gitcredentials) (why the push turns the credential helper off)
+- Kubernetes: [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/), [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
 
 Back to [README](../README.md).

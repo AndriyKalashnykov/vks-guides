@@ -55,11 +55,11 @@ container images and run them from the registry; deploy from Git with ArgoCD and
 Prometheus and Grafana, forward its logs to VCF Operations, and see its logs and traces in Grafana
 (Loki, Jaeger).
 
-**How each guide works.** It opens with the official Broadcom or upstream docs it follows, and what
-you need first: earlier guides, tools, and, where it needs them, the rights and the network
-connections to allow. Steps in the vSphere Client are shown with screenshots. Command-line steps are
-blocks you paste into bash, zsh or Windows PowerShell. After each step, **Expect:** shows what
-success looks like and **If not:** says what to do.
+**How each guide works.** It opens with what it does and what you need first: earlier guides,
+tools, and, where it needs them, the rights and the network connections to allow. Steps in the
+vSphere Client are shown with screenshots. Command-line steps are blocks you paste into bash, zsh or
+Windows PowerShell. After each step, **Expect:** shows what success looks like and **If not:** says
+what to do. Its last chapter, **References**, lists the official Broadcom or upstream docs it follows.
 
 ## How to use
 
@@ -74,7 +74,8 @@ success looks like and **If not:** says what to do.
 
 The guides are in six groups. Start with Getting started, then vSphere Namespaces and VKS clusters;
 the other groups are optional, in any order once you have a VKS cluster. Each group's page lists
-its guides, the order to follow and where each was tested.
+its guides and the order to follow; [Tested on](docs/TESTED.md) says where each guide was run, and the [Glossary](docs/GLOSSARY.md)
+explains the words for logins, kubeconfig files and rights.
 
 | group | what it is for |
 |---|---|
