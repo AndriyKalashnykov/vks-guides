@@ -513,6 +513,9 @@ is refused. A credential the cluster already gave them keeps working until it ex
   their **last** group: then also disable the user or sign them out.
 - Before you enable a user again, sign them out, or their old sign-in can work again.
 
+With `edit`, the person could make tokens for any ServiceAccount in that namespace and start workloads there;
+those keep working: delete them.
+
 ## 8. Take the group's access away (cluster administrator, vCenter administrator)
 
 - Cluster administrator: delete the group's RoleBinding, or with `"*"` its ClusterRoleBinding (step 3), then

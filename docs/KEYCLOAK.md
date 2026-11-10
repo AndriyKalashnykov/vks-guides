@@ -348,6 +348,7 @@ this machine ([PREREQS.md](PREREQS.md#kubelogin-optional)).
 Delete the group's RoleBinding (`kubectl --kubeconfig <admin file> -n team-a delete rolebinding
 keycloak-team-a-edit`): access ends at once. Removing a person from the group, or disabling them in
 Keycloak, stops their next login; a token they already have works until it expires (Keycloak's
-**Access Token Lifespan**, 5 minutes by default).
+**Access Token Lifespan**, 5 minutes by default). With `edit`, members could make tokens for any ServiceAccount
+in that namespace and start workloads there; those keep working: delete them.
 
 Back to [README](../README.md).
