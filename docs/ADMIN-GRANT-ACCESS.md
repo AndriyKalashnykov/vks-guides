@@ -260,8 +260,10 @@ ClusterRoleBinding `<SERVICE_ACCOUNT_NAME>-view` to the built-in `view` role): i
 namespace, pod logs included (they can hold credentials), but not Secrets; nodes only as their names and CPU and memory figures (`kubectl top nodes`). Use `"*"` for a
 whole-cluster login that must end after `DAYS`; for one that never ends, use the administrator
 token. A cluster administrator (`"*"` with `edit`) can make other logins that keep working after
-step 4. An empty `VKS_CLUSTER_NAMESPACE`, a `ROLE` other than `edit` or `view`, or `DAYS` that is
-not a whole number of days, stops the block before it changes anything.
+step 4. The ClusterRoleBinding names leave out `SA_NAMESPACE`: with `"*"`, use a
+`SERVICE_ACCOUNT_NAME` no other `SA_NAMESPACE` uses. An empty `VKS_CLUSTER_NAMESPACE`, a `ROLE` other
+than `edit` or `view`, or `DAYS` that is not a whole number of days, stops the block before it changes
+anything.
 
 Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
 from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
@@ -525,8 +527,8 @@ else
     kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" delete secret --field-selector type=kubernetes.io/service-account-token
     echo "may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" auth can-i list pods --as="system:serviceaccount:${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}")"
   fi
-  if RB="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name')"; then
-    LEFT="$(printf '%s\n' "$RB" | awk -v n="$SERVICE_ACCOUNT_NAME" '{k = split($3, s, ","); for (i = 1; i <= k; i++) if (s[i] == n) print $1 "/" $2}')"
+  if RB="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{" "}{range .subjects[*]}{.kind}/{.namespace}/{.name}{","}{end}{"\n"}{end}')"; then
+    LEFT="$(printf '%s\n' "$RB" | awk -v w="ServiceAccount/${SA_NAMESPACE}/${SERVICE_ACCOUNT_NAME}" '{k = split($3, s, ","); for (i = 1; i <= k; i++) if (s[i] == w) print $1 "/" $2}')"
     if [ -n "$LEFT" ]; then echo "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $LEFT (step 1 used that namespace: run this block again with it, which also deletes the token Secrets there)"; fi
   else
     echo "FAILED: the RoleBindings could not be read (see the error above)"
@@ -563,11 +565,12 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
     "may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE auth can-i list pods "--as=system:serviceaccount:${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME")"
   }
   $global:LASTEXITCODE = $null
-  $RB = kubectl --kubeconfig $ADMIN_KUBECONFIG get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name'
+  $J = kubectl --kubeconfig $ADMIN_KUBECONFIG get rolebindings -A -o json
   if ($LASTEXITCODE -ne 0) {
     'FAILED: the RoleBindings could not be read (see the error above)'
   } else {
-    $LEFT = @($RB | Where-Object { (($_ -split '\s+')[2] -split ',') -contains $SERVICE_ACCOUNT_NAME } | ForEach-Object { $f = $_ -split '\s+'; "$($f[0])/$($f[1])" })
+    $W = "ServiceAccount/$SA_NAMESPACE/$SERVICE_ACCOUNT_NAME"
+    $LEFT = @(@(($J | Out-String | ConvertFrom-Json).items) | Where-Object { @($_.subjects | ForEach-Object { "$($_.kind)/$($_.namespace)/$($_.name)" }) -contains $W } | ForEach-Object { "$($_.metadata.namespace)/$($_.metadata.name)" })
     if ($LEFT.Count) { "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $($LEFT -join ' ') (step 1 used that namespace: run this block again with it, which also deletes the token Secrets there)" }
   }
   "may still list pods in every namespace: $(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i list pods --all-namespaces "--as=system:serviceaccount:${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME")"
@@ -1022,8 +1025,8 @@ else
     kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" delete rolebinding "${NAME}-edit" "${NAME}-view" --ignore-not-found
     echo "${NAME} may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" auth can-i list pods --as="$NAME")"
   fi
-  if RB="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name')"; then
-    LEFT="$(printf '%s\n' "$RB" | awk -v n="$NAME" '{k = split($3, s, ","); for (i = 1; i <= k; i++) if (s[i] == n) print $1 "/" $2}')"
+  if RB="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{" "}{range .subjects[*]}{.kind}/{.namespace}/{.name}{","}{end}{"\n"}{end}')"; then
+    LEFT="$(printf '%s\n' "$RB" | awk -v w="User//${NAME}" '{k = split($3, s, ","); for (i = 1; i <= k; i++) if (s[i] == w) print $1 "/" $2}')"
     if [ -n "$LEFT" ]; then echo "FAILED: ${NAME} still has a RoleBinding: $LEFT (run this block again with that namespace)"; fi
   else
     echo "FAILED: the RoleBindings could not be read (see the error above)"
@@ -1052,11 +1055,12 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
     "$NAME may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE auth can-i list pods "--as=$NAME")"
   }
   $global:LASTEXITCODE = $null
-  $RB = kubectl --kubeconfig $ADMIN_KUBECONFIG get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name'
+  $J = kubectl --kubeconfig $ADMIN_KUBECONFIG get rolebindings -A -o json
   if ($LASTEXITCODE -ne 0) {
     'FAILED: the RoleBindings could not be read (see the error above)'
   } else {
-    $LEFT = @($RB | Where-Object { (($_ -split '\s+')[2] -split ',') -contains $NAME } | ForEach-Object { $f = $_ -split '\s+'; "$($f[0])/$($f[1])" })
+    $W = "User//$NAME"
+    $LEFT = @(@(($J | Out-String | ConvertFrom-Json).items) | Where-Object { @($_.subjects | ForEach-Object { "$($_.kind)/$($_.namespace)/$($_.name)" }) -contains $W } | ForEach-Object { "$($_.metadata.namespace)/$($_.metadata.name)" })
     if ($LEFT.Count) { "FAILED: $NAME still has a RoleBinding: $($LEFT -join ' ') (run this block again with that namespace)" }
   }
   "$NAME may still list pods in every namespace: $(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i list pods --all-namespaces "--as=$NAME")"

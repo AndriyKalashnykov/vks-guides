@@ -231,7 +231,7 @@ what you asked. Step 2 shows which kind of file you have:
 
 | your file (step 2 shows) | `Unauthorized` means | `Forbidden` means |
 |---|---|---|
-| a token, `token ends in: … days` or `… hours` (a whole-cluster file can have an end date too) | the token ended, or your administrator took the access away: ask for a new file | its rights were changed, or you asked outside its namespace (below) |
+| a token, `token ends in: … days` or `… hours`, or `token ends: it has ended` (a whole-cluster file can have an end date too) | the token ended, or your administrator took the access away: ask for a new file | its rights were changed, or you asked outside its namespace (below) |
 | a token, `token ends: no end date …` (an administrator token made to never end) | your administrator took the access away: ask for a new file | — |
 | a certificate, `notAfter=…` | it is past its end date (`notAfter`): ask for a new file | its rights were taken away, or moved to your new certificate: use the new file |
 | a file that signs in with a browser | the cluster does not accept the sign-in: [USER-IDP-LOGIN.md step 7](USER-IDP-LOGIN.md#7-forbidden-or-no-sign-in) (when the sign-in ends, the browser opens again instead) | you are not in the group, or the group has no rights: [USER-IDP-LOGIN.md step 7](USER-IDP-LOGIN.md#7-forbidden-or-no-sign-in) |
