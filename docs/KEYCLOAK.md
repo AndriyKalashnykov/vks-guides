@@ -104,8 +104,8 @@ that namespace if it is missing, and a RoleBinding there: a rule that gives the 
 role (create and change apps in that namespace, not change who has access). Then it prints what a
 member may do there and that they may not list pods in `kube-system`. Set `ADMIN_KUBECONFIG` to your
 administrator kubeconfig of the cluster, `KEYCLOAK_GROUP` to the Keycloak group and
-`VKS_CLUSTER_NAMESPACE` to the team's namespace. Run it again for a second group; for the same group it
-changes nothing. Next: step 3.
+`VKS_CLUSTER_NAMESPACE` to the team's namespace (this way gives one namespace: an empty value or `"*"` stops
+the block). Run it again for a second group; for the same group it changes nothing. Next: step 3.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -117,6 +117,8 @@ VKS_CLUSTER_NAMESPACE="team-a"
 adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
 if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
 elif [ ! -s "$ADMIN_KUBECONFIG" ]; then echo "MISSING: $ADMIN_KUBECONFIG"
+elif [ -z "$VKS_CLUSTER_NAMESPACE" ] || [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
+  echo "STOPPED: VKS_CLUSTER_NAMESPACE must name one namespace here: '$VKS_CLUSTER_NAMESPACE'; nothing was changed"
 else
   adm create namespace "$VKS_CLUSTER_NAMESPACE" --dry-run=client -o yaml | adm apply -f - >/dev/null
   adm -n "$VKS_CLUSTER_NAMESPACE" create rolebinding "keycloak-${KEYCLOAK_GROUP}-edit" --clusterrole=edit \
@@ -136,6 +138,7 @@ $VKS_CLUSTER_NAMESPACE = "team-a"
 function adm { $input | kubectl --kubeconfig $ADMIN_KUBECONFIG @args }
 if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)" }
 elseif (-not (Test-Path $ADMIN_KUBECONFIG)) { "MISSING: $ADMIN_KUBECONFIG" }
+elseif (-not $VKS_CLUSTER_NAMESPACE -or $VKS_CLUSTER_NAMESPACE -eq '*') { "STOPPED: VKS_CLUSTER_NAMESPACE must name one namespace here: '$VKS_CLUSTER_NAMESPACE'; nothing was changed" }
 else {
   adm create namespace $VKS_CLUSTER_NAMESPACE --dry-run=client -o yaml | adm apply -f - | Out-Null
   adm -n $VKS_CLUSTER_NAMESPACE create rolebinding "keycloak-$KEYCLOAK_GROUP-edit" --clusterrole=edit "--group=keycloak:$KEYCLOAK_GROUP" --dry-run=client -o yaml | adm apply -f -
@@ -149,7 +152,8 @@ else {
 `create deployments in team-a: yes` and `list pods in kube-system: no`.
 
 **If not:** `Forbidden` or `Unauthorized`: `ADMIN_KUBECONFIG` is not the cluster's administrator
-file, or it has expired; get it again.
+file, or it has expired; get it again. `STOPPED: VKS_CLUSTER_NAMESPACE must name one namespace`: set it to the
+team's namespace; for the whole cluster use [ADMIN-GRANT-ACCESS-IDP.md](ADMIN-GRANT-ACCESS-IDP.md) or another way.
 
 **Groups only:** bind groups, never `system:authenticated`: every user of the realm is in it.
 

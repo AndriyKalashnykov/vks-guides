@@ -22,9 +22,9 @@ Words like *vSphere Namespace*, *ServiceAccount* and *RoleBinding* are explained
 |---|---|---|
 | a developer, tester or DevOps engineer with a vCenter SSO account | [The person's own SSO account](#the-persons-own-sso-account) | they log in as themselves; you send no secret; you take it away in vCenter and the cluster |
 | people in your organization's identity provider (Keycloak in this guide) with no vCenter account | [A group from an external identity provider, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) (its own guide) | you give rights once, to a group; the identity provider decides who is in it; one file with no secret serves the whole group |
-| a CI pipeline, a deployment tool, or a team that shares one login, in one namespace | [A ServiceAccount token](#a-serviceaccount-token) | no person's account; works unattended for the days you set; deleting it stops every copy |
+| a CI pipeline, a deployment tool, or a team that shares one login, in one namespace (or, with `"*"`, the whole cluster) | [A ServiceAccount token](#a-serviceaccount-token) | no person's account; works unattended for the days you set; deleting it stops every copy |
 | a tool or a person that needs the whole cluster | [An administrator ServiceAccount token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster) | send it instead of the administrator kubeconfig: this one can be taken away |
-| one person with no SSO or identity provider account, for a few days | [A personal certificate](#a-personal-certificate) | needs nothing but kubectl; it cannot be withdrawn before it ends, so keep it short |
+| one person with no SSO or identity provider account, for a limited time | [A personal certificate](#a-personal-certificate) | needs nothing but kubectl; it cannot be withdrawn before it ends, so keep `DAYS` as short as the work allows |
 | people in an identity provider that is not registered on the Supervisor | [An external identity provider on one cluster](KEYCLOAK.md) (its own guide) | a new cluster (VKS 3.8) is created to trust the provider; people need kubectl and kubelogin |
 
 These ways give access to the cluster through kubectl. Add-ons with a web page have their own
@@ -49,7 +49,7 @@ Who does what:
 
 - [Their own SSO account](#the-persons-own-sso-account): [role](#1-give-the-person-a-role-on-the-vsphere-namespace-vcenter-administrator) → [rights](#2-give-the-person-rights-inside-the-cluster-cluster-administrator) → they [log in](#3-log-in-with-the-vcf-cli-the-person) → [take away](#5-take-it-away-cluster-administrator-vcenter-administrator)
 - [A group from an identity provider](ADMIN-GRANT-ACCESS-IDP.md) (its own guide): [provider name](ADMIN-GRANT-ACCESS-IDP.md#1-read-the-provider-name-and-prefix-vcenter-administrator) → [role](ADMIN-GRANT-ACCESS-IDP.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator) → [rights](ADMIN-GRANT-ACCESS-IDP.md#3-give-the-group-rights-inside-the-vks-cluster-cluster-administrator) → [kubeconfig](ADMIN-GRANT-ACCESS-IDP.md#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) → they [log in](ADMIN-GRANT-ACCESS-IDP.md#5-log-in-the-person) → [take away](ADMIN-GRANT-ACCESS-IDP.md#8-take-the-groups-access-away-cluster-administrator-vcenter-administrator)
-- [A ServiceAccount token](#a-serviceaccount-token): [make](#1-make-the-teams-token-and-its-file-cluster-administrator) → [hand over](#2-hand-it-over-and-use-it-cluster-administrator-then-the-team-or-tool) → [renew](#3-renew-the-teams-token-cluster-administrator) → [take away](#4-take-the-teams-token-away-cluster-administrator)
+- [A ServiceAccount token](#a-serviceaccount-token): [make](#1-make-the-serviceaccount-token-and-its-file-cluster-administrator) → [hand over](#2-hand-it-over-and-use-it-cluster-administrator-then-the-team-or-tool) → [renew](#3-renew-the-serviceaccount-token-cluster-administrator) → [take away](#4-take-the-serviceaccount-token-away-cluster-administrator)
 - [An administrator token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster): [make](#1-make-the-administrator-token-and-its-file-cluster-administrator) → [hand over](#2-hand-it-over-and-use-it-on-another-machine-cluster-administrator-then-the-tool-or-person) → [renew](#3-renew-the-administrator-token-cluster-administrator) → [take away](#4-take-the-administrator-token-away-cluster-administrator)
 - [A personal certificate](#a-personal-certificate): [make](#1-make-the-certificate-and-its-file-cluster-administrator) → [hand over](#2-hand-it-over-and-use-it-cluster-administrator-then-the-person) → [renew](#3-renew-the-certificate-cluster-administrator) → [take away](#4-take-the-certificate-away-cluster-administrator)
 
@@ -58,10 +58,10 @@ Compare the ways:
 | way | set up by | they need | lasts | to take it away |
 |---|---|---|---|---|
 | [The person's own SSO account](#the-persons-own-sso-account) | the vCenter administrator, then the cluster administrator | kubectl, and the VCF CLI or the kubectl vSphere plugin | 10 hours per login | delete the person's RoleBinding and their role on the vSphere Namespace |
-| [A group from an external identity provider, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) (its own guide) | the identity provider's, vCenter and cluster administrators | kubectl and the VCF CLI | while the person's sign-in lasts | disable the user in the identity provider, or delete the group's RoleBinding and its role on the vSphere Namespace |
-| [A ServiceAccount token](#a-serviceaccount-token) | the cluster administrator | kubectl | the days you set | delete the ServiceAccount: every copy stops |
+| [A group from an external identity provider, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) (its own guide) | the identity provider's, vCenter and cluster administrators | kubectl and the VCF CLI | while the person's sign-in lasts | disable the user in the identity provider, or delete the group's RoleBinding (with `"*"`: its ClusterRoleBinding) and its role on the vSphere Namespace |
+| [A ServiceAccount token](#a-serviceaccount-token) | the cluster administrator | kubectl | the days you set | delete the ServiceAccount: every copy stops (with `"*"`: also its ClusterRoleBinding; not logins the holder made) |
 | [An administrator ServiceAccount token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster) | the cluster administrator | kubectl | the days you set (365 for a year), or until you take it away | delete its ClusterRoleBinding, token Secret and ServiceAccount: every copy stops (not logins the holder made) |
-| [A personal certificate](#a-personal-certificate) | the cluster administrator | kubectl | the days you set | cannot be withdrawn: delete its RoleBinding and never bind its name again |
+| [A personal certificate](#a-personal-certificate) | the cluster administrator | kubectl | the days you set | cannot be withdrawn: delete its RoleBinding (with `"*"`: ClusterRoleBinding) and never bind its name again |
 | [An external identity provider on one cluster](KEYCLOAK.md) (its own guide) | the identity provider's and cluster administrators | kubectl and kubelogin | while the person's sign-in lasts | delete the group's RoleBinding |
 
 The SSO way hands out no kubeconfig: the person's login writes their own. The group way hands out a file
@@ -192,7 +192,8 @@ Without the VCF CLI, the person logs in with the kubectl vSphere plugin (optiona
 
 ## A ServiceAccount token
 
-Pick this for a CI pipeline, a deployment tool, or a team that shares one login, in one namespace.
+Pick this for a CI pipeline, a deployment tool, or a team that shares one login, in one namespace (or,
+with `"*"`, the whole cluster).
 The file holds a token for a ServiceAccount (a login inside the cluster that belongs to no person):
 whoever has a copy acts in the cluster as that ServiceAccount
 (`system:serviceaccount:kubeconfig-access:cicd-account`), not as a person. Removing or disabling an SSO
@@ -205,9 +206,12 @@ Pick `DAYS` as short as the work allows: 120 by default; the cluster does not sh
 
 <a id="make-it"></a>
 
-### 1. Make the team's token and its file (cluster administrator)
+<a id="1-make-the-teams-token-and-its-file-cluster-administrator"></a>
 
-Do this when a team or a tool needs its own login to one namespace inside the VKS cluster (a folder
+### 1. Make the ServiceAccount token and its file (cluster administrator)
+
+Do this when a team or a tool needs its own login to one namespace inside the VKS cluster (or, with
+`"*"`, the whole cluster: below; a namespace is a folder
 for the team's workloads, not a vSphere Namespace).
 
 It makes, inside the cluster: that namespace if it is not there; a ServiceAccount for the team (a
@@ -372,12 +376,14 @@ Send `SERVICE_ACCOUNT_KUBECONFIG` to the team as a secret: whoever has a copy ac
 readable only by them, and uses it with `--kubeconfig` or `KUBECONFIG`
 ([KUBECONFIG.md](KUBECONFIG.md#2-use-a-file)). It needs only [kubectl](KUBECTL.md) and a way to
 the cluster's API address on port 6443 (the file's `server:` line): no password, SSO account or
-VCF CLI. Its commands act in `VKS_CLUSTER_NAMESPACE` unless they name another namespace. For a pipeline,
+VCF CLI. Its commands act in `VKS_CLUSTER_NAMESPACE` (with `"*"`: in `default`) unless they name another namespace. For a pipeline,
 store the file as one of the pipeline's secrets.
 
 <a id="renew-it"></a>
 
-### 3. Renew the team's token (cluster administrator)
+<a id="3-renew-the-teams-token-cluster-administrator"></a>
+
+### 3. Renew the ServiceAccount token (cluster administrator)
 
 Run the block in step 1 again before the token ends, with the same values, and send the team the new
 file. The old file keeps working until its own end; to stop it sooner, take the access away and make
@@ -385,7 +391,9 @@ a new one.
 
 <a id="take-it-away"></a>
 
-### 4. Take the team's token away (cluster administrator)
+<a id="4-take-the-teams-token-away-cluster-administrator"></a>
+
+### 4. Take the ServiceAccount token away (cluster administrator)
 
 Do this when the team or tool should lose its access, or a copy of the file may have leaked. It
 deletes the team's ServiceAccount and **every ServiceAccount token Secret (a stored token that does
@@ -745,7 +753,7 @@ Start-Sleep 20; kubectl --kubeconfig $SERVICE_ACCOUNT_KUBECONFIG get namespaces
 
 ## A personal certificate
 
-Pick this for one person with no SSO or identity provider account, for a few days. The file holds a
+Pick this for one person with no SSO or identity provider account, for a limited time. The file holds a
 key and a certificate signed by the cluster: whoever has a copy acts as that person, with kubectl
 alone. A certificate cannot be withdrawn before it ends: taking it away removes the rights of its
 name, and that name is never given rights again.
@@ -773,7 +781,7 @@ step 4.
 Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
 from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
 elsewhere), `PERSON` to a short name for the person, `VKS_CLUSTER_NAMESPACE` to their namespace (or
-`"*"` for the whole cluster), and `DAYS` to as few days as they need.
+`"*"` for the whole cluster), and `DAYS` to as few days as they need (120 by default).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -854,7 +862,7 @@ Send `PERSON_KUBECONFIG` to the person as a secret: it holds their key
 ([KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over)). They save it in their `.kube` folder, readable
 only by them, and use it with `--kubeconfig` or `KUBECONFIG`
 ([KUBECONFIG.md](KUBECONFIG.md#2-use-a-file)): they need only [kubectl](KUBECTL.md), no password.
-Its commands act in `VKS_CLUSTER_NAMESPACE` unless they name another namespace.
+Its commands act in `VKS_CLUSTER_NAMESPACE` (with `"*"`: in `default`) unless they name another namespace.
 
 ### 3. Renew the certificate (cluster administrator)
 
@@ -918,7 +926,7 @@ kubectl: `… deleted from team-a namespace`); with `VKS_CLUSTER_NAMESPACE="*"`,
 `alice-20261029223015 may still create deployments in team-a: no` (with `"*"`: `may still do anything
 anywhere: no`).
 
-**If not:** `Error from server (NotFound)`: the RoleBinding is already gone, or `NAME` or
+**If not:** `Error from server (NotFound)`: the RoleBinding (with `"*"`: ClusterRoleBinding) is already gone, or `NAME` or
 `VKS_CLUSTER_NAMESPACE` is not what step 1 printed and used. `may still …: yes`:
 another binding gives that name rights; find it with `kubectl --kubeconfig "$ADMIN_KUBECONFIG" get
 rolebindings,clusterrolebindings -A -o wide | grep "$NAME"` and delete it.
@@ -931,7 +939,7 @@ rolebindings,clusterrolebindings -A -o wide | grep "$NAME"` and delete it.
 |---|---|
 | vSphere Namespace | the vCenter object on the Supervisor that holds VKS clusters; you give people roles on it in vCenter (**Can view**, **Can edit**, **Owner**) |
 | namespace | a folder inside one VKS cluster for a team's workloads, made with kubectl; not the vSphere Namespace |
-| kubeconfig | a file that tells kubectl the cluster's address and the login to use; a *context* in it pairs the two (the team and certificate files also name a namespace) |
+| kubeconfig | a file that tells kubectl the cluster's address and the login to use; a *context* in it pairs the two (the ServiceAccount and certificate files also name a namespace: `VKS_CLUSTER_NAMESPACE`, or `default` with `"*"`) |
 | ServiceAccount | a login that lives inside the cluster, not an SSO or identity provider user; here for a tool, a team, or a person who needs the whole cluster |
 | token | the key of one login, written into the kubeconfig: whoever holds a copy is that login |
 | `cluster-admin` | the built-in role for everything in the cluster |

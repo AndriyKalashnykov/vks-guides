@@ -10,7 +10,7 @@ through the Supervisor, register it there ([its step 11](KEYCLOAK-VKS.md#11-regi
 
 | guide | what it is |
 |---|---|
-| [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | which way for which customer, and how to give a person, team or tool access to a VKS cluster and take it away: their vCenter SSO account, a ServiceAccount token (one namespace or the whole cluster), or a personal certificate |
+| [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | which way for which customer, and how to give a person, team or tool access to a VKS cluster and take it away: their vCenter SSO account, a ServiceAccount token or a personal certificate (each for one namespace or the whole cluster) |
 | [Give an identity provider group access to VKS clusters, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) | a group from the external identity provider signs in to every VKS cluster of the Supervisor with a browser; one kubeconfig with no secret for the whole group |
 | [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | the example provider (Keycloak with PostgreSQL) in its own VKS cluster, with a certificate, a DNS name, a realm for VKS sign-ins, users and groups, and its registration on the Supervisor (step 11) |
 | [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | a VKS cluster created to trust the identity provider directly; people need only kubectl and kubelogin |

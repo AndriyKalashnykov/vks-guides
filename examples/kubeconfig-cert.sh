@@ -12,7 +12,7 @@
 # | what the file holds | a private key (made here, never sent) plus a certificate the cluster signed (via a CSR)                                      |
 # | the cluster sees    | PERSON-<date>                                                                                                                |
 # | rights              | edit in VKS_CLUSTER_NAMESPACE, or cluster-admin with "*" (WARNING)                                                          |
-# | namespaces used     | one: VKS_CLUSTER_NAMESPACE                                                                                                   |
+# | namespaces used     | one: VKS_CLUSTER_NAMESPACE ("*": the whole cluster, context namespace default)                                      |
 # | take it away        | can't be revoked: delete its binding and never bind that name again; the certificate keeps proving the name until it expires |
 # | renew               | run again: a new name and certificate; the old one needs its own take-away                                                   |
 # | meant for           | one person with no SSO or identity-provider account                                                                          |

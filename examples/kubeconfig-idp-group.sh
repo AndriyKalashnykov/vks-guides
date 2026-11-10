@@ -47,7 +47,6 @@ echo
 echo "Next: use the file in this terminal:"
 echo "  export KUBECONFIG=\"$KC_KUBECONFIG\""
 echo "  kubectl auth whoami"
-echo "  kubectl get pods -n team-a"
-echo "  kubectl auth whoami"
+echo "  kubectl -n <the namespace you were sent> auth can-i create deployments"
 echo "Or one command without export:"
 echo "  kubectl --kubeconfig \"$KC_KUBECONFIG\" auth whoami"

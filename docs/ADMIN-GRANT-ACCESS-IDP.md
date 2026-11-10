@@ -406,8 +406,8 @@ renames that file), then `runs: vcf pinniped-auth` and `saved …`.
 - No answer for minutes: the cluster is not ready yet ([CLUSTER.md](CLUSTER.md#6-wait-for-the-cluster)), or your role
   cannot read the cluster's details; ask for **Can edit**.
 
-Send the people the file, the namespace from step 3 and the cluster's address (the file's `server:`
-line), so that they can check the file before they use it.
+Send the people the file, the namespace from step 3 (with `"*"`: tell them they have the whole cluster)
+and the cluster's address (the file's `server:` line), so that they can check the file before they use it.
 
 ## 5. Log in (the person)
 
@@ -440,7 +440,7 @@ needed; it changes nothing on the cluster. You then have a sign-in saved on this
 removes it), and see your name, your groups and your rights.
 
 Set `KC_KUBECONFIG` to where you saved the file and `VKS_CLUSTER_NAMESPACE` to the namespace inside the VKS
-cluster that you were sent.
+cluster that you were sent (if you were given the whole cluster, any namespace, for example `default`).
 
 **Linux, macOS, WSL (bash or zsh):**
 
