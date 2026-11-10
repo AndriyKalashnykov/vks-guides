@@ -322,7 +322,10 @@ if [ -n "$TOKEN" ] && [ -n "$SERVER" ] && [ -n "$CA" ]; then
   P="$(printf '%s' "$TOKEN" | cut -d. -f2 | tr '_-' '/+')"
   while [ $(( ${#P} % 4 )) -ne 0 ]; do P="$P="; done
   EXP="$(printf '%s' "$P" | base64 -d 2>/dev/null | sed -n 's/.*"exp":\([0-9]*\).*/\1/p')"
-  if [ -n "$EXP" ]; then echo "token ends in: $(( (EXP - $(date +%s)) / 86400 )) days"; else echo "token ends in: unknown"; fi
+  S=""; if [ -n "$EXP" ]; then S=$(( EXP - $(date +%s) )); fi
+  if [ -z "$S" ]; then echo "token ends in: unknown"
+  elif [ "$S" -ge 86400 ]; then echo "token ends in: $(( S / 86400 )) days"
+  else echo "token ends in: $(( S / 3600 )) hours"; fi
   echo "acts as: $(kf auth whoami -o jsonpath='{.status.userInfo.username}')"
   if [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
     echo "everything in every namespace: $(kf auth can-i '*' '*' --all-namespaces)"
@@ -396,7 +399,8 @@ if ($TOKEN -and $SERVER -and $CA) {
     "current-context: $SERVICE_ACCOUNT_NAME")
   $P = $TOKEN.Split('.')[1].Replace('-', '+').Replace('_', '/'); while ($P.Length % 4) { $P += '=' }
   $EXP = ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json).exp
-  "token ends in: $([math]::Floor(($EXP - [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) / 86400)) days"
+  $S = $EXP - [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+  if ($S -ge 86400) { "token ends in: $([math]::Floor($S / 86400)) days" } else { "token ends in: $([math]::Floor($S / 3600)) hours" }
   "acts as: $(kf auth whoami -o jsonpath='{.status.userInfo.username}')"
   if ($VKS_CLUSTER_NAMESPACE -eq '*' -and $ROLE -ceq 'edit') {
     "everything in every namespace: $(kf auth can-i '*' '*' --all-namespaces)"
@@ -419,7 +423,7 @@ Remove-Variable TOKEN
 
 </details>
 
-**Expect:** `token ends in: 119 days` or `120 days` (for `DAYS="120"`),
+**Expect:** `token ends in: 119 days` or `120 days` (for `DAYS="120"`; `23 hours` for `DAYS="1"`),
 `acts as: system:serviceaccount:kubeconfig-access:cicd-account`, `create deployments in team-a: yes`
 (`no` with `ROLE="view"`) and `list pods in kube-system: no`. With `VKS_CLUSTER_NAMESPACE="*"`: the
 `WARNING` line first; with `ROLE="edit"`, `everything in every namespace: yes`; with `ROLE="view"`,
@@ -663,7 +667,9 @@ else
     P="$(printf '%s' "$TOKEN" | cut -d. -f2 | tr '_-' '/+')"
     while [ $(( ${#P} % 4 )) -ne 0 ]; do P="$P="; done
     EXP="$(printf '%s' "$P" | base64 -d 2>/dev/null | sed -n 's/.*"exp":\([0-9]*\).*/\1/p')"
-    if [ -n "$EXP" ]; then echo "token ends in: $(( (EXP - $(date +%s)) / 86400 )) days"
+    S=""; if [ -n "$EXP" ]; then S=$(( EXP - $(date +%s) )); fi
+    if [ -n "$S" ] && [ "$S" -ge 86400 ]; then echo "token ends in: $(( S / 86400 )) days"
+    elif [ -n "$S" ]; then echo "token ends in: $(( S / 3600 )) hours"
     elif [ "$DAYS" = "never" ]; then echo "token ends: never (until you take it away)"
     else echo "token ends in: unknown"; fi
     echo "acts as: $(kubectl --kubeconfig "$SERVICE_ACCOUNT_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
@@ -718,7 +724,7 @@ if ($DAYS -ne "never" -and ("$DAYS" -notmatch '^[1-9][0-9]{0,4}$' -or [int]"$DAY
       'contexts:', "- name: $SERVICE_ACCOUNT_NAME", '  context:', "    cluster: $SERVICE_ACCOUNT_NAME", "    user: $SERVICE_ACCOUNT_NAME", "current-context: $SERVICE_ACCOUNT_NAME")
     $P = $TOKEN.Split('.')[1].Replace('-', '+').Replace('_', '/'); while ($P.Length % 4) { $P += '=' }
     $EXP = ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($P)) | ConvertFrom-Json).exp
-    if ($EXP) { "token ends in: $([math]::Floor(($EXP - [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) / 86400)) days" } elseif ($DAYS -eq "never") { "token ends: never (until you take it away)" } else { "token ends in: unknown" }
+    if ($EXP) { $S = $EXP - [DateTimeOffset]::UtcNow.ToUnixTimeSeconds(); if ($S -ge 86400) { "token ends in: $([math]::Floor($S / 86400)) days" } else { "token ends in: $([math]::Floor($S / 3600)) hours" } } elseif ($DAYS -eq "never") { "token ends: never (until you take it away)" } else { "token ends in: unknown" }
     "acts as: $(kubectl --kubeconfig $SERVICE_ACCOUNT_KUBECONFIG auth whoami -o jsonpath='{.status.userInfo.username}')"
     "everything in every namespace: $(kubectl --kubeconfig $SERVICE_ACCOUNT_KUBECONFIG auth can-i '*' '*' --all-namespaces)"
   } else {
@@ -730,7 +736,7 @@ Remove-Variable TOKEN, B
 
 </details>
 
-**Expect:** `token ends in: 364 days` or `365 days` (for `DAYS="365"`; `token ends: never (until you
+**Expect:** `token ends in: 364 days` or `365 days` (for `DAYS="365"`; `23 hours` for `DAYS="1"`; `token ends: never (until you
 take it away)` for `DAYS="never"`), `acts as: system:serviceaccount:kubeconfig-access:cluster-admin-ci`
 and `everything in every namespace: yes`.
 

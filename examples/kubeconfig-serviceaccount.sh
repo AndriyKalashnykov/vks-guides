@@ -75,7 +75,10 @@ if [ -n "$TOKEN" ] && [ -n "$SERVER" ] && [ -n "$CA" ]; then
   P="$(printf '%s' "$TOKEN" | cut -d. -f2 | tr '_-' '/+')"
   while [ $(( ${#P} % 4 )) -ne 0 ]; do P="$P="; done
   EXP="$(printf '%s' "$P" | base64 -d 2>/dev/null | sed -n 's/.*"exp":\([0-9]*\).*/\1/p')"
-  if [ -n "$EXP" ]; then echo "token ends in: $(( (EXP - $(date +%s)) / 86400 )) days"; else echo "token ends in: unknown"; fi
+  S=""; if [ -n "$EXP" ]; then S=$(( EXP - $(date +%s) )); fi
+  if [ -z "$S" ]; then echo "token ends in: unknown"
+  elif [ "$S" -ge 86400 ]; then echo "token ends in: $(( S / 86400 )) days"
+  else echo "token ends in: $(( S / 3600 )) hours"; fi
   echo "acts as: $(kf auth whoami -o jsonpath='{.status.userInfo.username}')"
   if [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
     echo "everything in every namespace: $(kf auth can-i '*' '*' --all-namespaces)"
