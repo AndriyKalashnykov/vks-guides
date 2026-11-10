@@ -1017,7 +1017,9 @@ kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" get nodes
 **If not:** `error: You must be logged in to the server (Unauthorized)`: the VKS cluster's file has
 expired ([how long it works](KUBECONFIG.md#the-files-the-guides-make)); download it again from the
 [vSphere Client](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client), or run
-[Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig) again.
+[Get the VKS cluster's kubeconfig](#get-the-vks-clusters-kubeconfig) again. A file someone sent
+you (a token or a certificate in it) is not downloaded again: [USER-KUBECONFIG.md step
+4](USER-KUBECONFIG.md#4-when-it-stops-working) says what the error means and what to ask for.
 
 ### Match kubectl to the cluster's version (optional)
 
@@ -1060,8 +1062,9 @@ $V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o jso
 ### Access for other people (optional)
 
 To let someone else work in the VKS cluster without its administrator file, give them access
-with [ADMIN-GRANT-ACCESS.md](ADMIN-GRANT-ACCESS.md); they log in with
-[USER-LOGIN.md](USER-LOGIN.md). Which kubeconfig files may be handed over:
+with [ADMIN-GRANT-ACCESS.md](ADMIN-GRANT-ACCESS.md). They follow one of three guides: their own SSO
+account, [USER-LOGIN.md](USER-LOGIN.md); a file you sent them, [USER-KUBECONFIG.md](USER-KUBECONFIG.md);
+an identity provider group, [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md). Which kubeconfig files may be handed over:
 [KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over).
 
 ## References
