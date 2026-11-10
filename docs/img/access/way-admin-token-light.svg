@@ -18,7 +18,7 @@
 <text font-size="14" fill="#FFFFFF" data-bg="#166534" font-weight="700"><tspan x="670.1" y="291.0" data-nl="">2</tspan></text>
 <text font-size="14" fill="#0F172A" data-bg="#E7F4EB" font-weight="700"><tspan x="694.0" y="288.0" data-nl="">Hand it over and use it on another machine</tspan></text>
 <circle cx="704.0" cy="300.4" r="8.0" fill="#334155"/><text font-size="13" fill="#0F172A" data-bg="#E7F4EB"><tspan x="699.0" y="305.0" data-nl="" font-size="13" font-weight="700" fill="#FFFFFF" data-bg="#334155">C</tspan><tspan x="714.0" y="305.0"> sends it as a secret, then the tool or person</tspan></text>
-<text font-size="13" fill="#0F172A" data-bg="#E7F4EB"><tspan x="694.0" y="322.0" data-nl="">Needs only kubectl. A check run once on the receiving machine</tspan><tspan x="694.0" y="339.0" data-nl="">creates, changes and deletes a test namespace</tspan><tspan x="694.0" y="356.0" data-nl="">CHECK_NAMESPACE.</tspan></text>
+<text font-size="13" fill="#0F172A" data-bg="#E7F4EB"><tspan x="694.0" y="322.0" data-nl="">Needs only kubectl. A check run once on the receiving machine</tspan><tspan x="694.0" y="339.0" data-nl="">creates a test namespace CHECK_NAMESPACE, changes a</tspan><tspan x="694.0" y="356.0" data-nl="">ConfigMap in it, and deletes it.</tspan></text>
 <rect x="650" y="374.0" width="510" height="87" rx="9" fill="#EDF0F4"/>
 <rect x="650" y="379.0" width="5" height="77" rx="2.5" fill="#475569"/>
 <circle cx="675" cy="396.0" r="12" fill="#475569"/>

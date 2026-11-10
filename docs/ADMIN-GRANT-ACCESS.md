@@ -219,7 +219,7 @@ Without the VCF CLI, the person logs in with the kubectl vSphere plugin (optiona
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="img/access/way-serviceaccount-dark.svg">
-  <img src="img/access/way-serviceaccount-light.svg" width="1200" alt="A ServiceAccount token: the cluster administrator alone makes a login that belongs to no person, with the ServiceAccount in its own namespace SA_NAMESPACE, where the team has no rights, and its RoleBinding in the team&#x27;s namespace VKS_CLUSTER_NAMESPACE. Taking it away deletes the ServiceAccount and the token Secrets in the team&#x27;s namespace, so every copy of the file stops, but tokens and workloads the team made keep working, and with &quot;*&quot; so do logins made with it as a cluster administrator.">
+  <img src="img/access/way-serviceaccount-light.svg" width="1200" alt="A ServiceAccount token: the cluster administrator alone makes a login that belongs to no person, with the ServiceAccount in its own namespace SA_NAMESPACE, where the team has no rights (with &quot;*&quot; it has), and its RoleBinding in the team&#x27;s namespace VKS_CLUSTER_NAMESPACE. Taking it away deletes the ServiceAccount and, for one namespace, the token Secrets in it, so every copy of the file stops, but tokens and workloads the team made keep working, and with &quot;*&quot; so do logins made with it as a cluster administrator.">
 </picture>
 
 Pick this for a CI pipeline, a deployment tool, or a team that shares one login, in one namespace (or,
@@ -829,7 +829,7 @@ Start-Sleep 20; kubectl --kubeconfig $SERVICE_ACCOUNT_KUBECONFIG get namespaces
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="img/access/way-certificate-dark.svg">
-  <img src="img/access/way-certificate-light.svg" width="1200" alt="A personal certificate: the cluster administrator has the cluster sign a certificate for a new name and gives that name edit in one namespace inside the VKS cluster, for one person with no SSO or identity provider account, for a limited time. Taking it away deletes the name&#x27;s RoleBinding so the name has no rights, but the certificate cannot be withdrawn and keeps proving the name until its end date, so that name is never given rights again.">
+  <img src="img/access/way-certificate-light.svg" width="1200" alt="A personal certificate: the cluster administrator has the cluster sign a certificate for a new name and gives that name edit in one namespace inside the VKS cluster, for one person with no SSO or identity provider account, for a limited time. Taking it away deletes the name&#x27;s RoleBinding (with &quot;*&quot;: its ClusterRoleBinding) so the name has no rights, but the certificate cannot be withdrawn and keeps proving the name until its end date, so that name is never given rights again.">
 </picture>
 
 Pick this for one person with no SSO or identity provider account, for a limited time. The file holds a
