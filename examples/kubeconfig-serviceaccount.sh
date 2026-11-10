@@ -56,7 +56,7 @@ if [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
     --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
   CTX_NS="default"
 elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
-  echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets; nodes only as their names and CPU and memory figures (kubectl top nodes)"
   O="$(adm delete clusterrolebinding "${SERVICE_ACCOUNT_NAME}-cluster-admin" --ignore-not-found)"
   if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${SERVICE_ACCOUNT_NAME}-cluster-admin"; fi
   adm create clusterrolebinding "${SERVICE_ACCOUNT_NAME}-view" --clusterrole=view \

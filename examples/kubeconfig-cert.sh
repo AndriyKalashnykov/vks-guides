@@ -68,7 +68,7 @@ if [ -n "$CERT" ] && [ -n "$SERVER" ] && [ -n "$CA" ] \
     adm create clusterrolebinding "${NAME}-cluster-admin" --clusterrole=cluster-admin --user="$NAME" >/dev/null
     CTX_NS="default"
   elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
-    echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${NAME} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+    echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${NAME} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets; nodes only as their names and CPU and memory figures (kubectl top nodes)"
     adm create clusterrolebinding "${NAME}-view" --clusterrole=view --user="$NAME" >/dev/null
     CTX_NS="default"
   else

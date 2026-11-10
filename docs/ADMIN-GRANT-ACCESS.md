@@ -257,7 +257,7 @@ With `VKS_CLUSTER_NAMESPACE="*"` the login gets the whole cluster instead, and t
 `<SERVICE_ACCOUNT_NAME>-cluster-admin`, the same name the [administrator
 token](#an-administrator-serviceaccount-token-whole-cluster) uses); with `ROLE="view"`, read-only (a
 ClusterRoleBinding `<SERVICE_ACCOUNT_NAME>-view` to the built-in `view` role): it reads every
-namespace, pod logs included (they can hold credentials), but not Secrets or nodes. Use `"*"` for a
+namespace, pod logs included (they can hold credentials), but not Secrets; nodes only as their names and CPU and memory figures (`kubectl top nodes`). Use `"*"` for a
 whole-cluster login that must end after `DAYS`; for one that never ends, use the administrator
 token. A cluster administrator (`"*"` with `edit`) can make other logins that keep working after
 step 4. An empty `VKS_CLUSTER_NAMESPACE`, a `ROLE` other than `edit` or `view`, or `DAYS` that is
@@ -305,7 +305,7 @@ if [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
     --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
   CTX_NS="default"
 elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
-  echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets; nodes only as their names and CPU and memory figures (kubectl top nodes)"
   O="$(adm delete clusterrolebinding "${SERVICE_ACCOUNT_NAME}-cluster-admin" --ignore-not-found)"
   if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${SERVICE_ACCOUNT_NAME}-cluster-admin"; fi
   adm create clusterrolebinding "${SERVICE_ACCOUNT_NAME}-view" --clusterrole=view \
@@ -391,7 +391,7 @@ if ($VKS_CLUSTER_NAMESPACE -eq '*' -and $ROLE -ceq 'edit') {
   adm create clusterrolebinding "$SERVICE_ACCOUNT_NAME-cluster-admin" --clusterrole=cluster-admin "--serviceaccount=${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME" --dry-run=client -o yaml | adm apply -f - | Out-Null
   $CTX_NS = "default"
 } elseif ($VKS_CLUSTER_NAMESPACE -eq '*') {
-  "WARNING: VKS_CLUSTER_NAMESPACE is `"*`": ${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  "WARNING: VKS_CLUSTER_NAMESPACE is `"*`": ${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME gets read access to every namespace, pod logs included (they can hold credentials); not Secrets; nodes only as their names and CPU and memory figures (kubectl top nodes)"
   $O = adm delete clusterrolebinding "$SERVICE_ACCOUNT_NAME-cluster-admin" --ignore-not-found
   if ($O) { "removed ClusterRoleBinding $SERVICE_ACCOUNT_NAME-cluster-admin" }
   adm create clusterrolebinding "$SERVICE_ACCOUNT_NAME-view" --clusterrole=view "--serviceaccount=${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME" --dry-run=client -o yaml | adm apply -f - | Out-Null
@@ -866,7 +866,7 @@ key included, readable only by you. With `VKS_CLUSTER_NAMESPACE="*"` it gives th
 cluster instead and prints a `WARNING`: with `ROLE="edit"`, `cluster-admin` (a ClusterRoleBinding
 `<name>-cluster-admin`), only for a person who must administer the cluster; with `ROLE="view"`,
 read-only (a ClusterRoleBinding `<name>-view` to the built-in `view` role): it reads every namespace,
-pod logs included (they can hold credentials), but not Secrets or nodes. A cluster administrator
+pod logs included (they can hold credentials), but not Secrets; nodes only as their names and CPU and memory figures (`kubectl top nodes`). A cluster administrator
 (`"*"` with `edit`) can make other logins (ServiceAccount tokens, certificates) that keep working after
 step 4, and this certificate cannot be withdrawn before its end date. An empty `VKS_CLUSTER_NAMESPACE`,
 or a `ROLE` other than `edit` or `view`, stops the block before it changes anything.
@@ -931,7 +931,7 @@ if [ -n "$CERT" ] && [ -n "$SERVER" ] && [ -n "$CA" ] \
     adm create clusterrolebinding "${NAME}-cluster-admin" --clusterrole=cluster-admin --user="$NAME" >/dev/null
     CTX_NS="default"
   elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
-    echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${NAME} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+    echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${NAME} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets; nodes only as their names and CPU and memory figures (kubectl top nodes)"
     adm create clusterrolebinding "${NAME}-view" --clusterrole=view --user="$NAME" >/dev/null
     CTX_NS="default"
   else

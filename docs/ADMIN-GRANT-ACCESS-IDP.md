@@ -256,8 +256,7 @@ both kinds.
 With `VKS_CLUSTER_NAMESPACE="*"` it gives the group the whole cluster instead and prints a `WARNING`:
 with `ROLE="edit"`, `cluster-admin` (a ClusterRoleBinding named `<KC_PREFIX>-<KC_GROUP>-cluster-admin`);
 with `ROLE="view"`, read-only (a ClusterRoleBinding `<KC_PREFIX>-<KC_GROUP>-view` to the built-in `view`
-role): every member reads every namespace, pod logs included (they can hold credentials), but not
-Secrets or nodes. This is for a group whose role on the vSphere Namespace is **Can view**: **Can edit** already
+role): every member reads every namespace, pod logs included (they can hold credentials), but not Secrets; nodes only as their names and CPU and memory figures (`kubectl top nodes`). This is for a group whose role on the vSphere Namespace is **Can view**: **Can edit** already
 makes every member an administrator of the clusters. A cluster administrator (`"*"` with `edit`) can
 make other logins that keep working after step 8. An empty `VKS_CLUSTER_NAMESPACE`, or a `ROLE` other
 than `edit` or `view`, stops the block before it changes anything.
@@ -295,7 +294,7 @@ elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
   adm create clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-cluster-admin" --clusterrole=cluster-admin --group="$G"
   echo "group may do everything: $(adm auth can-i '*' '*' --all-namespaces --as=group-check --as-group="$G")"
 elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
-  echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": group ${G} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": group ${G} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets; nodes only as their names and CPU and memory figures (kubectl top nodes)"
   O="$(adm delete clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-cluster-admin" --ignore-not-found)"
   if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${KC_PREFIX}-${KC_GROUP}-cluster-admin"; fi
   adm create clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-view" --clusterrole=view --group="$G"
@@ -340,7 +339,7 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
   adm create clusterrolebinding "$KC_PREFIX-$KC_GROUP-cluster-admin" --clusterrole=cluster-admin "--group=$G"
   "group may do everything: $(adm auth can-i '*' '*' --all-namespaces --as=group-check "--as-group=$G")"
 } elseif ($VKS_CLUSTER_NAMESPACE -eq '*') {
-  "WARNING: VKS_CLUSTER_NAMESPACE is `"*`": group $G gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  "WARNING: VKS_CLUSTER_NAMESPACE is `"*`": group $G gets read access to every namespace, pod logs included (they can hold credentials); not Secrets; nodes only as their names and CPU and memory figures (kubectl top nodes)"
   $O = adm delete clusterrolebinding "$KC_PREFIX-$KC_GROUP-cluster-admin" --ignore-not-found
   if ($O) { "removed ClusterRoleBinding $KC_PREFIX-$KC_GROUP-cluster-admin" }
   adm create clusterrolebinding "$KC_PREFIX-$KC_GROUP-view" --clusterrole=view "--group=$G"

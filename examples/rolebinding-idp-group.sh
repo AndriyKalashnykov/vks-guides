@@ -46,7 +46,7 @@ elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
   adm create clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-cluster-admin" --clusterrole=cluster-admin --group="$G"
   echo "group may do everything: $(adm auth can-i '*' '*' --all-namespaces --as=group-check --as-group="$G")"
 elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
-  echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": group ${G} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets, not nodes"
+  echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": group ${G} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets; nodes only as their names and CPU and memory figures (kubectl top nodes)"
   O="$(adm delete clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-cluster-admin" --ignore-not-found)"
   if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${KC_PREFIX}-${KC_GROUP}-cluster-admin"; fi
   adm create clusterrolebinding "${KC_PREFIX}-${KC_GROUP}-view" --clusterrole=view --group="$G"
