@@ -15,7 +15,7 @@
 # | namespaces used     | VSPHERE_NAMESPACE (where the cluster is)                                                                         |
 # | take it away        | delete the person's RoleBinding and their role on the vSphere Namespace                                          |
 # | keeps working       | with edit: ServiceAccount tokens and workloads the person made (delete the workloads, re-create ServiceAccounts  |
-# |                     | with rights); with Can edit or Owner: also logins they made                                                      |
+# |                     | with rights, restart what uses them); with Can edit or Owner: also logins they made                              |
 # | renew               | run again (password)                                                                                             |
 # | meant for           | a person with a vCenter SSO account                                                                              |
 # | needs on this host  | the person's SSO password                                                                                        |

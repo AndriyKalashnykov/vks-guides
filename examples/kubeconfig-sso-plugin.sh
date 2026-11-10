@@ -15,8 +15,8 @@
 # | namespaces used     | VSPHERE_NAMESPACE                                                       |
 # | take it away        | delete the person's RoleBinding and their role on the vSphere Namespace |
 # | keeps working       | with edit: ServiceAccount tokens and workloads the person made (delete  |
-# |                     | the workloads, re-create ServiceAccounts with rights); with Can edit or |
-# |                     | Owner: also logins they made                                            |
+# |                     | the workloads, re-create ServiceAccounts with rights, restart what uses |
+# |                     | them); with Can edit or Owner: also logins they made                    |
 # | renew               | run again (password)                                                    |
 # | meant for           | a person without the VCF CLI                                            |
 # | needs on this host  | the person's SSO password                                               |

@@ -16,7 +16,8 @@
 # | namespaces used     | VSPHERE_NAMESPACE (export), VKS_CLUSTER_NAMESPACE (rights)                               |
 # | take it away        | disable the person in the identity provider, or delete the group's binding               |
 # | keeps working       | with edit: ServiceAccount tokens and workloads members made (delete the workloads,       |
-# |                     | re-create ServiceAccounts with rights); with "*" or Can edit: also logins they made      |
+# |                     | re-create ServiceAccounts with rights, restart what uses them); with "*" or Can edit:    |
+# |                     | also logins they made                                                                    |
 # | renew               | nothing: each person signs in again                                                      |
 # | meant for           | people in your identity provider with no vCenter account                                 |
 # | needs on this host  | admin kubeconfig (rights); a Supervisor with an identity provider registered (file)      |

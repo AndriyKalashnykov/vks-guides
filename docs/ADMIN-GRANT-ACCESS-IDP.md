@@ -514,7 +514,7 @@ is refused. A credential the cluster already gave them keeps working until it ex
 - Before you enable a user again, sign them out, or their old sign-in can work again.
 
 With `edit`, the person could make tokens for any ServiceAccount in that namespace and start workloads there;
-those keep working: delete those workloads and re-create every ServiceAccount there that has rights.
+those keep working: delete those workloads, re-create every ServiceAccount there that has rights, and restart the workloads that use those ServiceAccounts.
 
 ## 8. Take the group's access away (cluster administrator, vCenter administrator)
 
@@ -526,6 +526,6 @@ those keep working: delete those workloads and re-create every ServiceAccount th
   is what made it an administrator of the clusters. Logins members made as an administrator keep working.
 
 With `edit`, members could make tokens for any ServiceAccount in that namespace and start workloads there;
-those keep working: delete those workloads and re-create every ServiceAccount there that has rights.
+those keep working: delete those workloads, re-create every ServiceAccount there that has rights, and restart the workloads that use those ServiceAccounts.
 
 Back to [README](../README.md).
