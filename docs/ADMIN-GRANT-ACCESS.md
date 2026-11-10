@@ -120,8 +120,8 @@ and delete most things in it. The person can then deploy in that namespace: send
 Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
 from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig); change it if you saved that file
 elsewhere), `VKS_CLUSTER_NAMESPACE` to the team's namespace (one namespace: an empty value or `"*"` stops
-the block; for the whole cluster, the person's role **Can edit** on the vSphere Namespace already gives
-it), and `SSO_USER` to the person's SSO user
+the block; a person gets the whole cluster only from **Can edit** on the vSphere Namespace, which makes
+them administrator of every VKS cluster in it, so step 1 does not give it), and `SSO_USER` to the person's SSO user
 name exactly as vCenter lists it, letter case included: logins ignore letter case, the cluster does
 not (vCenter's own `administrator@vsphere.local` is `sso:Administrator@vsphere.local` there), and
 a name in other letter case gets no rights.
@@ -165,7 +165,8 @@ if (-not $VKS_CLUSTER_NAMESPACE -or $VKS_CLUSTER_NAMESPACE -eq '*') {
 **Expect:** `rolebinding.rbac.authorization.k8s.io/sso-alice-vsphere.local-edit created`. The
 person's check in [USER-LOGIN.md step 3](USER-LOGIN.md#3-use-the-login) then answers `yes`.
 
-**If not:** `already exists`: a binding of that name is there, perhaps for the name in other letter
+**If not:** `STOPPED: …`: set `VKS_CLUSTER_NAMESPACE` to one namespace and run the block again.
+`already exists`: a binding of that name is there, perhaps for the name in other letter
 case. `kubectl --kubeconfig <admin file> -n team-a get rolebinding <name> -o
 jsonpath='{.subjects[0].name}'` must print `sso:` and `SSO_USER` letter for letter; if not, delete that
 binding and run this again.
@@ -239,8 +240,9 @@ keeps the old one: delete `<SERVICE_ACCOUNT_NAME>-<old role>` first.
 With `VKS_CLUSTER_NAMESPACE="*"` the login gets `cluster-admin` on the whole cluster instead (a
 ClusterRoleBinding named `<SERVICE_ACCOUNT_NAME>-cluster-admin`, the same name the [administrator
 token](#an-administrator-serviceaccount-token-whole-cluster) uses) and the block prints a `WARNING`;
-`ROLE` is then not used. A cluster administrator can make other logins that keep working after step 4,
-so for a lasting whole-cluster login use the administrator token. An empty `VKS_CLUSTER_NAMESPACE`, or
+`ROLE` is then not used. Use `"*"` for a whole-cluster login that must end after `DAYS`; for one
+that never ends, use the administrator token. A cluster administrator can make other logins that keep
+working after step 4. An empty `VKS_CLUSTER_NAMESPACE`, or
 `DAYS` that is not a whole number of days, stops the block before it changes anything.
 
 Set `VKS_CLUSTER` to the cluster's name (`ADMIN_KUBECONFIG` is then its administrator kubeconfig
@@ -379,7 +381,7 @@ Remove-Variable TOKEN
 - `STOPPED: …`: set `VKS_CLUSTER_NAMESPACE` (a namespace, or `"*"`) or `DAYS` (a whole number of days,
   1 to 36500, with no leading 0) and run the block again.
 - `list pods in kube-system: yes` with a namespace: an earlier `"*"` run left the login's ClusterRoleBinding;
-  step 4 removes it.
+  remove only it with `kubectl --kubeconfig "$ADMIN_KUBECONFIG" delete clusterrolebinding <SERVICE_ACCOUNT_NAME>-cluster-admin`.
 
 ### 2. Hand it over and use it (cluster administrator, then the team or tool)
 
@@ -414,12 +416,14 @@ made lasting ones). Every copy of the file then answers `Unauthorized` within ab
 making a ServiceAccount of the same name again does not bring the copies back. The team's
 RoleBinding and namespace stay; delete the namespace when the team's work in it is no longer needed.
 It also deletes the login's cluster-admin ClusterRoleBinding if an earlier `"*"` run made one (with
-`"*"`, the token Secrets are not swept), then asks the cluster whether that login may still do
-everything; logins a cluster administrator made with it keep working. An empty `VKS_CLUSTER_NAMESPACE` stops the block before it deletes anything. Set
+`"*"`, the token Secrets are not swept, and it says `FAILED` if a RoleBinding still names the login), then
+asks the cluster whether that login may still do everything and checks that the ServiceAccount is gone;
+logins a cluster administrator made with it keep working. An empty `VKS_CLUSTER_NAMESPACE` stops the block before it deletes anything. Set
 `SERVICE_ACCOUNT_NAME`, `VKS_CLUSTER_NAMESPACE`, `SA_NAMESPACE`, `VKS_CLUSTER` and `ADMIN_KUBECONFIG` to what step 1
 used.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -435,12 +439,25 @@ else
   kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$SA_NAMESPACE" delete serviceaccount "$SERVICE_ACCOUNT_NAME"
   if [ "$VKS_CLUSTER_NAMESPACE" != "*" ]; then
     kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" delete secret --field-selector type=kubernetes.io/service-account-token
+  elif RB="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name')"; then
+    LEFT="$(printf '%s\n' "$RB" | awk -v n="$SERVICE_ACCOUNT_NAME" '{k = split($3, s, ","); for (i = 1; i <= k; i++) if (s[i] == n) print $1 "/" $2}')"
+    if [ -n "$LEFT" ]; then echo "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $LEFT (step 1 used that namespace: run this block again with it, which also deletes the token Secrets there)"; fi
+  else
+    echo "FAILED: the RoleBindings could not be read (see the error above)"
   fi
   echo "may still do everything: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" auth can-i '*' '*' --all-namespaces --as="system:serviceaccount:${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}")"
+  O="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$SA_NAMESPACE" get serviceaccount "$SERVICE_ACCOUNT_NAME" -o name 2>&1)"
+  case "$O" in
+    *NotFound*) echo "ServiceAccount gone: every copy of the file answers Unauthorized within about 15 seconds" ;;
+    *) echo "FAILED: the ServiceAccount is still there, or could not be read: $O" ;;
+  esac
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
@@ -456,19 +473,40 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
   kubectl --kubeconfig $ADMIN_KUBECONFIG -n $SA_NAMESPACE delete serviceaccount $SERVICE_ACCOUNT_NAME
   if ($VKS_CLUSTER_NAMESPACE -ne '*') {
     kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE delete secret --field-selector type=kubernetes.io/service-account-token
+  } else {
+    $global:LASTEXITCODE = $null
+    $RB = kubectl --kubeconfig $ADMIN_KUBECONFIG get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name'
+    if ($LASTEXITCODE -ne 0) {
+      'FAILED: the RoleBindings could not be read (see the error above)'
+    } else {
+      $LEFT = @($RB | Where-Object { (($_ -split '\s+')[2] -split ',') -contains $SERVICE_ACCOUNT_NAME } | ForEach-Object { $f = $_ -split '\s+'; "$($f[0])/$($f[1])" })
+      if ($LEFT.Count) { "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $($LEFT -join ' ') (step 1 used that namespace: run this block again with it, which also deletes the token Secrets there)" }
+    }
   }
   "may still do everything: $(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i '*' '*' --all-namespaces "--as=system:serviceaccount:${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME")"
+  $O = (kubectl --kubeconfig $ADMIN_KUBECONFIG -n $SA_NAMESPACE get serviceaccount $SERVICE_ACCOUNT_NAME -o name 2>&1) -join ' '
+  if ($O -match 'NotFound') {
+    'ServiceAccount gone: every copy of the file answers Unauthorized within about 15 seconds'
+  } else {
+    "FAILED: the ServiceAccount is still there, or could not be read: $O"
+  }
 }
 ```
+
+</details>
 
 **Expect:** `serviceaccount "cicd-account" deleted from kubeconfig-access namespace` (older kubectl:
 `serviceaccount "cicd-account" deleted`), then a `deleted` line for each token Secret in `team-a`, or
 `No resources found`. With `VKS_CLUSTER_NAMESPACE="*"`: `clusterrolebinding.rbac.authorization.k8s.io
-"cicd-account-cluster-admin" deleted`, the ServiceAccount line, and in both cases `may still do everything: no`.
+"cicd-account-cluster-admin" deleted`, the ServiceAccount line; in both cases `may still do everything: no`
+and `ServiceAccount gone: …`.
 
 **If not:**
 - `Error from server (NotFound)`: the ServiceAccount is already gone, or `SERVICE_ACCOUNT_NAME` or `SA_NAMESPACE`
   is not what step 1 used.
+- `FAILED: the ServiceAccount is still there …`: read the error in that line (`Forbidden`: `ADMIN_KUBECONFIG` is
+  not the cluster's administrator file) and run the block again.
+- `FAILED: a RoleBinding still names …` (with `"*"`): step 1 used that namespace; run the block again with it.
 - `may still do everything: yes`: another binding gives that login rights; find it with
   `kubectl --kubeconfig "$ADMIN_KUBECONFIG" get clusterrolebindings -o wide | grep "$SERVICE_ACCOUNT_NAME"` and delete it.
 
@@ -889,12 +927,14 @@ new file, and take the old name's rights away (step 4).
 Do this when the person should lose access, or has a new certificate from step 3. It deletes the
 RoleBinding of the name from step 1 (with `VKS_CLUSTER_NAMESPACE="*"`, its cluster-admin
 ClusterRoleBinding; also a cluster-admin one left by an earlier `"*"` run), then asks the cluster
-whether that name may still deploy (with `"*"`: do everything); nothing else changes. The
+whether that name may still deploy (with `"*"`: do everything, and it says `FAILED` if a RoleBinding still
+names it); nothing else changes. The
 name then has no rights, but the certificate keeps proving the name until its end date (`notAfter`),
 so never give that name rights again. Logins a cluster administrator made with it keep working. Set `NAME` to the name from step 1's `subject=` line, and
 `VKS_CLUSTER`, `ADMIN_KUBECONFIG` and `VKS_CLUSTER_NAMESPACE` to what step 1 used.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
@@ -908,6 +948,12 @@ else
   if [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
     kubectl --kubeconfig "$ADMIN_KUBECONFIG" delete clusterrolebinding "${NAME}-cluster-admin"
     echo "${NAME} may still do everything: $(kubectl --kubeconfig "$ADMIN_KUBECONFIG" auth can-i '*' '*' --all-namespaces --as="$NAME")"
+    if RB="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name')"; then
+      LEFT="$(printf '%s\n' "$RB" | awk -v n="$NAME" '{k = split($3, s, ","); for (i = 1; i <= k; i++) if (s[i] == n) print $1 "/" $2}')"
+      if [ -n "$LEFT" ]; then echo "FAILED: ${NAME} still has a RoleBinding: $LEFT (run this block again with that namespace)"; fi
+    else
+      echo "FAILED: the RoleBindings could not be read (see the error above)"
+    fi
   else
     kubectl --kubeconfig "$ADMIN_KUBECONFIG" delete clusterrolebinding "${NAME}-cluster-admin" --ignore-not-found
     kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$VKS_CLUSTER_NAMESPACE" delete rolebinding "${NAME}-edit"
@@ -916,7 +962,10 @@ else
 fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
@@ -929,14 +978,24 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
 } else {
   if ($VKS_CLUSTER_NAMESPACE -eq '*') {
     kubectl --kubeconfig $ADMIN_KUBECONFIG delete clusterrolebinding "$NAME-cluster-admin"
-    "$NAME may still do everything: $(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i '*' '*' --all-namespaces --as=$NAME)"
+    "$NAME may still do everything: $(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i '*' '*' --all-namespaces "--as=$NAME")"
+    $global:LASTEXITCODE = $null
+    $RB = kubectl --kubeconfig $ADMIN_KUBECONFIG get rolebindings -A --no-headers -o 'custom-columns=NS:.metadata.namespace,N:.metadata.name,S:.subjects[*].name'
+    if ($LASTEXITCODE -ne 0) {
+      'FAILED: the RoleBindings could not be read (see the error above)'
+    } else {
+      $LEFT = @($RB | Where-Object { (($_ -split '\s+')[2] -split ',') -contains $NAME } | ForEach-Object { $f = $_ -split '\s+'; "$($f[0])/$($f[1])" })
+      if ($LEFT.Count) { "FAILED: $NAME still has a RoleBinding: $($LEFT -join ' ') (run this block again with that namespace)" }
+    }
   } else {
     kubectl --kubeconfig $ADMIN_KUBECONFIG delete clusterrolebinding "$NAME-cluster-admin" --ignore-not-found
     kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE delete rolebinding "$NAME-edit"
-    "$NAME may still create deployments in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE auth can-i create deployments --as=$NAME)"
+    "$NAME may still create deployments in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $ADMIN_KUBECONFIG -n $VKS_CLUSTER_NAMESPACE auth can-i create deployments "--as=$NAME")"
   }
 }
 ```
+
+</details>
 
 **Expect:** `rolebinding.rbac.authorization.k8s.io "alice-20261029223015-edit" deleted` (newer
 kubectl: `… deleted from team-a namespace`); with `VKS_CLUSTER_NAMESPACE="*"`,
@@ -946,7 +1005,8 @@ kubectl: `… deleted from team-a namespace`); with `VKS_CLUSTER_NAMESPACE="*"`,
 **If not:** `Error from server (NotFound)`: the RoleBinding (with `"*"`: ClusterRoleBinding) is already gone, or `NAME` or
 `VKS_CLUSTER_NAMESPACE` is not what step 1 printed and used. `may still …: yes`:
 another binding gives that name rights; find it with `kubectl --kubeconfig "$ADMIN_KUBECONFIG" get
-rolebindings,clusterrolebindings -A -o wide | grep "$NAME"` and delete it.
+rolebindings,clusterrolebindings -A -o wide | grep "$NAME"` and delete it. `FAILED: … still has a RoleBinding: team-a/…`
+(with `"*"`): step 1 used that namespace; run the block again with it.
 
 ## Glossary
 
