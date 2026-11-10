@@ -147,10 +147,7 @@ $VKS_CLUSTER = "my-octopus-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $global:LASTEXITCODE = $null; $MISS = $false
-if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
-elseif (-not (Get-Command helm -ErrorAction SilentlyContinue)) { "MISSING: helm (HELM.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
-elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
-else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
+if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $MISS = $true; $global:LASTEXITCODE = 1 } elseif (-not (Get-Command helm -ErrorAction SilentlyContinue)) { "MISSING: helm (HELM.md)"; $MISS = $true; $global:LASTEXITCODE = 1 } elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 } else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
 if ($LASTEXITCODE -eq 0) { $N = @(kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu') }
 if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A '--field-selector=status.phase!=Succeeded,status.phase!=Failed' --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu') }
 if ($LASTEXITCODE -eq 0) { $J = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
@@ -300,13 +297,10 @@ function mk($name, $key, $value) {
 function rnd($n) { $B = New-Object byte[] $n; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($B); $B }
 function pw { 'A' + ((rnd 16 | ForEach-Object { $_.ToString('x2') }) -join '') + 'z' }
 $global:LASTEXITCODE = $null
-if (-not $OCTOPUS_ADMIN_PASSWORD -or $OCTOPUS_ADMIN_PASSWORD.Length -eq 0) { "STOPPED: type the admin password first (the line above)" }
-elseif (-not (Test-Path $OCTOPUS_LICENSE_FILE) -or -not (Select-String -Quiet -SimpleMatch '<License' $OCTOPUS_LICENSE_FILE)) { "FAILED: $OCTOPUS_LICENSE_FILE is not an Octopus licence (it starts with <License)" }
-else {
+if (-not $OCTOPUS_ADMIN_PASSWORD -or $OCTOPUS_ADMIN_PASSWORD.Length -eq 0) { "STOPPED: type the admin password first (the line above)" } elseif (-not (Test-Path $OCTOPUS_LICENSE_FILE) -or -not (Select-String -Quiet -SimpleMatch '<License' $OCTOPUS_LICENSE_FILE)) { "FAILED: $OCTOPUS_LICENSE_FILE is not an Octopus licence (it starts with <License)" } else {
   kubectl --kubeconfig $VKS_KUBECONFIG create namespace octopus --dry-run=client -o yaml | kubectl --kubeconfig $VKS_KUBECONFIG apply -f - | Out-Null
   kubectl --kubeconfig $VKS_KUBECONFIG label namespace octopus --overwrite pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
-  if ($LASTEXITCODE -ne 0) { "FAILED: no namespace octopus (see the error above)" }
-  else {
+  if ($LASTEXITCODE -ne 0) { "FAILED: no namespace octopus (see the error above)" } else {
     mk sql-sa password (pw)
     mk sql-octopus password (pw)
     mk octopus-masterkey secret ([Convert]::ToBase64String((rnd 16)))
@@ -560,8 +554,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n octopus get service octopus-web -o 'jsonpath={.status.loadBalancer.ingress[0].ip}'
-if (-not $IP) { "FAILED: the Service octopus-web has no address (step 4)" }
-else {
+if (-not $IP) { "FAILED: the Service octopus-web has no address (step 4)" } else {
 @"
 apiVersion: cert-manager.io/v1
 kind: Issuer
@@ -866,9 +859,7 @@ if ($LASTEXITCODE -eq 0) {
   }
 }
 $B = kc get secret sql-octopus -o 'jsonpath={.data.password}'
-if (-not $V) { "FAILED: SQL Server does not accept logins (see kubectl --kubeconfig '$VKS_KUBECONFIG' -n octopus describe pod sql-0 and its logs)" }
-elseif (-not $B) { "FAILED: no secret sql-octopus (step 3)" }
-else {
+if (-not $V) { "FAILED: SQL Server does not accept logins (see kubectl --kubeconfig '$VKS_KUBECONFIG' -n octopus describe pod sql-0 and its logs)" } elseif (-not $B) { "FAILED: no secret sql-octopus (step 3)" } else {
   "SQL Server: $V"
   $P = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B))
   "SET NOCOUNT ON;`nIF DB_ID('OctopusDeploy') IS NULL CREATE DATABASE OctopusDeploy;`nIF SUSER_ID('octopus') IS NULL CREATE LOGIN octopus WITH PASSWORD = '$P';`nALTER AUTHORIZATION ON DATABASE::OctopusDeploy TO octopus;`nSELECT 'database owner: ' + SUSER_SNAME(owner_sid) FROM sys.databases WHERE name = 'OctopusDeploy';`nGO`n" | sq
@@ -1182,9 +1173,7 @@ if ($LASTEXITCODE -eq 0) {
   if ($LASTEXITCODE -eq 0) { $R = 'true' }
 }
 if ($R -eq 'true') { $M = helm get manifest octopus --kubeconfig $VKS_KUBECONFIG -n octopus; if ($LASTEXITCODE -ne 0) { $R = 'manifest' } }
-if ($R -eq 'manifest') { "FAILED: cannot read the Helm release (see the error above)" }
-elseif ($R -ne 'true') { "FAILED: Octopus is not ready (see kubectl --kubeconfig '$VKS_KUBECONFIG' -n octopus describe pod octopus-octopus-deploy-0)" }
-else {
+if ($R -eq 'manifest') { "FAILED: cannot read the Helm release (see the error above)" } elseif ($R -ne 'true') { "FAILED: Octopus is not ready (see kubectl --kubeconfig '$VKS_KUBECONFIG' -n octopus describe pod octopus-octopus-deploy-0)" } else {
   "Octopus is ready; Secrets in the Helm release: $(@($M | Select-String '^kind: Secret').Count) of $(@($M | Select-String '^kind: ').Count) objects"
   $C = @'
 apiVersion: v1
@@ -1364,8 +1353,7 @@ if ($LASTEXITCODE -eq 0 -and $B) {
   $A = curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $OCTOPUS_CA --resolve "octopus-web.octopus.svc:443:$IP" https://octopus-web.octopus.svc/api
   if ($LASTEXITCODE -eq 0) { "Version: $((($A | Out-String) | ConvertFrom-Json).Version)"; "Octopus answers at https://$IP" }
   $G = kc get service octopus-grpc -o 'jsonpath={.status.loadBalancer.ingress[0].ip}'
-  if (-not $G) { "FAILED: octopus-grpc has no address yet (step 4)" }
-  else { try {
+  if (-not $G) { "FAILED: octopus-grpc has no address yet (step 4)" } else { try {
     $T = New-Object Net.Sockets.TcpClient($G, 8443)
     $T.ReceiveTimeout = 20000; $T.SendTimeout = 20000
     $S = New-Object Net.Security.SslStream($T.GetStream(), $false, { $true })
@@ -1485,8 +1473,7 @@ function kc { kubectl --kubeconfig $VKS_KUBECONFIG -n octopus @args }
 $IP = kc get service octopus-web -o 'jsonpath={.status.loadBalancer.ingress[0].ip}'
 $U = 'https://octopus-web.octopus.svc/api'; $RV = '--resolve', "octopus-web.octopus.svc:443:$IP"
 $T = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName())
-if (-not (Test-Path $OCTOPUS_CA)) { "MISSING: $OCTOPUS_CA (step 8)" }
-else {
+if (-not (Test-Path $OCTOPUS_CA)) { "MISSING: $OCTOPUS_CA (step 8)" } else {
   New-Item -ItemType Directory -Path $T | Out-Null
   try {
     $B = kc get secret octopus-adminpassword -o 'jsonpath={.data.secret}'
@@ -1619,8 +1606,7 @@ function api($path, $body) {
   if ($body) { [IO.File]::WriteAllText("$T\body.json", $body); $a += @('--data-binary', "@$T\body.json") }
   (curl.exe @a "$U/$path") | Out-String | ConvertFrom-Json
 }
-if (-not (Test-Path $OCTOPUS_CA)) { "MISSING: $OCTOPUS_CA (step 8)" }
-else {
+if (-not (Test-Path $OCTOPUS_CA)) { "MISSING: $OCTOPUS_CA (step 8)" } else {
   New-Item -ItemType Directory -Path $T | Out-Null
   try {
     $B = kc get secret octopus-adminpassword -o 'jsonpath={.data.secret}'
@@ -1628,15 +1614,12 @@ else {
     [IO.File]::WriteAllText("$T\login.json", (@{ Username = 'admin'; Password = $P } | ConvertTo-Json -Compress))
     $P = $null; $B = $null
     curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $OCTOPUS_CA @RV -c "$T\jar" -o NUL -H 'Content-Type: application/json' --data-binary "@$T\login.json" "$U/users/login"
-    if ($LASTEXITCODE -ne 0) { "FAILED: sign-in refused (see the error above)" }
-    else {
+    if ($LASTEXITCODE -ne 0) { "FAILED: sign-in refused (see the error above)" } else {
       $X = (Select-String -Path "$T\jar" -Pattern 'Octopus-Csrf-Token\S*\s+(\S+)$').Matches[0].Groups[1].Value
       foreach ($E in 'dev', 'test', 'prod') {
-        if ((api 'Spaces-1/environments/all').Name -contains $E) { "environment ${E}: exists" }
-        else { $R = api 'Spaces-1/environments' (@{ Name = $E } | ConvertTo-Json -Compress); if ($R.Name) { "environment $($R.Name): created" } else { "FAILED: environment $E not created (see the error above)" } }
+        if ((api 'Spaces-1/environments/all').Name -contains $E) { "environment ${E}: exists" } else { $R = api 'Spaces-1/environments' (@{ Name = $E } | ConvertTo-Json -Compress); if ($R.Name) { "environment $($R.Name): created" } else { "FAILED: environment $E not created (see the error above)" } }
       }
-      if ((api 'Spaces-1/lifecycles/all').Name -contains 'dev-test-prod') { "lifecycle dev-test-prod: exists" }
-      else {
+      if ((api 'Spaces-1/lifecycles/all').Name -contains 'dev-test-prod') { "lifecycle dev-test-prod: exists" } else {
         $ID = @{}; foreach ($N in (api 'Spaces-1/environments/all')) { $ID[$N.Name] = $N.Id }
         $L = @{ Name = 'dev-test-prod'; Phases = @(
           @{ Name = 'dev'; AutomaticDeploymentTargets = @($ID['dev']); OptionalDeploymentTargets = @(); MinimumEnvironmentsBeforePromotion = 0 },
@@ -1739,8 +1722,7 @@ $OCTOPUS_TAG = "2026.3.16049@sha256:63a4d70d3011e546e7950671c2cee16a4737a8617748
 $NEXUS_CA = "$HOME\nexus-ca.pem"
 
 $global:LASTEXITCODE = $null
-if (-not (Test-Path $NEXUS_CA)) { "MISSING: $NEXUS_CA (NEXUS.md step 7)" }
-else {
+if (-not (Test-Path $NEXUS_CA)) { "MISSING: $NEXUS_CA (NEXUS.md step 7)" } else {
   kubectl --kubeconfig $VKS_KUBECONFIG -n octopus create configmap nexus-ca --from-file=ca.crt=$NEXUS_CA --dry-run=client -o yaml | kubectl --kubeconfig $VKS_KUBECONFIG -n octopus apply -f -
   if ($LASTEXITCODE -eq 0) {
     New-Item -ItemType Directory -Force -Path $OCTOPUS_DIR | Out-Null
@@ -1878,8 +1860,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 function kc { $input | kubectl --kubeconfig $VKS_KUBECONFIG -n octopus @args }
 $global:LASTEXITCODE = $null
-if (-not $OCTOPUS_ADMIN_PASSWORD -or $OCTOPUS_ADMIN_PASSWORD.Length -eq 0) { "STOPPED: type the new password first (the line above)" }
-else {
+if (-not $OCTOPUS_ADMIN_PASSWORD -or $OCTOPUS_ADMIN_PASSWORD.Length -eq 0) { "STOPPED: type the new password first (the line above)" } else {
   $B = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([Net.NetworkCredential]::new('', $OCTOPUS_ADMIN_PASSWORD).Password))
   @('apiVersion: v1', 'kind: Secret', 'metadata:', '  name: octopus-adminpassword', 'data:', "  secret: $B") | kc replace -f -
   $B = $null

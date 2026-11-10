@@ -138,9 +138,7 @@ $VKS_CLUSTER = "my-nexus-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $global:LASTEXITCODE = $null; $MISS = $false
-if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
-elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
-else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
+if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $MISS = $true; $global:LASTEXITCODE = 1 } elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 } else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
 if ($LASTEXITCODE -eq 0) { $N = @(kubectl --kubeconfig $VKS_KUBECONFIG get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu') }
 if ($LASTEXITCODE -eq 0) { $P = @(kubectl --kubeconfig $VKS_KUBECONFIG get pods -A '--field-selector=status.phase!=Succeeded,status.phase!=Failed' --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu') }
 if ($LASTEXITCODE -eq 0) { $J = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
@@ -452,9 +450,7 @@ $global:LASTEXITCODE = $null
 $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n nexus get service nexus -o 'jsonpath={.status.loadBalancer.ingress[0].ip}'
 $IS_IP = $NEXUS_REGISTRY -match '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
 $NAMES = if ($IS_IP) { "    - nexus.nexus.svc" } else { "    - $NEXUS_REGISTRY`n    - nexus.nexus.svc" }
-if (-not $IP) { "FAILED: the Service nexus has no address (step 4)" }
-elseif ($IS_IP -and $NEXUS_REGISTRY -ne $IP) { "STOPPED: NEXUS_REGISTRY is $NEXUS_REGISTRY, but Nexus's address is $IP" }
-else {
+if (-not $IP) { "FAILED: the Service nexus has no address (step 4)" } elseif ($IS_IP -and $NEXUS_REGISTRY -ne $IP) { "STOPPED: NEXUS_REGISTRY is $NEXUS_REGISTRY, but Nexus's address is $IP" } else {
 @"
 apiVersion: cert-manager.io/v1
 kind: Issuer
@@ -1202,10 +1198,7 @@ $T = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName())
 $OutputEncoding = New-Object Text.UTF8Encoding $false
 function cfg($p) { [IO.File]::WriteAllText("$T\admin.cfg", "user = `"admin:$($p.Replace('\', '\\').Replace('"', '\"'))`"`n") }
 function nx { $input | curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $NEXUS_CA -K "$T\admin.cfg" @RV @args }
-if (-not $NEXUS_ADMIN_PASSWORD -or $NEXUS_ADMIN_PASSWORD.Length -eq 0) { "STOPPED: type the new admin password first (the line above)" }
-elseif (-not (Test-Path $NEXUS_CA)) { "MISSING: $NEXUS_CA (step 7)" }
-elseif (-not $($P0 = kubectl --kubeconfig $VKS_KUBECONFIG -n nexus exec nexus-0 -c nexus -- sh -c 'cat /nexus-data/admin.password 2>/dev/null; true'; $LASTEXITCODE -eq 0)) { "FAILED: cannot read nexus-0 (see the kubectl error above)" }
-else {
+if (-not $NEXUS_ADMIN_PASSWORD -or $NEXUS_ADMIN_PASSWORD.Length -eq 0) { "STOPPED: type the new admin password first (the line above)" } elseif (-not (Test-Path $NEXUS_CA)) { "MISSING: $NEXUS_CA (step 7)" } elseif (-not $($P0 = kubectl --kubeconfig $VKS_KUBECONFIG -n nexus exec nexus-0 -c nexus -- sh -c 'cat /nexus-data/admin.password 2>/dev/null; true'; $LASTEXITCODE -eq 0)) { "FAILED: cannot read nexus-0 (see the kubectl error above)" } else {
   New-Item -ItemType Directory -Path $T | Out-Null
   try {
     $NEW = [Net.NetworkCredential]::new('', $NEXUS_ADMIN_PASSWORD).Password
@@ -1356,8 +1349,7 @@ $V = "nx-repository-view-docker-$NEXUS_REPO"
 $T = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName())
 $OutputEncoding = New-Object Text.UTF8Encoding $false
 function nx { $input | curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $NEXUS_CA -K "$T\admin.cfg" @RV @args }
-if (-not $NEXUS_ADMIN_PASSWORD -or -not $NEXUS_PUSH_PASSWORD -or -not $NEXUS_PULL_PASSWORD -or $NEXUS_PUSH_PASSWORD.Length -eq 0 -or $NEXUS_PULL_PASSWORD.Length -eq 0) { "STOPPED: type the three passwords first (the line above)" }
-else {
+if (-not $NEXUS_ADMIN_PASSWORD -or -not $NEXUS_PUSH_PASSWORD -or -not $NEXUS_PULL_PASSWORD -or $NEXUS_PUSH_PASSWORD.Length -eq 0 -or $NEXUS_PULL_PASSWORD.Length -eq 0) { "STOPPED: type the three passwords first (the line above)" } else {
   New-Item -ItemType Directory -Path $T | Out-Null
   try {
     $A = [Net.NetworkCredential]::new('', $NEXUS_ADMIN_PASSWORD).Password
@@ -1371,8 +1363,7 @@ else {
       if ($LASTEXITCODE -eq 0) { "repository ${NEXUS_REPO}: created" }
     }
     foreach ($K in 'push', 'pull') {
-      if ($K -eq 'push') { $N = $NEXUS_PUSH_USER; $P = $NEXUS_PUSH_PASSWORD; $AC = 'read', 'browse', 'add', 'edit' }
-      else { $N = $NEXUS_PULL_USER; $P = $NEXUS_PULL_PASSWORD; $AC = 'read', 'browse' }
+      if ($K -eq 'push') { $N = $NEXUS_PUSH_USER; $P = $NEXUS_PUSH_PASSWORD; $AC = 'read', 'browse', 'add', 'edit' } else { $N = $NEXUS_PULL_USER; $P = $NEXUS_PULL_PASSWORD; $AC = 'read', 'browse' }
       $R = "$NEXUS_REPO-$K"
       nx -o "$T\r.json" "$U/security/roles/$R" 2>$null
       if ($LASTEXITCODE -eq 0) { "role ${R}: exists" } else {
@@ -1538,8 +1529,7 @@ $NEXUS_PUSH_USER = "apps-push"
 $SRC = "docker.io/library/busybox:1.37.0"
 $IMG = "$NEXUS_REGISTRY/$NEXUS_REPO/busybox:1.37.0"
 $global:LASTEXITCODE = $null
-if (-not $NEXUS_PUSH_PASSWORD -or $NEXUS_PUSH_PASSWORD.Length -eq 0) { "STOPPED: type the push user's password first (the line above)" }
-else {
+if (-not $NEXUS_PUSH_PASSWORD -or $NEXUS_PUSH_PASSWORD.Length -eq 0) { "STOPPED: type the push user's password first (the line above)" } else {
   & $CONTAINER_ENGINE pull --platform linux/amd64 $SRC
   if ($LASTEXITCODE -eq 0) { & $CONTAINER_ENGINE tag $SRC $IMG }
   if ($LASTEXITCODE -eq 0) { [Net.NetworkCredential]::new('', $NEXUS_PUSH_PASSWORD).Password | & $CONTAINER_ENGINE login -u $NEXUS_PUSH_USER --password-stdin $NEXUS_REGISTRY }
@@ -1627,11 +1617,9 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $S = "$VKS_CLUSTER-user-trusted-ca-secret"
 $global:LASTEXITCODE = $null
 $PEM = Get-Content -Raw -ErrorAction SilentlyContinue $NEXUS_CA
-if (-not $PEM -or $PEM -notmatch 'BEGIN CERTIFICATE') { "FAILED: $NEXUS_CA is not a certificate (step 7)" }
-else {
+if (-not $PEM -or $PEM -notmatch 'BEGIN CERTIFICATE') { "FAILED: $NEXUS_CA is not a certificate (step 7)" } else {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get secret $S 2>$null | Out-Null
-  if ($LASTEXITCODE -eq 0) { "STOPPED: the Secret $S exists already; add a key to it (below)" }
-  else {
+  if ($LASTEXITCODE -eq 0) { "STOPPED: the Secret $S exists already; add a key to it (below)" } else {
     $B = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($PEM))
     kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE create secret generic $S "--from-literal=nexus-ca=$B"
   }
@@ -1694,8 +1682,7 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $S = "$VKS_CLUSTER-user-trusted-ca-secret"
 $T = Join-Path $env:TEMP "nexus-ca-patch.json"
 $PEM = Get-Content -Raw -ErrorAction SilentlyContinue $NEXUS_CA
-if (-not $PEM -or $PEM -notmatch 'BEGIN CERTIFICATE') { "FAILED: $NEXUS_CA is not a certificate (step 7)" }
-else {
+if (-not $PEM -or $PEM -notmatch 'BEGIN CERTIFICATE') { "FAILED: $NEXUS_CA is not a certificate (step 7)" } else {
   $B = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($PEM))))
   '{"data":{"' + $NEXUS_CA_KEY + '":"' + $B + '"}}' | Set-Content -Encoding ascii $T
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE patch secret $S --type merge --patch-file $T
@@ -1777,8 +1764,7 @@ $T = Join-Path $env:TEMP "nexus-trust-patch.json"
 '[{"op":"add","path":"/spec/topology/variables/-","value":{"name":"osConfiguration","value":{"trust":{"additionalTrustedCAs":[{"caCert":{"secretRef":{"name":"' + $S + '","key":"nexus-ca"}}}]}}}}]' | Set-Content -Encoding ascii $T
 $global:LASTEXITCODE = $null
 $J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get cluster $VKS_CLUSTER -o json | Out-String
-if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the cluster (see the error above)" }
-elseif (@((ConvertFrom-Json $J).spec.topology.variables | Where-Object { $_.name -eq 'osConfiguration' }).Count) {
+if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the cluster (see the error above)" } elseif (@((ConvertFrom-Json $J).spec.topology.variables | Where-Object { $_.name -eq 'osConfiguration' }).Count) {
   "STOPPED: the cluster has an osConfiguration setting already; add the caCert to it by hand (kubectl --kubeconfig '$SUPERVISOR_KUBECONFIG' -n $VSPHERE_NAMESPACE edit cluster $VKS_CLUSTER)"
 } else {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE patch cluster $VKS_CLUSTER --type json --patch-file $T --dry-run=server | Out-Null
@@ -1920,8 +1906,7 @@ $NEXUS_PULL_USER = "apps-pull"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 function kc { $input | kubectl --kubeconfig $VKS_KUBECONFIG -n default @args }
 $global:LASTEXITCODE = $null
-if (-not $NEXUS_PULL_PASSWORD -or $NEXUS_PULL_PASSWORD.Length -eq 0) { "STOPPED: type the pull user's password first (the line above)" }
-else {
+if (-not $NEXUS_PULL_PASSWORD -or $NEXUS_PULL_PASSWORD.Length -eq 0) { "STOPPED: type the pull user's password first (the line above)" } else {
   $P = [Net.NetworkCredential]::new('', $NEXUS_PULL_PASSWORD).Password
   $AUTH = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("${NEXUS_PULL_USER}:$P"))
   $CFG = @{ auths = @{ $NEXUS_REGISTRY = @{ username = $NEXUS_PULL_USER; password = $P; auth = $AUTH } } } | ConvertTo-Json -Depth 5 -Compress
@@ -1963,18 +1948,8 @@ spec:
       $M = "$(kc get events --field-selector "involvedObject.uid=$PUID,reason=Failed" -o 'jsonpath={.items[*].message}')"
     }
     kc delete pod nexus-pull-check --ignore-not-found | Out-Null
-    if (-not $PUID) { "FAILED: the test pod was not made (see the error above)" }
-    elseif ($PH -eq 'Succeeded') { "OK: the cluster pulled $NEXUS_REGISTRY/$NEXUS_REPO/busybox:1.37.0" }
-    elseif ($M -like '*unknown authority*') { "CA: the nodes do not trust Nexus's CA yet" }
-    elseif ($M -like '*certificate is valid for*' -or $M -like '*cannot validate certificate*' -or $M -like "*doesn't contain any IP SANs*") { "NAME: Nexus's certificate is not for $NEXUS_REGISTRY (step 5)" }
-    elseif ($M -like '*no such host*') { "DNS: the nodes cannot resolve $NEXUS_REGISTRY" }
-    elseif ($M -like '*nauthorized*' -or $M -like '*denied*') { "LOGIN: Nexus refused the login in the Secret nexus-pull" }
-    elseif ($M -like '*not found*') { "IMAGE: no such image in Nexus (step 10)" }
-    elseif (-not $M -and $PH -eq 'Failed') { "OTHER: the test pod failed and the cluster gave no reason" }
-    elseif (-not $M) { "NO ANSWER: the cluster reported nothing in 2 minutes" }
-    else { "OTHER: $M" }
-  }
-  else { "FAILED: the Secret nexus-pull was not made (see the error above)" }
+    if (-not $PUID) { "FAILED: the test pod was not made (see the error above)" } elseif ($PH -eq 'Succeeded') { "OK: the cluster pulled $NEXUS_REGISTRY/$NEXUS_REPO/busybox:1.37.0" } elseif ($M -like '*unknown authority*') { "CA: the nodes do not trust Nexus's CA yet" } elseif ($M -like '*certificate is valid for*' -or $M -like '*cannot validate certificate*' -or $M -like "*doesn't contain any IP SANs*") { "NAME: Nexus's certificate is not for $NEXUS_REGISTRY (step 5)" } elseif ($M -like '*no such host*') { "DNS: the nodes cannot resolve $NEXUS_REGISTRY" } elseif ($M -like '*nauthorized*' -or $M -like '*denied*') { "LOGIN: Nexus refused the login in the Secret nexus-pull" } elseif ($M -like '*not found*') { "IMAGE: no such image in Nexus (step 10)" } elseif (-not $M -and $PH -eq 'Failed') { "OTHER: the test pod failed and the cluster gave no reason" } elseif (-not $M) { "NO ANSWER: the cluster reported nothing in 2 minutes" } else { "OTHER: $M" }
+  } else { "FAILED: the Secret nexus-pull was not made (see the error above)" }
 }
 Remove-Variable -ErrorAction SilentlyContinue NEXUS_PULL_PASSWORD
 ```
@@ -2151,11 +2126,9 @@ $VKS_CLUSTER = "my-nexus-cluster"
 $NEXUS_BACKUP = "$HOME\nexus-backup-20260101-120000"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
-if (-not (Test-Path "$NEXUS_BACKUP\nexus-ca.json")) { "MISSING: $NEXUS_BACKUP\nexus-ca.json (step 12)" }
-else {
+if (-not (Test-Path "$NEXUS_BACKUP\nexus-ca.json")) { "MISSING: $NEXUS_BACKUP\nexus-ca.json (step 12)" } else {
   kubectl --kubeconfig $VKS_KUBECONFIG -n nexus get secret nexus-ca 2>$null | Out-Null
-  if ($LASTEXITCODE -eq 0) { "STOPPED: namespace nexus has a CA already (see If not)" }
-  else { kubectl --kubeconfig $VKS_KUBECONFIG -n nexus create -f "$NEXUS_BACKUP\nexus-ca.json" }
+  if ($LASTEXITCODE -eq 0) { "STOPPED: namespace nexus has a CA already (see If not)" } else { kubectl --kubeconfig $VKS_KUBECONFIG -n nexus create -f "$NEXUS_BACKUP\nexus-ca.json" }
 }
 ```
 
@@ -2282,9 +2255,7 @@ if (-not ((Test-Path "$NEXUS_BACKUP\nexus-db.dump") -and (Test-Path "$NEXUS_BACK
   }
   $DB = $LASTEXITCODE
   if ($UP -eq 0) { kc exec postgres-0 '--' rm -f /tmp/nexus-db.dump }
-  if ($UP -ne 0) { "FAILED: Nexus did not stop (see the error above)" }
-  elseif ($DB -ne 0) { "FAILED: the database was not restored (see the error above); Nexus stays stopped" }
-  else {
+  if ($UP -ne 0) { "FAILED: Nexus did not stop (see the error above)" } elseif ($DB -ne 0) { "FAILED: the database was not restored (see the error above); Nexus stays stopped" } else {
     $P = kc get statefulset postgres -o 'jsonpath={.spec.template.spec.containers[0].image}'
     @"
 apiVersion: v1
@@ -2329,8 +2300,7 @@ spec:
       kc delete pod nexus-restore --wait | Out-Null
       kc scale statefulset nexus --replicas=1
       if ($LASTEXITCODE -eq 0) { kc rollout status statefulset/nexus --timeout=15m }
-      if ($LASTEXITCODE -ne 0) { "FAILED: Nexus did not start after the restore (see If not)" }
-      else {
+      if ($LASTEXITCODE -ne 0) { "FAILED: Nexus did not start after the restore (see If not)" } else {
         $C = kc get secret nexus-ca -o 'jsonpath={.data.tls\.crt}'
         if ($C -eq (Get-Content -Raw nexus-ca.json | ConvertFrom-Json).data.'tls.crt') { "CA: the backup's" } else { "CA: not the backup's" }
         "restored from $NEXUS_BACKUP ($(@($E -split "`n").Count) files)"

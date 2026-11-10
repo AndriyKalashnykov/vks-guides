@@ -562,9 +562,7 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 $L = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER --ignore-not-found -o name
-if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot read the clusters (see the error above)" }
-elseif ($L) { "Nothing deleted: $L still exists" }
-else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE delete persistentvolumeclaims -l "$VKS_CLUSTER/TKGService" }
+if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot read the clusters (see the error above)" } elseif ($L) { "Nothing deleted: $L still exists" } else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE delete persistentvolumeclaims -l "$VKS_CLUSTER/TKGService" }
 ```
 
 **Expect:** a `persistentvolumeclaim "<id>" deleted` line for each disk, or `No resources found`.

@@ -1903,9 +1903,7 @@ if ($LASTEXITCODE -ne 0) {
     if ($L.Count) { Start-Sleep 10 }
     foreach ($NS in @(@($L | ForEach-Object { $_[0] }) + @($N | Where-Object { $_ }) | Sort-Object -Unique)) {
       $LEFT = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get certificates.cert-manager.io,certificaterequests.cert-manager.io,secrets -o name)
-      if ($LASTEXITCODE -ne 0) { "FAILED: cannot list $NS (see the error above)" }
-      elseif ($LEFT -match 'telegraf') { $LEFT -match 'telegraf' | ForEach-Object { "left in ${NS}: $_" } }
-      else { "${NS}: no telegraf objects left" }
+      if ($LASTEXITCODE -ne 0) { "FAILED: cannot list $NS (see the error above)" } elseif ($LEFT -match 'telegraf') { $LEFT -match 'telegraf' | ForEach-Object { "left in ${NS}: $_" } } else { "${NS}: no telegraf objects left" }
     }
   }
 }

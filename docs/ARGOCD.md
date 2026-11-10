@@ -1518,9 +1518,7 @@ $VSPHERE_NAMESPACE = "my-namespace"
 
 $global:LASTEXITCODE = $null
 $A = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get applications.argoproj.io -o jsonpath='{range .items[?(@.spec.project==''vks-clusters'')]}{.metadata.name}{'' ''}{end}'
-if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot list the Applications (see the error above)" }
-elseif ("$A".Trim()) { "Nothing deleted: these Applications still use vks-clusters: $A" }
-else {
+if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot list the Applications (see the error above)" } elseif ("$A".Trim()) { "Nothing deleted: these Applications still use vks-clusters: $A" } else {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject vks-clusters --ignore-not-found
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete managedentity "ns-${VSPHERE_NAMESPACE}" --ignore-not-found
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete entitymanagementpolicy "vks-clusters-${VSPHERE_NAMESPACE}" --ignore-not-found
@@ -1765,8 +1763,7 @@ if ($LASTEXITCODE -eq 0) {
       if ($RUNS -like "*v$(($ARGOCD_VERSION -split '\+')[0])+*") { break }
       Start-Sleep -Seconds 10
     }
-    if ($RUNS -like "*v$(($ARGOCD_VERSION -split '\+')[0])+*") { "ArgoCD at https://$IP runs: $RUNS" }
-    else { "NOT YET: ArgoCD at https://$IP answers: $RUNS; run this block again in a minute" }
+    if ($RUNS -like "*v$(($ARGOCD_VERSION -split '\+')[0])+*") { "ArgoCD at https://$IP runs: $RUNS" } else { "NOT YET: ArgoCD at https://$IP answers: $RUNS; run this block again in a minute" }
   }
 }
 ```

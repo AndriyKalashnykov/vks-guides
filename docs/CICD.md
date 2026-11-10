@@ -159,10 +159,7 @@ $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction
 $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
-if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
-elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run HARBOR.md step 1 first" }
-elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
-elseif (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not (Test-Path "$HARBOR_DIR\secrets.env")) {
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run HARBOR.md step 1 first" } elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" } elseif (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not (Test-Path "$HARBOR_DIR\secrets.env")) {
   "FAILED: harbor-data-values.yml, harbor-ca.crt or secrets.env is missing in $HARBOR_DIR"
 } else {
   $NS = @(kubectl --kubeconfig $VKS_KUBECONFIG get namespace -o name)
@@ -392,8 +389,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
       -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" "https://$HARBOR_FQDN/api/v2.0/projects" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
     "project: $H"
     foreach ($R in 'push', 'pull') {
-      if ($R -eq 'push') { $NS = $CI_NAMESPACE; $A = '[{"resource":"repository","action":"push"},{"resource":"repository","action":"pull"}]' }
-      else { $NS = 'cicd-demo'; $A = '[{"resource":"repository","action":"pull"}]' }
+      if ($R -eq 'push') { $NS = $CI_NAMESPACE; $A = '[{"resource":"repository","action":"push"},{"resource":"repository","action":"pull"}]' } else { $NS = 'cicd-demo'; $A = '[{"resource":"repository","action":"pull"}]' }
       kubectl --kubeconfig $VKS_KUBECONFIG -n $NS get secret "harbor-$R" -o name 2>$null | Out-Null
       if ($LASTEXITCODE -eq 0) { "kept: secret harbor-$R in $NS"; continue }
       Set-Content -Encoding ascii -Path $BODY -Value ('{"name":"' + $R + '","duration":90,"level":"project","permissions":[{"kind":"project","namespace":"' + $HARBOR_PROJECT + '","access":' + $A + '}]}')
@@ -2640,10 +2636,7 @@ $GITEA_URL = "http://localhost:3300"
 $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
-if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
-elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run HARBOR.md step 1 first" }
-elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
-else {
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run HARBOR.md step 1 first" } elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" } else {
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applications.argoproj.io cicd-demo --ignore-not-found --timeout=5m
 if ($LASTEXITCODE -ne 0) {
   "FAILED: the Application is still there; nothing else deleted"

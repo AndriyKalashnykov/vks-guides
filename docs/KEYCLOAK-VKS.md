@@ -116,9 +116,7 @@ $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $global:LASTEXITCODE = $null; $MISS = $false
-if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
-elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 }
-else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
+if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubectl (KUBECTL.md)"; $MISS = $true; $global:LASTEXITCODE = 1 } elseif (-not (Test-Path $VKS_KUBECONFIG)) { "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"; $MISS = $true; $global:LASTEXITCODE = 1 } else { kubectl --kubeconfig $VKS_KUBECONFIG get nodes -o wide }
 if ($LASTEXITCODE -eq 0) { $J = kubectl --kubeconfig $VKS_KUBECONFIG get storageclass -o json | Out-String }
 if ($LASTEXITCODE -eq 0) {
   $D = @((ConvertFrom-Json $J).items | Where-Object { $_.metadata.annotations.'storageclass.kubernetes.io/is-default-class' -eq 'true' } | ForEach-Object { $_.metadata.name })
@@ -1643,8 +1641,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 $B = kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak get secret keycloak-admin -o 'jsonpath={.data.password}'
-if ($LASTEXITCODE -eq 0 -and $B) { "admin password: $([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B)))" }
-else { "FAILED: no password read (see the error above)" }
+if ($LASTEXITCODE -eq 0 -and $B) { "admin password: $([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B)))" } else { "FAILED: no password read (see the error above)" }
 ```
 
 **Expect:** `admin password: ` and the password.

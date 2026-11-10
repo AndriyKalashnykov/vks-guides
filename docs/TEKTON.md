@@ -131,9 +131,7 @@ if ($LASTEXITCODE -eq 0) {
   foreach ($l in $N) { $f = -split $l; "worker $($f[0]): $((M $f[1]) - $R[$f[0]])m CPU free" }
   if ($C -contains 'customresourcedefinition.apiextensions.k8s.io/tektonconfigs.operator.tekton.dev') {
     $O = kubectl --kubeconfig $VKS_KUBECONFIG get crd tektonconfigs.operator.tekton.dev -o jsonpath='{.metadata.labels.helm\.toolkit\.fluxcd\.io/namespace} {.metadata.deletionTimestamp}'
-    if ($O -eq 'vmware-system-helm ') { "Tekton: the VKS add-on" }
-    elseif ($O -like 'vmware-system-helm *') { "Tekton: parts of one" }
-    else { "Tekton: a Tekton Operator that is not the VKS add-on" }
+    if ($O -eq 'vmware-system-helm ') { "Tekton: the VKS add-on" } elseif ($O -like 'vmware-system-helm *') { "Tekton: parts of one" } else { "Tekton: a Tekton Operator that is not the VKS add-on" }
   } elseif ($C -contains 'customresourcedefinition.apiextensions.k8s.io/tasks.tekton.dev') {
     "Tekton: release files $(kubectl --kubeconfig $VKS_KUBECONFIG get crd tasks.tekton.dev -o jsonpath='{.metadata.labels.pipeline\.tekton\.dev/release}')"
   } elseif (@($C | Where-Object { $_ -match '\.tekton\.dev$' }).Count -gt 0) {

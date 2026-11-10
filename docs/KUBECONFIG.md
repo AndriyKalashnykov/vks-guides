@@ -213,9 +213,7 @@ $SAME = @($LIST.Split(';') | Where-Object { Test-Path $_ -PathType Leaf } | ForE
   } | Sort-Object -Unique -CaseSensitive | ForEach-Object { $_.Split("`t")[0] } |
   Group-Object -CaseSensitive | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name })
 Remove-Item -Force -ErrorAction SilentlyContinue "$KUBE_CONFIG.new"
-if ($MISSING.Count -gt 0) { "MISSING: $MISSING" }
-elseif ($SAME.Count -gt 0) { "SAME NAME, DIFFERENT CONTENT IN TWO FILES: $SAME" }
-else {
+if ($MISSING.Count -gt 0) { "MISSING: $MISSING" } elseif ($SAME.Count -gt 0) { "SAME NAME, DIFFERENT CONTENT IN TWO FILES: $SAME" } else {
   New-Item -ItemType Directory -Force -Path (Split-Path $KUBE_CONFIG) | Out-Null
   $OLD_KUBECONFIG = $env:KUBECONFIG; $env:KUBECONFIG = $LIST
   $MERGED = kubectl config view --flatten; $OK = ($LASTEXITCODE -eq 0)

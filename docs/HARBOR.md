@@ -563,19 +563,7 @@ if ($HARBOR_FQDN -cnotmatch '^[a-z0-9.-]+$' -or $HARBOR_FQDN -eq 'harbor.example
   $OUT = foreach ($l in [IO.File]::ReadAllLines($HARBOR_VALUES_TEMPLATE)) {
     if ($l -cmatch '^([A-Za-z][A-Za-z0-9_]*):') { $top = $Matches[1]; $k4 = '' }
     if ($l -cmatch '^    ([A-Za-z][A-Za-z0-9_]*):') { $k4 = $Matches[1] }
-    if ($l -cmatch '^hostname:') { "hostname: $HARBOR_FQDN" }
-    elseif ($l -cmatch '^enableNginxLoadBalancer:') { 'enableNginxLoadBalancer: true' }
-    elseif ($l -cmatch '^enableContourHttpProxy:') { 'enableContourHttpProxy: false' }
-    elseif ($l -cmatch '^harborAdminPassword:') { "harborAdminPassword: `"$($S['HARBOR_ADMIN_PASSWORD'])`"" }
-    elseif ($l -cmatch '^secretKey:') { "secretKey: `"$($S['HARBOR_SECRET_KEY'])`"" }
-    elseif ($l -cmatch '^  password:' -and $top -ceq 'database') { "  password: `"$($S['HARBOR_DB_PASSWORD'])`"" }
-    elseif ($l -cmatch '^  secret:' -and $top -ceq 'core') { "  secret: `"$($S['HARBOR_CORE_SECRET'])`"" }
-    elseif ($l -cmatch '^  xsrfKey:' -and $top -ceq 'core') { "  xsrfKey: `"$($S['HARBOR_XSRF_KEY'])`"" }
-    elseif ($l -cmatch '^  secret:' -and $top -ceq 'jobservice') { "  secret: `"$($S['HARBOR_JOBSERVICE_SECRET'])`"" }
-    elseif ($l -cmatch '^  secret:' -and $top -ceq 'registry') { "  secret: `"$($S['HARBOR_REGISTRY_SECRET'])`"" }
-    elseif ($l -cmatch '^ +storageClass:') { $l.Substring(0, $l.IndexOf('storageClass:')) + "storageClass: `"$HARBOR_STORAGE_CLASS`"" }
-    elseif ($l -cmatch '^      size:' -and $top -ceq 'persistence' -and $k4 -ceq 'registry') { "      size: $HARBOR_REGISTRY_SIZE" }
-    else { $l }
+    if ($l -cmatch '^hostname:') { "hostname: $HARBOR_FQDN" } elseif ($l -cmatch '^enableNginxLoadBalancer:') { 'enableNginxLoadBalancer: true' } elseif ($l -cmatch '^enableContourHttpProxy:') { 'enableContourHttpProxy: false' } elseif ($l -cmatch '^harborAdminPassword:') { "harborAdminPassword: `"$($S['HARBOR_ADMIN_PASSWORD'])`"" } elseif ($l -cmatch '^secretKey:') { "secretKey: `"$($S['HARBOR_SECRET_KEY'])`"" } elseif ($l -cmatch '^  password:' -and $top -ceq 'database') { "  password: `"$($S['HARBOR_DB_PASSWORD'])`"" } elseif ($l -cmatch '^  secret:' -and $top -ceq 'core') { "  secret: `"$($S['HARBOR_CORE_SECRET'])`"" } elseif ($l -cmatch '^  xsrfKey:' -and $top -ceq 'core') { "  xsrfKey: `"$($S['HARBOR_XSRF_KEY'])`"" } elseif ($l -cmatch '^  secret:' -and $top -ceq 'jobservice') { "  secret: `"$($S['HARBOR_JOBSERVICE_SECRET'])`"" } elseif ($l -cmatch '^  secret:' -and $top -ceq 'registry') { "  secret: `"$($S['HARBOR_REGISTRY_SECRET'])`"" } elseif ($l -cmatch '^ +storageClass:') { $l.Substring(0, $l.IndexOf('storageClass:')) + "storageClass: `"$HARBOR_STORAGE_CLASS`"" } elseif ($l -cmatch '^      size:' -and $top -ceq 'persistence' -and $k4 -ceq 'registry') { "      size: $HARBOR_REGISTRY_SIZE" } else { $l }
   }
   [IO.File]::WriteAllText($VALUES, (($OUT -join "`n") + "`n"))
   $TXT = [IO.File]::ReadAllLines($VALUES)
@@ -734,9 +722,7 @@ if (-not (Test-Path $VALUES)) {
   $OUT = foreach ($l in $IN) {
     if ($l -cmatch '^([A-Za-z][A-Za-z0-9_]*):') { $top = $Matches[1]; $k4 = '' }
     if ($l -cmatch '^    ([A-Za-z][A-Za-z0-9_]*):') { $k4 = $Matches[1] }
-    if ($top -eq 'persistence' -and $l -cmatch '^( +)storageClass:' -and $C[$k4]) { "$($Matches[1])storageClass: `"$($C[$k4])`"" }
-    elseif ($top -eq 'persistence' -and $l -cmatch '^( +)size:' -and $S[$k4]) { "$($Matches[1])size: $($S[$k4])" }
-    else { $l }
+    if ($top -eq 'persistence' -and $l -cmatch '^( +)storageClass:' -and $C[$k4]) { "$($Matches[1])storageClass: `"$($C[$k4])`"" } elseif ($top -eq 'persistence' -and $l -cmatch '^( +)size:' -and $S[$k4]) { "$($Matches[1])size: $($S[$k4])" } else { $l }
   }
   $top = ''; $k4 = ''; $GOT = @{}
   foreach ($l in $OUT) {
@@ -854,13 +840,9 @@ $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VSPHERE_NAMESPACE | Out-Null
-if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
-elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
-elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
-elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VSPHERE_NAMESPACE (see the error above)" } else {
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" } elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" } elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VSPHERE_NAMESPACE (see the error above)" } else {
   $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get machines.cluster.x-k8s.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.conditions[?(@.type==''UpToDate'')].status} {.status.conditions[?(@.type==''UpToDate'')].lastTransitionTime}{''\n''}{end}'
-  if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the machines in $VSPHERE_NAMESPACE (see the error above)" }
-  elseif (-not ($M | Where-Object { $_ })) { "no machines in ${VSPHERE_NAMESPACE}: nothing to record" } else {
+  if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the machines in $VSPHERE_NAMESPACE (see the error above)" } elseif (-not ($M | Where-Object { $_ })) { "no machines in ${VSPHERE_NAMESPACE}: nothing to record" } else {
     New-Item -ItemType Directory -Force -Path $HARBOR_DIR | Out-Null
     Set-Content -Encoding ascii -Path "$HARBOR_DIR\machines-$VSPHERE_NAMESPACE.before" -Value $M
     "recorded $(@($M | Where-Object { $_ }).Count) machines in $VSPHERE_NAMESPACE"
@@ -1093,14 +1075,9 @@ $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyCon
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 $VALUES = "$HARBOR_DIR\harbor-data-values.yml"
 $HARBOR_FQDN = if (Test-Path $VALUES) { "$((Get-Content $VALUES | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')" } else { '' }
-if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
-elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
-elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
-elseif (-not $HARBOR_FQDN) { "FAILED: no hostname in $VALUES (step 4)" } else {
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" } elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" } elseif (-not $HARBOR_FQDN) { "FAILED: no hostname in $VALUES (step 4)" } else {
   $NS = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name
-  if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
-  elseif (@($NS).Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
-  else {
+  if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" } elseif (@($NS).Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" } else {
     $NS = $NS -replace '^namespace/', ''
     $IP = ''; $H = '000'; $n = 0
     while ($H -ne '200' -and $n -lt 80) {
@@ -1157,9 +1134,7 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
-if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
-elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
-else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n ($NS[0] -replace '^namespace/', '') get pods,persistentvolumeclaims }
+if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" } elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" } else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n ($NS[0] -replace '^namespace/', '') get pods,persistentvolumeclaims }
 ```
 
 **Expect:** every pod `Running` or `Completed`, and five volumes `Bound`.
@@ -1229,11 +1204,7 @@ $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
-if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
-elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
-elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
-elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
-elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" } else {
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" } elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" } elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" } elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" } else {
   $NS = $NS[0] -replace '^namespace/', ''
   $IP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get service harbor-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
   $GOT = curl.exe -sk --connect-timeout 10 --max-time 20 -o NUL -w '%{remote_ip}' "https://$HARBOR_FQDN/api/v2.0/health"
@@ -1310,10 +1281,7 @@ $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 $BEFORE = "$HARBOR_DIR\machines-$VSPHERE_NAMESPACE.before"
-if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
-elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
-elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
-elseif (-not (Test-Path $BEFORE)) { "FAILED: no record $BEFORE (Record the VKS cluster machines, step 6)" } else {
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" } elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" } elseif (-not (Test-Path $BEFORE)) { "FAILED: no record $BEFORE (Record the VKS cluster machines, step 6)" } else {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VSPHERE_NAMESPACE | Out-Null
   if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VSPHERE_NAMESPACE (see the error above)" } else {
     $M = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get machines.cluster.x-k8s.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.conditions[?(@.type==''UpToDate'')].status} {.status.conditions[?(@.type==''UpToDate'')].lastTransitionTime}{''\n''}{end}'
@@ -1417,18 +1385,10 @@ $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 $CA = "$HARBOR_DIR\harbor-ca.crt"
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
-if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
-elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
-elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
-elseif (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" }
-elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
-elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
-else {
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" } elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" } elseif (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" } elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" } elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" } else {
   $NS = $NS[0] -replace '^namespace/', ''
   $S = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get secret -l managed-by=vmware-vRegistry -o name)
-  if ($LASTEXITCODE -ne 0) { "FAILED: no CA certificate read (see the error above)" }
-  elseif ($S.Count -ne 1) { "FAILED: expected one Secret labeled managed-by=vmware-vRegistry in $NS, found: $(if ($S.Count) { $S -join ' ' } else { 'none' })" }
-  else {
+  if ($LASTEXITCODE -ne 0) { "FAILED: no CA certificate read (see the error above)" } elseif ($S.Count -ne 1) { "FAILED: expected one Secret labeled managed-by=vmware-vRegistry in $NS, found: $(if ($S.Count) { $S -join ' ' } else { 'none' })" } else {
     $B64 = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get $S[0] -o jsonpath='{.data.ca\.crt}'
     try {
       $PEM = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String("$B64"))
@@ -1822,8 +1782,7 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 $S = @{}
 foreach ($l in Get-Content "$HARBOR_DIR\secrets.env" -ErrorAction SilentlyContinue) { if ($l -cmatch "^(HARBOR_[A-Z_]+)='(.*)'$") { $S[$Matches[1]] = $Matches[2] } }
-if (-not $HARBOR_FQDN -or -not $S['HARBOR_ADMIN_PASSWORD']) { "FAILED: harbor-data-values.yml or secrets.env is missing in $HARBOR_DIR" }
-else {
+if (-not $HARBOR_FQDN -or -not $S['HARBOR_ADMIN_PASSWORD']) { "FAILED: harbor-data-values.yml or secrets.env is missing in $HARBOR_DIR" } else {
   $S['HARBOR_ADMIN_PASSWORD'] | & $CONTAINER_ENGINE login -u admin --password-stdin $HARBOR_FQDN
   if ($LASTEXITCODE -eq 0) { & $CONTAINER_ENGINE logout $HARBOR_FQDN }
 }
@@ -1877,8 +1836,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
-if (-not $HARBOR_FQDN -or -not $HARBOR_ROBOT_SECRET -or $HARBOR_ROBOT_SECRET.Length -eq 0) { "FAILED: no $HARBOR_DIR\harbor-data-values.yml, or no robot secret in this terminal (run the line above)" }
-else {
+if (-not $HARBOR_FQDN -or -not $HARBOR_ROBOT_SECRET -or $HARBOR_ROBOT_SECRET.Length -eq 0) { "FAILED: no $HARBOR_DIR\harbor-data-values.yml, or no robot secret in this terminal (run the line above)" } else {
   $B = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($HARBOR_ROBOT_SECRET)
   try { [Runtime.InteropServices.Marshal]::PtrToStringBSTR($B) | & $CONTAINER_ENGINE login -u $HARBOR_ROBOT --password-stdin $HARBOR_FQDN }
   finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($B) }
@@ -2020,14 +1978,9 @@ spec:
     $M = "$(kubectl --kubeconfig $VKS_KUBECONFIG -n default get events --field-selector involvedObject.name=harbor-pull-check,reason=Failed -o jsonpath='{.items[*].message}')"
   }
   kubectl --kubeconfig $VKS_KUBECONFIG -n default delete pod harbor-pull-check --ignore-not-found | Out-Null
-  if (-not $M) { "NO ANSWER: the cluster reported no pull attempt in 90 seconds" }
-  elseif ($M -like '*no such host*') { "DNS: the nodes cannot resolve $HARBOR_FQDN" }
-  elseif ($M -like '*certificate is valid for*' -or $M -like '*not valid for any names*') {
+  if (-not $M) { "NO ANSWER: the cluster reported no pull attempt in 90 seconds" } elseif ($M -like '*no such host*') { "DNS: the nodes cannot resolve $HARBOR_FQDN" } elseif ($M -like '*certificate is valid for*' -or $M -like '*not valid for any names*') {
     "NAME: the certificate at $HARBOR_FQDN is not for that name"
-  }
-  elseif ($M -like '*unknown authority*') { "CA: the nodes do not trust the certificate of $HARBOR_FQDN" }
-  elseif ($M -like '*x509*') { "OTHER: $M" }
-  elseif ($M -like '*not found*' -or $M -like '*access denied*' -or $M -like '*nauthorized*' -or $M -like '*insufficient_scope*') {
+  } elseif ($M -like '*unknown authority*') { "CA: the nodes do not trust the certificate of $HARBOR_FQDN" } elseif ($M -like '*x509*') { "OTHER: $M" } elseif ($M -like '*not found*' -or $M -like '*access denied*' -or $M -like '*nauthorized*' -or $M -like '*insufficient_scope*') {
     "OK: the nodes resolve $HARBOR_FQDN and trust its certificate"
   } else { "OTHER: $M" }
 }
@@ -2230,13 +2183,7 @@ $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyCon
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
 $HARBOR_FQDN = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
-if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
-elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
-elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
-elseif (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" }
-elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
-elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
-else {
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" } elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" } elseif (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" } elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" } elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" } else {
   $NS = $NS[0] -replace '^namespace/', ''
   $S = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get secret -l managed-by=vmware-vRegistry -o name)
   if ($LASTEXITCODE -ne 0 -or $S.Count -ne 1) {
@@ -2258,8 +2205,7 @@ else {
       } catch { }
     }
     Remove-Item -Force -ErrorAction SilentlyContinue $TMP
-    if (-not $OK) { "FAILED: after 10 minutes Harbor's certificate is still not for $HARBOR_FQDN" }
-    else {
+    if (-not $OK) { "FAILED: after 10 minutes Harbor's certificate is still not for $HARBOR_FQDN" } else {
       "certificate for ${HARBOR_FQDN}: yes"
       kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS delete pod -l app=harbor,component=nginx
       if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS rollout status deployment/harbor-nginx --timeout=300s }
@@ -2385,10 +2331,7 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 if (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { $env:Path += ';C:\Program Files\Git\usr\bin' }
 $VALUES = "$HARBOR_DIR\harbor-data-values.yml"
 $HARBOR_FQDN = if (Test-Path $VALUES) { "$((Get-Content $VALUES | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')" } else { '' }
-if (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" }
-elseif (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { 'FAILED: openssl.exe not found (install Git for Windows)' }
-elseif (Test-Path $HARBOR_TLS_KEY) { "NOT WRITTEN: $HARBOR_TLS_KEY already exists; use it with its certificate, or move it away first" }
-else {
+if (-not $HARBOR_FQDN) { "FAILED: no hostname in $HARBOR_DIR\harbor-data-values.yml (step 4)" } elseif (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { 'FAILED: openssl.exe not found (install Git for Windows)' } elseif (Test-Path $HARBOR_TLS_KEY) { "NOT WRITTEN: $HARBOR_TLS_KEY already exists; use it with its certificate, or move it away first" } else {
   $CNF = [IO.Path]::GetTempFileName()
   $CN = if ($HARBOR_FQDN.Length -le 64) { $HARBOR_FQDN } else { $HARBOR_FQDN.Split('.')[0] }
   [IO.File]::WriteAllText($CNF, "[req]`nprompt = no`ndistinguished_name = dn`nreq_extensions = ext`n[dn]`nCN = $CN`n[ext]`nsubjectAltName = DNS:$HARBOR_FQDN`nextendedKeyUsage = serverAuth`n")
@@ -2531,9 +2474,7 @@ if (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { $env:Path +=
 $TMP = Join-Path $env:TEMP ([guid]::NewGuid()); New-Item -ItemType Directory -Path $TMP | Out-Null
 $ERR = ''
 function Pem($f) { (([IO.File]::ReadAllText($f) -replace "`r", '') | Select-String -AllMatches '(?ms)^-----BEGIN [^\n]*-----\n.*?\n-----END [^\n]*-----$').Matches | ForEach-Object { $_.Value } }
-if (-not $HARBOR_FQDN) { $ERR = "no hostname in $VALUES (step 4)" }
-elseif (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { $ERR = 'openssl.exe not found (install Git for Windows)' }
-elseif ("$HARBOR_TLS_CRT$HARBOR_TLS_KEY$HARBOR_CA_CRT") {
+if (-not $HARBOR_FQDN) { $ERR = "no hostname in $VALUES (step 4)" } elseif (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) { $ERR = 'openssl.exe not found (install Git for Windows)' } elseif ("$HARBOR_TLS_CRT$HARBOR_TLS_KEY$HARBOR_CA_CRT") {
   foreach ($f in $HARBOR_TLS_CRT, $HARBOR_TLS_KEY, $HARBOR_CA_CRT) { if (-not (Test-Path $f -PathType Leaf) -or (Get-Item $f).Length -eq 0) { $ERR = "not found: $f" } }
   if (-not $ERR) {
     $CRT = @(Pem $HARBOR_TLS_CRT | Where-Object { $_ -clike '-----BEGIN CERTIFICATE-----*' })
@@ -2544,24 +2485,14 @@ elseif ("$HARBOR_TLS_CRT$HARBOR_TLS_KEY$HARBOR_CA_CRT") {
     [IO.File]::WriteAllText("$TMP\tls.key", "$($KEY[0])`n")
     [IO.File]::WriteAllText("$TMP\ca.crt", "$($CA[0])`n")
     $TEXT = (openssl.exe x509 -in "$TMP\leaf.crt" -noout -text 2>$null) -join "`n"
-    if (([IO.File]::ReadAllText($HARBOR_TLS_CRT) + [IO.File]::ReadAllText($HARBOR_CA_CRT)) -cmatch 'PRIVATE KEY') { $ERR = "a private key is in $HARBOR_TLS_CRT or ${HARBOR_CA_CRT}: give it only in HARBOR_TLS_KEY" }
-    elseif ($CRT.Count -lt 1) { $ERR = "no PEM certificate in $HARBOR_TLS_CRT" }
-    elseif ($KEY.Count -ne 1 -or $KEY[0] -cmatch 'ENCRYPTED') { $ERR = "$HARBOR_TLS_KEY is not a PEM private key without a passphrase" }
-    elseif ($CA.Count -ne 1) { $ERR = "$HARBOR_CA_CRT must hold exactly one PEM certificate, the root CA" }
-    elseif (-not (($TEXT -split '[,\n]' | ForEach-Object { $_.Trim() }) -ceq "DNS:$HARBOR_FQDN") -and -not (($TEXT -split '[,\n]' | ForEach-Object { $_.Trim() }) -ceq ('DNS:*.' + ($HARBOR_FQDN -replace '^[^.]*\.', '')))) { $ERR = "the certificate is not for $HARBOR_FQDN (no DNS:$HARBOR_FQDN)" }
-    elseif ($TEXT -notmatch 'TLS Web Server Authentication') { $ERR = 'the certificate is not for TLS Web Server Authentication' }
-    elseif ($(openssl.exe x509 -in "$TMP\leaf.crt" -noout -checkend 0 | Out-Null; $LASTEXITCODE) -ne 0) { $ERR = 'the certificate has expired' }
-    elseif ("$(openssl.exe x509 -in "$TMP\leaf.crt" -noout -pubkey)" -cne "$(openssl.exe pkey -in "$TMP\tls.key" -pubout)") { $ERR = "$HARBOR_TLS_KEY is not the key of $HARBOR_TLS_CRT" }
-    elseif ($(openssl.exe verify -CAfile "$TMP\ca.crt" -untrusted "$TMP\chain.crt" "$TMP\leaf.crt" 2>&1 | Out-Null; $LASTEXITCODE) -ne 0 -and
+    if (([IO.File]::ReadAllText($HARBOR_TLS_CRT) + [IO.File]::ReadAllText($HARBOR_CA_CRT)) -cmatch 'PRIVATE KEY') { $ERR = "a private key is in $HARBOR_TLS_CRT or ${HARBOR_CA_CRT}: give it only in HARBOR_TLS_KEY" } elseif ($CRT.Count -lt 1) { $ERR = "no PEM certificate in $HARBOR_TLS_CRT" } elseif ($KEY.Count -ne 1 -or $KEY[0] -cmatch 'ENCRYPTED') { $ERR = "$HARBOR_TLS_KEY is not a PEM private key without a passphrase" } elseif ($CA.Count -ne 1) { $ERR = "$HARBOR_CA_CRT must hold exactly one PEM certificate, the root CA" } elseif (-not (($TEXT -split '[,\n]' | ForEach-Object { $_.Trim() }) -ceq "DNS:$HARBOR_FQDN") -and -not (($TEXT -split '[,\n]' | ForEach-Object { $_.Trim() }) -ceq ('DNS:*.' + ($HARBOR_FQDN -replace '^[^.]*\.', '')))) { $ERR = "the certificate is not for $HARBOR_FQDN (no DNS:$HARBOR_FQDN)" } elseif ($TEXT -notmatch 'TLS Web Server Authentication') { $ERR = 'the certificate is not for TLS Web Server Authentication' } elseif ($(openssl.exe x509 -in "$TMP\leaf.crt" -noout -checkend 0 | Out-Null; $LASTEXITCODE) -ne 0) { $ERR = 'the certificate has expired' } elseif ("$(openssl.exe x509 -in "$TMP\leaf.crt" -noout -pubkey)" -cne "$(openssl.exe pkey -in "$TMP\tls.key" -pubout)") { $ERR = "$HARBOR_TLS_KEY is not the key of $HARBOR_TLS_CRT" } elseif ($(openssl.exe verify -CAfile "$TMP\ca.crt" -untrusted "$TMP\chain.crt" "$TMP\leaf.crt" 2>&1 | Out-Null; $LASTEXITCODE) -ne 0 -and
             $(openssl.exe verify -CAfile "$TMP\ca.crt" "$TMP\leaf.crt" 2>&1 | Out-Null; $LASTEXITCODE) -ne 0) {
       $ERR = "$HARBOR_CA_CRT and the intermediates in $HARBOR_TLS_CRT do not verify the certificate" }
   }
 }
-if ($ERR) { "NOT WRITTEN: $ERR" }
-else {
+if ($ERR) { "NOT WRITTEN: $ERR" } else {
   $NEW = @{ 'tls.crt' = @($CRT); 'tls.key' = @($KEY); 'ca.crt' = @($CA) }
-  if (-not "$HARBOR_TLS_CRT$HARBOR_TLS_KEY$HARBOR_CA_CRT") { $NEW = @{ 'tls.crt' = @(); 'tls.key' = @(); 'ca.crt' = @() } }
-  else { openssl.exe x509 -in "$TMP\leaf.crt" -noout -subject -enddate }
+  if (-not "$HARBOR_TLS_CRT$HARBOR_TLS_KEY$HARBOR_CA_CRT") { $NEW = @{ 'tls.crt' = @(); 'tls.key' = @(); 'ca.crt' = @() } } else { openssl.exe x509 -in "$TMP\leaf.crt" -noout -subject -enddate }
   $top = ''; $skip = $false
   $OUT = foreach ($l in [IO.File]::ReadAllLines($VALUES)) {
     if ($l -cmatch '^([A-Za-z][A-Za-z0-9_]*):') { $top = $Matches[1]; $skip = $false }
@@ -2676,13 +2607,7 @@ foreach ($l in $(if (Test-Path $VALUES) { [IO.File]::ReadAllLines($VALUES) })) {
 function Body($t) { if ("$t" -cmatch '(?s)-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----') { $Matches[1] -replace '\s', '' } else { '' } }
 $WANT = Body $WANT
 $NS = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name)
-if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
-elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
-elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
-elseif (-not (Test-Path $VALUES)) { "FAILED: no $VALUES (step 4)" }
-elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
-elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" }
-else {
+if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" } elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" } elseif (-not (Test-Path $VALUES)) { "FAILED: no $VALUES (step 4)" } elseif ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" } elseif ($NS.Count -ne 1) { "FAILED: Harbor namespaces on this Supervisor: '$($NS -join ' ')' (expected exactly one)" } else {
   $NS = $NS[0] -replace '^namespace/', ''
   $S = @(kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS get secret -l managed-by=vmware-vRegistry -o name)
   if ($LASTEXITCODE -ne 0 -or $S.Count -ne 1) {
@@ -2699,8 +2624,7 @@ else {
         if ($WANT) { $OK = ($GOT -ceq $WANT) } else { $OK = ($ISSUER -cmatch 'CN=Harbor CA$') }
       } catch { }
     }
-    if (-not $OK) { "FAILED: after 10 minutes Harbor's Secret does not hold the certificate from the file" }
-    else {
+    if (-not $OK) { "FAILED: after 10 minutes Harbor's Secret does not hold the certificate from the file" } else {
       "Harbor's certificate: issuer=$ISSUER"
       kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS delete pod -l app=harbor,component=nginx
       if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $NS rollout status deployment/harbor-nginx --timeout=300s }
@@ -2775,13 +2699,7 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
-if ($LASTEXITCODE -ne 0 -or -not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
-elseif (-not ($H = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name) -and $LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
-elseif (-not $H) { "NOTHING TO UNINSTALL: this Supervisor has no Harbor" }
-elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" }
-elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" }
-elseif (Test-Path "$HARBOR_DIR\none-before-$SUP") { "MAY UNINSTALL: this Supervisor had no Harbor when you began" }
-else { "DO NOT UNINSTALL: this machine has no record that this Supervisor had no Harbor before yours" }
+if ($LASTEXITCODE -ne 0 -or -not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } elseif (-not ($H = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name) -and $LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see the error above)" } elseif (-not $H) { "NOTHING TO UNINSTALL: this Supervisor has no Harbor" } elseif (-not $REC) { "FAILED: $HARBOR_DIR has no supervisor-uid: run step 1 first" } elseif ($REC -cne $SUP) { "FAILED: $HARBOR_DIR belongs to another Supervisor ($REC); set another SUPERVISOR_CONTEXT" } elseif (Test-Path "$HARBOR_DIR\none-before-$SUP") { "MAY UNINSTALL: this Supervisor had no Harbor when you began" } else { "DO NOT UNINSTALL: this machine has no record that this Supervisor had no Harbor before yours" }
 ```
 
 </details>
@@ -2834,8 +2752,7 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
 $H = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name
-if ($LASTEXITCODE -eq 0) { "Harbor namespaces left: $(if ($H) { $H -join ' ' } else { 'none' })" }
-else { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
+if ($LASTEXITCODE -eq 0) { "Harbor namespaces left: $(if ($H) { $H -join ' ' } else { 'none' })" } else { "FAILED: cannot list the Supervisor's namespaces (see the error above)" }
 ```
 
 **Expect:** `Harbor namespaces left: none`.
@@ -2913,14 +2830,9 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 $global:LASTEXITCODE = $null
 $REC = "$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()
 $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
-if ($LASTEXITCODE -ne 0 -or -not $SUP) { "Nothing deleted: cannot read the Supervisor (see the error above)" }
-elseif (-not $REC) { "Nothing deleted: $HARBOR_DIR has no supervisor-uid (step 1)" }
-elseif ($REC -cne $SUP) { "Nothing deleted: $HARBOR_DIR belongs to another Supervisor ($REC)" }
-else {
+if ($LASTEXITCODE -ne 0 -or -not $SUP) { "Nothing deleted: cannot read the Supervisor (see the error above)" } elseif (-not $REC) { "Nothing deleted: $HARBOR_DIR has no supervisor-uid (step 1)" } elseif ($REC -cne $SUP) { "Nothing deleted: $HARBOR_DIR belongs to another Supervisor ($REC)" } else {
   $H = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace -l appplatform.vmware.com/serviceId=harbor -o name
-  if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot list the Supervisor's namespaces (see the error above)" }
-  elseif ($H) { "Nothing deleted: a Harbor is still on the Supervisor $REC ($($H -join ' '))" }
-  else { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $HARBOR_DIR; "deleted $HARBOR_DIR" }
+  if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot list the Supervisor's namespaces (see the error above)" } elseif ($H) { "Nothing deleted: a Harbor is still on the Supervisor $REC ($($H -join ' '))" } else { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $HARBOR_DIR; "deleted $HARBOR_DIR" }
 }
 ```
 
@@ -3003,9 +2915,7 @@ $OLD = "$HOME\.config\vks-guides\harbor"
 $SUPERVISOR_CONTEXT = "supervisor"
 $NEW = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 
-if (-not (Test-Path -LiteralPath $OLD -PathType Container)) { "nothing to move" }
-elseif (Test-Path -LiteralPath $NEW) { "FAILED: $NEW exists; nothing moved" }
-else {
+if (-not (Test-Path -LiteralPath $OLD -PathType Container)) { "nothing to move" } elseif (Test-Path -LiteralPath $NEW) { "FAILED: $NEW exists; nothing moved" } else {
   $MOVED = $false
   try {
     Move-Item -LiteralPath $OLD -Destination $NEW -ErrorAction Stop
@@ -3096,14 +3006,11 @@ $HARBOR_DIR = "$HOME\.config\vks-guides\harbor-${SUPERVISOR_CONTEXT}"
 $global:LASTEXITCODE = $null
 $N = "$((Get-Content "$HARBOR_DIR\harbor-data-values.yml" -ErrorAction SilentlyContinue | Where-Object { $_ -cmatch '^hostname: ' }) -replace '^hostname: ', '')".Trim()
 if (-not $N) { $N = "none" }
-if (-not (Test-Path -LiteralPath $HARBOR_DIR -PathType Container)) { "FAILED: $HARBOR_DIR does not exist; nothing to bind" }
-elseif ("$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()) { "FAILED: $HARBOR_DIR already has a supervisor-uid; nothing changed" }
-elseif (-not $BIND_HOSTNAME -or $BIND_HOSTNAME -cne $N) {
+if (-not (Test-Path -LiteralPath $HARBOR_DIR -PathType Container)) { "FAILED: $HARBOR_DIR does not exist; nothing to bind" } elseif ("$(Get-Content -Raw "$HARBOR_DIR\supervisor-uid" -ErrorAction SilentlyContinue)".Trim()) { "FAILED: $HARBOR_DIR already has a supervisor-uid; nothing changed" } elseif (-not $BIND_HOSTNAME -or $BIND_HOSTNAME -cne $N) {
   "hostname in these files: ${N}; if that is the Harbor of the Supervisor this login reaches, put `$BIND_HOSTNAME = `"${N}`" in this block's first line and run the block again"
 } else {
   $SUP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace kube-system -o jsonpath='{.metadata.uid}'
-  if ($LASTEXITCODE -ne 0 -or -not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" }
-  else {
+  if ($LASTEXITCODE -ne 0 -or -not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } else {
     try {
       Set-Content -Encoding ascii -Path "$HARBOR_DIR\supervisor-uid" -Value $SUP -ErrorAction Stop
       "bound $HARBOR_DIR to the Supervisor $SUP"
