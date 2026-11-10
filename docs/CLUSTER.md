@@ -114,19 +114,19 @@ old cluster's address and never become available. After `dev-1`, take `dev-2`.
 Run this before you create the cluster, with the name you chose. It checks that nothing in your
 vSphere Namespace holds the name, neither a cluster nor its address entry (the load-balancer entry
 that gives a cluster its address), and changes nothing. You then know whether the name is free to
-use now. Set `VKS_NAMESPACE` to your vSphere Namespace and `VKS_CLUSTER` to the name you chose.
+use now. Set `VSPHERE_NAMESPACE` to your vSphere Namespace and `VKS_CLUSTER` to the name you chose.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
-  echo "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
-elif L="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io,virtualmachineservices "$VKS_CLUSTER" --ignore-not-found -o name)"; then
+if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VSPHERE_NAMESPACE" >/dev/null; then
+  echo "FAILED: cannot read the namespace $VSPHERE_NAMESPACE (see the error above)"
+elif L="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get clusters.cluster.x-k8s.io,virtualmachineservices "$VKS_CLUSTER" --ignore-not-found -o name)"; then
   if [ -n "$L" ]; then echo "in use:"; printf '%s\n' "$L"; else echo "none now: no cluster and no address named $VKS_CLUSTER"; fi
 else
   echo "unknown (see the error above)"
@@ -136,15 +136,15 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
-if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)" } else {
-  $L = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io,virtualmachineservices $VKS_CLUSTER --ignore-not-found -o name
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VSPHERE_NAMESPACE | Out-Null
+if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the namespace $VSPHERE_NAMESPACE (see the error above)" } else {
+  $L = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get clusters.cluster.x-k8s.io,virtualmachineservices $VKS_CLUSTER --ignore-not-found -o name
   if ($LASTEXITCODE -ne 0) { "unknown (see the error above)" } elseif ($L) { "in use:"; $L } else { "none now: no cluster and no address named $VKS_CLUSTER" }
 }
 ```
@@ -235,31 +235,31 @@ Creating the cluster takes a few minutes, and you can use it only once it is ava
 row in the vSphere Client (the refresh arrow reloads the list), or run this block after **FINISH**
 (or step 9): it shows the cluster and each of its machines (the virtual machines that become its
 nodes), with their state, and changes nothing. Run it again until the cluster is available. Set
-`VKS_NAMESPACE` to your vSphere Namespace and `VKS_CLUSTER` to the cluster's name.
+`VSPHERE_NAMESPACE` to your vSphere Namespace and `VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
-  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get machines.cluster.x-k8s.io -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER"
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" \
+  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get machines.cluster.x-k8s.io -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER"
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER
-if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get machines.cluster.x-k8s.io -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" }
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get machines.cluster.x-k8s.io -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" }
 ```
 
 **Expect:** the cluster with `AVAILABLE` `True`, and each machine `Running`; in the client,
@@ -273,32 +273,32 @@ vCenter downloads its node image.
 Run this first when the cluster stays `False`: a cluster can get stuck on an address left over
 from an older cluster of the same name. It prints the address the cluster uses and the address its
 load balancer got, and changes nothing. If the two addresses are the same, the address is not
-the cause. Set `VKS_NAMESPACE` to your vSphere Namespace and `VKS_CLUSTER` to the cluster's name.
+the cause. Set `VSPHERE_NAMESPACE` to your vSphere Namespace and `VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-E="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" -o jsonpath='{.spec.controlPlaneEndpoint.host}')" \
-  && A="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get virtualmachineservices "$VKS_CLUSTER" -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" \
+E="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" -o jsonpath='{.spec.controlPlaneEndpoint.host}')" \
+  && A="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get virtualmachineservices "$VKS_CLUSTER" -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" \
   && echo "cluster address: ${E:-none}, load balancer address: ${A:-none}"
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-$E = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER -o jsonpath='{.spec.controlPlaneEndpoint.host}'
-if ($LASTEXITCODE -eq 0) { $A = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get virtualmachineservices $VKS_CLUSTER -o jsonpath='{.status.loadBalancer.ingress[0].ip}' }
+$E = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER -o jsonpath='{.spec.controlPlaneEndpoint.host}'
+if ($LASTEXITCODE -eq 0) { $A = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get virtualmachineservices $VKS_CLUSTER -o jsonpath='{.status.loadBalancer.ingress[0].ip}' }
 if ($LASTEXITCODE -eq 0) { "cluster address: $(if ($E) { $E } else { 'none' }), load balancer address: $(if ($A) { $A } else { 'none' })" }
 ```
 
@@ -312,64 +312,64 @@ if ($LASTEXITCODE -eq 0) { "cluster address: $(if ($E) { $E } else { 'none' }), 
 
 Run this next if the two addresses match, to learn why the cluster waits. It describes the cluster
 and changes nothing. Read the `Conditions` (the cluster's state checks) and the `Events` (what
-happened to it) at the end of its output. Set `VKS_NAMESPACE` to your vSphere Namespace and
+happened to it) at the end of its output. Set `VSPHERE_NAMESPACE` to your vSphere Namespace and
 `VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" describe clusters.cluster.x-k8s.io "$VKS_CLUSTER"
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" describe clusters.cluster.x-k8s.io "$VKS_CLUSTER"
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE describe clusters.cluster.x-k8s.io $VKS_CLUSTER
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE describe clusters.cluster.x-k8s.io $VKS_CLUSTER
 ```
 
 **Expect:** the cluster's description, ending in its `Conditions` and `Events`.
 
 **If not:**
-- `NotFound`: check `VKS_NAMESPACE` and `VKS_CLUSTER`.
+- `NotFound`: check `VSPHERE_NAMESPACE` and `VKS_CLUSTER`.
 - No event says why the cluster waits: run the block below.
 
 Run this last if no event says why the cluster waits. It checks, for each machine of the cluster,
 whether vSphere could make its virtual machine, and changes nothing. You get one line per machine,
-with vSphere's reason when it could not. Set `VKS_NAMESPACE` to your vSphere Namespace and
+with vSphere's reason when it could not. Set `VSPHERE_NAMESPACE` to your vSphere Namespace and
 `VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get vspheremachines.vmware.infrastructure.cluster.x-k8s.io -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" -o json \
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get vspheremachines.vmware.infrastructure.cluster.x-k8s.io -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" -o json \
   | jq -r '.items[] | "\(.metadata.name): " + ([.status.conditions[]? | select(.type == "VirtualMachineProvisioned") | "\(.status) \(.reason // "") \(.message // "")"] | join(""))'
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get vspheremachines.vmware.infrastructure.cluster.x-k8s.io -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" -o json | Out-String
+$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get vspheremachines.vmware.infrastructure.cluster.x-k8s.io -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" -o json | Out-String
 if ($LASTEXITCODE -eq 0) {
   foreach ($M in (ConvertFrom-Json $J).items) { $C = @($M.status.conditions | Where-Object { $_.type -eq 'VirtualMachineProvisioned' })[0]; "$($M.metadata.name): $($C.status) $($C.reason) $($C.message)" }
 }
@@ -382,7 +382,7 @@ if ($LASTEXITCODE -eq 0) {
   limit is full. A cluster of one control-plane node and two `best-effort-medium` workers in one
   node pool needs about 84 GB, and about 156 GB while it changes to `best-effort-large` (step 2).
   Free storage in the namespace, or ask your vCenter administrator to raise its limit.
-- Nothing printed: check `VKS_NAMESPACE` and `VKS_CLUSTER`, or wait until the first block of this
+- Nothing printed: check `VSPHERE_NAMESPACE` and `VKS_CLUSTER`, or wait until the first block of this
   step lists machines.
 - `Forbidden`: ask your vCenter administrator to run it.
 
@@ -458,33 +458,33 @@ says `none now` or `unknown`, stop: the name is wrong, or you may not read it.
 
 Then run this before the delete, to know which disks the cluster's apps made: they outlive the
 cluster. It lists them, first as the cluster sees them, then as they sit in the vSphere Namespace,
-and changes nothing. Keep the list to compare with after the delete. Set `VKS_NAMESPACE` to your
+and changes nothing. Keep the list to compare with after the delete. Set `VSPHERE_NAMESPACE` to your
 vSphere Namespace and `VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig "$VKS_KUBECONFIG" get persistentvolumeclaims -A
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get persistentvolumeclaims -l "$VKS_CLUSTER/TKGService"
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get persistentvolumeclaims -l "$VKS_CLUSTER/TKGService"
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 kubectl --kubeconfig $VKS_KUBECONFIG get persistentvolumeclaims -A
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get persistentvolumeclaims -l "$VKS_CLUSTER/TKGService"
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get persistentvolumeclaims -l "$VKS_CLUSTER/TKGService"
 ```
 
 **Expect:** `No resources found` twice, or the disks listed. Each disk listed stays after the
@@ -495,29 +495,29 @@ specified`): get the kubeconfig first (step 7).
 
 Then run this, with the disk list kept, to delete the cluster. It deletes the cluster and its
 virtual machines, and returns at once without waiting. Once the delete finishes, the cluster is
-gone, and the disks listed above stay. Set `VKS_NAMESPACE` to your vSphere Namespace and
+gone, and the disks listed above stay. Set `VSPHERE_NAMESPACE` to your vSphere Namespace and
 `VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" delete clusters.cluster.x-k8s.io "$VKS_CLUSTER" --wait=false
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" delete clusters.cluster.x-k8s.io "$VKS_CLUSTER" --wait=false
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete clusters.cluster.x-k8s.io $VKS_CLUSTER --wait=false
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE delete clusters.cluster.x-k8s.io $VKS_CLUSTER --wait=false
 ```
 
 **Expect:** `cluster.cluster.x-k8s.io "<name>" deleted` (newer kubectl: `… deleted from <your
@@ -532,39 +532,39 @@ disks the cluster left behind.
 Optional: run this after the delete, when nobody needs the data on the deleted cluster's disks:
 they still use the vSphere Namespace's storage. **This deletes them (the second list of the disk
 block above) and what they hold, for good.** It deletes nothing while a cluster of that name
-exists. Afterwards the second list of the disk block is empty. Set `VKS_NAMESPACE` to your
+exists. Afterwards the second list of the disk block is empty. Set `VSPHERE_NAMESPACE` to your
 vSphere Namespace and `VKS_CLUSTER` to the deleted cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-if ! L="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" --ignore-not-found -o name)"; then
+if ! L="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER" --ignore-not-found -o name)"; then
   echo "Nothing deleted: cannot read the clusters (see the error above)"
 elif [ -n "$L" ]; then
   echo "Nothing deleted: $L still exists"
 else
-  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" delete persistentvolumeclaims -l "$VKS_CLUSTER/TKGService"
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" delete persistentvolumeclaims -l "$VKS_CLUSTER/TKGService"
 fi
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-$L = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER --ignore-not-found -o name
+$L = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER --ignore-not-found -o name
 if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot read the clusters (see the error above)" }
 elseif ($L) { "Nothing deleted: $L still exists" }
-else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete persistentvolumeclaims -l "$VKS_CLUSTER/TKGService" }
+else { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE delete persistentvolumeclaims -l "$VKS_CLUSTER/TKGService" }
 ```
 
 **Expect:** a `persistentvolumeclaim "<id>" deleted` line for each disk, or `No resources found`.
@@ -587,13 +587,13 @@ steps 1 and 2 first.
 1. Run this before you write the file, to know which values your Supervisor and namespace accept.
    It lists the Kubernetes releases you may use, the newest cluster class, and the namespace's VM
    classes and storage classes, and changes nothing. You copy its values into the file in the
-   next step. Set `VKS_NAMESPACE` to your vSphere Namespace.
+   next step. Set `VSPHERE_NAMESPACE` to your vSphere Namespace.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
@@ -609,9 +609,9 @@ else
   echo "Cluster classes: unknown (see the error above)"
 fi
 echo "VM classes (vmClass:):"
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get virtualmachineclass --no-headers
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get virtualmachineclass --no-headers
 echo "Storage classes (storageClass:, defaultStorageClass:):"
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get storagepolicyquota \
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get storagepolicyquota \
   -o jsonpath='{range .items[*].status.total[*]}{.storageClassName}{"\n"}{end}' | sort -u
 ```
 
@@ -621,7 +621,7 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get storagepol
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
@@ -644,9 +644,9 @@ if ($LASTEXITCODE -eq 0) {
   "Cluster classes: unknown (see the error above)"
 }
 "VM classes (vmClass:):"
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get virtualmachineclass --no-headers
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get virtualmachineclass --no-headers
 "Storage classes (storageClass:, defaultStorageClass:):"
-$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get storagepolicyquota -o json
+$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get storagepolicyquota -o json
 if ($LASTEXITCODE -eq 0) {
   ($J | Out-String | ConvertFrom-Json).items | ForEach-Object { $_.status.total } |
     ForEach-Object { $_.storageClassName } | Sort-Object -Unique
@@ -704,7 +704,7 @@ spec:
 | # | line | what to put |
 |---|---|---|
 | 1 | `metadata.name` | the cluster's name from step 2, never used before in this namespace |
-| 2 | `metadata.namespace` | your vSphere Namespace; the same as `VKS_NAMESPACE` in the block below |
+| 2 | `metadata.namespace` | your vSphere Namespace; the same as `VSPHERE_NAMESPACE` in the block below |
 | 3 | `classRef.name` | the newest cluster class the block lists |
 | 4 | `version` | one name from the block's release list. The cluster stores it shortened: `v1.37.1---vmware.4-vkr.1` becomes `v1.37.1+vmware.4` |
 | 5 | `controlPlane.replicas` | `1`, or `3` for a cluster that must stay up when a node fails |
@@ -718,31 +718,31 @@ Leave `class: node-pool` (the node pool type the cluster class defines), `servic
 3. Run this once the file is saved, to create the cluster from it. It first checks the file on
    the Supervisor without creating anything (`--dry-run=server`), and creates the cluster only if
    that check passes. Afterwards the cluster is being created, as after **FINISH** in step 5. Set
-   `VKS_NAMESPACE` to the vSphere Namespace in the file's `metadata.namespace`.
+   `VSPHERE_NAMESPACE` to the vSphere Namespace in the file's `metadata.namespace`.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 CLUSTER_YAML="$HOME/cluster.yaml"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" create --dry-run=server -f "$CLUSTER_YAML" \
-  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" create -f "$CLUSTER_YAML"
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" create --dry-run=server -f "$CLUSTER_YAML" \
+  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" create -f "$CLUSTER_YAML"
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $CLUSTER_YAML = "$HOME\cluster.yaml"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE create --dry-run=server -f $CLUSTER_YAML
-if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE create -f $CLUSTER_YAML }
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE create --dry-run=server -f $CLUSTER_YAML
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE create -f $CLUSTER_YAML }
 ```
 
 **Expect:** `cluster.cluster.x-k8s.io/<name> created (server dry run)`, then
@@ -754,7 +754,7 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_N
 - `vm class(es): … not found` or `storage class(es): … not found`: line 7 names a class the
   namespace does not have.
 - `MachineDeploymentClass with name … does not exist`: put back `class: node-pool`.
-- `does not match the namespace`: `metadata.namespace` and `VKS_NAMESPACE` differ.
+- `does not match the namespace`: `metadata.namespace` and `VSPHERE_NAMESPACE` differ.
 - `the path "…" does not exist`: the file is not where `CLUSTER_YAML` says.
 - `Forbidden` with none of these messages: your user needs the **Namespaces Edit** role on the
   namespace.
@@ -811,18 +811,18 @@ While the nodes are replaced, the cluster's status shows an ⓘ, and its YAML's 
 Run this after **SAVE**, to follow the change and know when it is done. It shows the VM class the
 cluster asks for, the class of each node, and whether all nodes are up to date, and changes
 nothing. Run it again until every node is of the new class (or the number of workers is the one you
-set), `PoweredOn`, and both lines say `True`: then the resize is done. Set `VKS_NAMESPACE` to your
+set), `PoweredOn`, and both lines say `True`: then the resize is done. Set `VSPHERE_NAMESPACE` to your
 vSphere Namespace and `VKS_CLUSTER` to the cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-sv() { kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" "$@"; }
+sv() { kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" "$@"; }
 if V="$(sv get cluster "$VKS_CLUSTER" -o jsonpath='{.spec.topology.variables[?(@.name=="vmClass")].value}')"; then
   echo "the cluster asks for: $V"
   sv get virtualmachines -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" -o custom-columns='NODE:.metadata.name,CLASS:.spec.className,POWER:.status.powerState'
@@ -835,17 +835,17 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-$V = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get cluster $VKS_CLUSTER -o jsonpath='{.spec.topology.variables[?(@.name==''vmClass'')].value}'
+$V = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get cluster $VKS_CLUSTER -o jsonpath='{.spec.topology.variables[?(@.name==''vmClass'')].value}'
 if ($LASTEXITCODE -eq 0) {
   "the cluster asks for: $V"
-  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get virtualmachines -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" -o custom-columns='NODE:.metadata.name,CLASS:.spec.className,POWER:.status.powerState'
-  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get cluster $VKS_CLUSTER -o jsonpath='control plane up to date: {.status.conditions[?(@.type==''ControlPlaneMachinesUpToDate'')].status}{''\n''}workers up to date: {.status.conditions[?(@.type==''WorkerMachinesUpToDate'')].status}{''\n''}'
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get virtualmachines -l "cluster.x-k8s.io/cluster-name=$VKS_CLUSTER" -o custom-columns='NODE:.metadata.name,CLASS:.spec.className,POWER:.status.powerState'
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get cluster $VKS_CLUSTER -o jsonpath='control plane up to date: {.status.conditions[?(@.type==''ControlPlaneMachinesUpToDate'')].status}{''\n''}workers up to date: {.status.conditions[?(@.type==''WorkerMachinesUpToDate'')].status}{''\n''}'
 } else {
   "FAILED: cannot read the cluster (see the error above)"
 }

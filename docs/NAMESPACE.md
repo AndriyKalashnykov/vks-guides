@@ -267,37 +267,37 @@ again.
 
 Run this before you create a VKS cluster, in a namespace you made or one someone gave you. It
 checks that the namespace exists and that your user may create VKS clusters in it, and changes
-nothing. Two answers, your namespace and `yes`, mean you may go on. Set `VKS_NAMESPACE` to the
+nothing. Two answers, your namespace and `yes`, mean you may go on. Set `VSPHERE_NAMESPACE` to the
 namespace's name, and `SUPERVISOR_CONTEXT` to your login's name for the Supervisor.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
-  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" auth can-i create clusters.cluster.x-k8s.io
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VSPHERE_NAMESPACE" \
+  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" auth can-i create clusters.cluster.x-k8s.io
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE
-if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE auth can-i create clusters.cluster.x-k8s.io }
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VSPHERE_NAMESPACE
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE auth can-i create clusters.cluster.x-k8s.io }
 ```
 
 **Expect:** your namespace, `Active`, then `yes`.
 
 **If not:**
-- `NotFound`: check `VKS_NAMESPACE`.
-- `Forbidden`, or `no`: check `VKS_NAMESPACE` (a user who is not a vCenter administrator gets
+- `NotFound`: check `VSPHERE_NAMESPACE`.
+- `Forbidden`, or `no`: check `VSPHERE_NAMESPACE` (a user who is not a vCenter administrator gets
   `Forbidden` for a name that does not exist); if it is right, your SSO user has no
   **Namespaces Edit** role on the namespace (step 4).
 - `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login).
@@ -307,23 +307,23 @@ a cluster needs. It lists what the namespace offers a cluster: VM classes, stora
 Kubernetes releases (the Kubernetes versions a cluster can run) and cluster classes (Broadcom's
 templates for a cluster). It changes nothing. You then know which VM classes and storage
 classes you can choose in [CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values). Set
-`VKS_NAMESPACE` and `SUPERVISOR_CONTEXT` as in the block above.
+`VSPHERE_NAMESPACE` and `SUPERVISOR_CONTEXT` as in the block above.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" >/dev/null; then
-  echo "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
+if ! kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VSPHERE_NAMESPACE" >/dev/null; then
+  echo "FAILED: cannot read the namespace $VSPHERE_NAMESPACE (see the error above)"
 else
   echo "VM classes:"
-  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get virtualmachineclass --no-headers
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get virtualmachineclass --no-headers
   echo "Storage classes:"
-  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get storagepolicyquota \
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get storagepolicyquota \
     -o jsonpath='{range .items[*].status.total[*]}{.storageClassName}{"\n"}{end}' | sort -u
   if J="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get kr -o json)"; then
     echo "Kubernetes releases ready to use: $(printf '%s' "$J" | jq '[.items[] | select([.status.conditions[]? | select(.type == "Ready" or .type == "Compatible") | .status] | length == 2 and all(. == "True"))] | length')"
@@ -344,19 +344,19 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE | Out-Null
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VSPHERE_NAMESPACE | Out-Null
 if ($LASTEXITCODE -ne 0) {
-  "FAILED: cannot read the namespace $VKS_NAMESPACE (see the error above)"
+  "FAILED: cannot read the namespace $VSPHERE_NAMESPACE (see the error above)"
 } else {
   "VM classes:"
-  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get virtualmachineclass --no-headers
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get virtualmachineclass --no-headers
   "Storage classes:"
-  $J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get storagepolicyquota -o json
+  $J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get storagepolicyquota -o json
   if ($LASTEXITCODE -eq 0) {
     ($J | Out-String | ConvertFrom-Json).items | ForEach-Object { $_.status.total } |
       ForEach-Object { $_.storageClassName } | Sort-Object -Unique
@@ -409,35 +409,35 @@ you to confirm says the same.
 Run this right before you remove the namespace, so that you do not delete work someone still
 uses. It lists the VKS clusters, VMs, volumes and pods (running containers) left in it, and
 changes nothing. An empty list means you may remove the namespace in the vSphere Client, below. Set
-`VKS_NAMESPACE` to the namespace's name, and `SUPERVISOR_CONTEXT` as in step 8:
+`VSPHERE_NAMESPACE` to the namespace's name, and `SUPERVISOR_CONTEXT` as in step 8:
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VKS_NAMESPACE" \
-  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io,virtualmachines,persistentvolumeclaims,pods
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get namespace "$VSPHERE_NAMESPACE" \
+  && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get clusters.cluster.x-k8s.io,virtualmachines,persistentvolumeclaims,pods
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
 $global:LASTEXITCODE = $null
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VKS_NAMESPACE
-if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io,virtualmachines,persistentvolumeclaims,pods }
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG get namespace $VSPHERE_NAMESPACE
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get clusters.cluster.x-k8s.io,virtualmachines,persistentvolumeclaims,pods }
 ```
 
 **Expect:** your namespace, `Active`, then `No resources found in <your namespace> namespace.`
 
 **If not:**
-- `NotFound`: check `VKS_NAMESPACE`. Do not remove a namespace you cannot see here.
+- `NotFound`: check `VSPHERE_NAMESPACE`. Do not remove a namespace you cannot see here.
 - A VKS cluster, VM, volume or pod is listed: delete it first ([CLUSTER.md](CLUSTER.md#8-delete-the-cluster-optional) deletes a
   VKS cluster). A deleted cluster leaves its apps' volumes here; see
   [Delete the cluster](CLUSTER.md#8-delete-the-cluster-optional).
@@ -572,27 +572,27 @@ In the vSphere Client the namespace is listed under **Supervisor Management** â†
 
 When you no longer need a namespace you created with this step, first run the block in step 9 to
 check that it is empty. Then this deletes the namespace from the Supervisor. Afterwards the
-vSphere Client's Namespaces tab shows it as Removing until it is gone. Set `VKS_NAMESPACE` to the
+vSphere Client's Namespaces tab shows it as Removing until it is gone. Set `VSPHERE_NAMESPACE` to the
 namespace's name, and `SUPERVISOR_CONTEXT` as in step 8:
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" delete namespace "$VKS_NAMESPACE"
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" delete namespace "$VSPHERE_NAMESPACE"
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG delete namespace $VKS_NAMESPACE
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG delete namespace $VSPHERE_NAMESPACE
 ```
 
 **Expect:** `namespace "<name>" deleted`. In the vSphere Client's **Namespaces** tab the row shows

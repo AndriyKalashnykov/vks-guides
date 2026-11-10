@@ -139,15 +139,15 @@ CLI and in its kubeconfig file (it stays active after the block), then asks the 
 add-ons one VKS cluster has, beyond the core add-ons every cluster has; it changes nothing on the
 Supervisor or in the cluster. You then have a row per add-on: whether it is ready, and whether you
 may remove or upgrade it with `vcf addon`; if an add-on a guide needs is not listed, that guide
-installs it. Set `VKS_NAMESPACE` to the vSphere Namespace that holds the cluster (its name in
+installs it. Set `VSPHERE_NAMESPACE` to the vSphere Namespace that holds the cluster (its name in
 vCenter), `VKS_CLUSTER` to the VKS cluster's name, and `SUPERVISOR_CONTEXT` to the name of your
 Supervisor login from [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md) (`supervisor` unless you chose another name). For a
-second cluster, change `VKS_CLUSTER` and `VKS_NAMESPACE` and run it again.
+second cluster, change `VKS_CLUSTER` and `VSPHERE_NAMESPACE` and run it again.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 
@@ -156,14 +156,14 @@ if ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPE
   printf '%s\n' "$VCF_USE"
   echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
-  vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VKS_NAMESPACE"
+  vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE"
 fi
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 
@@ -172,7 +172,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   $VCF_USE
   "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 } else {
-  vcf addon install list --cluster-name $VKS_CLUSTER -n $VKS_NAMESPACE
+  vcf addon install list --cluster-name $VKS_CLUSTER -n $VSPHERE_NAMESPACE
 }
 ```
 

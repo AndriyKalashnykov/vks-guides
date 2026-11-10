@@ -28,7 +28,7 @@ ArgoCD (an *instance*). In this guide ArgoCD creates a VKS cluster from the char
 changes or deletes the app on the cluster, ArgoCD puts it back.
 
 You choose two vSphere Namespaces: one that runs ArgoCD (you set it as `ARGOCD_NAMESPACE` in the
-blocks) and one that holds the VKS cluster (`VKS_NAMESPACE`). They can be the same namespace.
+blocks) and one that holds the VKS cluster (`VSPHERE_NAMESPACE`). They can be the same namespace.
 
 ## Prerequisites
 
@@ -359,11 +359,11 @@ page.
 
 **Whoever can log in to this ArgoCD as `admin`, or has Namespaces Edit on `ARGOCD_NAMESPACE`
 (it can read ArgoCD's admin password there), can then do everything Namespaces Edit allows in
-`VKS_NAMESPACE`**: create and delete VKS clusters and VMs, and read every VKS cluster's
+`VSPHERE_NAMESPACE`**: create and delete VKS clusters and VMs, and read every VKS cluster's
 kubeconfig. Give both only to people who may do that.
 
 ArgoCD can create a VKS cluster only in a vSphere Namespace it may change. Run this once for the
-vSphere Namespace that will hold the VKS cluster (set `VKS_NAMESPACE` to it). It allows ArgoCD in
+vSphere Namespace that will hold the VKS cluster (set `VSPHERE_NAMESPACE` to it). It allows ArgoCD in
 there:
 
 - ArgoCD's account `argocd-k8s-sa` (a login for the ArgoCD program, not a person) gets the `edit`
@@ -381,14 +381,14 @@ Afterwards ArgoCD may create VKS clusters in that namespace, which step 6 does.
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" apply -f - <<EOF
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: argocd-k8s-sa-edit
-  namespace: ${VKS_NAMESPACE}
+  namespace: ${VSPHERE_NAMESPACE}
 subjects:
   - kind: ServiceAccount
     name: argocd-k8s-sa
@@ -401,14 +401,14 @@ roleRef:
 apiVersion: argocd-service.vsphere.vmware.com/v1alpha1
 kind: ManagedEntity
 metadata:
-  name: ns-${VKS_NAMESPACE}
+  name: ns-${VSPHERE_NAMESPACE}
   namespace: ${ARGOCD_NAMESPACE}
 spec:
   argoCDProject: vks-clusters
   targetRef:
     apiGroup: ""
     kind: Namespace
-    name: ${VKS_NAMESPACE}
+    name: ${VSPHERE_NAMESPACE}
 EOF
 ```
 
@@ -421,14 +421,14 @@ EOF
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 
 @"
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: argocd-k8s-sa-edit
-  namespace: ${VKS_NAMESPACE}
+  namespace: ${VSPHERE_NAMESPACE}
 subjects:
   - kind: ServiceAccount
     name: argocd-k8s-sa
@@ -441,14 +441,14 @@ roleRef:
 apiVersion: argocd-service.vsphere.vmware.com/v1alpha1
 kind: ManagedEntity
 metadata:
-  name: ns-${VKS_NAMESPACE}
+  name: ns-${VSPHERE_NAMESPACE}
   namespace: ${ARGOCD_NAMESPACE}
 spec:
   argoCDProject: vks-clusters
   targetRef:
     apiGroup: ""
     kind: Namespace
-    name: ${VKS_NAMESPACE}
+    name: ${VSPHERE_NAMESPACE}
 "@ | kubectl --kubeconfig $SUPERVISOR_KUBECONFIG apply -f -
 ```
 
@@ -501,7 +501,7 @@ In ArgoCD, an *Application* is a folder in Git that ArgoCD applies to a destinat
 is to apply it now. A *project* sets limits for a group of Applications. Run this once, before the
 cluster's Application below. It creates the project `vks-clusters` in ArgoCD and nothing else.
 You get a project in which the cluster's Application can only read this repository, deploy only
-to `VKS_NAMESPACE`, and create only VKS clusters.
+to `VSPHERE_NAMESPACE`, and create only VKS clusters.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -510,7 +510,7 @@ to `VKS_NAMESPACE`, and create only VKS clusters.
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" apply -f - <<EOF
 apiVersion: argoproj.io/v1alpha1
@@ -518,12 +518,12 @@ kind: AppProject
 metadata:
   name: vks-clusters
 spec:
-  description: VKS clusters from vks-guides into ${VKS_NAMESPACE}
+  description: VKS clusters from vks-guides into ${VSPHERE_NAMESPACE}
   sourceRepos:
     - https://github.com/AndriyKalashnykov/vks-guides.git
   destinations:
-    - name: ${VKS_NAMESPACE}
-      namespace: ${VKS_NAMESPACE}
+    - name: ${VSPHERE_NAMESPACE}
+      namespace: ${VSPHERE_NAMESPACE}
   namespaceResourceWhitelist:
     - group: cluster.x-k8s.io
       kind: Cluster
@@ -539,7 +539,7 @@ EOF
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 
 @"
 apiVersion: argoproj.io/v1alpha1
@@ -547,12 +547,12 @@ kind: AppProject
 metadata:
   name: vks-clusters
 spec:
-  description: VKS clusters from vks-guides into ${VKS_NAMESPACE}
+  description: VKS clusters from vks-guides into ${VSPHERE_NAMESPACE}
   sourceRepos:
     - https://github.com/AndriyKalashnykov/vks-guides.git
   destinations:
-    - name: ${VKS_NAMESPACE}
-      namespace: ${VKS_NAMESPACE}
+    - name: ${VSPHERE_NAMESPACE}
+      namespace: ${VSPHERE_NAMESPACE}
   namespaceResourceWhitelist:
     - group: cluster.x-k8s.io
       kind: Cluster
@@ -569,7 +569,7 @@ spec:
 - `Forbidden`: your SSO user has no **Namespaces Edit** role on `ARGOCD_NAMESPACE`.
 
 The cluster's Application needs four values. This lists the choices for a new VKS cluster in
-`VKS_NAMESPACE`, and changes nothing. You get four lists, and you copy one value from each list into
+`VSPHERE_NAMESPACE`, and changes nothing. You get four lists, and you copy one value from each list into
 the Application block below:
 
 - Kubernetes versions, written as the cluster needs them (without the `-vkr.N` ending);
@@ -583,7 +583,7 @@ the Application block below:
 ```sh
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 
 echo "Kubernetes versions:"
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get kr -o json \
@@ -591,9 +591,9 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" get kr -o json \
 echo "Cluster classes:"
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n vmware-system-vks-public get clusterclass -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'
 echo "VM classes:"
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get virtualmachineclass --no-headers
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get virtualmachineclass --no-headers
 echo "Storage classes:"
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get storagepolicyquota \
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get storagepolicyquota \
   -o jsonpath='{range .items[*].status.total[*]}{.storageClassName}{"\n"}{end}' | sort -u
 ```
 
@@ -605,7 +605,7 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get storagepol
 ```powershell
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 
 $global:LASTEXITCODE = $null
 "Kubernetes versions:"
@@ -618,9 +618,9 @@ if ($LASTEXITCODE -eq 0) {
 "Cluster classes:"
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n vmware-system-vks-public get clusterclass -o jsonpath='{range .items[*]}{.metadata.name}{''\n''}{end}'
 "VM classes:"
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get virtualmachineclass --no-headers
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get virtualmachineclass --no-headers
 "Storage classes:"
-$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get storagepolicyquota -o json
+$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get storagepolicyquota -o json
 if ($LASTEXITCODE -eq 0) {
   ($J | Out-String | ConvertFrom-Json).items | ForEach-Object { $_.status.total } |
     ForEach-Object { $_.storageClassName } | Sort-Object -Unique
@@ -634,7 +634,7 @@ if ($LASTEXITCODE -eq 0) {
 
 **If not:** an empty list or `Forbidden`: run [Check the namespace](NAMESPACE.md#8-check-the-namespace).
 
-Choose a name for the new VKS cluster that no cluster in `VKS_NAMESPACE` has: lower-case letters,
+Choose a name for the new VKS cluster that no cluster in `VSPHERE_NAMESPACE` has: lower-case letters,
 digits and `-`, starting with a letter. ArgoCD would take over an existing cluster of that name,
 and deleting the Application would delete it. This checks that neither a VKS cluster nor an
 Application has the name now, and changes nothing. You get two `NotFound` lines when the name is
@@ -646,10 +646,10 @@ free. Set `VKS_CLUSTER` to the name:
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER"
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER"
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get applications.argoproj.io "$VKS_CLUSTER"
 ```
 
@@ -659,10 +659,10 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get applica
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get applications.argoproj.io $VKS_CLUSTER
 ```
 
@@ -686,7 +686,7 @@ takes about 84 GB of the namespace's storage.
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 K8S_VERSION="v1.37.1+vmware.4"
 CLUSTER_CLASS="builtin-generic-v3.8.0"
@@ -714,8 +714,8 @@ spec:
         vmClass: "${VM_CLASS}"
         storageClass: "${STORAGE_CLASS}"
   destination:
-    name: ${VKS_NAMESPACE}
-    namespace: ${VKS_NAMESPACE}
+    name: ${VSPHERE_NAMESPACE}
+    namespace: ${VSPHERE_NAMESPACE}
 EOF
 ```
 
@@ -728,7 +728,7 @@ EOF
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $K8S_VERSION = "v1.37.1+vmware.4"
 $CLUSTER_CLASS = "builtin-generic-v3.8.0"
@@ -756,8 +756,8 @@ spec:
         vmClass: "${VM_CLASS}"
         storageClass: "${STORAGE_CLASS}"
   destination:
-    name: ${VKS_NAMESPACE}
-    namespace: ${VKS_NAMESPACE}
+    name: ${VSPHERE_NAMESPACE}
+    namespace: ${VSPHERE_NAMESPACE}
 "@ | kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE apply -f -
 ```
 
@@ -801,11 +801,11 @@ VKS builds the cluster in 5 to 10 minutes: run it again every few minutes.
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get applications.argoproj.io "$VKS_CLUSTER" -o jsonpath='{.status.sync.status}  {.status.health.status}{"\n"}'
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER"
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get clusters.cluster.x-k8s.io "$VKS_CLUSTER"
 ```
 
 **Windows (PowerShell):**
@@ -814,11 +814,11 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get clusters.c
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get applications.argoproj.io $VKS_CLUSTER -o jsonpath='{.status.sync.status}  {.status.health.status}{''\n''}'
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get clusters.cluster.x-k8s.io $VKS_CLUSTER
 ```
 
 **Expect:** `Synced  Healthy`, and the cluster with `AVAILABLE` `True`.
@@ -854,7 +854,7 @@ may deploy apps to the cluster, as step 8 does.
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 ROLE="argocd-manage-vks"
 
@@ -863,7 +863,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: argocd-k8s-sa-vks
-  namespace: ${VKS_NAMESPACE}
+  namespace: ${VSPHERE_NAMESPACE}
 subjects:
   - kind: ServiceAccount
     name: argocd-k8s-sa
@@ -876,14 +876,14 @@ roleRef:
 apiVersion: argocd-service.vsphere.vmware.com/v1alpha1
 kind: ManagedEntity
 metadata:
-  name: vks-${VKS_NAMESPACE}-${VKS_CLUSTER}
+  name: vks-${VSPHERE_NAMESPACE}-${VKS_CLUSTER}
   namespace: ${ARGOCD_NAMESPACE}
 spec:
   targetRef:
     apiGroup: cluster.x-k8s.io
     kind: Cluster
     name: ${VKS_CLUSTER}
-    namespace: ${VKS_NAMESPACE}
+    namespace: ${VSPHERE_NAMESPACE}
 EOF
 ```
 
@@ -896,7 +896,7 @@ EOF
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $ROLE = "argocd-manage-vks"
 
@@ -905,7 +905,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: argocd-k8s-sa-vks
-  namespace: ${VKS_NAMESPACE}
+  namespace: ${VSPHERE_NAMESPACE}
 subjects:
   - kind: ServiceAccount
     name: argocd-k8s-sa
@@ -918,14 +918,14 @@ roleRef:
 apiVersion: argocd-service.vsphere.vmware.com/v1alpha1
 kind: ManagedEntity
 metadata:
-  name: vks-${VKS_NAMESPACE}-${VKS_CLUSTER}
+  name: vks-${VSPHERE_NAMESPACE}-${VKS_CLUSTER}
   namespace: ${ARGOCD_NAMESPACE}
 spec:
   targetRef:
     apiGroup: cluster.x-k8s.io
     kind: Cluster
     name: ${VKS_CLUSTER}
-    namespace: ${VKS_NAMESPACE}
+    namespace: ${VSPHERE_NAMESPACE}
 "@ | kubectl --kubeconfig $SUPERVISOR_KUBECONFIG apply -f -
 ```
 
@@ -937,7 +937,7 @@ created`.
 **If not:**
 - `clusterroles.rbac.authorization.k8s.io "argocd-manage-vks" not found`: your ArgoCD Service did
   not install that role. Set `ROLE="edit"` and run the block again: ArgoCD then gets everything
-  Namespaces Edit allows in `VKS_NAMESPACE`, as step 5 describes.
+  Namespaces Edit allows in `VSPHERE_NAMESPACE`, as step 5 describes.
 - `Forbidden` on the RoleBinding: your role may not grant `ROLE`. Ask a vCenter administrator to
   run the block.
 - `spec.targetRef is already in use by another ManagedEntity`: the cluster is already added, by
@@ -959,14 +959,14 @@ Kubernetes object that holds a login or password) in `ARGOCD_NAMESPACE`.
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get managedentity
-CERT="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get secret "cls-vks-${VKS_NAMESPACE}-${VKS_CLUSTER}" \
+CERT="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get secret "cls-vks-${VSPHERE_NAMESPACE}-${VKS_CLUSTER}" \
   -o go-template='{{.data.config | base64decode}}' | jq -r '.tlsClientConfig.certData // empty | @base64d')"
 if [ -z "$CERT" ]; then
-  echo "No certificate stored for ${VKS_CLUSTER}-${VKS_NAMESPACE} (see the error above)"
+  echo "No certificate stored for ${VKS_CLUSTER}-${VSPHERE_NAMESPACE} (see the error above)"
 else
   printf '%s\n' "$CERT" | openssl x509 -noout -subject -enddate
 fi
@@ -981,16 +981,16 @@ fi
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
 $global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedentity
-$C = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get secret "cls-vks-${VKS_NAMESPACE}-${VKS_CLUSTER}" `
+$C = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get secret "cls-vks-${VSPHERE_NAMESPACE}-${VKS_CLUSTER}" `
   -o go-template='{{.data.config | base64decode}}'
 $D = if ($LASTEXITCODE -eq 0 -and $C) { ($C | Out-String | ConvertFrom-Json).tlsClientConfig.certData }
 if (-not $D) {
-  "No certificate stored for ${VKS_CLUSTER}-${VKS_NAMESPACE} (see the error above)"
+  "No certificate stored for ${VKS_CLUSTER}-${VSPHERE_NAMESPACE} (see the error above)"
 } else {
   $X = [Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String($D))
   "subject=$($X.Subject)"
@@ -1027,10 +1027,10 @@ adding the cluster again gives ArgoCD a newer certificate:
 ```sh
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get secret "${VKS_CLUSTER}-kubeconfig" -o go-template='{{.data.value | base64decode}}' \
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get secret "${VKS_CLUSTER}-kubeconfig" -o go-template='{{.data.value | base64decode}}' \
   | sed -n 's/^ *client-certificate-data: //p' | openssl base64 -d -A | openssl x509 -noout -enddate
 ```
 
@@ -1039,11 +1039,11 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get secret "${
 ```powershell
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
 $global:LASTEXITCODE = $null
-$K = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" -o jsonpath='{.data.value}'
+$K = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" -o jsonpath='{.data.value}'
 if ($LASTEXITCODE -eq 0 -and $K) {
   $Y = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("$K"))
   $C = (($Y -split "`n") | Where-Object { $_ -match '^\s*client-certificate-data: ' }) -replace '^\s*client-certificate-data: ', ''
@@ -1060,7 +1060,7 @@ vks-<namespace>-<cluster>`, then the registration block above. The same date: as
 administrator.
 
 **If not:**
-- `secrets "<cluster>-kubeconfig" not found`: check `VKS_CLUSTER` and `VKS_NAMESPACE`.
+- `secrets "<cluster>-kubeconfig" not found`: check `VKS_CLUSTER` and `VSPHERE_NAMESPACE`.
 - `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then this
   block again.
 
@@ -1069,7 +1069,7 @@ administrator.
 Use this instead of step 7's first block when ArgoCD should deploy to every VKS cluster of a
 vSphere Namespace. Instead of one ManagedEntity (the ArgoCD Service's record of one destination)
 per cluster, it creates a policy that asks the ArgoCD Service to add every VKS cluster in
-`VKS_NAMESPACE`, also the ones created later once they are ready, the same way as step 7's first
+`VSPHERE_NAMESPACE`, also the ones created later once they are ready, the same way as step 7's first
 block. You get the same destination `<cluster>-<namespace>` and the same Secret, so step 8 and the
 checks above work unchanged. A cluster already added with step 7's first block stays as it is.
 
@@ -1080,7 +1080,7 @@ checks above work unchanged. A cluster already added with step 7's first block s
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 ROLE="argocd-manage-vks"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" apply -f - <<EOF
@@ -1088,7 +1088,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: argocd-k8s-sa-vks
-  namespace: ${VKS_NAMESPACE}
+  namespace: ${VSPHERE_NAMESPACE}
 subjects:
   - kind: ServiceAccount
     name: argocd-k8s-sa
@@ -1101,7 +1101,7 @@ roleRef:
 apiVersion: argocd-service.vsphere.vmware.com/v1alpha1
 kind: EntityManagementPolicy
 metadata:
-  name: vks-clusters-${VKS_NAMESPACE}
+  name: vks-clusters-${VSPHERE_NAMESPACE}
   namespace: ${ARGOCD_NAMESPACE}
 spec:
   rules:
@@ -1109,7 +1109,7 @@ spec:
       kind: Cluster
       namespaces:
         nameSelector:
-          - ${VKS_NAMESPACE}
+          - ${VSPHERE_NAMESPACE}
 EOF
 ```
 
@@ -1122,7 +1122,7 @@ EOF
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $ROLE = "argocd-manage-vks"
 
 @"
@@ -1130,7 +1130,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: argocd-k8s-sa-vks
-  namespace: ${VKS_NAMESPACE}
+  namespace: ${VSPHERE_NAMESPACE}
 subjects:
   - kind: ServiceAccount
     name: argocd-k8s-sa
@@ -1143,7 +1143,7 @@ roleRef:
 apiVersion: argocd-service.vsphere.vmware.com/v1alpha1
 kind: EntityManagementPolicy
 metadata:
-  name: vks-clusters-${VKS_NAMESPACE}
+  name: vks-clusters-${VSPHERE_NAMESPACE}
   namespace: ${ARGOCD_NAMESPACE}
 spec:
   rules:
@@ -1151,7 +1151,7 @@ spec:
       kind: Cluster
       namespaces:
         nameSelector:
-          - ${VKS_NAMESPACE}
+          - ${VSPHERE_NAMESPACE}
 "@ | kubectl --kubeconfig $SUPERVISOR_KUBECONFIG apply -f -
 ```
 
@@ -1163,7 +1163,7 @@ spec:
 **If not:**
 - `clusterroles…"argocd-manage-vks" not found`: your ArgoCD Service did not install that role. Set
   `ROLE="edit"` and run the block again: ArgoCD then gets everything Namespaces Edit allows in
-  `VKS_NAMESPACE`, as step 5 describes.
+  `VSPHERE_NAMESPACE`, as step 5 describes.
 - `Forbidden`: as for the block above.
 
 Run this after the policy block, to see that the policy added your clusters. It only reads, and
@@ -1175,9 +1175,9 @@ changes nothing. You get what the policy decided for each cluster, then the dest
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get entitymanagementpolicy "vks-clusters-${VKS_NAMESPACE}" \
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get entitymanagementpolicy "vks-clusters-${VSPHERE_NAMESPACE}" \
   -o jsonpath='{range .status.decisions[*]}{.name}{"  "}{.outcome}{"  "}{.reason}{"\n"}{end}'
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get managedentity
 ```
@@ -1188,9 +1188,9 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get managed
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get entitymanagementpolicy "vks-clusters-${VKS_NAMESPACE}" `
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get entitymanagementpolicy "vks-clusters-${VSPHERE_NAMESPACE}" `
   -o jsonpath='{range .status.decisions[*]}{.name}{''  ''}{.outcome}{''  ''}{.reason}{''\n''}{end}'
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedentity
 ```
@@ -1226,7 +1226,7 @@ your machine. If someone changes or deletes them on the cluster, ArgoCD puts the
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" apply -f - <<EOF
@@ -1239,7 +1239,7 @@ spec:
   sourceRepos:
     - https://github.com/AndriyKalashnykov/vks-guides.git
   destinations:
-    - name: ${VKS_CLUSTER}-${VKS_NAMESPACE}
+    - name: ${VKS_CLUSTER}-${VSPHERE_NAMESPACE}
       namespace: test-web-apps
   clusterResourceWhitelist:
     - group: ""
@@ -1264,7 +1264,7 @@ spec:
     targetRevision: "173fba41691ffd7c0379443a6ca2fb014a3205d8"
     path: argocd/test-web-apps
   destination:
-    name: ${VKS_CLUSTER}-${VKS_NAMESPACE}
+    name: ${VKS_CLUSTER}-${VSPHERE_NAMESPACE}
     namespace: test-web-apps
   syncPolicy:
     automated:
@@ -1282,7 +1282,7 @@ EOF
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
 @"
@@ -1295,7 +1295,7 @@ spec:
   sourceRepos:
     - https://github.com/AndriyKalashnykov/vks-guides.git
   destinations:
-    - name: ${VKS_CLUSTER}-${VKS_NAMESPACE}
+    - name: ${VKS_CLUSTER}-${VSPHERE_NAMESPACE}
       namespace: test-web-apps
   clusterResourceWhitelist:
     - group: ""
@@ -1320,7 +1320,7 @@ spec:
     targetRevision: "173fba41691ffd7c0379443a6ca2fb014a3205d8"
     path: argocd/test-web-apps
   destination:
-    name: ${VKS_CLUSTER}-${VKS_NAMESPACE}
+    name: ${VKS_CLUSTER}-${VSPHERE_NAMESPACE}
     namespace: test-web-apps
   syncPolicy:
     automated:
@@ -1451,11 +1451,11 @@ cluster's Application, which makes ArgoCD delete the VKS cluster itself; that ta
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete managedentity "vks-${VKS_NAMESPACE}-${VKS_CLUSTER}" "vkscluster---${VKS_NAMESPACE}---${VKS_CLUSTER}" --ignore-not-found
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" delete rolebinding argocd-k8s-sa-vks --ignore-not-found
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete managedentity "vks-${VSPHERE_NAMESPACE}-${VKS_CLUSTER}" "vkscluster---${VSPHERE_NAMESPACE}---${VKS_CLUSTER}" --ignore-not-found
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" delete rolebinding argocd-k8s-sa-vks --ignore-not-found
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete applications.argoproj.io "$VKS_CLUSTER" --wait=false
 ```
 
@@ -1465,11 +1465,11 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appl
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete managedentity "vks-${VKS_NAMESPACE}-${VKS_CLUSTER}" "vkscluster---${VKS_NAMESPACE}---${VKS_CLUSTER}" --ignore-not-found
-kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete rolebinding argocd-k8s-sa-vks --ignore-not-found
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete managedentity "vks-${VSPHERE_NAMESPACE}-${VKS_CLUSTER}" "vkscluster---${VSPHERE_NAMESPACE}---${VKS_CLUSTER}" --ignore-not-found
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE delete rolebinding argocd-k8s-sa-vks --ignore-not-found
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applications.argoproj.io $VKS_CLUSTER --wait=false
 ```
 
@@ -1484,9 +1484,9 @@ prints two `NotFound` lines.
 
 Run this once the cluster is gone, to take back ArgoCD's rights in your vSphere Namespace. It
 deletes the project `vks-clusters`, the namespace destination, ArgoCD's `edit` role in
-`VKS_NAMESPACE` and step 7's policy. Run it only if steps 5 and 6 printed `created` for them (and
+`VSPHERE_NAMESPACE` and step 7's policy. Run it only if steps 5 and 6 printed `created` for them (and
 step 7 for the policy). It deletes nothing while an Application of the project is left.
-Afterwards ArgoCD may no longer create VKS clusters in `VKS_NAMESPACE`.
+Afterwards ArgoCD may no longer create VKS clusters in `VSPHERE_NAMESPACE`.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1494,7 +1494,7 @@ Afterwards ArgoCD may no longer create VKS clusters in `VKS_NAMESPACE`.
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 
 if ! A="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get applications.argoproj.io -o jsonpath="{range .items[?(@.spec.project=='vks-clusters')]}{.metadata.name}{' '}{end}")"; then
   echo "Nothing deleted: cannot list the Applications (see the error above)"
@@ -1502,9 +1502,9 @@ elif [ -n "$A" ]; then
   echo "Nothing deleted: these Applications still use vks-clusters: $A"
 else
   kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appproject vks-clusters --ignore-not-found
-  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete managedentity "ns-${VKS_NAMESPACE}" --ignore-not-found
-  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete entitymanagementpolicy "vks-clusters-${VKS_NAMESPACE}" --ignore-not-found
-  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" delete rolebinding argocd-k8s-sa-edit --ignore-not-found
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete managedentity "ns-${VSPHERE_NAMESPACE}" --ignore-not-found
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete entitymanagementpolicy "vks-clusters-${VSPHERE_NAMESPACE}" --ignore-not-found
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" delete rolebinding argocd-k8s-sa-edit --ignore-not-found
 fi
 ```
 
@@ -1514,7 +1514,7 @@ fi
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 
 $global:LASTEXITCODE = $null
 $A = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get applications.argoproj.io -o jsonpath='{range .items[?(@.spec.project==''vks-clusters'')]}{.metadata.name}{'' ''}{end}'
@@ -1522,9 +1522,9 @@ if ($LASTEXITCODE -ne 0) { "Nothing deleted: cannot list the Applications (see t
 elseif ("$A".Trim()) { "Nothing deleted: these Applications still use vks-clusters: $A" }
 else {
   kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject vks-clusters --ignore-not-found
-  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete managedentity "ns-${VKS_NAMESPACE}" --ignore-not-found
-  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete entitymanagementpolicy "vks-clusters-${VKS_NAMESPACE}" --ignore-not-found
-  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE delete rolebinding argocd-k8s-sa-edit --ignore-not-found
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete managedentity "ns-${VSPHERE_NAMESPACE}" --ignore-not-found
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete entitymanagementpolicy "vks-clusters-${VSPHERE_NAMESPACE}" --ignore-not-found
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE delete rolebinding argocd-k8s-sa-edit --ignore-not-found
 }
 ```
 

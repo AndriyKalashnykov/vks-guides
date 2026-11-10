@@ -40,7 +40,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS):
 
 ## 1. What to ask your administrator for
 
-Ask the VKS cluster's administrator for:
+Ask your administrators for (the vCenter administrator sends the first three and your SSO user name as
+vCenter lists it, the cluster administrator your namespace):
 
 - the Supervisor's IP address or DNS name;
 - the vSphere Namespace's name and the VKS cluster's name;
@@ -48,7 +49,7 @@ Ask the VKS cluster's administrator for:
   real Supervisor); save it as `~/.kube/vcenter-ca.pem`;
 - the name of your namespace inside the VKS cluster (a folder for your team's workloads, not the
   vSphere Namespace);
-- your SSO user name exactly as vCenter lists it, letter case included: the administrator gives
+- your SSO user name exactly as vCenter lists it, letter case included: the cluster administrator gives
   that name rights, and you log in with it.
 
 Other ways in:
@@ -94,7 +95,7 @@ prints the name the cluster knows you by. You then use the cluster with that fil
 Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name, `SUPERVISOR_CA` to the
 vCenter CA file from step 1, or to `""` when you do not have it (the block then prints a `WARNING`
 and does not check the Supervisor's certificate), `SSO_USER` to your full SSO user name, and
-`VKS_NAMESPACE` (the vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
+`VSPHERE_NAMESPACE` (the vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -104,7 +105,7 @@ and does not check the Supervisor's certificate), `SSO_USER` to your full SSO us
 SUPERVISOR_ENDPOINT="10.0.0.10"
 SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
 SSO_USER="alice@vsphere.local"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_USER_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 
@@ -122,7 +123,7 @@ elif { [ -n "$SUPERVISOR_CA" ] || echo "WARNING: SUPERVISOR_CA is empty: the Sup
      && KUBECONFIG="$VKS_USER_KUBECONFIG" VCF_CLI_VSPHERE_PASSWORD="$SSO_PASSWORD" \
         vcf context create "${VKS_CLUSTER}-${SSO_USER}" --type k8s --endpoint "https://${SUPERVISOR_ENDPOINT}" \
           --username "$SSO_USER" --auth-type basic "$TLS" --skip-create-related-contexts \
-          --workload-cluster-name "$VKS_CLUSTER" --workload-cluster-namespace "$VKS_NAMESPACE" </dev/null \
+          --workload-cluster-name "$VKS_CLUSTER" --workload-cluster-namespace "$VSPHERE_NAMESPACE" </dev/null \
      && kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config use-context "${VKS_CLUSTER}-${SSO_USER}:${VKS_CLUSTER}" >/dev/null; then
   echo "logged in as: $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
 else
@@ -141,7 +142,7 @@ unset SSO_PASSWORD
 $SUPERVISOR_ENDPOINT = "10.0.0.10"
 $SUPERVISOR_CA = "$HOME\.kube\vcenter-ca.pem"
 $SSO_USER = "alice@vsphere.local"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_USER_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 
@@ -164,7 +165,7 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
     $global:LASTEXITCODE = $null
     $null | vcf context create "${VKS_CLUSTER}-${SSO_USER}" --type k8s --endpoint "https://$SUPERVISOR_ENDPOINT" `
       --username $SSO_USER --auth-type basic $TLS --skip-create-related-contexts `
-      --workload-cluster-name $VKS_CLUSTER --workload-cluster-namespace $VKS_NAMESPACE
+      --workload-cluster-name $VKS_CLUSTER --workload-cluster-namespace $VSPHERE_NAMESPACE
     $OK = $LASTEXITCODE -eq 0
   } finally {
     Remove-Item Env:VCF_CLI_VSPHERE_PASSWORD -ErrorAction SilentlyContinue; $env:KUBECONFIG = $OLD_KUBECONFIG
@@ -197,7 +198,7 @@ for example `sso:Alice@vsphere.local`).
 - `x509: certificate signed by unknown authority`: `SUPERVISOR_CA` is not the vCenter CA.
 - `Invalid vSphere Supervisor endpoint`: check `SUPERVISOR_ENDPOINT` and that this machine reaches
   it on port 443.
-- `Login failed: bad request`: check `VKS_CLUSTER` and `VKS_NAMESPACE`.
+- `Login failed: bad request`: check `VKS_CLUSTER` and `VSPHERE_NAMESPACE`.
 - After fixing a value, run the password line and this block again.
 - `Initialization done!` and lines about plugins on the first run: harmless.
 
@@ -210,18 +211,19 @@ only `~/.kube/config`; your login is in its own file, `~/.kube/<cluster>-<SSO_US
 This points `KUBECONFIG` at that file for this terminal, so every `kubectl` command in it uses your
 login ([KUBECONFIG.md](KUBECONFIG.md#2-use-a-file)), then shows who you are and whether you may
 deploy in the namespace you were given. Set `SSO_USER` and `VKS_CLUSTER` as in your login, and
-`TEAM_NAMESPACE` to that namespace.
+`VKS_CLUSTER_NAMESPACE` to that namespace (if you were given the whole cluster, any namespace, for example
+`default`).
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 SSO_USER="alice@vsphere.local"
 VKS_CLUSTER="my-vks-cluster"
-TEAM_NAMESPACE="team-a"
+VKS_CLUSTER_NAMESPACE="team-a"
 
 export KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 kubectl auth whoami
-kubectl -n "$TEAM_NAMESPACE" auth can-i create deployments
+kubectl -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments
 ```
 
 **Windows (PowerShell):**
@@ -229,11 +231,11 @@ kubectl -n "$TEAM_NAMESPACE" auth can-i create deployments
 ```powershell
 $SSO_USER = "alice@vsphere.local"
 $VKS_CLUSTER = "my-vks-cluster"
-$TEAM_NAMESPACE = "team-a"
+$VKS_CLUSTER_NAMESPACE = "team-a"
 
 $env:KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 kubectl auth whoami
-kubectl -n $TEAM_NAMESPACE auth can-i create deployments
+kubectl -n $VKS_CLUSTER_NAMESPACE auth can-i create deployments
 ```
 
 **Expect:** `Username` with your `sso:…` name, then `yes`. Then use `kubectl -n team-a …` in this
@@ -370,7 +372,7 @@ password. You then use the cluster with that file
 ([step 3 above](#3-use-the-login)).
 
 Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name, `SUPERVISOR_CA` to the
-vCenter CA file from step 1, `SSO_USER` to your full SSO user name, and `VKS_NAMESPACE` (the
+vCenter CA file from step 1, `SSO_USER` to your full SSO user name, and `VSPHERE_NAMESPACE` (the
 vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
 
 <details>
@@ -381,7 +383,7 @@ vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
 SUPERVISOR_ENDPOINT="10.0.0.10"
 SUPERVISOR_CA="$HOME/.kube/vcenter-ca.pem"
 SSO_USER="alice@vsphere.local"
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_USER_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 
@@ -393,7 +395,7 @@ else
   ( printf 'SSO password: '; IFS= read -rs P; echo
     KUBECONFIG="$VKS_USER_KUBECONFIG" SSL_CERT_FILE="$SUPERVISOR_CA" KUBECTL_VSPHERE_PASSWORD="$P" \
       "$HOME/.local/bin/kubectl-vsphere" login --server "$SUPERVISOR_ENDPOINT" --vsphere-username "$SSO_USER" \
-      --tanzu-kubernetes-cluster-namespace "$VKS_NAMESPACE" --tanzu-kubernetes-cluster-name "$VKS_CLUSTER" ) \
+      --tanzu-kubernetes-cluster-namespace "$VSPHERE_NAMESPACE" --tanzu-kubernetes-cluster-name "$VKS_CLUSTER" ) \
     && chmod 600 "$VKS_USER_KUBECONFIG" \
     && kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config use-context "$VKS_CLUSTER" >/dev/null \
     && echo "logged in as: $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')" \
@@ -419,7 +421,7 @@ $SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 ```powershell
 $SUPERVISOR_ENDPOINT = "10.0.0.10"
 $SSO_USER = "alice@vsphere.local"
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_USER_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 
@@ -434,7 +436,7 @@ if ($SSO_USER -notmatch '^[^/\\:]*@[^/\\:]*\z') {
     $env:KUBECTL_VSPHERE_PASSWORD = [Net.NetworkCredential]::new('', $SSO_PASSWORD).Password
     $global:LASTEXITCODE = $null
     kubectl-vsphere login --server $SUPERVISOR_ENDPOINT --vsphere-username $SSO_USER `
-      --tanzu-kubernetes-cluster-namespace $VKS_NAMESPACE --tanzu-kubernetes-cluster-name $VKS_CLUSTER
+      --tanzu-kubernetes-cluster-namespace $VSPHERE_NAMESPACE --tanzu-kubernetes-cluster-name $VKS_CLUSTER
     $LOGIN_RC = $LASTEXITCODE
   } finally {
     Remove-Item Env:KUBECTL_VSPHERE_PASSWORD -ErrorAction SilentlyContinue; $env:KUBECONFIG = $OLD_KUBECONFIG
@@ -461,7 +463,7 @@ writes the name in its own letter case, for example `sso:Alice@vsphere.local`).
   and macOS: the CA step above was not done).
 - `FAILED: no password …` (Windows): run the password line, then this block.
 - `Login failed: bad request`, then `no context exists with the name`: check `VKS_CLUSTER` and
-  `VKS_NAMESPACE`. A cluster with the same name as its vSphere Namespace can also hide one of the
+  `VSPHERE_NAMESPACE`. A cluster with the same name as its vSphere Namespace can also hide one of the
   two contexts
   ([Broadcom KB 435635](https://knowledge.broadcom.com/external/article/435635)).
 - `FAILED: the login did not work …`, or any other login error above it: check `SSO_USER`, then run

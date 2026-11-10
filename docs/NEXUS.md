@@ -194,7 +194,7 @@ line per worker, and `default storage class:` and a class name. Nexus needs a wo
 Nexus's HTTPS certificate (step 5) comes from cert-manager, a Broadcom add-on of the VKS cluster
 ([what add-ons are](ADDONS.md)). Run
 [KEYCLOAK-VKS.md step 2](KEYCLOAK-VKS.md#2-install-cert-manager) once, with `VKS_CLUSTER` changed
-from `my-keycloak-cluster` to Nexus's cluster and `VKS_NAMESPACE` to its vSphere Namespace. When
+from `my-keycloak-cluster` to Nexus's cluster and `VSPHERE_NAMESPACE` to its vSphere Namespace. When
 the add-on is there already, it changes nothing.
 
 **Expect:** as in that step: `condition met` for the three cert-manager deployments, or
@@ -1587,7 +1587,7 @@ setting points at. This creates that Secret on the Supervisor with `nexus-ca.pem
 certificate:
 [KB 448189](https://knowledge.broadcom.com/external/article/448189/ssltls-server-certificates-specified-in.html));
 the cluster does not change yet. You get the Secret that the cluster's setting (below) points at.
-It needs the **Namespaces Edit** role on the vSphere Namespace. Set `VKS_NAMESPACE` to the
+It needs the **Namespaces Edit** role on the vSphere Namespace. Set `VSPHERE_NAMESPACE` to the
 cluster's vSphere Namespace and `VKS_CLUSTER` to the pulling cluster's name. Set
 `SUPERVISOR_CONTEXT` to the name of your Supervisor login from SUPERVISOR-LOGIN.md.
 
@@ -1595,7 +1595,7 @@ cluster's vSphere Namespace and `VKS_CLUSTER` to the pulling cluster's name. Set
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 NEXUS_CA="$HOME/nexus-ca.pem"
 SUPERVISOR_CONTEXT="supervisor"
@@ -1604,11 +1604,11 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 S="${VKS_CLUSTER}-user-trusted-ca-secret"
 if ! openssl x509 -in "$NEXUS_CA" -noout -subject; then
   echo "FAILED: $NEXUS_CA is not a certificate (step 7)"
-elif kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get secret "$S" >/dev/null 2>&1; then
+elif kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get secret "$S" >/dev/null 2>&1; then
   echo "STOPPED: the Secret $S exists already; add a key to it (below)"
 else
   B="$(base64 < "$NEXUS_CA" | tr -d '\n')" && [ -n "$B" ] \
-    && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" create secret generic "$S" --from-literal=nexus-ca="$B"
+    && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" create secret generic "$S" --from-literal=nexus-ca="$B"
 fi
 ```
 
@@ -1618,7 +1618,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $NEXUS_CA = "$HOME\nexus-ca.pem"
 $SUPERVISOR_CONTEXT = "supervisor"
@@ -1629,11 +1629,11 @@ $global:LASTEXITCODE = $null
 $PEM = Get-Content -Raw -ErrorAction SilentlyContinue $NEXUS_CA
 if (-not $PEM -or $PEM -notmatch 'BEGIN CERTIFICATE') { "FAILED: $NEXUS_CA is not a certificate (step 7)" }
 else {
-  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get secret $S 2>$null | Out-Null
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get secret $S 2>$null | Out-Null
   if ($LASTEXITCODE -eq 0) { "STOPPED: the Secret $S exists already; add a key to it (below)" }
   else {
     $B = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($PEM))
-    kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE create secret generic $S "--from-literal=nexus-ca=$B"
+    kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE create secret generic $S "--from-literal=nexus-ca=$B"
   }
 }
 ```
@@ -1655,7 +1655,7 @@ to the Secret under the key `NEXUS_CA_KEY` (`nexus-ca-2`, then `nexus-ca-3`, …
 twice, and keeps the Secret's other keys. You get the CA under the new key; then point the cluster's
 `secretRef.key` at it with `kubectl --kubeconfig <Supervisor kubeconfig> -n <vSphere Namespace> edit
 cluster <cluster name>` (it opens the cluster in a text editor; saving starts the node update,
-below). Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in the block above, and `NEXUS_CA_KEY` to a key the
+below). Set `VSPHERE_NAMESPACE` and `VKS_CLUSTER` as in the block above, and `NEXUS_CA_KEY` to a key the
 Secret does not have yet. Set `SUPERVISOR_CONTEXT` to the name of your Supervisor login from
 SUPERVISOR-LOGIN.md.
 
@@ -1663,7 +1663,7 @@ SUPERVISOR-LOGIN.md.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 NEXUS_CA="$HOME/nexus-ca.pem"
 NEXUS_CA_KEY="nexus-ca-2"
@@ -1674,7 +1674,7 @@ S="${VKS_CLUSTER}-user-trusted-ca-secret"
 if ! openssl x509 -in "$NEXUS_CA" -noout -subject; then
   echo "FAILED: $NEXUS_CA is not a certificate (step 7)"
 elif B="$(base64 < "$NEXUS_CA" | tr -d '\n' | base64 | tr -d '\n')" && [ -n "$B" ]; then
-  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" patch secret "$S" --type merge -p "{\"data\":{\"$NEXUS_CA_KEY\":\"$B\"}}"
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" patch secret "$S" --type merge -p "{\"data\":{\"$NEXUS_CA_KEY\":\"$B\"}}"
 fi
 ```
 
@@ -1684,7 +1684,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $NEXUS_CA = "$HOME\nexus-ca.pem"
 $NEXUS_CA_KEY = "nexus-ca-2"
@@ -1698,7 +1698,7 @@ if (-not $PEM -or $PEM -notmatch 'BEGIN CERTIFICATE') { "FAILED: $NEXUS_CA is no
 else {
   $B = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($PEM))))
   '{"data":{"' + $NEXUS_CA_KEY + '":"' + $B + '"}}' | Set-Content -Encoding ascii $T
-  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE patch secret $S --type merge --patch-file $T
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE patch secret $S --type merge --patch-file $T
   Remove-Item -Force -ErrorAction SilentlyContinue $T
 }
 ```
@@ -1735,14 +1735,14 @@ adds the `osConfiguration` setting, with the Secret's key `nexus-ca`, to the clu
 Supervisor, and stops if the cluster has that setting already. You get a cluster whose nodes trust
 Nexus's CA once VKS has updated them. VKS updates every node: it replaces some and may update others
 in place (a cluster with one control-plane node and one worker had both replaced in about 5
-minutes), so pods move. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as above. Set `SUPERVISOR_CONTEXT` to
+minutes), so pods move. Set `VSPHERE_NAMESPACE` and `VKS_CLUSTER` as above. Set `SUPERVISOR_CONTEXT` to
 the name of your Supervisor login from SUPERVISOR-LOGIN.md.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
@@ -1751,13 +1751,13 @@ S="${VKS_CLUSTER}-user-trusted-ca-secret"
 P='[{"op":"add","path":"/spec/topology/variables/-","value":{"name":"osConfiguration","value":{"trust":{"additionalTrustedCAs":[{"caCert":{"secretRef":{"name":"'"$S"'","key":"nexus-ca"}}}]}}}}]'
 if ! command -v jq >/dev/null 2>&1; then
   echo "MISSING: jq (PREREQS.md)"
-elif ! J="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" get cluster "$VKS_CLUSTER" -o json)"; then
+elif ! J="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get cluster "$VKS_CLUSTER" -o json)"; then
   echo "FAILED: cannot read the cluster (see the error above)"
 elif printf '%s' "$J" | jq -e '[.spec.topology.variables[]? | select(.name == "osConfiguration")] | length > 0' >/dev/null; then
-  echo "STOPPED: the cluster has an osConfiguration setting already; add the caCert to it by hand (kubectl --kubeconfig '$SUPERVISOR_KUBECONFIG' -n $VKS_NAMESPACE edit cluster $VKS_CLUSTER)"
+  echo "STOPPED: the cluster has an osConfiguration setting already; add the caCert to it by hand (kubectl --kubeconfig '$SUPERVISOR_KUBECONFIG' -n $VSPHERE_NAMESPACE edit cluster $VKS_CLUSTER)"
 else
-  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" patch cluster "$VKS_CLUSTER" --type json -p "$P" --dry-run=server >/dev/null \
-    && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VKS_NAMESPACE" patch cluster "$VKS_CLUSTER" --type json -p "$P"
+  kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" patch cluster "$VKS_CLUSTER" --type json -p "$P" --dry-run=server >/dev/null \
+    && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" patch cluster "$VKS_CLUSTER" --type json -p "$P"
 fi
 ```
 
@@ -1767,7 +1767,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
@@ -1776,13 +1776,13 @@ $S = "$VKS_CLUSTER-user-trusted-ca-secret"
 $T = Join-Path $env:TEMP "nexus-trust-patch.json"
 '[{"op":"add","path":"/spec/topology/variables/-","value":{"name":"osConfiguration","value":{"trust":{"additionalTrustedCAs":[{"caCert":{"secretRef":{"name":"' + $S + '","key":"nexus-ca"}}}]}}}}]' | Set-Content -Encoding ascii $T
 $global:LASTEXITCODE = $null
-$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE get cluster $VKS_CLUSTER -o json | Out-String
+$J = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get cluster $VKS_CLUSTER -o json | Out-String
 if ($LASTEXITCODE -ne 0) { "FAILED: cannot read the cluster (see the error above)" }
 elseif (@((ConvertFrom-Json $J).spec.topology.variables | Where-Object { $_.name -eq 'osConfiguration' }).Count) {
-  "STOPPED: the cluster has an osConfiguration setting already; add the caCert to it by hand (kubectl --kubeconfig '$SUPERVISOR_KUBECONFIG' -n $VKS_NAMESPACE edit cluster $VKS_CLUSTER)"
+  "STOPPED: the cluster has an osConfiguration setting already; add the caCert to it by hand (kubectl --kubeconfig '$SUPERVISOR_KUBECONFIG' -n $VSPHERE_NAMESPACE edit cluster $VKS_CLUSTER)"
 } else {
-  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE patch cluster $VKS_CLUSTER --type json --patch-file $T --dry-run=server | Out-Null
-  if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VKS_NAMESPACE patch cluster $VKS_CLUSTER --type json --patch-file $T }
+  kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE patch cluster $VKS_CLUSTER --type json --patch-file $T --dry-run=server | Out-Null
+  if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE patch cluster $VKS_CLUSTER --type json --patch-file $T }
 }
 Remove-Item -Force -ErrorAction SilentlyContinue $T
 ```

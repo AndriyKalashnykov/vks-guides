@@ -44,7 +44,6 @@ echo
 echo "Next: use the file in this terminal:"
 echo "  export KUBECONFIG=\"$VKS_USER_KUBECONFIG\""
 echo "  kubectl auth whoami"
-echo "  kubectl get nodes"
-echo "  kubectl get pods -A"
+echo "  kubectl -n <your namespace> auth can-i create deployments"
 echo "Or one command without export:"
 echo "  kubectl --kubeconfig \"$VKS_USER_KUBECONFIG\" auth whoami"
