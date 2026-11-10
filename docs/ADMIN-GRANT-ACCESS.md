@@ -97,6 +97,11 @@ For the SSO way, the person's connections are in [USER-LOGIN.md](USER-LOGIN.md#p
 
 ## The person's own SSO account
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/access/way-sso-dark.svg">
+  <img src="img/access/way-sso-light.svg" width="1200" alt="The person&#x27;s own SSO account: the vCenter administrator gives the person&#x27;s SSO user Can view on the vSphere Namespace, which lets them log in, and the cluster administrator gives that name edit in one namespace inside the VKS cluster; the person logs in with the VCF CLI, which writes their own kubeconfig, so no secret is sent. Taking it away deletes the RoleBinding, which stops it at once, and removes the role in vCenter; if the person still has rights, they have them through a group with Can edit or Owner.">
+</picture>
+
 Pick this for people who have a vCenter SSO account. They log in as themselves with the VCF CLI,
 and the login writes their own kubeconfig: you send them names and the vCenter CA, not a
 kubeconfig. The vCenter administrator lets them log in (step 1), the cluster administrator gives
@@ -211,6 +216,11 @@ Without the VCF CLI, the person logs in with the kubectl vSphere plugin (optiona
 [USER-LOGIN.md](USER-LOGIN.md#the-kubectl-vsphere-plugin-instead-of-the-vcf-cli-optional-and-deprecated).
 
 ## A ServiceAccount token
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/access/way-serviceaccount-dark.svg">
+  <img src="img/access/way-serviceaccount-light.svg" width="1200" alt="A ServiceAccount token: the cluster administrator alone makes a login that belongs to no person, with the ServiceAccount in its own namespace SA_NAMESPACE, where the team has no rights, and its RoleBinding in the team&#x27;s namespace VKS_CLUSTER_NAMESPACE. Taking it away deletes the ServiceAccount and the token Secrets in the team&#x27;s namespace, so every copy of the file stops, but tokens and workloads the team made keep working, and with &quot;*&quot; so do logins made with it as a cluster administrator.">
+</picture>
 
 Pick this for a CI pipeline, a deployment tool, or a team that shares one login, in one namespace (or,
 with `"*"`, the whole cluster).
@@ -525,6 +535,11 @@ has rights, then restart the workloads that use them. So never give `edit` on a 
 
 ## An administrator ServiceAccount token (whole cluster)
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/access/way-admin-token-dark.svg">
+  <img src="img/access/way-admin-token-light.svg" width="1200" alt="An administrator ServiceAccount token: the cluster administrator makes a ServiceAccount in SA_NAMESPACE and a ClusterRoleBinding that gives it cluster-admin on the whole VKS cluster, so whoever has a copy of the file can do everything in it; send this, never the cluster&#x27;s administrator kubeconfig, because this one can be taken away. Taking it away deletes the ClusterRoleBinding, the token Secret and the ServiceAccount, but other logins the holder made with it keep working, and after a leak only a new cluster is certain to be clean.">
+</picture>
+
 Pick this when a tool, a pipeline or a person needs the whole cluster: send this, never the
 cluster's administrator kubeconfig, because this one can be taken away. The file holds a token for
 a ServiceAccount (a login inside the cluster that belongs to no person) with `cluster-admin` on the
@@ -811,6 +826,11 @@ Start-Sleep 20; kubectl --kubeconfig $SERVICE_ACCOUNT_KUBECONFIG get namespaces
   above did the work.
 
 ## A personal certificate
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/access/way-certificate-dark.svg">
+  <img src="img/access/way-certificate-light.svg" width="1200" alt="A personal certificate: the cluster administrator has the cluster sign a certificate for a new name and gives that name edit in one namespace inside the VKS cluster, for one person with no SSO or identity provider account, for a limited time. Taking it away deletes the name&#x27;s RoleBinding so the name has no rights, but the certificate cannot be withdrawn and keeps proving the name until its end date, so that name is never given rights again.">
+</picture>
 
 Pick this for one person with no SSO or identity provider account, for a limited time. The file holds a
 key and a certificate signed by the cluster: whoever has a copy acts as that person, with kubectl

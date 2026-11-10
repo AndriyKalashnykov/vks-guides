@@ -17,6 +17,9 @@ blocks; there is nothing to build.
 - `docs/img/access/which-way-in-light.svg` and `-dark.svg` (in ADMIN-GRANT-ACCESS.md under **Which way for
   which customer**, light and dark through `<picture>`) draw that chooser, the compare table and how each way is
   taken away: a change to any of those rows or behaviours updates both pictures and their alt text in the same PR.
+  The same holds for the five per-way pictures `docs/img/access/way-<way>-light.svg`/`-dark.svg` at the top of
+  each way's chapter (SSO, ServiceAccount token, administrator token, certificate; the IdP group in
+  ADMIN-GRANT-ACCESS-IDP.md): a change to that chapter's steps or take-away updates its picture in the same PR.
   Every label in them is a statement from the guides: no versions, durations, paths or commands.
 - LOGIN.md, ACCESS.md and ACCESS-IDP.md are moved-guide stubs: a title, one line naming the new
   guide, and links from the old sections to their new homes; no NOTE, Prerequisites, blocks or
