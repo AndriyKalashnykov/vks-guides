@@ -90,7 +90,7 @@ else
       unset T P
     fi
     if ! WHO="$(k auth whoami -o jsonpath='{.status.userInfo.username}')"; then
-      echo "FAILED: the cluster did not answer (see the error above)"
+      echo "FAILED: kubectl could not ask the cluster who you are (see the error above)"
     else
       echo "acts as: $WHO"
       echo "create deployments in $VKS_CLUSTER_NAMESPACE: $(k -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments)"
@@ -141,7 +141,7 @@ $VKS_CLUSTER_NAMESPACE = "team-a"
   }
   $global:LASTEXITCODE = $null
   $WHO = kubectl --kubeconfig $KUBECONFIG_FILE auth whoami -o jsonpath='{.status.userInfo.username}'
-  if ($LASTEXITCODE -ne 0) { "FAILED: the cluster did not answer (see the error above)"; return }
+  if ($LASTEXITCODE -ne 0) { "FAILED: kubectl could not ask the cluster who you are (see the error above)"; return }
   "acts as: $WHO"
   "create deployments in ${VKS_CLUSTER_NAMESPACE}: $(kubectl --kubeconfig $KUBECONFIG_FILE -n $VKS_CLUSTER_NAMESPACE auth can-i create deployments)"
   kubectl --kubeconfig $KUBECONFIG_FILE -n $VKS_CLUSTER_NAMESPACE get pods
@@ -163,12 +163,12 @@ the address you were sent; then one of `token: REDACTED` (a token: `token ends i
 - `server:` is not the address you were sent: do not use the file; ask your administrator.
 - `STOPPED: this file signs in with a browser`: use [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md).
 - `Unable to connect to the server`, `The connection to the server … was refused` or `i/o timeout`,
-  then `FAILED: the cluster did not answer`: this machine cannot reach the `server:` address on port
+  then `FAILED: kubectl could not ask the cluster who you are`: this machine cannot reach the `server:` address on port
   6443 (Prerequisites, firewall), or the cluster is down.
 - `x509: certificate signed by unknown authority`: the file was changed, is for another cluster, or
   a proxy between this machine and the cluster replaces the certificate; ask for the file again, or
   reach the cluster without the proxy.
-- `Unauthorized`, then `FAILED: the cluster did not answer`: the file no longer works
+- `Unauthorized`, then `FAILED: kubectl could not ask the cluster who you are`: the file no longer works
   ([step 4](#4-when-it-stops-working)).
 - `no`, or `Forbidden` on the pods: the file has no rights in that namespace
   ([step 4](#4-when-it-stops-working)).

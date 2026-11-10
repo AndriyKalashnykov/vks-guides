@@ -55,9 +55,13 @@ nothing else. Set `KUBECONFIG_FILE` to the saved file (a part B file is often na
 ```sh
 KUBECONFIG_FILE="$HOME/.kube/my-vks-cluster-keycloak-sv.kubeconfig"
 
-chmod 600 "$KUBECONFIG_FILE"
-echo "runs: $(kubectl --kubeconfig "$KUBECONFIG_FILE" config view -o jsonpath='{.users[0].user.exec.command} {.users[0].user.exec.args[0]}')"
-echo "server: $(kubectl --kubeconfig "$KUBECONFIG_FILE" config view -o jsonpath='{.clusters[0].cluster.server}')"
+if [ ! -s "$KUBECONFIG_FILE" ]; then
+  echo "MISSING: $KUBECONFIG_FILE"
+else
+  chmod 600 "$KUBECONFIG_FILE"
+  echo "runs: $(kubectl --kubeconfig "$KUBECONFIG_FILE" config view -o jsonpath='{.users[0].user.exec.command} {.users[0].user.exec.args[0]}')"
+  echo "server: $(kubectl --kubeconfig "$KUBECONFIG_FILE" config view -o jsonpath='{.clusters[0].cluster.server}')"
+fi
 ```
 
 **Windows (PowerShell):**
@@ -65,9 +69,13 @@ echo "server: $(kubectl --kubeconfig "$KUBECONFIG_FILE" config view -o jsonpath=
 ```powershell
 $KUBECONFIG_FILE = "$HOME\.kube\my-vks-cluster-keycloak-sv.kubeconfig"
 
-icacls $KUBECONFIG_FILE /inheritance:r /grant:r "${env:USERNAME}:F" | Out-Null
-"runs: $(kubectl --kubeconfig $KUBECONFIG_FILE config view -o jsonpath='{.users[0].user.exec.command} {.users[0].user.exec.args[0]}')"
-"server: $(kubectl --kubeconfig $KUBECONFIG_FILE config view -o jsonpath='{.clusters[0].cluster.server}')"
+if (-not (Test-Path $KUBECONFIG_FILE -PathType Leaf)) {
+  "MISSING: $KUBECONFIG_FILE"
+} else {
+  icacls $KUBECONFIG_FILE /inheritance:r /grant:r "${env:USERNAME}:F" | Out-Null
+  "runs: $(kubectl --kubeconfig $KUBECONFIG_FILE config view -o jsonpath='{.users[0].user.exec.command} {.users[0].user.exec.args[0]}')"
+  "server: $(kubectl --kubeconfig $KUBECONFIG_FILE config view -o jsonpath='{.clusters[0].cluster.server}')"
+}
 ```
 
 **Expect:** `server:` with the address you were sent, and one of:
@@ -80,7 +88,7 @@ icacls $KUBECONFIG_FILE /inheritance:r /grant:r "${env:USERNAME}:F" | Out-Null
   [USER-KUBECONFIG.md](USER-KUBECONFIG.md).
 - Another program, or another `server:`: do not use the file (a file can run any program); ask your
   administrator.
-- `No such file` (Windows: `cannot find`): set `KUBECONFIG_FILE` to the saved file.
+- `MISSING: …`: set `KUBECONFIG_FILE` to the saved file.
 
 ## 2. Trust the CAs (once, on the machine whose browser you sign in with)
 
@@ -145,7 +153,7 @@ if [ -n "$W" ] && [ -d "$W" ] && cp "$CA_FILE" "$W/"; then echo "copied to $W"; 
 
 **Windows (PowerShell):** run this so that Edge and Chrome trust the CA. It adds the CA to your
 user's trusted root CAs, which they use. Windows asks you to confirm with **Yes**, so run it in
-PowerShell on the desktop (after WSL: set `CA_FILE` to `$HOME\keycloak-ca.pem`):
+PowerShell on the desktop (after WSL: set `CA_FILE` to `$HOME\keycloak-ca.pem` or `$HOME\vcenter-ca.pem`):
 
 ```powershell
 $CA_FILE = "$HOME\.kube\keycloak-ca.pem"
@@ -162,6 +170,7 @@ first).
 - `certutil: command not found`: install it (the package named above).
 - `SEC_ERROR_ADDING_CERT` (Linux): the database already holds another CA under that `CA_NAME`; run the
   block again with a name of its own (`certutil -d "sql:$HOME/.pki/nssdb" -L` lists the names).
+- No line and no error (Linux): the same CA is already in the list under another name; nothing to do.
 - `FAILED: no Windows home folder found` (WSL): copy the CA file to Windows by hand, for example
   with Explorer at `\\wsl$`.
 - `UI is not allowed in this operation` (Windows): this PowerShell has no desktop to ask on (for
