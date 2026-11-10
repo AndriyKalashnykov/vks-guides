@@ -16,7 +16,14 @@ administrator kubeconfig and can take each access away on its own.
 Words like *vSphere Namespace*, *ServiceAccount* and *RoleBinding* are explained in the
 [Glossary](#glossary).
 
+<a id="which-way-for-which-customer"></a>
+
 **Which way for which customer:**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/access/which-way-in-dark.svg">
+  <img src="img/access/which-way-in-light.svg" width="1200" alt="A chart for vCenter administrators that picks the way to give someone access to a VKS cluster. Read the rows from the top and take the first that fits. 1: a tool or a person that must be able to do everything in the cluster gets an administrator token. 2: a pipeline, a tool or a team sharing one login in one namespace gets a ServiceAccount token. 3: a person with a vCenter SSO account uses their own account. 4: people in an identity provider registered on the Supervisor use their group through the Supervisor. 5: people in a provider that is not registered use the provider on one new cluster (a dashed row). 6: one person with no SSO or identity provider account, for a limited time, gets a personal certificate; deleting its binding stops its rights, but the certificate itself cannot be withdrawn. 7: never send the cluster&#x27;s built-in administrator file; send the row 1 token only if they need everything. Each row shows who sets it up, what the person installs, how long it lasts, how it is taken away and what you send. A band at the top warns that Can edit or Owner on the vSphere Namespace makes someone administrator of every VKS cluster in it and lets them download the file you never send; rows 3 and 4 need a role from you, row 5 a new cluster. A strip explains one namespace versus the whole cluster; read-only access is one namespace at a time. Footnotes and a legend explain how each way is taken away.">
+</picture>
 
 | your customer | the way | why this way |
 |---|---|---|

@@ -14,6 +14,10 @@ blocks; there is nothing to build.
   `rolebinding-idp-group.sh`) and `examples/README.md` comparing them. They use the guides' placeholder values
   (no lab values), are not guides (no NOTE, Prerequisites or Tested on row, not on group pages), and must follow
   the guide blocks they copy: a change to such a block updates its script in the same PR.
+- `docs/img/access/which-way-in-light.svg` and `-dark.svg` (in ADMIN-GRANT-ACCESS.md under **Which way for
+  which customer**, light and dark through `<picture>`) draw that chooser, the compare table and how each way is
+  taken away: a change to any of those rows or behaviours updates both pictures and their alt text in the same PR.
+  Every label in them is a statement from the guides: no versions, durations, paths or commands.
 - LOGIN.md, ACCESS.md and ACCESS-IDP.md are moved-guide stubs: a title, one line naming the new
   guide, and links from the old sections to their new homes; no NOTE, Prerequisites, blocks or
   Tested on row; not in the guide list or on group pages.
