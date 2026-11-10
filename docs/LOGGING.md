@@ -32,7 +32,7 @@ The blocks keep their files in `~/.config/vks-guides/logging` (PowerShell:
 **The VKS cluster to make.** Any VKS cluster that runs your apps ([CLUSTER.md](CLUSTER.md)):
 Fluent Bit runs one pod on every node, and with the release 5.1.2-vmware.1-vks.1 each reserves
 0.2 CPU and 256 MiB of memory, so each node needs that much free. Measured on a VKS 3.8 cluster,
-sending every container's logs to Loki ([OBSERVABILITY.md](OBSERVABILITY.md)): each Fluent Bit pod
+sending every container's logs to Loki ([OBSERVABILITY.md](OBSERVABILITY.md#5-send-the-logs-to-loki)): each Fluent Bit pod
 used under 0.03 CPU and at most 15 MiB.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
@@ -98,7 +98,7 @@ one's name for step 4. The cluster's list has no `fluent-bit`.
 - `Unauthorized`, `Unable to read password from terminal` (Windows: `The handle is invalid`) or
   `provide credentials`: your Supervisor login ended; run [Renew the Supervisor
   login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login).
-- `context … not found`: create the Supervisor context ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)).
+- `context … not found`: create the Supervisor context ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#supervisor)).
 - The cluster's list already has `fluent-bit`: it is installed; to change where it sends logs,
   see step 7.
 
@@ -504,7 +504,7 @@ and 3 with the new CA or name. Then this block replaces the CA certificate in th
 Fluent Bit. It makes your Supervisor login (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and
 in its kubeconfig file, and that stays after the block. You then have the logs going to the new Log
 Management: check with step 6. Set `VKS_NAMESPACE` and `VKS_CLUSTER` as in step 1. If you also send
-logs to Loki ([OBSERVABILITY.md](OBSERVABILITY.md) step 5), this block replaces those settings too:
+logs to Loki ([OBSERVABILITY.md](OBSERVABILITY.md#5-send-the-logs-to-loki) step 5), this block replaces those settings too:
 run that step 5 again afterwards, with `LOGS_FQDN` set to the new name.
 
 <details>
@@ -595,7 +595,7 @@ Run this when the cluster's logs should stop going to VCF Operations. It asks th
 remove the Fluent Bit add-on from your VKS cluster. It makes your Supervisor login
 (`SUPERVISOR_CONTEXT`) the active one for the VCF CLI and in its kubeconfig file, and that stays
 after the block. You then have a cluster without Fluent Bit. If you also send logs to Loki
-([OBSERVABILITY.md](OBSERVABILITY.md) step 5), this stops those too. Set `VKS_NAMESPACE` and
+([OBSERVABILITY.md](OBSERVABILITY.md#5-send-the-logs-to-loki) step 5), this stops those too. Set `VKS_NAMESPACE` and
 `VKS_CLUSTER` as in step 1.
 
 **Linux, macOS, WSL (bash or zsh):**

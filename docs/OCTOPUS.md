@@ -194,8 +194,8 @@ disk free.
 - `? GiB image disk free`: the node's statistics could not be read (the error above says why; after
   `Forbidden`, your kubeconfig may not read them); ask the cluster's administrator whether a worker
   has 8 GiB free.
-- `NO WORKER`: set the node pool's `replicas` to 1 ([CLUSTER.md](CLUSTER.md) step 10).
-- `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
+- `NO WORKER`: set the node pool's `replicas` to 1 ([CLUSTER.md](CLUSTER.md#10-resize-the-cluster-optional) step 10).
+- `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md#7-get-the-kubeconfig-and-check-the-cluster) step 7.
 - `NOTE: namespace octopus exists already`: Octopus may be installed; steps 3 to 7 keep what exists.
 
 ## 2. Install cert-manager
@@ -1425,7 +1425,7 @@ copy it from step 8 first.
 
 Or, without trusting the CA, check the fingerprint (click **Not secure** left of the address, then
 the certificate details: the issuer's SHA-256 fingerprint is the one step 8 printed) and then click
-**Advanced** and **Proceed to … (unsafe)**, as in [HEADLAMP.md](HEADLAMP.md).
+**Advanced** and **Proceed to … (unsafe)**, as in [HEADLAMP.md](HEADLAMP.md#5-open-headlamp-in-the-browser-each-person).
 
 Sign in as `admin` with the password you typed in step 3:
 

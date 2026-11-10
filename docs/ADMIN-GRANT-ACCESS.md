@@ -25,7 +25,7 @@ Words like *vSphere Namespace*, *ServiceAccount* and *RoleBinding* are explained
 | a CI pipeline, a deployment tool, or a team that shares one login, in one namespace | [A ServiceAccount token](#a-serviceaccount-token) | no person's account; works unattended for the days you set; deleting it stops every copy |
 | a tool or a person that needs the whole cluster | [An administrator ServiceAccount token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster) | send it instead of the administrator kubeconfig: this one can be taken away |
 | one person with no SSO or identity provider account, for a few days | [A personal certificate](#a-personal-certificate) | needs nothing but kubectl; it cannot be withdrawn before it ends, so keep it short |
-| people in an identity provider that is not registered on the Supervisor | [An external identity provider on one cluster](KEYCLOAK.md) | a new cluster (VKS 3.8) is created to trust the provider; people need kubectl and kubelogin |
+| people in an identity provider that is not registered on the Supervisor | [An external identity provider on one cluster](KEYCLOAK.md) (its own guide) | a new cluster (VKS 3.8) is created to trust the provider; people need kubectl and kubelogin |
 
 These ways give access to the cluster through kubectl. Add-ons with a web page have their own
 sign-in: Headlamp takes the person's SSO login or a token
@@ -47,8 +47,8 @@ Who does what:
 
 **The ways:**
 
-- [Their own SSO account](#the-persons-own-sso-account): [role](#1-give-the-person-a-role-on-the-vsphere-namespace-vcenter-administrator) → [rights](#2-give-the-person-rights-inside-the-cluster-cluster-administrator) → they [log in](USER-LOGIN.md) → [take away](#5-take-it-away-cluster-administrator-vcenter-administrator)
-- [A group from an identity provider](ADMIN-GRANT-ACCESS-IDP.md): its own guide
+- [Their own SSO account](#the-persons-own-sso-account): [role](#1-give-the-person-a-role-on-the-vsphere-namespace-vcenter-administrator) → [rights](#2-give-the-person-rights-inside-the-cluster-cluster-administrator) → they [log in](#3-log-in-with-the-vcf-cli-the-person) → [take away](#5-take-it-away-cluster-administrator-vcenter-administrator)
+- [A group from an identity provider](ADMIN-GRANT-ACCESS-IDP.md) (its own guide): [provider name](ADMIN-GRANT-ACCESS-IDP.md#1-read-the-provider-name-and-prefix-vcenter-administrator) → [role](ADMIN-GRANT-ACCESS-IDP.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator) → [rights](ADMIN-GRANT-ACCESS-IDP.md#3-give-the-group-rights-inside-the-vks-cluster-cluster-administrator) → [kubeconfig](ADMIN-GRANT-ACCESS-IDP.md#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) → they [log in](ADMIN-GRANT-ACCESS-IDP.md#5-log-in-the-person) → [take away](ADMIN-GRANT-ACCESS-IDP.md#8-take-the-groups-access-away-cluster-administrator-vcenter-administrator)
 - [A ServiceAccount token](#a-serviceaccount-token): [make](#1-make-the-teams-token-and-its-file-cluster-administrator) → [hand over](#2-hand-it-over-and-use-it-cluster-administrator-then-the-team-or-tool) → [renew](#3-renew-the-teams-token-cluster-administrator) → [take away](#4-take-the-teams-token-away-cluster-administrator)
 - [An administrator token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster): [make](#1-make-the-administrator-token-and-its-file-cluster-administrator) → [hand over](#2-hand-it-over-and-use-it-on-another-machine-cluster-administrator-then-the-tool-or-person) → [renew](#3-renew-the-administrator-token-cluster-administrator) → [take away](#4-take-the-administrator-token-away-cluster-administrator)
 - [A personal certificate](#a-personal-certificate): [make](#1-make-the-certificate-and-its-file-cluster-administrator) → [hand over](#2-hand-it-over-and-use-it-cluster-administrator-then-the-person) → [renew](#3-renew-the-certificate-cluster-administrator) → [take away](#4-take-the-certificate-away-cluster-administrator)
@@ -58,11 +58,11 @@ Compare the ways:
 | way | set up by | they need | lasts | to take it away |
 |---|---|---|---|---|
 | [The person's own SSO account](#the-persons-own-sso-account) | the vCenter administrator, then the cluster administrator | kubectl, and the VCF CLI or the kubectl vSphere plugin | 10 hours per login | delete the person's RoleBinding and their role on the vSphere Namespace |
-| [A group from an external identity provider, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) | the identity provider's, vCenter and cluster administrators | kubectl and the VCF CLI | while the person's sign-in lasts | disable the user in the identity provider, or delete the group's RoleBinding and its role on the vSphere Namespace |
+| [A group from an external identity provider, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) (its own guide) | the identity provider's, vCenter and cluster administrators | kubectl and the VCF CLI | while the person's sign-in lasts | disable the user in the identity provider, or delete the group's RoleBinding and its role on the vSphere Namespace |
 | [A ServiceAccount token](#a-serviceaccount-token) | the cluster administrator | kubectl | the days you set | delete the ServiceAccount: every copy stops |
 | [An administrator ServiceAccount token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster) | the cluster administrator | kubectl | the days you set (365 for a year), or until you take it away | delete its ClusterRoleBinding, token Secret and ServiceAccount: every copy stops (not logins the holder made) |
 | [A personal certificate](#a-personal-certificate) | the cluster administrator | kubectl | the days you set | cannot be withdrawn: delete its RoleBinding and never bind its name again |
-| [An external identity provider on one cluster](KEYCLOAK.md) | the identity provider's and cluster administrators | kubectl and kubelogin | while the person's sign-in lasts | delete the group's RoleBinding |
+| [An external identity provider on one cluster](KEYCLOAK.md) (its own guide) | the identity provider's and cluster administrators | kubectl and kubelogin | while the person's sign-in lasts | delete the group's RoleBinding |
 
 The SSO way hands out no kubeconfig: the person's login writes their own. The group way hands out a file
 with no secret, which only tells kubectl where to sign in. The two ServiceAccount ways and the
@@ -101,7 +101,7 @@ log in with the kubectl vSphere plugin instead
 ### 1. Give the person a role on the vSphere Namespace (vCenter administrator)
 
 Give the person's SSO user the **Can view** role (**Namespaces View**) on the vSphere Namespace
-([NAMESPACE.md](NAMESPACE.md) step 4). Not **Can edit** or **Owner**: those make them an
+([NAMESPACE.md](NAMESPACE.md#4-give-users-a-role) step 4). Not **Can edit** or **Owner**: those make them an
 administrator of every VKS cluster in the namespace. Then send the person the Supervisor's
 address, the vSphere Namespace's and the cluster's names, and the vCenter CA file
 ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca), step 1), and send the cluster
@@ -175,7 +175,7 @@ The person uses the login with [USER-LOGIN.md](USER-LOGIN.md)'s
 - Cluster administrator: delete the RoleBinding from step 2 (`kubectl --kubeconfig <admin file> -n
   team-a delete rolebinding sso-alice-vsphere.local-edit`); it stops at once.
 - vCenter administrator: remove the person's role on the vSphere Namespace
-  ([NAMESPACE.md](NAMESPACE.md) step 4), and disable the SSO user if they should lose vCenter as
+  ([NAMESPACE.md](NAMESPACE.md#4-give-users-a-role) step 4), and disable the SSO user if they should lose vCenter as
   well.
 
 If the person's check in [USER-LOGIN.md step 3](USER-LOGIN.md#3-use-the-login) still answers `yes`

@@ -78,13 +78,13 @@ for that reason.
 
 | guide | add-on | what it is for |
 |---|---|---|
-| [Run Tekton in a VKS cluster](TEKTON.md), option A | Tekton Operator | a CI/CD engine |
-| [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md), step 2 | cert-manager | Keycloak's HTTPS certificate |
+| [Run Tekton in a VKS cluster](TEKTON.md), [option A](TEKTON.md#2-install-tekton-with-the-vks-add-on-a) | Tekton Operator | a CI/CD engine |
+| [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md), [step 2](KEYCLOAK-VKS.md#2-install-cert-manager) | cert-manager | Keycloak's HTTPS certificate |
 | [Run Nexus Repository in a VKS cluster](NEXUS.md) | cert-manager; Contour if you choose | Nexus's HTTPS certificate, access by name |
 | [Send a VKS cluster's logs to VCF Operations](LOGGING.md) | Fluent Bit | send the cluster's logs out |
 | [See a VKS cluster's logs and traces in Grafana](OBSERVABILITY.md) | Fluent Bit | send the logs to Loki |
 | [Headlamp: a web console for a VKS cluster](HEADLAMP.md) | Headlamp, cert-manager; Contour and Prometheus if you choose | a web page for the cluster, its plugins, access by name |
-| [Run Octopus Deploy in a VKS cluster](OCTOPUS.md), step 2 | cert-manager | the HTTPS certificate of Octopus's web page |
+| [Run Octopus Deploy in a VKS cluster](OCTOPUS.md), [step 2](OCTOPUS.md#2-install-cert-manager) | cert-manager | the HTTPS certificate of Octopus's web page |
 | [OBSERVABILITY.md, step 11](OBSERVABILITY.md#11-let-vcf-operations-collect-the-clusters-kubernetes-metrics-optional) | Telegraf, Prometheus | metrics for VCF Operations; a cluster label installs them |
 
 ## 1. See the catalog

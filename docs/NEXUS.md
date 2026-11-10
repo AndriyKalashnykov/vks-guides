@@ -184,8 +184,8 @@ line per worker, and `default storage class:` and a class name. Nexus needs a wo
 - `? GiB image disk free`: the node's statistics could not be read (the error above says why; after
   `Forbidden`, your kubeconfig may not read them); ask the cluster's administrator whether a worker
   has 4 GiB free.
-- `NO WORKER`: set the node pool's `replicas` to 1 ([CLUSTER.md](CLUSTER.md) step 10).
-- `default storage class: NONE`: give the cluster a default class as in [CLUSTER.md](CLUSTER.md),
+- `NO WORKER`: set the node pool's `replicas` to 1 ([CLUSTER.md](CLUSTER.md#10-resize-the-cluster-optional) step 10).
+- `default storage class: NONE`: give the cluster a default class as in [CLUSTER.md](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file),
   step 9's `defaultStorageClass`.
 - `NOTE: namespace nexus exists already`: Nexus may be installed; steps 3 to 6 keep what exists.
 
@@ -1800,7 +1800,7 @@ Remove-Item -Force -ErrorAction SilentlyContinue $T
 - `admission webhook … denied`: the cluster class refuses the variable; send the error to the
   vSphere administrator.
 
-**A cluster made by [ARGOCD.md](ARGOCD.md):** its chart has no setting for this. The patch above
+**A cluster made by [ARGOCD.md](ARGOCD.md#6-create-a-vks-cluster-with-argocd):** its chart has no setting for this. The patch above
 works, but ArgoCD then shows the cluster OutOfSync, and a later SYNC removes the setting and updates
 the nodes again; do not sync that Application afterwards.
 

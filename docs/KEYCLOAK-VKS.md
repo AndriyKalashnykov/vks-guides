@@ -137,7 +137,7 @@ if ($LASTEXITCODE -eq 0) {
 `MEMORY` of about `2908348Ki` for `best-effort-small` (`6197436Ki` for `best-effort-medium`).
 
 **If not:** `default storage class: NONE`: give the cluster a default class as in
-[CLUSTER.md](CLUSTER.md), step 9's `defaultStorageClass`. `NOTE: namespace keycloak exists
+[CLUSTER.md](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file), step 9's `defaultStorageClass`. `NOTE: namespace keycloak exists
 already`: Keycloak may be installed; steps 3 to 5 keep what exists.
 
 ## 2. Install cert-manager
@@ -1349,7 +1349,7 @@ keytool -importcert -noprompt -alias keycloak-ca -file /etc/keycloak-tls/ca.crt 
 **Expect:** `Logging into …`, an ID, then `added alice to team-a`.
 
 Then give the person their username and the temporary password, through a password manager's
-share or another private channel, and the kubeconfig from [KEYCLOAK.md](KEYCLOAK.md) step 3. At
+share or another private channel, and the kubeconfig from [KEYCLOAK.md](KEYCLOAK.md#3-make-the-persons-kubeconfig-cluster-administrator) step 3. At
 their first sign in (KEYCLOAK.md step 4), Keycloak asks them for a new password.
 
 **If not:**

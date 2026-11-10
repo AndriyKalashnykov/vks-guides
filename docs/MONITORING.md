@@ -69,7 +69,7 @@ changes nothing. Set `VKS_CLUSTER` to the VKS cluster's name. It shows whether:
 - its nodes are up;
 - it has a default storage class, which gives Prometheus a disk for its data;
 - it runs no Prometheus yet, which would clash with this one. VCF Operations' own monitoring
-  ([OBSERVABILITY.md](OBSERVABILITY.md) step 11) runs Broadcom's Prometheus add-on without its
+  ([OBSERVABILITY.md](OBSERVABILITY.md#11-let-vcf-operations-collect-the-clusters-kubernetes-metrics-optional) step 11) runs Broadcom's Prometheus add-on without its
   Prometheus server, so it is fine.
 
 You go on to step 2 when all three are as **Expect** says.
@@ -123,10 +123,10 @@ if ($LASTEXITCODE -eq 0) {
 `Prometheus Operator CRDs: 0` and `Prometheus server workloads: 0`.
 
 **If not:**
-- `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
+- `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md#7-get-the-kubeconfig-and-check-the-cluster) step 7.
 - `Prometheus Operator CRDs:` or `Prometheus server workloads:` more than 0, before you ran
   this guide's step 5 or 9: the cluster already runs a Prometheus (for example Broadcom's
-  Prometheus add-on from [HEADLAMP.md](HEADLAMP.md) step 11.1). Use it, or a cluster without one;
+  Prometheus add-on from [HEADLAMP.md](HEADLAMP.md#111-prometheus) step 11.1). Use it, or a cluster without one;
   this guide does not cover both.
 - `FAILED: cannot read the cluster`: run
   [Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) first.
@@ -541,7 +541,7 @@ follow.
   this block again.
 - `FAILED: Prometheus or Alertmanager is not running`: the line under it says why. A volume that
   stays `Pending` means no default storage class or no room under the vSphere Namespace's
-  storage limit ([NAMESPACE.md](NAMESPACE.md) step 7).
+  storage limit ([NAMESPACE.md](NAMESPACE.md#7-set-a-storage-limit-optional-and-check-the-status) step 7).
 - A pod in `ImagePullBackOff`: the nodes cannot reach the registry in its image name
   (`kubectl --kubeconfig <the VKS kubeconfig> -n monitoring describe pod <name>`).
 
@@ -634,7 +634,7 @@ in that session, and open the address in your laptop's browser.
 
 Run this when you no longer want what step 5 installed with Helm; for an install with ArgoCD, use
 step 10. **First run the first block of step 5 again**, so the permissions VCF Operations'
-monitoring uses are not deleted too. If you did [OBSERVABILITY.md](OBSERVABILITY.md), do its step
+monitoring uses are not deleted too. If you did [OBSERVABILITY.md](OBSERVABILITY.md#12-uninstall-loki-jaeger-and-the-sample-app-optional), do its step
 12 first: it restarts Grafana in `monitoring`, and Loki, Jaeger and the sample app stay otherwise.
 This block removes the Helm release `prometheus`, one Service (a network name) it leaves in
 `kube-system`, and the namespace `monitoring` with everything in it. **It deletes Prometheus's
@@ -762,7 +762,7 @@ ArgoCD starts at once and puts back anything later changed or deleted in the clu
 a setting, edit it here and run the block again. Anyone who can edit the Application can still
 change anything in the cluster. Set `ARGOCD_NAMESPACE` as above, and `ARGOCD_DESTINATION` to the
 VKS cluster's name in ArgoCD (**Settings** → **Clusters**; `<cluster>-<namespace>` after
-[ARGOCD.md](ARGOCD.md) step 7).
+[ARGOCD.md](ARGOCD.md#7-add-the-vks-cluster-to-argocd) step 7).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -972,7 +972,7 @@ spec:
 
 **Expect:** `appproject.argoproj.io/monitoring created` and
 `application.argoproj.io/prometheus created`, after a `Warning:` about the finalizer name
-(harmless, as in [ARGOCD.md](ARGOCD.md) step 6). `configured` or `unchanged` on your first run:
+(harmless, as in [ARGOCD.md](ARGOCD.md#6-create-a-vks-cluster-with-argocd) step 6). `configured` or `unchanged` on your first run:
 someone else made them; stop and ask them.
 
 **If not:** `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login),
@@ -1030,7 +1030,7 @@ if ($LASTEXITCODE -eq 0) {
   `do not match any of the allowed destinations`: `ARGOCD_DESTINATION` is not the name ArgoCD
   shows. Run the block above again with the right name; it prints `configured` this time.
 - `ComparisonError` or a message with `failed to fetch chart` or a timeout: the Supervisor cannot
-  reach the hosts above. Behind a proxy, see the proxy line in [ARGOCD.md](ARGOCD.md) step 6.
+  reach the hosts above. Behind a proxy, see the proxy line in [ARGOCD.md](ARGOCD.md#6-create-a-vks-cluster-with-argocd) step 6.
 - No such error, and `Running` or `OutOfSync` on the first line, `Retrying attempt #…`,
   `prometheuses… not found` or `doesn't have a resource type "prometheus"`: the install is still
   going (a first attempt can fail and is tried again); run the block again in a minute.
@@ -1045,7 +1045,7 @@ data and the Grafana password.** It deletes the Application (and with it what Ar
 and the project on the Supervisor, then a Service the Prometheus Operator left in `kube-system`,
 and the namespace `monitoring`. You then have a cluster without this monitoring; the chart's CRDs
 stay; to delete them, see step 8. Set `ARGOCD_NAMESPACE` and `VKS_CLUSTER` as in step 9. If you
-did [OBSERVABILITY.md](OBSERVABILITY.md), do its step 12 first: it restarts Grafana in
+did [OBSERVABILITY.md](OBSERVABILITY.md#12-uninstall-loki-jaeger-and-the-sample-app-optional), do its step 12 first: it restarts Grafana in
 `monitoring`, and Loki, Jaeger and the sample app stay otherwise.
 
 **Linux, macOS, WSL (bash or zsh):**

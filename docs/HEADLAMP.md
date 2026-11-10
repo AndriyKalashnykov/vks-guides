@@ -1392,7 +1392,7 @@ and `VKS_CLUSTER` as in step 2, and `PROMETHEUS_STORAGE` to the size of Promethe
 add-on's own default is 150Gi). Skip this on a cluster where you follow
 [MONITORING.md](MONITORING.md): it does not cover a cluster that runs this add-on (its step 1
 counts it as a Prometheus already running). If VCF Operations' monitoring is on for this cluster
-([OBSERVABILITY.md](OBSERVABILITY.md) step 11), do not run this.
+([OBSERVABILITY.md](OBSERVABILITY.md#11-let-vcf-operations-collect-the-clusters-kubernetes-metrics-optional) step 11), do not run this.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>

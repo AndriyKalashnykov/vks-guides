@@ -841,7 +841,7 @@ cluster's login. Run this once per VKS cluster, when step 6 shows it `AVAILABLE`
 - lets ArgoCD's account `argocd-k8s-sa` read VKS clusters and their logins (the
   role `argocd-manage-vks`, which the ArgoCD Service installs on the Supervisor);
 - asks the ArgoCD Service to add the cluster as a destination: one for every app, step 8's,
-  [MONITORING.md](MONITORING.md)'s and [CICD.md](CICD.md)'s alike. Each app's project says what it
+  [MONITORING.md](MONITORING.md#9-install-with-argocd-instead-of-steps-4-and-5)'s and [CICD.md](CICD.md#5-let-argocd-deploy-it)'s alike. Each app's project says what it
   may deploy there.
 
 Nothing is installed on the cluster. Set `VKS_CLUSTER` to the cluster's name. Afterwards ArgoCD
@@ -1402,7 +1402,7 @@ if (-not $IP) {
 
 ## 9. Clean up (optional)
 
-If you installed monitoring with ArgoCD, run [MONITORING.md](MONITORING.md) step 10 first. Do
+If you installed monitoring with ArgoCD, run [MONITORING.md](MONITORING.md#10-uninstall-with-argocd-optional) step 10 first. Do
 these in order: an Application can be deleted only while ArgoCD still reaches its
 destination, and deleting an Application deletes what it created.
 

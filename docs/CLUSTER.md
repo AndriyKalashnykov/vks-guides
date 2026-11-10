@@ -79,7 +79,7 @@ the node images (OS) built for it; a cluster class is Broadcom's template for th
 |---|---|
 | name | lower-case letters, digits and `-`, a name no cluster in this namespace ever had |
 | Kubernetes release | the newest the create page offers |
-| VM class | `best-effort-medium` (2 CPUs, 8 GB) or larger, for the control plane and the workers: Broadcom recommends it, and never a small or xsmall class for workers that run apps (KB 446139); a `best-effort-small` (2 CPUs, 4 GB) control-plane node used 2.6 to 3.1 GiB, 95% to 110% of the memory it hands out to pods (about 2.8 GiB), measured on VKS 3.8. If the Supervisor runs the Metrics Aggregator ([OBSERVABILITY.md](OBSERVABILITY.md) step 11), each new cluster also runs Broadcom's monitoring add-ons, about 100 MiB per node |
+| VM class | `best-effort-medium` (2 CPUs, 8 GB) or larger, for the control plane and the workers: Broadcom recommends it, and never a small or xsmall class for workers that run apps (KB 446139); a `best-effort-small` (2 CPUs, 4 GB) control-plane node used 2.6 to 3.1 GiB, 95% to 110% of the memory it hands out to pods (about 2.8 GiB), measured on VKS 3.8. If the Supervisor runs the Metrics Aggregator ([OBSERVABILITY.md](OBSERVABILITY.md#11-let-vcf-operations-collect-the-clusters-kubernetes-metrics-optional) step 11), each new cluster also runs Broadcom's monitoring add-ons, about 100 MiB per node |
 | storage class | one from step 1 |
 | control-plane nodes | `1`, or `3` for a cluster that must stay up when a node fails |
 | worker nodes | `1` or more |
@@ -443,7 +443,7 @@ if ($LASTEXITCODE -eq 0) {
 
 ## 8. Delete the cluster (optional)
 
-If you installed monitoring with ArgoCD, run [MONITORING.md](MONITORING.md) step 10 first.
+If you installed monitoring with ArgoCD, run [MONITORING.md](MONITORING.md#10-uninstall-with-argocd-optional) step 10 first.
 **This destroys the cluster and its virtual machines.** The disks its apps created stay in the
 vSphere Namespace and keep their storage
 ([Broadcom KB 402764](https://knowledge.broadcom.com/external/article/402764)). A cluster that

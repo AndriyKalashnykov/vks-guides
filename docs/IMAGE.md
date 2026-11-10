@@ -19,7 +19,7 @@ that built it, so you can tell it from the same app pulled from Docker Hub.
 Every step works with podman or docker. Steps 3, 4 and 6 set `CONTAINER_ENGINE="podman"`:
 keep it for podman, or change it to `CONTAINER_ENGINE="docker"` for docker. The app runs in its own
 namespace, `harbor-demo` (a namespace inside the VKS cluster, not a vSphere Namespace; it is not
-listed under Supervisor Management → Namespaces): [ARGOCD.md](ARGOCD.md) keeps the same app in
+listed under Supervisor Management → Namespaces): [ARGOCD.md](ARGOCD.md#8-deploy-the-test-app) keeps the same app in
 `test-web-apps` and would undo changes there.
 
 ## Prerequisites

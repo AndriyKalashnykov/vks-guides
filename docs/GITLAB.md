@@ -142,7 +142,7 @@ one CI job need a worker with at least 6 GiB memory and 8 GiB image disk free; a
   vSphere Namespace's limits.
 - `? GiB image disk free`: your kubeconfig cannot read the node's statistics; ask the cluster's
   administrator whether a worker has 8 GiB free.
-- `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md) step 7.
+- `default storage class: NONE`: see [CLUSTER.md](CLUSTER.md#7-get-the-kubeconfig-and-check-the-cluster) step 7.
 - `gitlab namespace: 1` before you ran step 2: the cluster already has a `gitlab` namespace. Use
   another cluster, or remove it with step 10 if it is an earlier run of this guide.
 - `FAILED: cannot read the cluster`: run
@@ -1112,7 +1112,7 @@ foreach ($i in 1..36) {
 - `timed out waiting for the condition`: the cluster is still removing the load-balancer address
   or the volume; wait a few minutes and run this again.
 - `volumes left from gitlab: unknown`: kubectl could not read the volumes. Fix the error above
-  (often an expired login: [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md)), then run this again.
+  (often an expired login: [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)), then run this again.
 - `volumes left from gitlab:` more than 0: the storage class keeps volumes (step 1 printed
   `reclaim Retain`). Delete them with `kubectl --kubeconfig <the VKS kubeconfig> delete pv <name>`
   when you no longer need the data.
