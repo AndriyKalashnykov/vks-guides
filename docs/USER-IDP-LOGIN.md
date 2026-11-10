@@ -89,6 +89,8 @@ if (-not (Test-Path $KUBECONFIG_FILE -PathType Leaf)) {
 - Another program, or another `server:`: do not use the file (a file can run any program); ask your
   administrator.
 - `MISSING: …`: set `KUBECONFIG_FILE` to the saved file.
+- `kubectl: command not found` (Windows: `The term 'kubectl' is not recognized`), with empty `runs:`
+  and `server:` lines: install [kubectl](KUBECTL.md), then run this again.
 
 ## 2. Trust the CAs (once, on the machine whose browser you sign in with)
 
