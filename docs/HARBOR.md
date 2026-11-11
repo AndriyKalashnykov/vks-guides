@@ -1131,10 +1131,12 @@ if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see
 - `FAILED: Harbor namespaces …: ''`: the service is not installed (step 6); two names: see *Fix
   common problems*.
 - A volume that stays `Pending`: as in the list above the block.
-- Pods that are not `Running` (for example `ProviderFailed`, `PodVMCreationFailed`, `NotFound`)
-  next to a `Running` pod of the same name: leftovers from an earlier restart. Harbor is fine when
-  `kubectl --kubeconfig <the Supervisor kubeconfig> -n <the namespace> get deployments,statefulsets`
-  shows every `READY` as `1/1`.
+- Pods that are not `Running` (for example `PodVMAnnotationsMissing`, `ErrImageRefsMissing`,
+  `ProviderFailed`, `NotFound`) whose name differs from a `Running` pod's only in its last five
+  characters: leftovers from an earlier restart, not the cause. Harbor is fine when the block before
+  this one gives `http=200` and `kubectl --kubeconfig <the Supervisor kubeconfig> -n <the namespace>
+  get deployments,statefulsets` shows, on every line, the two numbers under `READY` equal, and for
+  each deployment `UP-TO-DATE` the same number. A line where they differ names the part to look at.
 
 ### Get a DNS record
 
@@ -2933,8 +2935,8 @@ if (-not (Test-Path -LiteralPath $OLD -PathType Container)) { "nothing to move" 
 
 </details>
 
-**Expect:** `nothing to move`, or `moved to …, recorded Supervisor <uid>`. Either way the files
-need no binding: skip the next section and go to step 1.
+**Expect:** `nothing to move`, or `moved to …, recorded Supervisor <uid>`. Then run step 1; skip
+the next section unless step 1 sends you there.
 
 **If not:**
 - `FAILED: … exists; nothing moved`: if `harbor-<SUPERVISOR_CONTEXT>` holds only `supervisor-uid`
