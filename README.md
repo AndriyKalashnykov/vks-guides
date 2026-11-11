@@ -13,7 +13,8 @@ give access to (below).
 - An administrator gave you access to a VKS cluster: [start here](docs/LOGIN.md#who-are-you-start-here),
   or go to your guide: [your own SSO account](docs/USER-LOGIN.md),
   [a kubeconfig file you were sent](docs/USER-KUBECONFIG.md),
-  [your organization's identity provider](docs/USER-IDP-LOGIN.md).
+  [your organization's identity provider](docs/USER-IDP-LOGIN.md); with your own SSO account, also
+  [the web page of your vSphere Namespace](docs/USER-LCI.md).
 - You administer vCenter or VKS clusters: [Getting started](docs/GET-STARTED.md), then
   [give people and tools access](docs/ADMIN-GRANT-ACCESS.md).
 

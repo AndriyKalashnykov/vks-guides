@@ -31,7 +31,9 @@ guide: with your own SSO account, the VCF CLI and
 [Log in to a VKS cluster you were given access to](USER-LOGIN.md); with a kubeconfig file you were
 sent, [Use a kubeconfig file you were given](USER-KUBECONFIG.md); with your organization's identity
 provider, [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) (its part A, a file
-that runs `vcf`, needs the VCF CLI too; part B needs kubelogin).
+that runs `vcf`, needs the VCF CLI too; part B needs kubelogin). For the web page of your vSphere
+Namespace you need a browser (on Linux also `certutil`), and kubectl to use a kubeconfig you download
+there: [Use your vSphere Namespace in the web page](USER-LCI.md).
 
 | guide | what it is |
 |---|---|
@@ -40,6 +42,7 @@ that runs `vcf`, needs the VCF CLI too; part B needs kubelogin).
 | [Install the VCF CLI](VCF.md) | VMware's command-line tool, for logging in to the Supervisor and managing VKS clusters |
 | [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | your SSO login to the Supervisor, and the kubeconfig `kubectl` uses to reach your VKS cluster |
 | [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | for a person a VKS cluster's administrator gave access: the login with their own SSO user, and using it |
+| [Use your vSphere Namespace in the web page](USER-LCI.md) | for a person with their own SSO user and a role on a vSphere Namespace: open its web page, sign in, see it and, with Can edit, create and delete VKS clusters |
 | [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | for a person or a tool sent a file with a token or a certificate: check it, use it, what to do when it stops working or leaks |
 | [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) | for a person whose identity provider group was given access: trust the CAs, sign in in a browser, log out |
 | [Kubeconfig files](KUBECONFIG.md) | what each kubeconfig the guides make holds, which ones may be handed over, how to use and merge them, and how `vcf` and `kubectl` keep your logins |

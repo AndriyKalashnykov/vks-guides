@@ -160,6 +160,11 @@ right.
   you used last): click your namespace's name above the list to get the cards back.
 - No **Resources** tab: the **Local Consumption Interface** service is not running on the
   Supervisor. Ask a vCenter administrator.
+- **No items found** in the **Namespaces** list: your user has a role on the vSphere Namespace but
+  no vCenter role such as **Read-only** on the Supervisor's vSphere cluster. Create the cluster in
+  the namespace's web page instead
+  ([USER-LCI.md step 5](USER-LCI.md#5-create-use-and-delete-a-vks-cluster-can-edit)), or ask the
+  vCenter administrator for that **Read-only** role.
 
 ## 4. Fill in the create page
 

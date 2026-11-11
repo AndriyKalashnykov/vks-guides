@@ -55,6 +55,8 @@ Other ways in:
   [USER-KUBECONFIG.md](USER-KUBECONFIG.md).
 - You have **Can edit** or **Owner** on the vSphere Namespace: you are a cluster administrator,
   and [SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md) applies too.
+- To see your vSphere Namespace (not inside the VKS cluster) in a browser: use
+  [USER-LCI.md](USER-LCI.md).
 
 ## 2. Log in with the VCF CLI
 

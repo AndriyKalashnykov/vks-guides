@@ -14,7 +14,7 @@ Words like *vSphere Namespace*, *ServiceAccount* and *RoleBinding* are explained
 
 | your customer | the way | why this way | page to send them |
 |---|---|---|---|
-| a developer, tester or DevOps engineer with a vCenter SSO account | [The person's own SSO account](#the-persons-own-sso-account) | they log in as themselves; you send no secret; you take it away in vCenter and the cluster | [USER-LOGIN.md](USER-LOGIN.md) |
+| a developer, tester or DevOps engineer with a vCenter SSO account | [The person's own SSO account](#the-persons-own-sso-account) | they log in as themselves; you send no secret; you take it away in vCenter and the cluster | [USER-LOGIN.md](USER-LOGIN.md); for the web page, [USER-LCI.md](USER-LCI.md) |
 | people in your organization's identity provider (Keycloak in this guide) with no vCenter account | [A group from an external identity provider, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) (its own guide) | you give rights once, to a group; the identity provider decides who is in it; one file with no secret serves the whole group | [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md): steps 1 and 2, then part A ([step 3](USER-IDP-LOGIN.md#3-sign-in-through-the-supervisor)) |
 | a CI pipeline, a deployment tool, or a team that shares one login, in one namespace (or, with `"*"`, the whole cluster) | [A ServiceAccount token](#a-serviceaccount-token) | no person's account; works unattended for the days you set; deleting it stops every copy | a team: [USER-KUBECONFIG.md](USER-KUBECONFIG.md); a tool: [USER-KUBECONFIG.md, A CI pipeline](USER-KUBECONFIG.md#a-ci-pipeline); with `"*"` and `edit`, also [step 5](USER-KUBECONFIG.md#5-check-that-a-whole-cluster-file-can-change-things-whole-cluster-file-only) |
 | a tool or a person that needs the whole cluster | [An administrator ServiceAccount token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster) | send it instead of the administrator kubeconfig: this one can be taken away | [USER-KUBECONFIG.md](USER-KUBECONFIG.md), with [step 5](USER-KUBECONFIG.md#5-check-that-a-whole-cluster-file-can-change-things-whole-cluster-file-only) |
@@ -41,12 +41,12 @@ Who does what:
 |---|---|---|
 | cluster administrator | holds the VKS cluster's administrator kubeconfig ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#vks-cluster)) | gives rights inside the cluster, makes the files and sends them |
 | vCenter administrator | administers vCenter and the Supervisor | gives roles on the vSphere Namespace |
-| the person | gets the access | logs in ([USER-LOGIN.md](USER-LOGIN.md)), signs in with an identity provider ([USER-IDP-LOGIN.md](USER-IDP-LOGIN.md)), or uses the file they were sent ([USER-KUBECONFIG.md](USER-KUBECONFIG.md)) |
+| the person | gets the access | logs in ([USER-LOGIN.md](USER-LOGIN.md)), signs in with an identity provider ([USER-IDP-LOGIN.md](USER-IDP-LOGIN.md)), or uses the file they were sent ([USER-KUBECONFIG.md](USER-KUBECONFIG.md)); with their SSO account, also the web page ([USER-LCI.md](USER-LCI.md)) |
 | a tool | a CI/CD pipeline, a deployment tool or a script, with no person behind it | uses the token file it was given ([USER-KUBECONFIG.md](USER-KUBECONFIG.md#a-ci-pipeline)); makes no login of its own and never renews; the cluster administrator renews the file before it ends |
 
 **The ways:**
 
-- [Their own SSO account](#the-persons-own-sso-account): [role](#1-give-the-person-a-role-on-the-vsphere-namespace-vcenter-administrator) → [rights](#2-give-the-person-rights-inside-the-cluster-cluster-administrator) → they [log in](#3-log-in-with-the-vcf-cli-the-person) → [take away](#5-take-it-away-cluster-administrator-vcenter-administrator)
+- [Their own SSO account](#the-persons-own-sso-account): [role](#1-give-the-person-a-role-on-the-vsphere-namespace-vcenter-administrator) → optional [web page](#1b-let-the-person-use-the-web-page-vcenter-administrator-optional) → [rights](#2-give-the-person-rights-inside-the-cluster-cluster-administrator) → they [log in](#3-log-in-with-the-vcf-cli-the-person) → [take away](#5-take-it-away-cluster-administrator-vcenter-administrator)
 - [A group from an identity provider](ADMIN-GRANT-ACCESS-IDP.md) (its own guide): [provider name](ADMIN-GRANT-ACCESS-IDP.md#1-read-the-provider-name-and-prefix-vcenter-administrator) → [role](ADMIN-GRANT-ACCESS-IDP.md#2-give-the-group-a-role-on-the-vsphere-namespace-vcenter-administrator) → [rights](ADMIN-GRANT-ACCESS-IDP.md#3-give-the-group-rights-inside-the-vks-cluster-cluster-administrator) → [kubeconfig](ADMIN-GRANT-ACCESS-IDP.md#4-make-the-groups-kubeconfig-and-hand-it-over-cluster-administrator) → they [sign in](USER-IDP-LOGIN.md#1-which-file-you-have) → [take away](ADMIN-GRANT-ACCESS-IDP.md#8-take-the-groups-access-away-cluster-administrator-vcenter-administrator)
 - [A ServiceAccount token](#a-serviceaccount-token): [make](#1-make-the-serviceaccount-token-and-its-file-cluster-administrator) → [hand over](#2-hand-it-over-and-use-it-cluster-administrator-then-the-team-or-tool) → [renew](#3-renew-the-serviceaccount-token-cluster-administrator) → [take away](#4-take-the-serviceaccount-token-away-cluster-administrator)
 - [An administrator token (whole cluster)](#an-administrator-serviceaccount-token-whole-cluster): [make](#1-make-the-administrator-token-and-its-file-cluster-administrator) → [hand over](#2-hand-it-over-and-use-it-on-another-machine-cluster-administrator-then-the-tool-or-person) → [renew](#3-renew-the-administrator-token-cluster-administrator) → [take away](#4-take-the-administrator-token-away-cluster-administrator)
@@ -112,6 +112,36 @@ address, the vSphere Namespace's and the cluster's names, and the vCenter CA fil
 ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#create-supervisor-context-with-ca), step 1), and send the cluster
 administrator the person's SSO user name exactly as vCenter lists it, letter case included
 (step 2).
+
+### 1b. Let the person use the web page (vCenter administrator, optional)
+
+The Local Consumption Interface is a web page on the Supervisor that shows the vSphere Namespace's
+VMs, VKS clusters, containers, images, network services and volumes. The role from step 1, **Can view**, is all
+it needs: the person sees the namespace and cannot change it. Someone with **Can edit** (step 1: an
+administrator of every VKS cluster in the namespace) can also create and delete there. The web page
+needs no other vCenter role or group:
+
+| the role on the vSphere Namespace | in the web page, the person can |
+|---|---|
+| **Can view** | see its VMs, VKS clusters, containers, images, network services and volumes; every create is refused |
+| **Can edit** or **Owner** | also create and delete VKS clusters, VMs, volumes and containers, and download a VKS cluster's administrator kubeconfig |
+
+On VCF 9.1.1, **Owner** gives the same rights here as **Can edit**. For VMs, the vSphere Namespace's
+VM Service also needs a content library with VM images (OVF templates); the one that holds the VKS
+node images works. Without one, the person's **CREATE VM** stops with "the namespace is missing the
+following resources: VM Images".
+
+Send the person [USER-LCI.md](USER-LCI.md), their SSO user name, the vCenter CA file, and the link
+`https://<Supervisor address>/appplatform0/#/namespaces/<vSphere Namespace>`, with the Supervisor's
+address from [NAMESPACE.md step 1](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca).
+Send that link, not `https://<Supervisor address>/appplatform0/`: that address first lists every
+vSphere Namespace on the Supervisor, which only an administrator may do, so for anyone else it signs
+in and shows a red bar with no text: check that the link you sent ends in
+`#/namespaces/<vSphere Namespace>`. Do not add people to the SSO group
+**SupervisorProviderAdministrators** to make that address work: its role on the Supervisor is close to
+a full Supervisor administrator.
+
+Taking it away is step 5's: remove the role on the vSphere Namespace.
 
 ### 2. Give the person rights inside the cluster (cluster administrator)
 
@@ -192,8 +222,9 @@ The person uses the login with [USER-LOGIN.md](USER-LOGIN.md)'s
 - Cluster administrator: delete the RoleBinding from step 2 (`kubectl --kubeconfig <admin file> -n
   team-a delete rolebinding sso-alice-vsphere.local-edit`); it stops at once.
 - vCenter administrator: remove the person's role on the vSphere Namespace
-  ([NAMESPACE.md](NAMESPACE.md#4-give-users-a-role) step 4), and disable the SSO user if they should lose vCenter as
-  well.
+  ([NAMESPACE.md](NAMESPACE.md#4-give-users-a-role) step 4); the web page of step 1b needs that role too (an
+  administrator kubeconfig they downloaded there with **Can edit** keeps working), and disable the SSO user if they
+  should lose vCenter as well.
 
 If the person's check in [USER-LOGIN.md step 3](USER-LOGIN.md#3-use-the-login) still answers `yes`
 afterwards, they also have rights through a group: a group with **Can edit** or **Owner** on the
