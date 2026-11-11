@@ -2933,7 +2933,8 @@ if (-not (Test-Path -LiteralPath $OLD -PathType Container)) { "nothing to move" 
 
 </details>
 
-**Expect:** `nothing to move`, or `moved to …, recorded Supervisor <uid>`.
+**Expect:** `nothing to move`, or `moved to …, recorded Supervisor <uid>`. Either way the files
+need no binding: skip the next section and go to step 1.
 
 **If not:**
 - `FAILED: … exists; nothing moved`: if `harbor-<SUPERVISOR_CONTEXT>` holds only `supervisor-uid`
