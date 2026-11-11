@@ -116,17 +116,28 @@ administrator the person's SSO user name exactly as vCenter lists it, letter cas
 ### 1b. Let the person use the web page (vCenter administrator, optional)
 
 The Local Consumption Interface is a web page on the Supervisor that shows the vSphere Namespace's
-VMs, VKS clusters, images, network services and volumes. The role from step 1, **Can view**, is all
+VMs, VKS clusters, containers, images, network services and volumes. The role from step 1, **Can view**, is all
 it needs: the person sees the namespace and cannot change it. Someone with **Can edit** (step 1: an
-administrator of every VKS cluster in the namespace) can also create and delete VKS clusters there
-and download their administrator kubeconfig. The web page needs no other vCenter role or group.
+administrator of every VKS cluster in the namespace) can also create and delete there. The web page
+needs no other vCenter role or group:
+
+| the role on the vSphere Namespace | in the web page, the person can |
+|---|---|
+| **Can view** | see its VMs, VKS clusters, containers, images, network services and volumes; every create is refused |
+| **Can edit** or **Owner** | also create and delete VKS clusters, VMs, volumes and containers, and download a VKS cluster's administrator kubeconfig |
+
+On VCF 9.1.1, **Owner** gives the same rights here as **Can edit**. For VMs, the vSphere Namespace's
+VM Service also needs a content library with VM images (OVF templates); the one that holds the VKS
+node images works. Without one, the person's **CREATE VM** stops with "the namespace is missing the
+following resources: VM Images".
 
 Send the person [USER-LCI.md](USER-LCI.md), their SSO user name, the vCenter CA file, and the link
 `https://<Supervisor address>/appplatform0/#/namespaces/<vSphere Namespace>`, with the Supervisor's
 address from [NAMESPACE.md step 1](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca).
 Send that link, not `https://<Supervisor address>/appplatform0/`: that address first lists every
 vSphere Namespace on the Supervisor, which only an administrator may do, so for anyone else it signs
-in and shows a red bar with no text. Do not add people to the SSO group
+in and shows a red bar with no text: check that the link you sent ends in
+`#/namespaces/<vSphere Namespace>`. Do not add people to the SSO group
 **SupervisorProviderAdministrators** to make that address work: its role on the Supervisor is close to
 a full Supervisor administrator.
 

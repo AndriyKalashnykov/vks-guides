@@ -232,7 +232,9 @@ policy offered in the namespace) named after the policy, and a second one ending
 Classes*, for example), and its link reads **MANAGE VM CLASSES**. If it still shows *0*, click the
 refresh arrow at the top of the vSphere Client.
 
-A VKS cluster needs no content library in the namespace: do not click **ADD CONTENT LIBRARY**.
+A VKS cluster needs no content library in the namespace: do not click **ADD CONTENT LIBRARY** for it.
+VMs made in the namespace's web page do need one
+([ADMIN-GRANT-ACCESS.md step 1b](ADMIN-GRANT-ACCESS.md#1b-let-the-person-use-the-web-page-vcenter-administrator-optional)).
 
 ## 7. Set a storage limit (optional) and check the status
 
