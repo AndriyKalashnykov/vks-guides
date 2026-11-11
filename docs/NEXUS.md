@@ -1240,9 +1240,9 @@ Run this step once, after step 8, to make the place images go and the two logins
 passwords first, then run the second block, in the same terminal.
 
 The second block logs in as `admin` and gives the two new users their passwords, so type all three
-first: `admin`'s (from step 8), then the push user's and the pull user's, which you choose now. This
-line asks for each without showing it and keeps them in this terminal only, not in a file. You get
-the passwords ready for the next block, which forgets them when it ends:
+first: `admin`'s (from step 8), then the push user's and the pull user's, which you choose now. The
+block below for your shell asks for each without showing it and keeps them in this terminal only, not
+in a file. You get the passwords ready for the next block, which forgets them when it ends:
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1253,7 +1253,9 @@ printf 'admin password: '; IFS= read -rs NEXUS_ADMIN_PASSWORD; echo; printf 'Pus
 **Windows (PowerShell):**
 
 ```powershell
-$NEXUS_ADMIN_PASSWORD = Read-Host 'admin password' -AsSecureString; $NEXUS_PUSH_PASSWORD = Read-Host 'Push user password' -AsSecureString; $NEXUS_PULL_PASSWORD = Read-Host 'Pull user password' -AsSecureString
+$NEXUS_ADMIN_PASSWORD = Read-Host 'admin password' -AsSecureString
+$NEXUS_PUSH_PASSWORD = Read-Host 'Push user password' -AsSecureString
+$NEXUS_PULL_PASSWORD = Read-Host 'Pull user password' -AsSecureString
 ```
 
 Then run this, in the same terminal, to make the repository and its users. It creates a Docker
@@ -1341,7 +1343,7 @@ $V = "nx-repository-view-docker-$NEXUS_REPO"
 $T = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName())
 $OutputEncoding = New-Object Text.UTF8Encoding $false
 function nx { $input | curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $NEXUS_CA -K "$T\admin.cfg" @RV @args }
-if (-not $NEXUS_ADMIN_PASSWORD -or -not $NEXUS_PUSH_PASSWORD -or -not $NEXUS_PULL_PASSWORD -or $NEXUS_PUSH_PASSWORD.Length -eq 0 -or $NEXUS_PULL_PASSWORD.Length -eq 0) { "STOPPED: type the three passwords first (the line above)" } else {
+if (-not $NEXUS_ADMIN_PASSWORD -or -not $NEXUS_PUSH_PASSWORD -or -not $NEXUS_PULL_PASSWORD -or $NEXUS_PUSH_PASSWORD.Length -eq 0 -or $NEXUS_PULL_PASSWORD.Length -eq 0) { "STOPPED: type the three passwords first (the lines above)" } else {
   New-Item -ItemType Directory -Path $T | Out-Null
   try {
     $A = [Net.NetworkCredential]::new('', $NEXUS_ADMIN_PASSWORD).Password
