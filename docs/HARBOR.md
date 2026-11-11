@@ -1131,6 +1131,14 @@ if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see
 - `FAILED: Harbor namespaces …: ''`: the service is not installed (step 6); two names: see *Fix
   common problems*.
 - A volume that stays `Pending`: as in the list above the block.
+- Pods that are not `Running` (for example `PodVMAnnotationsMissing`, `ErrImageRefsMissing`,
+  `ProviderFailed`, `NotFound`) whose name differs from a `Running` pod's only in its last five
+  characters: leftovers from an earlier restart, not the cause. Harbor is fine when *Find the
+  address and wait for Harbor* gives `http=200` and `kubectl --kubeconfig <the Supervisor
+  kubeconfig> -n <the namespace> get deployments,statefulsets` shows, on every line, the two numbers
+  under `READY` equal. A pod that is not `Running` and differs from the `Running` pod of the same
+  deployment in more than its last five characters is not a leftover: `kubectl --kubeconfig <the
+  Supervisor kubeconfig> -n <the namespace> describe pod <its name>` shows why it did not start.
 
 ### Get a DNS record
 
@@ -2929,7 +2937,8 @@ if (-not (Test-Path -LiteralPath $OLD -PathType Container)) { "nothing to move" 
 
 </details>
 
-**Expect:** `nothing to move`, or `moved to …, recorded Supervisor <uid>`.
+**Expect:** `nothing to move`, or `moved to …, recorded Supervisor <uid>`. Then run step 1; skip
+the next section unless step 1 sends you there.
 
 **If not:**
 - `FAILED: … exists; nothing moved`: if `harbor-<SUPERVISOR_CONTEXT>` holds only `supervisor-uid`
