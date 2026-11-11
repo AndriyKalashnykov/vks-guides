@@ -20,7 +20,8 @@ also allow for each image registry.
 
 - No other guide first: this is the first one.
 - A machine where you may install software: on Linux `sudo` (or `root`), on Windows an
-  administrator for WSL, on macOS [Homebrew](https://brew.sh).
+  administrator for WSL (podman without WSL: `sudo` on the Linux machine it uses), on macOS
+  [Homebrew](https://brew.sh).
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also the
 hosts in [Registry hosts](#registry-hosts-for-a-firewall)):
@@ -30,7 +31,8 @@ hosts in [Registry hosts](#registry-hosts-for-a-firewall)):
 | your machine (laptop or jump box) | your OS's package repositories and the mirrors they hand out, as set on the machine (apt, dnf, tdnf, pacman) | 80 and 443 (Ubuntu's and Debian's default repositories, and the mirrors AlmaLinux's mirror list hands out, use 80) | the tools, podman and docker |
 | your machine (macOS) | `formulae.brew.sh`, `ghcr.io` | 443 | Homebrew: jq, podman, Colima, docker |
 | your machine (laptop or jump box) | `download.docker.com` | 443 | docker on Debian, Ubuntu and AlmaLinux |
-| your machine (laptop or jump box) | `github.com`, `release-assets.githubusercontent.com` | 443 | kubelogin (optional); on macOS Colima's virtual machine; on Windows the podman installer |
+| your machine (laptop or jump box) | `github.com`, `release-assets.githubusercontent.com` | 443 | kubelogin (optional); on macOS Colima's virtual machine; on Windows the podman installer or podman's remote client |
+| your machine (Windows, podman without WSL) | the Linux machine podman uses | 22 | podman's commands, over SSH |
 | your machine (macOS, Windows) | `quay.io` | 443 | `podman machine init` (podman's virtual machine) |
 | your machine (Windows) | the Microsoft Store, `raw.githubusercontent.com`, `releases.ubuntu.com` (Arm: `cdimages.ubuntu.com`) | 443 | `wsl --install` |
 | your machine (Windows) | `desktop.docker.com` | 443 | Docker Desktop |
@@ -442,8 +444,8 @@ IMAGE.md builds Linux images. Pick one:
 
 - [With WSL 2](#windows-with-wsl-2): podman and docker run Linux in WSL 2 on this Windows.
 - [Without WSL](#windows-without-wsl): podman on Windows sends its commands to podman on a Linux
-  machine you reach over SSH, which builds and pushes the images. docker without WSL runs only
-  Windows containers: it cannot build or run IMAGE.md's images.
+  machine you reach over SSH, which builds and pushes the images. On Windows Server, docker without
+  WSL (Docker Engine) runs only Windows containers: it cannot build or run IMAGE.md's images.
 
 #### Windows with WSL 2
 
@@ -490,19 +492,20 @@ sudo loginctl enable-linger "$USER"
 **If not:** `… podman.socket does not exist`: install podman there first (its distribution's
 podman block above), then run this again.
 
-On Windows: make an SSH key with `ssh-keygen` if you have none (with no passphrase: press Enter when
-it asks for one), and add the line of its `.pub` file to `~/.ssh/authorized_keys` of that user on
-the Linux machine. Download
-`podman-remote-release-windows_amd64.zip` from
+On Windows: make an SSH key with `ssh-keygen -t ed25519` if you have none (with no passphrase:
+press Enter when it asks for one), and add the line of its `.pub` file to `~/.ssh/authorized_keys`
+of that user on the Linux machine. Then check that `ssh <user>@<machine>` logs in without a password
+(answer `yes` to its question about the machine's key), so that podman uses the key you accepted.
+Download `podman-remote-release-windows_amd64.zip` from
 [Podman's releases](https://github.com/podman-container-tools/podman/releases), unzip it, and add
-the folder that holds `podman.exe` to your `PATH`. Then, in a new **Windows PowerShell**, set the
-first four lines and run this once. It makes that Linux machine podman's default, so `podman` on
-Windows runs there:
+the folder that holds `podman.exe` (`podman-<version>\usr\bin` in it) to your `PATH`. Then, in a new
+**Windows PowerShell**, set the first four lines and run this once. It makes that Linux machine
+podman's default, so `podman` on Windows runs there:
 
 ```powershell
 $LINUX_USER = "<your user on the Linux machine>"
 $LINUX_HOST = "<the Linux machine's name or address>"
-$LINUX_SOCKET = "/run/user/1000/podman/podman.sock"
+$LINUX_SOCKET = "<the path the Linux block printed>"
 $SSH_KEY = "$env:USERPROFILE\.ssh\id_ed25519"
 podman system connection add --default --identity $SSH_KEY linux-host "ssh://$LINUX_USER@$LINUX_HOST$LINUX_SOCKET"
 podman info --format '{{.Host.OS}}'
@@ -510,13 +513,11 @@ podman info --format '{{.Host.OS}}'
 
 **Expect:** `linux`. In IMAGE.md, use the Windows (PowerShell) blocks, and in its step 2 trust
 Harbor's CA on both machines: on Windows (its Windows part, without the `podman machine` lines) for
-the login, and on the Linux machine (its Linux podman part) for the push.
+the login, and on the Linux machine (its Linux podman part) for the push. The Linux machine pulls
+the base image and pushes to Harbor, so it needs the connections IMAGE.md lists for your machine.
 
-**If not:** set `$LINUX_SOCKET` to the path the Linux block printed and `$SSH_KEY` to your key, and
-check that `ssh <user>@<machine>` logs in without a password; then run the block again (first
-`podman system connection rm linux-host` if it says the connection exists). `failed to read
-identity … empty password`: the key has a passphrase, which podman cannot use; make a key without
-one, add its `.pub` line on the Linux machine, and run the block again.
+**If not:** check `$LINUX_SOCKET`, `$SSH_KEY` (your key's file) and that `ssh <user>@<machine>` logs
+in without a password, then run the block again; it replaces the connection.
 
 docker: Docker Engine without WSL ([Docker's Windows binaries](https://docs.docker.com/engine/install/binaries/#install-server-and-client-binaries-on-windows),
 for Windows Server) runs Windows containers only. It cannot build or run IMAGE.md's images, which
@@ -567,7 +568,8 @@ foreach ($e in 'podman', 'docker') {
   or a newer release of your distribution.
 - `NOT RUNNING: podman` on macOS or Windows: `podman machine start`; podman without WSL: see its
   **If not** in [Windows without WSL](#windows-without-wsl).
-- `ok docker` on Windows without WSL: that is docker for Windows containers; IMAGE.md cannot use it.
+- `ok docker` on Windows Server without WSL: that is Docker Engine for Windows containers; IMAGE.md
+  cannot use it.
 
 ## kubelogin (optional)
 
@@ -682,7 +684,7 @@ from more hosts than its name; allow these too (measured, all TCP 443):
 - Microsoft: [Starting Windows PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/starting-windows-powershell?view=powershell-5.1), [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Working across Windows and Linux file systems](https://learn.microsoft.com/en-us/windows/wsl/filesystems)
 - curl: [curl shipped by Microsoft](https://curl.se/windows/microsoft.html) (`curl.exe` in Windows)
 - sudo: [Sudo Manual](https://www.sudo.ws/docs/man/sudo.man/) (`-v`)
-- Docker: [Install on Ubuntu](https://docs.docker.com/engine/install/ubuntu/), [Install on RHEL](https://docs.docker.com/engine/install/rhel/), [Linux post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/), [Install Docker Desktop on Windows](https://docs.docker.com/desktop/setup/install/windows-install/); Photon OS 5: [Docker Containers](https://vmware.github.io/photon/docs-v5/administration-guide/containers/docker-containers/); Colima: [README](https://github.com/abiosoft/colima)
-- Podman: [Podman Installation](https://podman.io/docs/installation), [Podman for Windows](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-for-windows.md)
+- Docker: [Install on Ubuntu](https://docs.docker.com/engine/install/ubuntu/), [Install on RHEL](https://docs.docker.com/engine/install/rhel/), [Linux post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/), [Install Docker Desktop on Windows](https://docs.docker.com/desktop/setup/install/windows-install/), [Docker Engine binaries](https://docs.docker.com/engine/install/binaries/); Photon OS 5: [Docker Containers](https://vmware.github.io/photon/docs-v5/administration-guide/containers/docker-containers/); Colima: [README](https://github.com/abiosoft/colima)
+- Podman: [Podman Installation](https://podman.io/docs/installation), [Podman for Windows](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-for-windows.md), [Podman remote clients for macOS and Windows](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/mac_win_client.md), [podman system connection add](https://docs.podman.io/en/latest/markdown/podman-system-connection-add.1.html)
 
 Back to [README](../README.md).
