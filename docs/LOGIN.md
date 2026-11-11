@@ -6,7 +6,7 @@
 |---|---|
 | You administer vCenter, or have **Can edit** or **Owner** on a vSphere Namespace, and log in yourself | [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) |
 | You give people or tools access to a VKS cluster | [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md), starting at [which way for which customer](ADMIN-GRANT-ACCESS.md#which-way-for-which-customer), whose table also names the page to send each person; for a group in your organization's identity provider, [Give an identity provider group access to VKS clusters](ADMIN-GRANT-ACCESS-IDP.md) |
-| You have your own vCenter SSO account and were given access | [Log in to a VKS cluster you were given access to](USER-LOGIN.md) |
+| You have your own vCenter SSO account and were given access | [Log in to a VKS cluster you were given access to](USER-LOGIN.md); for the web page of your vSphere Namespace, [Use your vSphere Namespace in the web page](USER-LCI.md) |
 | An administrator sent you a kubeconfig file | [Use a kubeconfig file you were given](USER-KUBECONFIG.md) (a token or a certificate); a file that runs `vcf` or `kubectl` to sign in (no secret in it): the identity provider row below |
 | You sign in with your organization's identity provider | [Sign in with your organization's identity provider](USER-IDP-LOGIN.md): through the Supervisor (part A) or on one cluster that trusts it directly (part B); its [step 1](USER-IDP-LOGIN.md#1-which-file-you-have) says which |
 | A tool or pipeline was given a token file | [Use a kubeconfig file you were given](USER-KUBECONFIG.md), and its [CI pipeline](USER-KUBECONFIG.md#a-ci-pipeline) section |

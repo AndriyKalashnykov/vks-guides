@@ -6,7 +6,7 @@ each lists its guides and the order to follow, and its `## Tested on` is one lin
 table in docs/TESTED.md (owner, 2026-11-10: one page holds every guide's cells; a new guide gets a row
 in its group page's guide table and one in its group's table in TESTED.md). docs/GLOSSARY.md is the one
 word list: a guide links it and keeps no glossary table of its own (ADMIN-GRANT-ACCESS.md's `## Glossary`
-and KUBECONFIG.md's `### The words used here` are one-line pointers kept for old links). The guides in docs/: PREREQS.md, KUBECTL.md, VCF.md, SUPERVISOR-LOGIN.md, USER-LOGIN.md, USER-KUBECONFIG.md, USER-IDP-LOGIN.md, ADMIN-GRANT-ACCESS.md, ADMIN-GRANT-ACCESS-IDP.md, KUBECONFIG.md, KEYCLOAK.md, KEYCLOAK-VKS.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md, NEXUS.md,
+and KUBECONFIG.md's `### The words used here` are one-line pointers kept for old links). The guides in docs/: PREREQS.md, KUBECTL.md, VCF.md, SUPERVISOR-LOGIN.md, USER-LOGIN.md, USER-LCI.md, USER-KUBECONFIG.md, USER-IDP-LOGIN.md, ADMIN-GRANT-ACCESS.md, ADMIN-GRANT-ACCESS-IDP.md, KUBECONFIG.md, KEYCLOAK.md, KEYCLOAK-VKS.md, NAMESPACE.md, CLUSTER.md, HARBOR.md, IMAGE.md, IMAGE-DOCKER.md, ARGOCD.md, NEXUS.md,
 GITEA.md, TEKTON.md, GITLAB.md, CICD.md, OCTOPUS.md, ADDONS.md, HEADLAMP.md, HELM.md, MONITORING.md, LOGGING.md, OBSERVABILITY.md (screenshots in
 docs/img/). Readers paste
 blocks; there is nothing to build.
@@ -35,7 +35,8 @@ blocks; there is nothing to build.
   three tables are the same: change them together. No References, Prerequisites, blocks or Tested on row; not in
   the guide list or on group pages.
 - The person's steps live in the three person guides: USER-LOGIN.md (own SSO account), USER-KUBECONFIG.md (a
-  sent file with a token or a certificate) and USER-IDP-LOGIN.md (an identity provider). An admin guide's
+  sent file with a token or a certificate) and USER-IDP-LOGIN.md (an identity provider); USER-LCI.md is
+  the web page of a vSphere Namespace for an SSO user, an interface on the first way, not a fourth one. An admin guide's
   step for the person is a pointer line that sends them there, plus only what the administrator must do or
   diagnose (precedent: ADMIN-GRANT-ACCESS.md's SSO steps 3 and 4). A section moved to another guide keeps its
   heading, byte for byte, with that pointer to its new home, so that old links keep resolving.

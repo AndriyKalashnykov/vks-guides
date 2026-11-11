@@ -193,7 +193,11 @@ lists your user. Do this to let another SSO user work in the namespace.
 2. Choose the **Domain** (`vsphere.local` for a user made in vCenter) and type the user's name
    in **User/Group**.
 3. Choose the **Role**: **Namespaces View**, **Namespaces Edit** or **Namespaces Owner**. A user
-   who creates VKS clusters needs **Namespaces Edit**.
+   who creates VKS clusters needs **Namespaces Edit**. With only this role, a user who is not a
+   vCenter administrator sees no namespaces in the vSphere Client: send them the namespace's web
+   page ([ADMIN-GRANT-ACCESS.md step 1b](ADMIN-GRANT-ACCESS.md#1b-let-the-person-use-the-web-page-vcenter-administrator-optional)),
+   or also give them the **Read-only** role on the Supervisor's vSphere cluster, which shows them
+   the names of every vSphere Namespace on it.
 4. Leave **Propagate to children** ticked and click **OK**.
 
    ![The Add Permission window: Domain, User/Group, Role, and the ticked box Propagate to children](img/namespace/08-add-permissions.png)

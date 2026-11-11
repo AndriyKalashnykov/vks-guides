@@ -790,6 +790,12 @@ the VCF CLI or a Supervisor login on this machine; you need only kubectl afterwa
 
    ![The Resources tab of a vSphere Namespace: six cards, the Kubernetes card with 1 Kubernetes Cluster and its links GO TO SERVICE and CREATE CLUSTER](img/login/01-resources.png)
 
+   **No items found** in the **Namespaces** list: you have a role on the vSphere Namespace but no
+   vCenter role such as **Read-only** on the Supervisor's vSphere cluster. Download it from the
+   namespace's web page instead
+   ([USER-LCI.md step 5](USER-LCI.md#5-create-use-and-delete-a-vks-cluster-can-edit)), or ask the
+   vCenter administrator for that **Read-only** role.
+
 2. Click **⋮** at the start of your cluster's row, then **Download Kubeconfig File**.
 
    ![The vSphere Kubernetes Service list: the menu of the cluster's row with View YAML, Download Kubeconfig File and Delete](img/login/02-cluster-row-menu.png)
@@ -1064,7 +1070,8 @@ $V = kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" version -o jso
 To let someone else work in the VKS cluster without its administrator file, give them access
 with [ADMIN-GRANT-ACCESS.md](ADMIN-GRANT-ACCESS.md). They follow one of three guides: their own SSO
 account, [USER-LOGIN.md](USER-LOGIN.md); a file you sent them, [USER-KUBECONFIG.md](USER-KUBECONFIG.md);
-an identity provider group, [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md). Which kubeconfig files may be handed over:
+an identity provider group, [USER-IDP-LOGIN.md](USER-IDP-LOGIN.md). With their own SSO account they can also use
+the web page of their vSphere Namespace, [USER-LCI.md](USER-LCI.md). Which kubeconfig files may be handed over:
 [KUBECONFIG.md](KUBECONFIG.md#3-hand-a-file-over).
 
 ## References

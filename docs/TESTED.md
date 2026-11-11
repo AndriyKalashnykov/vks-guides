@@ -2,7 +2,8 @@
 
 Where each guide was run, by group; each group's page lists its guides and the order to follow.
 
-✅ every block run, "part" some blocks run, — not run.
+✅ every block run, "part" some blocks run, — not run. A guide with no blocks: ✅ every step clicked,
+"part" some steps clicked, in Chrome on that OS.
 
 On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines.
 Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
@@ -18,6 +19,7 @@ Group page: [Getting started](GET-STARTED.md).
 | [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | ✅ | ✅ | ✅ | part | ✅ | ✅ |
 | [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | part | — | — | — | — | — |
+| [Use your vSphere Namespace in the web page](USER-LCI.md) | part | — | — | — | — | — |
 | [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | — | — | — | — | — | — |
 | [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) | — | — | — | — | — | — |
 | [Kubeconfig files](KUBECONFIG.md) | ✅ | — | — | — | ✅ | — |

@@ -5,6 +5,8 @@ The words the guides use for where things live, for logins and kubeconfig files,
 | word | what it is |
 |---|---|
 | vSphere Namespace | the vCenter object on the Supervisor that holds VKS clusters; you give people roles on it in vCenter (**Can view**, **Can edit**, **Owner**) |
+| Local Consumption Interface | the web page of a vSphere Namespace on the Supervisor, at `https://<Supervisor address>/appplatform0/#/namespaces/<vSphere Namespace>`: its VMs, VKS clusters, images, network services and volumes ([USER-LCI.md](USER-LCI.md)); the same page is the namespace's **Resources** tab in the vSphere Client |
+| Read-only (vCenter role) | a vCenter role that lets a user see vCenter objects; not a vSphere Namespace role |
 | namespace | a folder inside one VKS cluster for a team's workloads, made with kubectl; not the vSphere Namespace |
 | kubeconfig | a file that tells `kubectl` (the Kubernetes command-line tool, [KUBECTL.md](KUBECTL.md)) and other Kubernetes tools which server to talk to and how to log in: the server's address and certificate, and your login (a *token*, a certificate, or a command that signs you in through a browser); a *context* in it pairs the two (the ServiceAccount and certificate files of [ADMIN-GRANT-ACCESS.md](ADMIN-GRANT-ACCESS.md) also name a namespace: `VKS_CLUSTER_NAMESPACE`, or `default` with `"*"`) |
 | cluster, user (in a kubeconfig) | two kinds of entry in a kubeconfig: a *cluster* is a server's address and certificate, a *user* is a stored login (a token, a certificate, or a command that signs you in through a browser). Not a vSphere cluster and not an SSO user |
