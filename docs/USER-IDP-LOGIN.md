@@ -108,7 +108,8 @@ of that name, so a CA that was replaced is not trusted next to the new one. It a
 under the plain name `OLD_NAME`, which earlier versions of this step used; if you trust more than one
 such CA that way, run this once for each of them. It needs `certutil`:
 `sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on AlmaLinux,
-`sudo tdnf install -y nss` on Photon OS. The identity provider's CA: set `CA_NAME` to `Keycloak CA`
+`sudo tdnf install -y nss` on Photon OS, `sudo pacman -Syu --needed --noconfirm nss` on Arch Linux.
+The identity provider's CA: set `CA_NAME` to `Keycloak CA`
 and the address of its sign-in page (only the name, for example `keycloak.example.com`):
 
 ```sh
