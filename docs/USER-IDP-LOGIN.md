@@ -197,7 +197,8 @@ sign in again by themselves until your session at the identity provider ends.
 
 On a machine without a browser (over SSH, a jump box), the command prints a link instead: open it
 in the browser on your own computer, sign in, copy the code the last page shows, and paste it at
-`Optionally, paste your authorization code:`.
+`Optionally, paste your authorization code:`. Over SSH, connect with `ssh -t`: without a terminal
+the link prints but that prompt never appears.
 
 ![Choose an identity provider to log in: keycloak](img/access/03-choose-identity-provider.jpg)
 
@@ -238,6 +239,8 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $KC_KUBECONFIG -n $VKS_CLUSTER_N
 **If not:**
 - `executable file not found` or `"vcf": not found`: install the [VCF CLI](VCF.md).
 - `could not open browser` and a link: you are on a machine without a browser; see above.
+- A link but no `Optionally, paste your authorization code:` prompt: you connected over SSH without a
+  terminal; connect again with `ssh -t` and run the block again.
 - `no` or `Forbidden`: [step 7](#7-forbidden-or-no-sign-in).
 - The browser warns about the certificate: it does not trust the CA of that page; do
   [step 2](#2-trust-the-cas-once-on-the-machine-whose-browser-you-sign-in-with) for it (the
