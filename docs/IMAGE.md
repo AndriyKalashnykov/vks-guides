@@ -338,7 +338,9 @@ the CA for every user of this machine.
 #### podman
 
 Let the podman machine import Windows' CAs: `podman machine stop`, then
-`podman machine set --import-native-ca`, then `podman machine start`.
+`podman machine set --import-native-ca`, then `podman machine start`. podman without WSL
+([PREREQS.md](PREREQS.md#windows-without-wsl)): skip these lines; Windows' trust (above) covers the
+login, and the Linux podman part above, run on the Linux machine after step 1 there, covers the push.
 
 **If not:** `unknown flag: --import-native-ca`: your podman is older; follow Podman's
 [Install a certificate authority](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md).
@@ -927,7 +929,8 @@ The image stays in Harbor: delete it in Harbor's web page (**Projects** → your
     Docker Desktop: quit it and start it again.
 - Windows: `certmgr.msc` → **Trusted Root Certification Authorities** → **Certificates** →
   `Harbor CA` → **Delete**, then:
-  - podman: `podman machine stop` and `podman machine start`;
+  - podman: `podman machine stop` and `podman machine start`; podman without WSL: on the Linux
+    machine, `rm -rf ~/.config/containers/certs.d/<your Harbor name>`;
   - docker: quit Docker Desktop and start it again.
 
 ## References
