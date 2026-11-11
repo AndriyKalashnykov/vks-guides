@@ -1136,9 +1136,9 @@ if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see
   characters: leftovers from an earlier restart, not the cause. Harbor is fine when *Find the
   address and wait for Harbor* gives `http=200` and `kubectl --kubeconfig <the Supervisor
   kubeconfig> -n <the namespace> get deployments,statefulsets` shows, on every line, the two numbers
-  under `READY` equal. A pod that is not `Running` and differs from the `Running` one in more than
-  its last five characters is not a leftover: `kubectl --kubeconfig <the Supervisor kubeconfig> -n
-  <the namespace> describe pod <its name>` shows why it did not start.
+  under `READY` equal. A pod that is not `Running` and differs from the `Running` pod of the same
+  deployment in more than its last five characters is not a leftover: `kubectl --kubeconfig <the
+  Supervisor kubeconfig> -n <the namespace> describe pod <its name>` shows why it did not start.
 
 ### Get a DNS record
 
