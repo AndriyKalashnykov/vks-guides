@@ -556,18 +556,19 @@ else
     echo "FAILED: the RoleBindings could not be read (see the error above); no RoleBinding or token Secret was deleted; run this block again with the administrator's kubeconfig: a RoleBinding may still name this ServiceAccount, and a new ServiceAccount of the same name in SA_NAMESPACE would get its rights"
   fi
   if kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$SA_NAMESPACE" delete serviceaccount "$SERVICE_ACCOUNT_NAME"; then SADEL="yes"; else SADEL="no"; fi
+  RBLEFT="no"
   if RB="$(rbs)"; then
     LEFT="$(mine "$RB" | awk '{print $1 "/" $2}')"
-    if [ -n "$LEFT" ]; then echo "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $LEFT (see the error above)"; fi
+    if [ -n "$LEFT" ]; then RBLEFT="yes"; echo "FAILED: a RoleBinding still names ${SERVICE_ACCOUNT_NAME}: $LEFT (see the error above)"; fi
   else
-    echo "FAILED: the RoleBindings could not be read (see the error above)"
+    RBLEFT="yes"; echo "FAILED: the RoleBindings could not be read (see the error above)"
   fi
   canlist() { C="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" auth can-i list pods "$@" --as="system:serviceaccount:${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}")"; case "$C" in yes|no) echo "$C" ;; *) echo "unknown (see the error above)" ;; esac; }
   if [ "$VKS_CLUSTER_NAMESPACE" != "*" ]; then echo "may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(canlist -n "$VKS_CLUSTER_NAMESPACE")"; fi
   echo "may still list pods in every namespace: $(canlist --all-namespaces)"
   O="$(kubectl --kubeconfig "$ADMIN_KUBECONFIG" -n "$SA_NAMESPACE" get serviceaccount "$SERVICE_ACCOUNT_NAME" -o name 2>&1)"
   case "$O" in
-    *NotFound*) if [ "$SADEL" = "yes" ]; then echo "ServiceAccount gone: every copy of the file answers Unauthorized within about 15 seconds"; else echo "ServiceAccount not found: it was gone before this run, or SERVICE_ACCOUNT_NAME or SA_NAMESPACE is not what step 1 used"; fi ;;
+    *NotFound*) if [ "$SADEL" = "yes" ] && [ "$RBLEFT" = "yes" ]; then echo "ServiceAccount gone: every copy of the file answers Unauthorized within about 15 seconds; but a RoleBinding still names it (above): a new ServiceAccount of that name in ${SA_NAMESPACE} would get its rights until you remove it"; elif [ "$SADEL" = "yes" ]; then echo "ServiceAccount gone: every copy of the file answers Unauthorized within about 15 seconds"; else echo "ServiceAccount not found: it was gone before this run, or SERVICE_ACCOUNT_NAME or SA_NAMESPACE is not what step 1 used"; fi ;;
     *) echo "FAILED: the ServiceAccount is still there, or could not be read: $O" ;;
   esac
 fi
@@ -626,8 +627,11 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
   function canlist { $C = "$(kubectl --kubeconfig $ADMIN_KUBECONFIG auth can-i list pods @args "--as=system:serviceaccount:${SA_NAMESPACE}:$SERVICE_ACCOUNT_NAME")"; if ($C -eq 'yes' -or $C -eq 'no') { $C } else { 'unknown (see the error above)' } }
   if ($VKS_CLUSTER_NAMESPACE -ne '*') { "may still list pods in ${VKS_CLUSTER_NAMESPACE}: $(canlist -n $VKS_CLUSTER_NAMESPACE)" }
   "may still list pods in every namespace: $(canlist --all-namespaces)"
+  $RBLEFT = ((-not $RBOK) -or ($LEFT.Count -gt 0))
   $O = (kubectl --kubeconfig $ADMIN_KUBECONFIG -n $SA_NAMESPACE get serviceaccount $SERVICE_ACCOUNT_NAME -o name 2>&1) -join ' '
-  if ($O -match 'NotFound' -and $SADEL) {
+  if ($O -match 'NotFound' -and $SADEL -and $RBLEFT) {
+    "ServiceAccount gone: every copy of the file answers Unauthorized within about 15 seconds; but a RoleBinding still names it (above): a new ServiceAccount of that name in ${SA_NAMESPACE} would get its rights until you remove it"
+  } elseif ($O -match 'NotFound' -and $SADEL) {
     'ServiceAccount gone: every copy of the file answers Unauthorized within about 15 seconds'
   } elseif ($O -match 'NotFound') {
     'ServiceAccount not found: it was gone before this run, or SERVICE_ACCOUNT_NAME or SA_NAMESPACE is not what step 1 used'
