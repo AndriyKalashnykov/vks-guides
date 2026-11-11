@@ -92,7 +92,7 @@ elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide && J="$(kubectl --
   echo "default storage class: $(printf '%s' "$J" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | .metadata.name] | if length == 0 then "NONE" else join(" ") end')"
   kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l '!node-role.kubernetes.io/control-plane' \
     -o custom-columns='WORKER:.metadata.name,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory'
-  kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace keycloak 2>/dev/null && echo "NOTE: namespace keycloak exists already"
+  if kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace keycloak 2>/dev/null; then echo "NOTE: namespace keycloak exists already"; fi
 else
   echo "FAILED: cannot read the cluster (see the error above)"
 fi

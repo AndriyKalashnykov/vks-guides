@@ -11,12 +11,13 @@
 # | identity            | a ServiceAccount in SA_NAMESPACE (a real object in the cluster)                              |
 # | what the file holds | a token the cluster issued for that ServiceAccount                                           |
 # | the cluster sees    | system:serviceaccount:SA_NAMESPACE:SERVICE_ACCOUNT_NAME                                      |
-# | rights              | ROLE (edit by default) in VKS_CLUSTER_NAMESPACE, or cluster-admin with "*" (WARNING)        |
+# | rights              | ROLE (edit by default, or view) in VKS_CLUSTER_NAMESPACE; "*" gives the whole cluster:       |
+# |                     | cluster-admin with edit, read-only with view (WARNING)                                       |
 # | namespaces used     | SA_NAMESPACE (where it lives), VKS_CLUSTER_NAMESPACE (rights; "*": the whole cluster)       |
 # | take it away        | delete the ServiceAccount ("*": also its ClusterRoleBinding): Unauthorized within ~15 s    |
 # | keeps working       | with edit: tokens made with kubectl create token and workloads it started (delete the      |
-# |                     | workloads, re-create ServiceAccounts with rights, restart what uses them); with "*":       |
-# |                     | logins made with it as a cluster administrator                                             |
+# |                     | workloads, re-create ServiceAccounts with rights, restart what uses them); with "*" and    |
+# |                     | edit: logins made with it as a cluster administrator                                       |
 # | renew               | run again: a new token for the same ServiceAccount; old tokens work until they end           |
 # | meant for           | tools, pipelines, or a team sharing one login                                                |
 # | needs on this host  | admin kubeconfig (~/.kube/<cluster>.kubeconfig)                                              |
@@ -32,21 +33,42 @@ SERVICE_ACCOUNT_KUBECONFIG="$HOME/${VKS_CLUSTER}-${SERVICE_ACCOUNT_NAME}.kubecon
 
 STAMP="$(mktemp)"
 adm() { kubectl --kubeconfig "$ADMIN_KUBECONFIG" "$@"; }
+kf() { kubectl --kubeconfig "$SERVICE_ACCOUNT_KUBECONFIG" "$@"; }
 TOKEN=""
+case "$ROLE" in
+  edit|view) ROLE_OK="yes" ;;
+  *) ROLE_OK="no" ;;
+esac
 if [ -z "$VKS_CLUSTER_NAMESPACE" ]; then
-  echo 'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set the namespace, or "*" for cluster-admin on the whole cluster; nothing was changed'
+  echo 'STOPPED: VKS_CLUSTER_NAMESPACE is empty: set the namespace, or "*" for the whole cluster (cluster-admin with edit, read-only with view); nothing was changed'
+elif [ "$ROLE_OK" = "no" ]; then
+  echo 'STOPPED: ROLE is edit or view; nothing was changed'
+elif [ "$VKS_CLUSTER_NAMESPACE" = "$SA_NAMESPACE" ]; then
+  echo "STOPPED: VKS_CLUSTER_NAMESPACE must not be SA_NAMESPACE (${SA_NAMESPACE}): the team could read every token Secret stored there; nothing was changed"
 elif ! [ "$DAYS" -ge 1 ] 2>/dev/null || [ "${DAYS#0}" != "$DAYS" ] || [ "$DAYS" -gt 36500 ]; then
   echo "STOPPED: DAYS is a number of days, 1 to 36500: $DAYS; nothing was changed"
 else
-adm create namespace "$SA_NAMESPACE" --dry-run=client -o yaml | adm apply -f - >/dev/null
+if ! adm get namespace "$SA_NAMESPACE" >/dev/null 2>&1; then adm create namespace "$SA_NAMESPACE" >/dev/null; fi
 adm -n "$SA_NAMESPACE" create serviceaccount "$SERVICE_ACCOUNT_NAME" --dry-run=client -o yaml | adm apply -f - >/dev/null
-if [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
+if [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
   echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME} gets cluster-admin on the whole cluster"
+  O="$(adm delete clusterrolebinding "${SERVICE_ACCOUNT_NAME}-view" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${SERVICE_ACCOUNT_NAME}-view"; fi
   adm create clusterrolebinding "${SERVICE_ACCOUNT_NAME}-cluster-admin" --clusterrole=cluster-admin \
     --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
   CTX_NS="default"
+elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
+  echo "WARNING: VKS_CLUSTER_NAMESPACE is \"*\": ${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME} gets read access to every namespace, pod logs included (they can hold credentials); not Secrets; nodes only as their names and CPU and memory figures (kubectl top nodes)"
+  O="$(adm delete clusterrolebinding "${SERVICE_ACCOUNT_NAME}-cluster-admin" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed ClusterRoleBinding ${SERVICE_ACCOUNT_NAME}-cluster-admin"; fi
+  adm create clusterrolebinding "${SERVICE_ACCOUNT_NAME}-view" --clusterrole=view \
+    --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
+  CTX_NS="default"
 else
-  adm create namespace "$VKS_CLUSTER_NAMESPACE" --dry-run=client -o yaml | adm apply -f - >/dev/null
+  if ! adm get namespace "$VKS_CLUSTER_NAMESPACE" >/dev/null 2>&1; then adm create namespace "$VKS_CLUSTER_NAMESPACE" >/dev/null; fi
+  OTHER="view"; if [ "$ROLE" = "view" ]; then OTHER="edit"; fi
+  O="$(adm -n "$VKS_CLUSTER_NAMESPACE" delete rolebinding "${SERVICE_ACCOUNT_NAME}-${OTHER}" --ignore-not-found)"
+  if [ -n "$O" ]; then echo "removed RoleBinding ${SERVICE_ACCOUNT_NAME}-${OTHER} in ${VKS_CLUSTER_NAMESPACE}"; fi
   adm -n "$VKS_CLUSTER_NAMESPACE" create rolebinding "${SERVICE_ACCOUNT_NAME}-${ROLE}" --clusterrole="$ROLE" \
     --serviceaccount="${SA_NAMESPACE}:${SERVICE_ACCOUNT_NAME}" --dry-run=client -o yaml | adm apply -f - >/dev/null
   CTX_NS="$VKS_CLUSTER_NAMESPACE"
@@ -62,13 +84,23 @@ if [ -n "$TOKEN" ] && [ -n "$SERVER" ] && [ -n "$CA" ]; then
   P="$(printf '%s' "$TOKEN" | cut -d. -f2 | tr '_-' '/+')"
   while [ $(( ${#P} % 4 )) -ne 0 ]; do P="$P="; done
   EXP="$(printf '%s' "$P" | base64 -d 2>/dev/null | sed -n 's/.*"exp":\([0-9]*\).*/\1/p')"
-  if [ -n "$EXP" ]; then echo "token ends in: $(( (EXP - $(date +%s)) / 86400 )) days"; else echo "token ends in: unknown"; fi
-  echo "acts as: $(kubectl --kubeconfig "$SERVICE_ACCOUNT_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')"
-  if [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
-    echo "everything in every namespace: $(kubectl --kubeconfig "$SERVICE_ACCOUNT_KUBECONFIG" auth can-i '*' '*' --all-namespaces)"
+  S=""; if [ -n "$EXP" ]; then S=$(( EXP - $(date +%s) )); fi
+  if [ -z "$S" ]; then echo "token ends in: unknown"
+  elif [ "$S" -le 0 ]; then echo "token ends: it has ended"
+  elif [ "$S" -ge 86400 ]; then N=$(( S / 86400 )); U="days"; if [ "$N" -eq 1 ]; then U="day"; fi; echo "token ends in: $N $U"
+  else N=$(( S / 3600 )); U="hours"; if [ "$N" -eq 1 ]; then U="hour"; fi; echo "token ends in: $N $U"; fi
+  echo "acts as: $(kf auth whoami -o jsonpath='{.status.userInfo.username}')"
+  if [ "$VKS_CLUSTER_NAMESPACE" = "*" ] && [ "$ROLE" = "edit" ]; then
+    echo "everything in every namespace: $(kf auth can-i '*' '*' --all-namespaces)"
+  elif [ "$VKS_CLUSTER_NAMESPACE" = "*" ]; then
+    echo "list pods in kube-system: $(kf auth can-i list pods -n kube-system)"
+    echo "list namespaces: $(kf auth can-i list namespaces)"
+    echo "get secrets in kube-system: $(kf auth can-i get secrets -n kube-system)"
+    echo "list nodes: $(kf auth can-i list nodes)"
+    echo "create deployments in default: $(kf auth can-i create deployments -n default)"
   else
-    echo "create deployments in $VKS_CLUSTER_NAMESPACE: $(kubectl --kubeconfig "$SERVICE_ACCOUNT_KUBECONFIG" auth can-i create deployments)"
-    echo "list pods in kube-system: $(kubectl --kubeconfig "$SERVICE_ACCOUNT_KUBECONFIG" auth can-i list pods -n kube-system)"
+    echo "create deployments in $VKS_CLUSTER_NAMESPACE: $(kf auth can-i create deployments)"
+    echo "list pods in kube-system: $(kf auth can-i list pods -n kube-system)"
   fi
 else
   echo "FAILED: no token, server or CA read (see the kubectl errors above)"
