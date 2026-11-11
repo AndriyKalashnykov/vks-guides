@@ -301,6 +301,7 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 
 **If not:**
 - `not found` for the release: copy its name again from step 1.
+- `… values.yaml: no such file or directory`: run step 3 first.
 - A login error (`Unauthorized`, `Unable to read password from terminal` (Windows:
   `The handle is invalid`), `provide credentials`) or `context … not found`: as in step 1.
 

@@ -1131,6 +1131,10 @@ if ($LASTEXITCODE -ne 0) { "FAILED: cannot list the Supervisor's namespaces (see
 - `FAILED: Harbor namespaces …: ''`: the service is not installed (step 6); two names: see *Fix
   common problems*.
 - A volume that stays `Pending`: as in the list above the block.
+- Pods that are not `Running` (for example `ProviderFailed`, `PodVMCreationFailed`, `NotFound`)
+  next to a `Running` pod of the same name: leftovers from an earlier restart. Harbor is fine when
+  `kubectl --kubeconfig <the Supervisor kubeconfig> -n <the namespace> get deployments,statefulsets`
+  shows every `READY` as `1/1`.
 
 ### Get a DNS record
 
