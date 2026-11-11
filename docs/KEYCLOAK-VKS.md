@@ -1057,7 +1057,8 @@ removes an earlier CA of that name, so a Keycloak installed again is not trusted
 removes a CA named only `Keycloak CA`, the name earlier versions of this step used; if you trust
 more than one Keycloak that way, run this once for each of them. It needs `certutil`:
 `sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on AlmaLinux,
-`sudo tdnf install -y nss` on Photon OS. You get Keycloak's pages in Chrome with no certificate
+`sudo tdnf install -y nss` on Photon OS, `sudo pacman -Syu --needed --noconfirm nss` on Arch Linux.
+You get Keycloak's pages in Chrome with no certificate
 warning. Set `KEYCLOAK_HOST` as in step 7.
 
 ```sh
