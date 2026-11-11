@@ -128,7 +128,8 @@ fi
 ```
 
 For part A, also the vCenter CA, under its own name: set `CA_NAME` to `vCenter CA` and the
-Supervisor's address you log in to (`SUPERVISOR_ENDPOINT`):
+Supervisor's address you log in to (`SUPERVISOR_ENDPOINT`). If you log in to several Supervisors of
+one vCenter, use the same address in `CA_NAME` each time:
 
 ```sh
 CA_FILE="$HOME/.kube/vcenter-ca.pem"
@@ -181,7 +182,7 @@ Import-Certificate -FilePath $CA_FILE -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
 **Expect:** Linux: one line with your `CA_NAME` and `C,,` (and one line for each other CA under a
-name that starts with `OLD_NAME`). macOS: no output after your password. WSL:
+name that has `OLD_NAME` in it). macOS: no output after your password. WSL:
 `copied to /mnt/c/Users/<you>`. Windows: a line with the CA's thumbprint and its name (`CN=CA` for
 vCenter's own CA). Then the browser opens the page with no certificate warning (restart the browser
 first).
@@ -191,8 +192,8 @@ first).
 - `FAILED: no …` (Linux): the CA file is not where `CA_FILE` says; no CA was removed.
 - Your `CA_NAME` line twice, a line with only `OLD_NAME`, or `SEC_ERROR_BAD_DATABASE` or a `PKCS11`
   error (Linux): close Chrome and run the block again.
-- No `CA_NAME` line and no error (Linux): the same CA is already in the list under another name;
-  nothing to do.
+- No `CA_NAME` line and no error (Linux): the same CA is already in the list under another name
+  (for example under another Supervisor's address); nothing to do.
 - `FAILED: no Windows home folder found` (WSL): copy the CA file to Windows by hand, for example
   with Explorer at `\\wsl$`.
 - `UI is not allowed in this operation` (Windows): this PowerShell has no desktop to ask on (for
