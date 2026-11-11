@@ -103,30 +103,48 @@ no secret. On Windows and macOS the vCenter CA is the same step as
 done once, it serves both.
 
 **Linux:** run this so that Chrome trusts the CA; Chrome uses its own certificate database in your
-home. This adds the CA to that database under the name `CA_NAME` (it needs `certutil`:
+home. This adds the CA to that database under the name `CA_NAME`, and first removes an earlier CA
+of that name, so a CA that was replaced is not trusted next to the new one. It also removes a CA
+under the plain name `OLD_NAME`, which earlier versions of this step used; if you trust more than one
+such CA that way, run this once for each of them. It needs `certutil`:
 `sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on AlmaLinux,
-`sudo tdnf install -y nss` on Photon OS). The identity provider's CA:
+`sudo tdnf install -y nss` on Photon OS. The identity provider's CA: set `CA_NAME` to `Keycloak CA`
+and the address of its sign-in page (only the name, for example `keycloak.example.com`):
 
 ```sh
 CA_FILE="$HOME/.kube/keycloak-ca.pem"
-CA_NAME="Keycloak CA"
+CA_NAME="Keycloak CA keycloak.example.com"
+OLD_NAME="Keycloak CA"
+DB="sql:$HOME/.pki/nssdb"
 
 mkdir -p "$HOME/.pki/nssdb"
-[ -f "$HOME/.pki/nssdb/cert9.db" ] || certutil -d "sql:$HOME/.pki/nssdb" -N --empty-password
-certutil -d "sql:$HOME/.pki/nssdb" -A -t "C,," -n "$CA_NAME" -i "$CA_FILE" \
-  && certutil -d "sql:$HOME/.pki/nssdb" -L | grep "$CA_NAME"
+[ -f "$HOME/.pki/nssdb/cert9.db" ] || certutil -d "$DB" -N --empty-password
+if [ -s "$CA_FILE" ]; then
+  for i in 1 2 3 4 5 6 7 8 9; do certutil -d "$DB" -D -n "$CA_NAME" 2>/dev/null || certutil -d "$DB" -D -n "$OLD_NAME" 2>/dev/null || break; done
+  certutil -d "$DB" -A -t "C,," -n "$CA_NAME" -i "$CA_FILE" && certutil -d "$DB" -L | grep "$OLD_NAME"
+else
+  echo "FAILED: no $CA_FILE"
+fi
 ```
 
-For part A, also the vCenter CA, under its own name:
+For part A, also the vCenter CA, under its own name: set `CA_NAME` to `vCenter CA` and the
+Supervisor's address you log in to (`SUPERVISOR_ENDPOINT`). If you log in to several Supervisors of
+one vCenter, use the same address in `CA_NAME` each time:
 
 ```sh
 CA_FILE="$HOME/.kube/vcenter-ca.pem"
-CA_NAME="vCenter CA"
+CA_NAME="vCenter CA 10.0.0.10"
+OLD_NAME="vCenter CA"
+DB="sql:$HOME/.pki/nssdb"
 
 mkdir -p "$HOME/.pki/nssdb"
-[ -f "$HOME/.pki/nssdb/cert9.db" ] || certutil -d "sql:$HOME/.pki/nssdb" -N --empty-password
-certutil -d "sql:$HOME/.pki/nssdb" -A -t "C,," -n "$CA_NAME" -i "$CA_FILE" \
-  && certutil -d "sql:$HOME/.pki/nssdb" -L | grep "$CA_NAME"
+[ -f "$HOME/.pki/nssdb/cert9.db" ] || certutil -d "$DB" -N --empty-password
+if [ -s "$CA_FILE" ]; then
+  for i in 1 2 3 4 5 6 7 8 9; do certutil -d "$DB" -D -n "$CA_NAME" 2>/dev/null || certutil -d "$DB" -D -n "$OLD_NAME" 2>/dev/null || break; done
+  certutil -d "$DB" -A -t "C,," -n "$CA_NAME" -i "$CA_FILE" && certutil -d "$DB" -L | grep "$OLD_NAME"
+else
+  echo "FAILED: no $CA_FILE"
+fi
 ```
 
 Firefox keeps its own list: **Settings** → **Privacy & Security** → **View Certificates** →
@@ -163,16 +181,19 @@ $CA_FILE = "$HOME\.kube\keycloak-ca.pem"
 Import-Certificate -FilePath $CA_FILE -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
-**Expect:** Linux: a line with `Keycloak CA` (or `vCenter CA`) and `C,,`. macOS: no output after your password. WSL:
+**Expect:** Linux: one line with your `CA_NAME` and `C,,` (and one line for each other CA under a
+name that has `OLD_NAME` in it). macOS: no output after your password. WSL:
 `copied to /mnt/c/Users/<you>`. Windows: a line with the CA's thumbprint and its name (`CN=CA` for
 vCenter's own CA). Then the browser opens the page with no certificate warning (restart the browser
 first).
 
 **If not:**
 - `certutil: command not found`: install it (the package named above).
-- `SEC_ERROR_ADDING_CERT` (Linux): the database already holds another CA under that `CA_NAME`; run the
-  block again with a name of its own (`certutil -d "sql:$HOME/.pki/nssdb" -L` lists the names).
-- No line and no error (Linux): the same CA is already in the list under another name; nothing to do.
+- `FAILED: no …` (Linux): the CA file is not where `CA_FILE` says; no CA was removed.
+- Your `CA_NAME` line twice, a line with only `OLD_NAME`, or `SEC_ERROR_BAD_DATABASE` or a `PKCS11`
+  error (Linux): close Chrome and run the block again.
+- No `CA_NAME` line and no error (Linux): the same CA is already in the list under another name
+  (for example under another Supervisor's address); nothing to do.
 - `FAILED: no Windows home folder found` (WSL): copy the CA file to Windows by hand, for example
   with Explorer at `\\wsl$`.
 - `UI is not allowed in this operation` (Windows): this PowerShell has no desktop to ask on (for

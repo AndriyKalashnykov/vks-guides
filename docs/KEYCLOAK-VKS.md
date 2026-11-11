@@ -1052,16 +1052,28 @@ People sign in to Keycloak in a browser, which must trust Keycloak's CA. Give ea
 whose browser they sign in with. Do it on your own machine too, before step 12.
 
 **Linux:** run this so that Chrome trusts Keycloak; Chrome uses its own certificate database in
-your home. This adds the CA to that database (it needs `certutil`:
+your home. This adds the CA to that database under the name `Keycloak CA <KEYCLOAK_HOST>`, and first
+removes an earlier CA of that name, so a Keycloak installed again is not trusted twice. It also
+removes a CA named only `Keycloak CA`, the name earlier versions of this step used; if you trust
+more than one Keycloak that way, run this once for each of them. It needs `certutil`:
 `sudo apt-get install -y libnss3-tools` on Ubuntu, `sudo dnf install -y nss-tools` on AlmaLinux,
-`sudo tdnf install -y nss` on Photon OS). You get Keycloak's pages in Chrome with no certificate
-warning.
+`sudo tdnf install -y nss` on Photon OS. You get Keycloak's pages in Chrome with no certificate
+warning. Set `KEYCLOAK_HOST` as in step 7.
 
 ```sh
+KEYCLOAK_HOST="keycloak.example.com"
+KEYCLOAK_CA="$HOME/keycloak-ca.pem"
+N="Keycloak CA $KEYCLOAK_HOST"
+DB="sql:$HOME/.pki/nssdb"
+
 mkdir -p "$HOME/.pki/nssdb"
-[ -f "$HOME/.pki/nssdb/cert9.db" ] || certutil -d "sql:$HOME/.pki/nssdb" -N --empty-password
-certutil -d "sql:$HOME/.pki/nssdb" -A -t "C,," -n "Keycloak CA" -i "$HOME/keycloak-ca.pem" \
-  && certutil -d "sql:$HOME/.pki/nssdb" -L | grep 'Keycloak CA'
+[ -f "$HOME/.pki/nssdb/cert9.db" ] || certutil -d "$DB" -N --empty-password
+if [ -s "$KEYCLOAK_CA" ]; then
+  for i in 1 2 3 4 5 6 7 8 9; do certutil -d "$DB" -D -n "$N" 2>/dev/null || certutil -d "$DB" -D -n "Keycloak CA" 2>/dev/null || break; done
+  certutil -d "$DB" -A -t "C,," -n "$N" -i "$KEYCLOAK_CA" && certutil -d "$DB" -L | grep 'Keycloak CA'
+else
+  echo "FAILED: no $KEYCLOAK_CA"
+fi
 ```
 
 Firefox keeps its own list: **Settings** → **Privacy & Security** → **View Certificates** →
@@ -1093,12 +1105,16 @@ Windows asks you to confirm with **Yes**:
 Import-Certificate -FilePath "$HOME\keycloak-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
-**Expect:** Linux: a `Keycloak CA` line with `C,,`. macOS: no output after your password. WSL:
-`copied to /mnt/c/Users/<you>`. Windows: a line with the CA's thumbprint and `CN=Keycloak CA`. Then
-the browser opens Keycloak's address with no certificate warning (restart the browser first).
+**Expect:** Linux: one `Keycloak CA <KEYCLOAK_HOST>` line with `C,,` (and one line for each other
+Keycloak you trust). macOS: no output after your password. WSL: `copied to /mnt/c/Users/<you>`.
+Windows: a line with the CA's thumbprint and `CN=Keycloak CA`. Then the browser opens Keycloak's
+address with no certificate warning (restart the browser first).
 
 **If not:**
 - `certutil: command not found`: install it (the package named above).
+- `FAILED: no …/keycloak-ca.pem` (Linux): save the CA first (step 6); no CA was removed.
+- The `Keycloak CA <KEYCLOAK_HOST>` line twice, a line with only `Keycloak CA`, or
+  `SEC_ERROR_BAD_DATABASE` or a `PKCS11` error (Linux): close Chrome and run the block again.
 - `FAILED: no Windows home folder found` (WSL): copy `keycloak-ca.pem` to Windows by hand, for
   example with Explorer at `\\wsl$`.
 - `UI is not allowed in this operation` (Windows): run the line in PowerShell on the desktop, not
