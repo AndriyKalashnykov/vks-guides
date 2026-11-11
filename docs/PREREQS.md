@@ -438,8 +438,17 @@ run the block again.
 
 ### podman and docker on Windows
 
-Both run Linux in WSL 2. If you have no WSL yet, install it once in **PowerShell as
-Administrator** with `wsl --install --no-distribution`, and restart Windows if it asks.
+IMAGE.md builds Linux images. Pick one:
+
+- [With WSL 2](#windows-with-wsl-2): podman and docker run Linux in WSL 2 on this Windows.
+- [Without WSL](#windows-without-wsl): podman on Windows sends its commands to podman on a Linux
+  machine you reach over SSH, which builds and pushes the images. docker without WSL runs only
+  Windows containers: it cannot build or run IMAGE.md's images.
+
+#### Windows with WSL 2
+
+If you have no WSL yet, install it once in **PowerShell as Administrator** with
+`wsl --install --no-distribution`, and restart Windows if it asks.
 
 - podman: download `podman-installer-windows-amd64.msi` from
   [Podman's releases](https://github.com/podman-container-tools/podman/releases), install it, open a new
@@ -463,6 +472,55 @@ podman machine start
 **If not:** PowerShell does not know `podman`: open a new **Windows PowerShell** after the install,
 then run the block again. An error about WSL: install it as above, restart Windows if it asks, then
 run the block again.
+
+#### Windows without WSL
+
+podman: you need a Linux machine (not Photon OS) with podman installed by its distribution's podman
+block above, which you log in to over SSH with a key. Run this on that Linux machine, as the user
+Windows logs in as. It starts podman's service for that user, keeps it running after you log out,
+and prints the path podman listens on:
+
+```sh
+systemctl --user enable --now podman.socket && echo "podman socket: /run/user/$(id -u)/podman/podman.sock"
+sudo loginctl enable-linger "$USER"
+```
+
+**Expect:** `podman socket: /run/user/<number>/podman/podman.sock`, and the prompt back with no error.
+
+**If not:** `… podman.socket does not exist`: install podman there first (its distribution's
+podman block above), then run this again.
+
+On Windows: make an SSH key with `ssh-keygen` if you have none (with no passphrase: press Enter when
+it asks for one), and add the line of its `.pub` file to `~/.ssh/authorized_keys` of that user on
+the Linux machine. Download
+`podman-remote-release-windows_amd64.zip` from
+[Podman's releases](https://github.com/podman-container-tools/podman/releases), unzip it, and add
+the folder that holds `podman.exe` to your `PATH`. Then, in a new **Windows PowerShell**, set the
+first four lines and run this once. It makes that Linux machine podman's default, so `podman` on
+Windows runs there:
+
+```powershell
+$LINUX_USER = "<your user on the Linux machine>"
+$LINUX_HOST = "<the Linux machine's name or address>"
+$LINUX_SOCKET = "/run/user/1000/podman/podman.sock"
+$SSH_KEY = "$env:USERPROFILE\.ssh\id_ed25519"
+podman system connection add --default --identity $SSH_KEY linux-host "ssh://$LINUX_USER@$LINUX_HOST$LINUX_SOCKET"
+podman info --format '{{.Host.OS}}'
+```
+
+**Expect:** `linux`. In IMAGE.md, use the Windows (PowerShell) blocks, and in its step 2 trust
+Harbor's CA on both machines: on Windows (its Windows part, without the `podman machine` lines) for
+the login, and on the Linux machine (its Linux podman part) for the push.
+
+**If not:** set `$LINUX_SOCKET` to the path the Linux block printed and `$SSH_KEY` to your key, and
+check that `ssh <user>@<machine>` logs in without a password; then run the block again (first
+`podman system connection rm linux-host` if it says the connection exists). `failed to read
+identity … empty password`: the key has a passphrase, which podman cannot use; make a key without
+one, add its `.pub` line on the Linux machine, and run the block again.
+
+docker: Docker Engine without WSL ([Docker's Windows binaries](https://docs.docker.com/engine/install/binaries/#install-server-and-client-binaries-on-windows),
+for Windows Server) runs Windows containers only. It cannot build or run IMAGE.md's images, which
+are Linux images: use docker with WSL 2 above, or podman without WSL.
 
 ### Check podman and docker
 
@@ -507,7 +565,9 @@ foreach ($e in 'podman', 'docker') {
   above (Docker's own package).
 - `ok podman` below 4.9 (Ubuntu 22.04, Debian 12): too old to build and push reliably; use docker,
   or a newer release of your distribution.
-- `NOT RUNNING: podman` on macOS or Windows: `podman machine start`.
+- `NOT RUNNING: podman` on macOS or Windows: `podman machine start`; podman without WSL: see its
+  **If not** in [Windows without WSL](#windows-without-wsl).
+- `ok docker` on Windows without WSL: that is docker for Windows containers; IMAGE.md cannot use it.
 
 ## kubelogin (optional)
 
