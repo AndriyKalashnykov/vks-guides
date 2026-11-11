@@ -492,11 +492,11 @@ sudo loginctl enable-linger "$USER"
 **If not:** `… podman.socket does not exist`: install podman there first (its distribution's
 podman block above), then run this again.
 
-On Windows: make an SSH key with `ssh-keygen -t ed25519` if you have none (with no passphrase:
-press Enter when it asks for one), and add the line of its `.pub` file to `~/.ssh/authorized_keys`
-of that user on the Linux machine. Then check that `ssh <user>@<machine>` logs in without a password
-(answer `yes` to its question about the machine's key), so that podman uses the key you accepted.
-Download `podman-remote-release-windows_amd64.zip` from
+On Windows: you need an SSH key without a passphrase (make one with `ssh-keygen -t ed25519` if you
+have none: press Enter when it asks for a passphrase); add the line of its `.pub` file to
+`~/.ssh/authorized_keys` of that user on the Linux machine. Then check that `ssh <user>@<machine>`
+logs in without a password (answer `yes` to its question about the machine's key), so that podman
+uses the key you accepted. Download `podman-remote-release-windows_amd64.zip` from
 [Podman's releases](https://github.com/podman-container-tools/podman/releases), unzip it, and add
 the folder that holds `podman.exe` (`podman-<version>\usr\bin` in it) to your `PATH`. Then, in a new
 **Windows PowerShell**, set the first four lines and run this once. It makes that Linux machine

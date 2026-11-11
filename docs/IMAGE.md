@@ -340,7 +340,7 @@ the CA for every user of this machine.
 Let the podman machine import Windows' CAs: `podman machine stop`, then
 `podman machine set --import-native-ca`, then `podman machine start`. podman without WSL
 ([PREREQS.md](PREREQS.md#windows-without-wsl)): skip these lines; Windows' trust (above) covers the
-login, and the Linux podman part above, run on the Linux machine, covers the push.
+login, and the Linux podman part above, run on the Linux machine after step 1 there, covers the push.
 
 **If not:** `unknown flag: --import-native-ca`: your podman is older; follow Podman's
 [Install a certificate authority](https://github.com/podman-container-tools/podman/blob/main/docs/tutorials/podman-install-certificate-authority.md).

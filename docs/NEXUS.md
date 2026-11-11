@@ -1448,8 +1448,8 @@ security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychai
 step 7 in your home folder. It adds Nexus's CA to your user's trusted root CAs (Windows asks you to
 confirm with **Yes**). You get a Windows user that trusts Nexus; then podman
 `podman machine set --import-native-ca` (machine stopped), or quit and start Docker Desktop. podman
-without WSL ([PREREQS.md](PREREQS.md#windows-without-wsl)): instead run the Linux podman block above
-on the Linux machine as well.
+without WSL ([PREREQS.md](PREREQS.md#windows-without-wsl)): in place of `podman machine set`, also
+run the Linux podman block above on the Linux machine, with `nexus-ca.pem` in its home folder.
 
 ```powershell
 Import-Certificate -FilePath "$HOME\nexus-ca.pem" -CertStoreLocation Cert:\CurrentUser\Root
