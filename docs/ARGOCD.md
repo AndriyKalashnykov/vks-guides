@@ -254,7 +254,7 @@ spec:
 ```
 
 **Expect:** `argocd.argocd-service.vsphere.vmware.com/argocd-1 created`. Then run step 1's block
-every half minute until it shows `Ready` and an address: one to two minutes.
+every half minute until it shows `Ready` and an address: usually within five minutes.
 
 **If not:**
 - `Forbidden`: your SSO user has no **Namespaces Edit** role on the namespace.
