@@ -237,7 +237,9 @@ no `sudo` needed. You get a podman that trusts Harbor for login, push and pull (
 HARBOR_FQDN="harbor.example.test"
 IMAGE_DIR="$HOME/.config/vks-guides/image"
 
-if [ ! -s "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt" ]; then
+if ! command -v podman >/dev/null 2>&1; then
+  echo "MISSING: podman (PREREQS.md, podman and docker)"
+elif [ ! -s "$IMAGE_DIR/${HARBOR_FQDN}-ca.crt" ]; then
   echo "FAILED: no $IMAGE_DIR/${HARBOR_FQDN}-ca.crt (step 1 above: download it, or copy it from HARBOR.md step 9)"
 else
   mkdir -p "$HOME/.config/containers/certs.d/$HARBOR_FQDN" \
@@ -248,7 +250,8 @@ fi
 
 **Expect:** `podman trusts <your Harbor name>`.
 
-**If not:** `FAILED: no …-ca.crt`: do step 1 with the same `HARBOR_FQDN`.
+**If not:** `MISSING: podman`: install it ([PREREQS.md](PREREQS.md#podman-and-docker-optional)), or use
+the docker block below. `FAILED: no …-ca.crt`: do step 1 with the same `HARBOR_FQDN`.
 
 #### docker
 
