@@ -368,14 +368,19 @@ after a login; a new login is written to the same file. It logs you in to the VK
 you, then prints the name the cluster knows you by. You then use the cluster with that file
 ([step 3 above](#3-use-the-login)).
 
-On Linux, macOS and WSL, type your SSO password first, so that it never shows on the screen or in
-the shell's history. This line only keeps it in this terminal; nothing else changes. The next block
-uses it and removes it.
+Type your SSO password first, so that it never shows on the screen or in the shell's history. This
+line only keeps it in this terminal; nothing else changes. The next block uses it and removes it.
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
 printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
 ```
 
 Then run this in the same terminal. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS
@@ -413,16 +418,6 @@ unset SSO_PASSWORD
 ```
 
 </details>
-
-On Windows, type the password first, so that it never shows on the screen. This line only keeps it
-in this PowerShell; nothing else changes. You then have it ready for the next block, which uses it
-and removes it:
-
-**Windows (PowerShell):**
-
-```powershell
-$SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
-```
 
 <details>
 <summary><b>Windows (PowerShell)</b></summary>
@@ -466,8 +461,8 @@ Remove-Variable SSO_PASSWORD -ErrorAction SilentlyContinue
 writes the name in its own letter case, for example `sso:Alice@vsphere.local`).
 
 **If not:**
-- `STOPPED: SSO_USER is …`: set `SSO_USER` to the full name with `@` and the domain, then run this
-  block again.
+- `STOPPED: SSO_USER is …`: set `SSO_USER` to the full name with `@` and the domain, then run the
+  password line and this block again.
 - `x509: certificate signed by unknown authority`: `SUPERVISOR_CA` is not the vCenter CA (Windows
   and macOS: the CA step above was not done).
 - `FAILED: no password …`: run the password line, then this block.
@@ -479,6 +474,7 @@ writes the name in its own letter case, for example `sso:Alice@vsphere.local`).
   this block again (the password line first) and type the password carefully. Mind the
   lock-out.
 - `logged in as:` with `Unauthorized`: the login did not work; see the error above it.
+- After fixing a value, run the password line and this block again.
 
 </details>
 
