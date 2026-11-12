@@ -20,11 +20,11 @@ Group page: [Getting started](GET-STARTED.md).
 | [Install kubectl](KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | part | part | part | part | part | part |
-| [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | ✅ | ✅ | ✅ | part | part | part |
+| [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | ✅ | ✅ | ✅ | ✅ | part | part |
 | [Use your vSphere Namespace in the web page](USER-LCI.md) | part | — | — | — | — | — |
 | [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) | part | part | part | part | part | part |
-| [Kubeconfig files](KUBECONFIG.md) | ✅ | ✅ | ✅ | — | ✅ | part |
+| [Kubeconfig files](KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | part |
 | [Install Helm](HELM.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## Identity and access
@@ -47,7 +47,7 @@ Group page: [vSphere Namespaces and VKS clusters](CLUSTERS.md).
 | [Create a vSphere Namespace](NAMESPACE.md) | part | part | part | part | ✅ | ✅ |
 | [Install Harbor](HARBOR.md) | part | — | — | — | — | — |
 | [Create a VKS cluster](CLUSTER.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [VKS add-ons](ADDONS.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| [VKS add-ons](ADDONS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## Container images
 
