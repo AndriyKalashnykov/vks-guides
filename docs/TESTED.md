@@ -54,7 +54,7 @@ Group page: [Container images](IMAGES.md).
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
 | [Build a container image, push it to a registry and run it in a VKS cluster](IMAGE.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
-| [Build a container image with docker, push it and run it (short version)](IMAGE-DOCKER.md) | ✅ | — | — | — | — | ✅ |
+| [Build a container image with docker, push it and run it (short version)](IMAGE-DOCKER.md) | part | — | — | — | — | part |
 
 ## GitOps and CI/CD
 

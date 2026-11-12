@@ -117,8 +117,8 @@ that you can tell your image from the original, and builds the image for the clu
 get the image on this machine, named as `IMAGE` says, ready for step 4.
 
 ```sh
-curl -sSO "$SRC/Dockerfile"
-curl -sSO "$SRC/index.html"
+curl -fsSO "$SRC/Dockerfile"
+curl -fsSO "$SRC/index.html"
 sed -i 's|<h1>test-web-apps v1</h1>|<h1>test-web-apps v1, built with docker, from Harbor</h1>|' index.html
 docker build --platform "$IMAGE_PLATFORM" -t "$IMAGE" .
 ```
@@ -198,7 +198,7 @@ which holds the robot's secret unencrypted. Afterwards the cluster holds the pul
 and step 6 tells the app to use it:
 
 ```sh
-curl -sSO "$SRC/namespace.yaml"
+curl -fsSO "$SRC/namespace.yaml"
 sed -i "s|^  name: test-web-apps$|  name: $APP_NAMESPACE|" namespace.yaml
 kubectl apply -f namespace.yaml
 kubectl -n "$APP_NAMESPACE" create secret generic harbor-pull --type=kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson="$HOME/image-simple/pull/config.json"
@@ -210,7 +210,8 @@ rm -r "$HOME/image-simple/pull"
 **If not:** `localhost:8080` and `connection refused`: kubectl is not pointed at your VKS
 cluster; [make its kubeconfig the default in this
 terminal](SUPERVISOR-LOGIN.md#make-it-the-default-in-this-terminal), then run the login line above and this
-block again.
+block again. `curl: (22) The requested URL returned error: 404`, or another `curl:` error: this machine
+must reach `raw.githubusercontent.com` (Prerequisites).
 
 ## 6. Deploy the app
 
@@ -221,9 +222,9 @@ values into them: the namespace's name and your image from Harbor. The last line
 that changed. Nothing changes in the cluster yet.
 
 ```sh
-curl -sSO "$SRC/namespace.yaml"
-curl -sSO "$SRC/deployment.yaml"
-curl -sSO "$SRC/service.yaml"
+curl -fsSO "$SRC/namespace.yaml"
+curl -fsSO "$SRC/deployment.yaml"
+curl -fsSO "$SRC/service.yaml"
 sed -i "s|^  name: test-web-apps$|  name: $APP_NAMESPACE|" namespace.yaml
 sed -i "s|namespace: test-web-apps|namespace: $APP_NAMESPACE|" deployment.yaml service.yaml
 sed -i "s|image: .*|image: $IMAGE|" deployment.yaml
@@ -233,6 +234,9 @@ grep -H "^  name:\|namespace:\|image:" namespace.yaml deployment.yaml service.ya
 **Expect:** `namespace.yaml:  name: harbor-demo`, `namespace: harbor-demo` in the other two files,
 and `image: <your Harbor name>/<your project>/test-web-apps:v1`. The `name: test-web-apps` lines
 are the app's own name and stay as they are.
+
+**If not:** `curl: (22) The requested URL returned error: 404`, or another `curl:` error: this
+machine must reach `raw.githubusercontent.com` (Prerequisites); run the block again.
 
 **Only for a private project:** run this when your project is private, after step 5. It adds the
 Secret `harbor-pull` from step 5 to `deployment.yaml`, so the app's pods log in to Harbor when they
