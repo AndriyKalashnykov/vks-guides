@@ -778,9 +778,12 @@ cluster. What the file is, whichever way you get it:
   cluster; it is not limited to a vSphere Namespace or to one person.
 - **It cannot be withdrawn.** It stops working on the date in its certificate, a year after the
   Supervisor wrote it ([how long it works](KUBECONFIG.md#the-files-the-guides-make)); download it
-  again then. If the new file also answers `Unauthorized`, a vCenter administrator deletes the
-  Secret that holds it (`kubectl -n <vSphere Namespace> delete secret <cluster>-kubeconfig` with
-  their Supervisor login); the Supervisor writes a new one, valid for a year, within about a minute. A copy someone already has keeps working until its own date, so a
+  again then. If the new file also answers `Unauthorized` and you have **Can edit** or **Owner** on
+  the vSphere Namespace, delete the Secret that holds it, with your
+  [Supervisor login](#create-supervisor-context-with-ca):
+  `kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n <vSphere Namespace> delete secret <cluster>-kubeconfig`.
+  With **Can view**, ask a vCenter administrator to run it. The Supervisor writes a new one, valid
+  for a year, within about five minutes. A copy someone already has keeps working until its own date, so a
   leaked file stays an administrator login until then: never store it in a repository, and give a
   CI/CD pipeline or a team a ServiceAccount token instead
   ([ADMIN-GRANT-ACCESS.md](ADMIN-GRANT-ACCESS.md#a-serviceaccount-token)).
