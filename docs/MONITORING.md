@@ -566,8 +566,8 @@ $T | Where-Object { $_.health -ne 'up' } | ForEach-Object { "down: $($_.labels.j
 **Expect:** `up N of N`, the same number twice and above 0 (18 on a cluster with one control
 plane node and one worker, 22 with two workers), and no `down:` line.
 
-**If not:** a `down:` line names the target and its error. Right after step 5 or 9, wait a minute
-and run this again.
+**If not:** a `down:` line names the target and its error. Right after step 5 or 9 it can name no
+error yet: wait a minute and run this again.
 
 ## 7. Open Grafana
 

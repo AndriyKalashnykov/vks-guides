@@ -432,7 +432,7 @@ if (-not $IP -or -not $WANT) {
 
 </details>
 
-**Expect:** `open https://<address>/` and `its certificate's SHA-256 fingerprint: 83:FE:…:F4 (the
+**Expect:** `open https://<address>/` and `its certificate's SHA-256 fingerprint: <fingerprint> (the
 same as in the cluster)`.
 
 **If not:** `DIFFERENT: …`: something between you and the cluster shows another certificate; do
@@ -719,7 +719,8 @@ cannot list the others): tell Headlamp its name once, in **Settings** (the gear 
 for everyone who opens this cluster's Headlamp in it (an administrator who logs in there afterwards
 sees only that namespace too): remove the name there to see every namespace again. In another
 browser, set it again. The **Overview** page still shows *You don't have permissions to view this
-resource* for the cluster's summary; its **Events** list shows your namespace.
+resource* for the cluster's summary; its **Events** list shows your namespace. Lists in another
+namespace show *No data to be shown*, not **No permissions**.
 
 ![Cluster Settings: Allowed namespaces with headlamp-demo](img/headlamp/16-allowed-namespaces.png)
 
@@ -739,7 +740,7 @@ What an `edit` account sees and can do in its namespace:
 | ![Create / Apply with a ConfigMap](img/headlamp/10-create.png) | **Create** (bottom left): paste YAML, **Apply** |
 | ![ConfigMap: hello-settings](img/headlamp/11-created.png) | the new object |
 | ![Delete item: hello-settings](img/headlamp/12-delete.png) | **Delete** (bin) asks first |
-| ![Secrets in kube-system: Error: No permissions](img/headlamp/13-refused.png) | outside its namespace: **No permissions** |
+| ![Secrets in kube-system: Error: No permissions](img/headlamp/13-refused.png) | outside its namespace: **No permissions** (with **Allowed namespaces** set: *No data to be shown*) |
 | ![Map: deployment hello, its ReplicaSets and pods](img/headlamp/14-map.png) | **Map**: how the objects connect |
 
 Headlamp shows its own text in the browser's language; **Settings** (gear) → **General** →
