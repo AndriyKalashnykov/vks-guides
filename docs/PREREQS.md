@@ -49,7 +49,7 @@ sudo apt-get update && sudo apt-get install -y curl tar unzip jq openssl
 
 **Expect:** the prompt returns with no `E:` line. Then run [Check](#check).
 
-**If not:** `sudo: command not found`: run it as `root`, without `sudo`.
+**If not:** a `not found` line for `sudo`: run it as `root`, without `sudo`.
 
 On other distributions (except AlmaLinux, Photon OS and Arch Linux, below), install the same five
 packages with your package manager.
@@ -69,8 +69,8 @@ sudo dnf install -y curl tar unzip jq openssl
 
 **Expect:** `Complete!`. Then run [Check](#check).
 
-**If not:** `sudo: command not found` or `… is not in the sudoers file`: run it as `root`, without
-`sudo`.
+**If not:** a `not found` line for `sudo`, or `… is not in the sudoers file`: run it as `root`,
+without `sudo`.
 
 ## Photon OS 5
 
@@ -88,7 +88,7 @@ sudo tdnf clean all && sudo tdnf makecache && sudo tdnf install -y ca-certificat
 an `ssh` from a new terminal logs in. Then run [Check](#check).
 
 **If not:**
-- `sudo: command not found`: run it as `root`, without `sudo`.
+- A `not found` line for `sudo`: run it as `root`, without `sudo`.
 - A new `ssh` gets `kex_exchange_identification: … Connection reset by peer`: in the open session,
   run `sudo /usr/sbin/sshd -t && sudo systemctl try-restart sshd.service`. If `sshd -t` prints an
   error, fix that line in `/etc/ssh/sshd_config` first. Do not close the session.
@@ -118,7 +118,7 @@ sudo pacman -Syu --needed --noconfirm curl tar unzip jq openssl
 `there is nothing to do`, with no `error:` line. Then run [Check](#check).
 
 **If not:**
-- `sudo: command not found`: run it as `root`, without `sudo`.
+- A `not found` line for `sudo`: run it as `root`, without `sudo`.
 - `error: … signature from … is unknown trust` or `invalid or corrupted package (PGP signature)`:
   the machine's Arch Linux signing keys are out of date. Run
   `sudo pacman -Sy --needed --noconfirm archlinux-keyring`, then the block again.
@@ -136,8 +136,8 @@ command -v jq >/dev/null 2>&1 || brew install jq
 **Expect:** no output when `jq` is there, otherwise Homebrew's lines for installing `jq`. Then run
 [Check](#check).
 
-**If not:** `brew: command not found` — install Homebrew first ([brew.sh](https://brew.sh)), then
-run the block again.
+**If not:** a `not found` line for `brew` — install Homebrew first ([brew.sh](https://brew.sh)),
+then run the block again.
 
 ## Windows
 
@@ -288,7 +288,7 @@ sudo apt-get update && sudo apt-get install -y podman
 
 **Expect:** the prompt returns with no `E:` line.
 
-**If not:** `sudo: command not found`: run it as `root`, without `sudo`.
+**If not:** a `not found` line for `sudo`: run it as `root`, without `sudo`.
 
 docker, to build and push images with docker: Ubuntu's own docker is too old to push to Harbor,
 so this installs Docker's own packages from Docker's repository. It first removes Ubuntu's docker
@@ -337,8 +337,8 @@ sudo dnf install -y podman
 
 **Expect:** `Complete!`.
 
-**If not:** `sudo: command not found` or `… is not in the sudoers file`: run it as `root`, without
-`sudo`.
+**If not:** a `not found` line for `sudo`, or `… is not in the sudoers file`: run it as `root`,
+without `sudo`.
 
 docker, to build and push images with docker: this adds Docker's own repository (AlmaLinux has no
 docker package), installs and starts docker, and adds you to the `docker` group. Afterwards, once
@@ -417,8 +417,8 @@ podman info >/dev/null 2>&1 || podman machine start
 **Expect:** the last lines say the machine `started successfully`, or nothing if it was already
 running.
 
-**If not:** `brew: command not found`: install Homebrew first ([brew.sh](https://brew.sh)), then
-run the block again.
+**If not:** a `not found` line for `brew`: install Homebrew first ([brew.sh](https://brew.sh)),
+then run the block again.
 
 docker, to build and push images with docker: use [Colima](https://github.com/abiosoft/colima),
 which runs docker in a small Linux virtual machine (Docker Desktop also works; larger companies
@@ -435,8 +435,8 @@ docker context use colima
 
 **Expect:** `Current context is now "colima"`.
 
-**If not:** `brew: command not found`: install Homebrew first ([brew.sh](https://brew.sh)), then
-run the block again.
+**If not:** a `not found` line for `brew`: install Homebrew first ([brew.sh](https://brew.sh)),
+then run the block again.
 
 ### podman and docker on Windows
 
