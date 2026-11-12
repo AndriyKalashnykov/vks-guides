@@ -63,13 +63,13 @@ Group page: [GitOps and CI/CD](GITOPS-CICD.md).
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
 | [ArgoCD](ARGOCD.md) | part | part | — | — | part | — |
-| [Run Nexus](NEXUS.md) | — | — | — | — | — | — |
+| [Run Nexus](NEXUS.md) | — | part | — | — | — | — |
 | [Run Gitea](GITEA.md) | part | — | — | — | ✅ | — |
 | [Run Tekton](TEKTON.md) | ✅ | — | — | — | ✅ | — |
 | [Run GitLab](GITLAB.md) | part | — | — | — | part | — |
-| [CI/CD with Gitea and Tekton](CICD.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
-| [CI/CD with GitLab](CICD.md) | part | ✅ | — | — | — | — |
-| [Run Octopus Deploy](OCTOPUS.md) | part | — | — | — | — | — |
+| [CI/CD with Gitea and Tekton](CICD.md) | — | — | — | — | ✅ | — |
+| [CI/CD with GitLab](CICD.md) | — | — | — | — | — | — |
+| [Run Octopus Deploy](OCTOPUS.md) | — | — | — | — | — | — |
 
 ## Operations and observability
 
@@ -79,7 +79,7 @@ Group page: [Operations and observability](OPERATE.md).
 |---|---|---|---|---|---|---|
 | [Headlamp](HEADLAMP.md) | ✅ | — | — | — | part | — |
 | [Monitor a VKS cluster](MONITORING.md) | part | part | — | — | part | — |
-| [Send logs to VCF Operations](LOGGING.md) | part | part | part | — | part | — |
+| [Send logs to VCF Operations](LOGGING.md) | — | — | — | — | part | — |
 | [Logs and traces in Grafana](OBSERVABILITY.md) | part | — | — | — | part | — |
 
 Back to [README](../README.md).
