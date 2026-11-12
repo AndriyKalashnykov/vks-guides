@@ -17,7 +17,7 @@ Group page: [Getting started](GET-STARTED.md).
 | [Prerequisites](PREREQS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install kubectl](KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | ✅ | part | part | part | ✅ | ✅ |
+| [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | ✅ | ✅ | ✅ | part | ✅ | ✅ |
 | [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | ✅ | ✅ | ✅ | part | part | — |
 | [Use your vSphere Namespace in the web page](USER-LCI.md) | part | — | — | — | — | — |
 | [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | ✅ | ✅ | ✅ | — | part | — |
@@ -31,7 +31,7 @@ Group page: [Identity and access](ACCESS-SIGN-IN.md).
 
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | ✅ | part | part | — | part | part |
+| [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | ✅ | ✅ | ✅ | — | part | part |
 | [Give an identity provider group access to VKS clusters, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) | part | — | — | — | — | — |
 | [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | part | part | part | — | part | part |
 | [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | ✅ | — | part | — | ✅ | — |
@@ -42,9 +42,9 @@ Group page: [vSphere Namespaces and VKS clusters](CLUSTERS.md).
 
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Create a vSphere Namespace](NAMESPACE.md) | ✅ | part | part | part | ✅ | ✅ |
+| [Create a vSphere Namespace](NAMESPACE.md) | ✅ | ✅ | ✅ | part | ✅ | ✅ |
 | [Install Harbor](HARBOR.md) | part | part | part | — | part | part |
-| [Create a VKS cluster](CLUSTER.md) | ✅ | part | part | — | ✅ | part |
+| [Create a VKS cluster](CLUSTER.md) | ✅ | ✅ | part | — | ✅ | part |
 | [VKS add-ons](ADDONS.md) | ✅ | ✅ | — | — | ✅ | ✅ |
 
 ## Container images
