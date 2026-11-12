@@ -16,9 +16,9 @@ Group page: [Getting started](GET-STARTED.md).
 
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Prerequisites](PREREQS.md) | ✅ | ✅ | ✅ | part | part | part |
+| [Prerequisites](PREREQS.md) | ✅ | ✅ | ✅ | ✅ | part | part |
 | [Install kubectl](KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | part | part | part | part | part | part |
 | [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | ✅ | ✅ | ✅ | part | part | part |
 | [Use your vSphere Namespace in the web page](USER-LCI.md) | part | — | — | — | — | — |
