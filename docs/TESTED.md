@@ -24,7 +24,7 @@ Group page: [Getting started](GET-STARTED.md).
 | [Use your vSphere Namespace in the web page](USER-LCI.md) | part | — | — | — | — | — |
 | [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) | part | part | part | part | part | part |
-| [Kubeconfig files](KUBECONFIG.md) | part | part | part | — | ✅ | part |
+| [Kubeconfig files](KUBECONFIG.md) | ✅ | ✅ | ✅ | — | ✅ | part |
 | [Install Helm](HELM.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## Identity and access
