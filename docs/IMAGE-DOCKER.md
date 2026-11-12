@@ -125,8 +125,9 @@ docker build --platform "$IMAGE_PLATFORM" -t "$IMAGE" .
 
 **Expect:** the build's steps, then `naming to <your Harbor name>/<your project>/test-web-apps:v1`.
 
-**If not:** a `curl:` error or a failed base-image pull: this machine must reach
-`raw.githubusercontent.com` and `docker.io` (Prerequisites).
+**If not:** `curl: (22) The requested URL returned error: 404`: check `SRC` (step 0). Another
+`curl:` error or a failed base-image pull: this machine must reach `raw.githubusercontent.com` and
+`docker.io` (Prerequisites).
 
 ## 4. Push it to Harbor
 
@@ -210,8 +211,9 @@ rm -r "$HOME/image-simple/pull"
 **If not:** `localhost:8080` and `connection refused`: kubectl is not pointed at your VKS
 cluster; [make its kubeconfig the default in this
 terminal](SUPERVISOR-LOGIN.md#make-it-the-default-in-this-terminal), then run the login line above and this
-block again. `curl: (22) The requested URL returned error: 404`, or another `curl:` error: this machine
-must reach `raw.githubusercontent.com` (Prerequisites).
+block again. `curl: (22) The requested URL returned error: 404`: check `SRC` (step 0). Another
+`curl:` error: this machine must reach `raw.githubusercontent.com` (Prerequisites). After either, run
+the login line above and this block again.
 
 ## 6. Deploy the app
 
@@ -235,8 +237,9 @@ grep -H "^  name:\|namespace:\|image:" namespace.yaml deployment.yaml service.ya
 and `image: <your Harbor name>/<your project>/test-web-apps:v1`. The `name: test-web-apps` lines
 are the app's own name and stay as they are.
 
-**If not:** `curl: (22) The requested URL returned error: 404`, or another `curl:` error: this
-machine must reach `raw.githubusercontent.com` (Prerequisites); run the block again.
+**If not:** `curl: (22) The requested URL returned error: 404`: check `SRC` (step 0). Another
+`curl:` error: this machine must reach `raw.githubusercontent.com` (Prerequisites). Then run the
+block again.
 
 **Only for a private project:** run this when your project is private, after step 5. It adds the
 Secret `harbor-pull` from step 5 to `deployment.yaml`, so the app's pods log in to Harbor when they
