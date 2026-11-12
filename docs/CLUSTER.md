@@ -509,8 +509,8 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE delete cluster
 **Expect:** `cluster.cluster.x-k8s.io "<name>" deleted` (newer kubectl: `… deleted from <your
 namespace> namespace`). Then run the block in
 [Check that the name is free](#check-that-the-name-is-free) again until it says `none now`, and
-the disk block above: its first command now fails (the cluster is gone); its second list shows the
-disks the cluster left behind.
+the disk block above: its first command now fails (the cluster is gone), after about 20 to 30
+seconds; its second list shows the disks the cluster left behind.
 
 **If not:** `Forbidden`: your role on the namespace cannot delete clusters; ask for the
 **Namespaces Edit** role.

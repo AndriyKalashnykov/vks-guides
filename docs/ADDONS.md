@@ -172,8 +172,8 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 installs from the Supervisor (such as `helm-controller`): this command cannot remove or upgrade
 them. It is `Allowed` for the ones you or another namespace user installed with
 `vcf addon install`. A new
-cluster may show only `NotAllowed` rows. The core add-ons are not listed; `--show-internal` adds
-them.
+cluster may show only `NotAllowed` rows, and right after it is made a row can show `False` for a
+minute or two: run this again. The core add-ons are not listed; `--show-internal` adds them.
 
 **If not:** `Unable to read password from terminal` (Windows: `The handle is invalid`): [renew your
 login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login) and run this again. A `READY` that stays `False`:
