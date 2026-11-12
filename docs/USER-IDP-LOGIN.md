@@ -382,8 +382,9 @@ kubectl oidc-login clean
 (`Could not delete the token cache from the keyring: …` where there is none). The next command asks
 for a new code.
 
-**If not:** `Error: unknown command "oidc-login" for "kubectl"`: kubelogin is not installed on
-this machine ([PREREQS.md](PREREQS.md#kubelogin-optional)).
+**If not:** `error: unknown command "oidc-login" for "kubectl"`: kubelogin is not installed on
+this machine ([PREREQS.md](PREREQS.md#kubelogin-optional)), or the folder it is in is not on your
+`PATH` ([PREREQS.md](PREREQS.md#localbin-on-your-path)).
 
 ## 7. Forbidden, or no sign-in
 
