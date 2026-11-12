@@ -784,7 +784,7 @@ cluster. What the file is, whichever way you get it:
   [Supervisor login](#create-supervisor-context-with-ca):
   `kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n <vSphere Namespace> delete secret <cluster>-kubeconfig`.
   With **Can view**, ask a vCenter administrator to run it. The Supervisor writes a new one, valid
-  for a year, within about five minutes. A copy someone already has keeps working until its own date, so a
+  for a year, within about ten minutes. A copy someone already has keeps working until its own date, so a
   leaked file stays an administrator login until then: never store it in a repository, and give a
   CI/CD pipeline or a team a ServiceAccount token instead
   ([ADMIN-GRANT-ACCESS.md](ADMIN-GRANT-ACCESS.md#a-serviceaccount-token)).
