@@ -28,20 +28,24 @@ VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 VKS_USER_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 
+printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
+
 case "$SSO_USER" in */*|*\\*|*:*) SSO_USER_OK="" ;; *@*) SSO_USER_OK="yes" ;; *) SSO_USER_OK="" ;; esac
 if [ -z "$SSO_USER_OK" ]; then
   printf '%s\n' "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: $SSO_USER"
+elif [ -z "$SSO_PASSWORD" ]; then
+  echo "FAILED: no password typed; run the script again"
 else
   mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_USER_KUBECONFIG" ) && chmod 600 "$VKS_USER_KUBECONFIG"
-  ( printf 'SSO password: '; IFS= read -rs P; echo
-    KUBECONFIG="$VKS_USER_KUBECONFIG" SSL_CERT_FILE="$SUPERVISOR_CA" KUBECTL_VSPHERE_PASSWORD="$P" \
-      "$HOME/.local/bin/kubectl-vsphere" login --server "$SUPERVISOR_ENDPOINT" --vsphere-username "$SSO_USER" \
-      --tanzu-kubernetes-cluster-namespace "$VSPHERE_NAMESPACE" --tanzu-kubernetes-cluster-name "$VKS_CLUSTER" ) \
+  KUBECONFIG="$VKS_USER_KUBECONFIG" SSL_CERT_FILE="$SUPERVISOR_CA" KUBECTL_VSPHERE_PASSWORD="$SSO_PASSWORD" \
+    "$HOME/.local/bin/kubectl-vsphere" login --server "$SUPERVISOR_ENDPOINT" --vsphere-username "$SSO_USER" \
+    --tanzu-kubernetes-cluster-namespace "$VSPHERE_NAMESPACE" --tanzu-kubernetes-cluster-name "$VKS_CLUSTER" </dev/null \
     && chmod 600 "$VKS_USER_KUBECONFIG" \
     && kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config use-context "$VKS_CLUSTER" >/dev/null \
     && echo "logged in as: $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')" \
     || echo "FAILED: the login did not work (see the error above); nothing was changed"
 fi
+unset SSO_PASSWORD
 
 echo
 echo "Next: use the file in this terminal:"

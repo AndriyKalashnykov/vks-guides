@@ -365,13 +365,27 @@ Remove-Item -Recurse -Force $TMP
 Do this to log in with the plugin, and again whenever kubectl answers `Unauthorized`, 10 hours
 after a login; a new login is written to the same file. It logs you in to the VKS cluster as
 `SSO_USER` and writes the login to your own kubeconfig `VKS_USER_KUBECONFIG`, readable only by
-you, then prints the name the cluster knows you by. On Linux, macOS and WSL it asks for the SSO
-password. You then use the cluster with that file
+you, then prints the name the cluster knows you by. You then use the cluster with that file
 ([step 3 above](#3-use-the-login)).
 
-Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name, `SUPERVISOR_CA` to the
-vCenter CA file from step 1, `SSO_USER` to your full SSO user name, and `VSPHERE_NAMESPACE` (the
-vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
+Type your SSO password first, so that it never shows on the screen or in the shell's history. This
+line only keeps it in this terminal; nothing else changes. The next block uses it and removes it.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+printf 'SSO password: '; IFS= read -rs SSO_PASSWORD; echo
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
+```
+
+Then run this in the same terminal. Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS
+name, `SUPERVISOR_CA` to the vCenter CA file from step 1, `SSO_USER` to your full SSO user name, and
+`VSPHERE_NAMESPACE` (the vSphere Namespace) and `VKS_CLUSTER` to the names from step 1.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -388,30 +402,22 @@ VKS_USER_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}-${SSO_USER}.kubeconfig"
 case "$SSO_USER" in */*|*\\*|*:*) SSO_USER_OK="" ;; *@*) SSO_USER_OK="yes" ;; *) SSO_USER_OK="" ;; esac
 if [ -z "$SSO_USER_OK" ]; then
   printf '%s\n' "STOPPED: SSO_USER is the full SSO user name, such as alice@vsphere.local: $SSO_USER"
+elif [ -z "$SSO_PASSWORD" ]; then
+  echo "FAILED: no password in this terminal; run the password line above"
 else
   mkdir -p "$HOME/.kube" && ( umask 077; : >> "$VKS_USER_KUBECONFIG" ) && chmod 600 "$VKS_USER_KUBECONFIG"
-  ( printf 'SSO password: '; IFS= read -rs P; echo
-    KUBECONFIG="$VKS_USER_KUBECONFIG" SSL_CERT_FILE="$SUPERVISOR_CA" KUBECTL_VSPHERE_PASSWORD="$P" \
-      "$HOME/.local/bin/kubectl-vsphere" login --server "$SUPERVISOR_ENDPOINT" --vsphere-username "$SSO_USER" \
-      --tanzu-kubernetes-cluster-namespace "$VSPHERE_NAMESPACE" --tanzu-kubernetes-cluster-name "$VKS_CLUSTER" ) \
+  KUBECONFIG="$VKS_USER_KUBECONFIG" SSL_CERT_FILE="$SUPERVISOR_CA" KUBECTL_VSPHERE_PASSWORD="$SSO_PASSWORD" \
+    "$HOME/.local/bin/kubectl-vsphere" login --server "$SUPERVISOR_ENDPOINT" --vsphere-username "$SSO_USER" \
+    --tanzu-kubernetes-cluster-namespace "$VSPHERE_NAMESPACE" --tanzu-kubernetes-cluster-name "$VKS_CLUSTER" </dev/null \
     && chmod 600 "$VKS_USER_KUBECONFIG" \
     && kubectl --kubeconfig "$VKS_USER_KUBECONFIG" config use-context "$VKS_CLUSTER" >/dev/null \
     && echo "logged in as: $(kubectl --kubeconfig "$VKS_USER_KUBECONFIG" auth whoami -o jsonpath='{.status.userInfo.username}')" \
     || echo "FAILED: the login did not work (see the error above); nothing was changed"
 fi
+unset SSO_PASSWORD
 ```
 
 </details>
-
-On Windows, type the password first, so that it never shows on the screen. This line only keeps it
-in this PowerShell; nothing else changes. You then have it ready for the next block, which uses it
-and removes it:
-
-**Windows (PowerShell):**
-
-```powershell
-$SSO_PASSWORD = Read-Host 'SSO password' -AsSecureString
-```
 
 <details>
 <summary><b>Windows (PowerShell)</b></summary>
@@ -455,19 +461,20 @@ Remove-Variable SSO_PASSWORD -ErrorAction SilentlyContinue
 writes the name in its own letter case, for example `sso:Alice@vsphere.local`).
 
 **If not:**
-- `STOPPED: SSO_USER is …`: set `SSO_USER` to the full name with `@` and the domain, then run this
-  block again.
+- `STOPPED: SSO_USER is …`: set `SSO_USER` to the full name with `@` and the domain, then run the
+  password line and this block again.
 - `x509: certificate signed by unknown authority`: `SUPERVISOR_CA` is not the vCenter CA (Windows
   and macOS: the CA step above was not done).
-- `FAILED: no password …` (Windows): run the password line, then this block.
+- `FAILED: no password …`: run the password line, then this block.
 - `Login failed: bad request`, then `no context exists with the name`: check `VKS_CLUSTER` and
   `VSPHERE_NAMESPACE`. A cluster with the same name as its vSphere Namespace can also hide one of the
   two contexts
   ([Broadcom KB 435635](https://knowledge.broadcom.com/external/article/435635)).
 - `FAILED: the login did not work …`, or any other login error above it: check `SSO_USER`, then run
-  this block again (Windows: the password line first) and type the password carefully. Mind the
+  this block again (the password line first) and type the password carefully. Mind the
   lock-out.
 - `logged in as:` with `Unauthorized`: the login did not work; see the error above it.
+- After fixing a value, run the password line and this block again.
 
 </details>
 
