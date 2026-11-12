@@ -152,8 +152,8 @@ Before you run the block below, once on this machine:
 If this machine cannot reach dl.k8s.io, get `kubectl` from the Supervisor instead. This downloads
 the Supervisor's tool package, takes `kubectl` out of it and installs it like the block above. It
 works for amd64 Linux, macOS and Windows only. Afterwards you can type `kubectl` in this terminal,
-and the block prints its version. This `kubectl` has the Supervisor's version, which may be too old
-for your VKS cluster: after you log in,
+and the block prints its version. This `kubectl` is the one the Supervisor ships, which can be
+older than the Supervisor itself and too old for your VKS cluster: after you log in,
 [match it to your cluster's version](SUPERVISOR-LOGIN.md#match-kubectl-to-the-clusters-version-optional).
 Set `SUPERVISOR_ENDPOINT` to the Supervisor's IP address or DNS name
 ([NAMESPACE.md](NAMESPACE.md#1-find-the-supervisors-address-and-vcenters-ca), step 1). Do the steps
