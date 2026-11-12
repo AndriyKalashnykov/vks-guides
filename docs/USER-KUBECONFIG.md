@@ -162,8 +162,8 @@ $VKS_CLUSTER_NAMESPACE = "team-a"
 
 **Expect:** `-rw-------` and your user (Windows: only your user with `(F)`); the `server:` line with
 the address you were sent; then one of `token: REDACTED` (a token: `token ends in: … days`, or
-`… hours` under a day) or `client-key-data: DATA+OMITTED` (a certificate: `subject=CN=…` and
-`notAfter=…`), and a `namespace:` line if the file names one. Then `acts as: …`,
+`… hours` under a day) or `client-key-data: DATA+OMITTED` (a certificate: `subject=CN=…` or
+`subject=CN = …`, and `notAfter=…`), and a `namespace:` line if the file names one. Then `acts as: …`,
 `create deployments in team-a: yes` (`no` with a read-only file), `list pods in every namespace: no`
 for a file for one namespace (`yes` for a whole-cluster file; a read-only whole-cluster file shows
 `create deployments …: no` and `list pods in every namespace: yes`), and the pods there or
