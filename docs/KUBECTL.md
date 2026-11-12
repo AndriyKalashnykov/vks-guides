@@ -234,7 +234,8 @@ Remove-Item -Recurse -Force $TMP
 
 </details>
 
-**Expect:** `Client Version: v1.…` and no `FAILED` or `WARNING` line.
+**Expect:** `Client Version: v1.…` and no `FAILED` or `WARNING` line. It replaces the `kubectl`
+installed there before, even a newer one.
 
 **If not:**
 - `FAILED: no Supervisor kubectl for …` (Linux arm64): the Supervisor has none for this machine.

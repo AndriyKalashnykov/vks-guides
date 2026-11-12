@@ -1112,7 +1112,7 @@ Windows: a line with the CA's thumbprint and `CN=Keycloak CA`. Then the browser 
 address with no certificate warning (restart the browser first).
 
 **If not:**
-- `certutil: command not found`: install it (the package named above).
+- A `not found` line for `certutil`: install it (the package named above).
 - `FAILED: no …/keycloak-ca.pem` (Linux): save the CA first (step 6); no CA was removed.
 - The `Keycloak CA <KEYCLOAK_HOST>` line twice, a line with only `Keycloak CA`, or
   `SEC_ERROR_BAD_DATABASE` or a `PKCS11` error (Linux): close Chrome and run the block again.

@@ -189,7 +189,7 @@ vCenter's own CA). Then the browser opens the page with no certificate warning (
 first).
 
 **If not:**
-- `certutil: command not found`: install it (the package named above).
+- A `not found` line for `certutil`: install it (the package named above).
 - `FAILED: no …` (Linux): the CA file is not where `CA_FILE` says; no CA was removed.
 - Your `CA_NAME` line twice, a line with only `OLD_NAME`, or `SEC_ERROR_BAD_DATABASE` or a `PKCS11`
   error (Linux): close Chrome and run the block again.

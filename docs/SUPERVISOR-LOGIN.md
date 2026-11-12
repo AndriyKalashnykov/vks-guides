@@ -748,7 +748,8 @@ if ($SUPERVISOR_CONTEXT -cnotmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?\z' -or $SUPER
 
 **Expect:** `[!] Skipping to delete the kubeconfig context …` lines (harmless: the block deletes
 that file itself), `Successfully deleted context "supervisor"` (your `SUPERVISOR_CONTEXT`), and a
-list without that context.
+list without that context. The list may first print `Some initialization of the CLI is required`:
+the VCF CLI makes a new `logs` folder, with no login in it.
 
 **If not:**
 - `FAILED: SUPERVISOR_CONTEXT may hold only …`: set it to the name you created the context with.
