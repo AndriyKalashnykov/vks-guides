@@ -94,7 +94,7 @@ if ($LASTEXITCODE -eq 0) {
 `gitea namespace: 0`.
 
 **If not:**
-- `git: command not found` (PowerShell: `The term 'git' is not recognized`): install git
+- A `not found` line for `git` (PowerShell: `The term 'git' is not recognized`): install git
   ([git-scm.com](https://git-scm.com/install/); on AlmaLinux 10, `sudo dnf install -y git`; on
   Photon OS 5, `sudo tdnf install -y git`), open a new terminal, and run this again. On macOS,
   `git` may open a dialog that installs the Command Line Tools; let it finish.
@@ -849,7 +849,7 @@ and one pod `1/1 Running`.
 **If not:**
 - `FAILED: no Service range`: the line above it says why; on Kubernetes older than v1.33
   (`the server doesn't have a resource type "servicecidr"`), set `SERVICE_RANGE`.
-- `helm: command not found`: install Helm ([HELM.md](HELM.md)).
+- A `not found` line for `helm`: install Helm ([HELM.md](HELM.md)).
 - `FAILED: download …`: this machine cannot reach `dl.gitea.com`.
 - `FAILED: checksum mismatch …`: the download arrived damaged, or the chart was rebuilt. Do not
   install it; run the block again.

@@ -125,7 +125,7 @@ one CI job need a worker with at least 6 GiB memory and 8 GiB image disk free; a
 `best-effort-large` worker has about 12 GiB memory free.
 
 **If not:**
-- `git: command not found` (PowerShell: `The term 'git' is not recognized`): install git
+- A `not found` line for `git` (PowerShell: `The term 'git' is not recognized`): install git
   ([git-scm.com](https://git-scm.com/install/); on AlmaLinux 10, `sudo dnf install -y git`; on
   Photon OS 5, `sudo tdnf install -y git`), open a new terminal, and run this again.
 - No worker with that much free: add a node pool with VM class `best-effort-large`

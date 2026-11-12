@@ -114,7 +114,7 @@ Remove-Item -Recurse -Force $TMP
 - **Config Status** is not **Running**: the Supervisor is not ready, and no namespace can be
   created on it yet.
 - `FAILED: no CA certificate …` or `cannot find …`: the file is not in `Downloads` under that
-  name. Set `CA_ZIP` to where the browser saved it. Under `unzip: command not found`: install
+  name. Set `CA_ZIP` to where the browser saved it. A `not found` line for `unzip`: install
   unzip ([PREREQS.md](PREREQS.md)). Under `bsdtar:` with a file name: the zip is damaged; download
   it again.
 
@@ -381,8 +381,8 @@ one name under `Storage classes:`, then `Kubernetes releases ready to use:` and
   `Unauthorized`).
 - An error with `Forbidden` above a line, or `unknown`: your user may not read that. Ask a
   vCenter administrator for the **Namespaces Edit** role (step 4); the number is not the cause.
-- Nothing after `Kubernetes releases ready to use:`, under `jq: command not found`: install jq
-  ([PREREQS.md](PREREQS.md)).
+- Nothing after `Kubernetes releases ready to use:`, under a `not found` line for `jq`: install
+  jq ([PREREQS.md](PREREQS.md)).
 - `No resources found` under `VM classes:`: add a VM class (step 6).
 - Nothing under `Storage classes:`, with no error: add a storage policy (step 5).
 - `Kubernetes releases ready to use: 0`: on a Supervisor switched on minutes ago, wait ten

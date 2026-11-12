@@ -420,7 +420,7 @@ if ($LASTEXITCODE -eq 0) {
 **Expect:** each node `Ready`, then `default storage class:` and the storage class you chose.
 
 **If not:**
-- Nothing after `default storage class:`, under `jq: command not found`: install jq
+- Nothing after `default storage class:`, under a `not found` line for `jq`: install jq
   ([PREREQS.md](PREREQS.md)).
 - `default storage class: NONE`: **Default Storage Class** was left empty in step 4. Name the
   storage class in each disk request, or create a new cluster with it set.
