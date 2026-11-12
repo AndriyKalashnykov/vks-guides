@@ -765,6 +765,8 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
   step 1.
 - `FAILED: the add-on also sends to Log Management`: you did LOGGING.md; set `LOGS_FQDN` to Log
   Management's name, so this step keeps that output.
+- `FAILED: cannot reach the VKS cluster`:
+  [get its kubeconfig again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
 - `FAILED: add-on update` or `FAILED: add-on install`: the line above it says why.
 - The rollout times out: run
   `kubectl --kubeconfig <the VKS kubeconfig> -n tanzu-system-logging get pods` and `describe` the

@@ -141,7 +141,8 @@ if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) { "MISSING: kubect
 `create deployments in team-a: yes` and `list pods in kube-system: no`.
 
 **If not:** `Forbidden` or `Unauthorized`: `ADMIN_KUBECONFIG` is not the cluster's administrator
-file, or it has expired; get it again. `STOPPED: VKS_CLUSTER_NAMESPACE must name one namespace`: set it to the
+file, or it has expired; [get it again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
+`STOPPED: VKS_CLUSTER_NAMESPACE must name one namespace`: set it to the
 team's namespace; for the whole cluster use [ADMIN-GRANT-ACCESS-IDP.md](ADMIN-GRANT-ACCESS-IDP.md) or another way.
 
 **Groups only:** bind groups, never `system:authenticated`: every user of the realm is in it.

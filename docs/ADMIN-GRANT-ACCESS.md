@@ -488,7 +488,8 @@ Remove-Variable TOKEN
 
 **If not:**
 - `FAILED: …` with `Forbidden` or `Unauthorized` above it: `ADMIN_KUBECONFIG` is not the cluster's
-  administrator file, or it has expired; get it again.
+  administrator file, or it has expired;
+  [get it again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
 - `STOPPED: …`: set `VKS_CLUSTER_NAMESPACE` (a namespace, or `"*"`), `ROLE` (`edit` or `view`, in
   small letters) or `DAYS` (a whole number of days, 1 to 36500, with no leading 0) and run the block
   again.
@@ -874,7 +875,8 @@ and `everything in every namespace: yes`.
 **If not:**
 - `STOPPED: DAYS is …`: set `DAYS` to a whole number of days from 1 to 36500, with no leading 0, or to `never`.
 - `FAILED: …` with `Forbidden` or `Unauthorized` above it: `ADMIN_KUBECONFIG` is not the cluster's
-  administrator file, or it has expired; get it again.
+  administrator file, or it has expired;
+  [get it again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
 - `FAILED: …` with no error above it, for `DAYS="never"`: the cluster did not fill the token Secret
   within 20 seconds; run the block again.
 
@@ -943,7 +945,8 @@ Start-Sleep 20; kubectl --kubeconfig $SERVICE_ACCOUNT_KUBECONFIG get namespaces
 
 **If not:**
 - `Forbidden` or `Unauthorized` on the delete lines: `ADMIN_KUBECONFIG` is not the cluster's
-  administrator file, or it has expired; get it again and run the block again.
+  administrator file, or it has expired;
+  [get it again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig) and run the block again.
 - The last command lists namespaces: wait a minute and run it again; if it still does, check that
   `SERVICE_ACCOUNT_NAME` and `SA_NAMESPACE` are what step 1 used.
 - `no such file or directory` on the last line: your copy is gone or has another name; the deletes
@@ -1082,7 +1085,9 @@ now (the cluster signs for at most a year), and `create deployments in team-a: y
 `create deployments in default: no`. Write down the name: you need it to take the access away.
 
 **If not:** `FAILED: …` with `Forbidden` or `Unauthorized` above it: `ADMIN_KUBECONFIG` is not the
-cluster's administrator file, or it has expired. `STOPPED: …`: set `VKS_CLUSTER_NAMESPACE` to the person's
+cluster's administrator file, or it has expired;
+[get it again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig).
+`STOPPED: …`: set `VKS_CLUSTER_NAMESPACE` to the person's
 namespace (or `"*"` for the whole cluster), `ROLE` to `edit` or `view` (in small letters), or `DAYS` to a
 whole number of days from 1 to 366 (the cluster signs for at most a year), and run the block again.
 A `yes` where `no` is expected: another binding gives the name rights (`kubectl --kubeconfig

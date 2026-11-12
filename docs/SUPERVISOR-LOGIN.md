@@ -875,7 +875,8 @@ if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFI
 - `FAILED: no kubeconfig at …`: set `DOWNLOADED` to the file the browser saved (a second
   download of the same name may be saved as `<cluster>-kubeconfig (1).yaml`).
 - `error: You must be logged in to the server (Unauthorized)`: the file has expired; download it
-  again.
+  again. If the new file does too, see **It cannot be withdrawn** in
+  [what the file is](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client).
 
 ### Get the VKS cluster's kubeconfig
 
@@ -962,6 +963,9 @@ if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFI
 - … under `Forbidden`: your role on the namespace cannot read the kubeconfig; ask for the
   **Namespaces Edit** role, then [Log out](#log-out) and log in again.
 - … under `Unauthorized`: run [Renew the Supervisor login](#renew-the-supervisor-login).
+- `error: You must be logged in to the server (Unauthorized)` with no `FAILED:` line: the file the
+  Supervisor holds no longer works; see **It cannot be withdrawn** in
+  [what the file is](#download-the-vks-clusters-kubeconfig-from-the-vsphere-client).
 - A node `NotReady`: the cluster is still starting, or a node has a problem; ask its
   administrator.
 
