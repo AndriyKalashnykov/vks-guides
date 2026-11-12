@@ -1093,7 +1093,7 @@ security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychai
 it; then run that line in PowerShell:
 
 ```sh
-P="$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')"
+P="$(cmd.exe /c 'echo %USERPROFILE%' </dev/null 2>/dev/null | tr -d '\r')"
 W="$([ -n "$P" ] && wslpath "$P" 2>/dev/null)"
 if [ -n "$W" ] && [ -d "$W" ] && cp ~/keycloak-ca.pem "$W/"; then echo "copied to $W"; else echo "FAILED: no Windows home folder found"; fi
 ```

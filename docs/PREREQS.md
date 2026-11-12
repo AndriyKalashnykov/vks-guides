@@ -176,7 +176,7 @@ Pick one:
    folder from Ubuntu: it prints the folder's path inside Ubuntu and changes nothing:
 
    ```sh
-   WIN_DOWNLOADS="$(wslpath "$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')")/Downloads"
+   WIN_DOWNLOADS="$(wslpath "$(cmd.exe /c 'echo %USERPROFILE%' </dev/null 2>/dev/null | tr -d '\r')")/Downloads"
    ls -d "$WIN_DOWNLOADS"
    ```
 
