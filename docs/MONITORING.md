@@ -245,7 +245,7 @@ if (-not $GRAFANA_PASSWORD -or $GRAFANA_PASSWORD.Length -eq 0) {
 </details>
 
 **Expect:** `secret/grafana-admin created` (after `secret "grafana-admin" deleted` on a second
-run).
+run; newer kubectl: `… deleted from monitoring namespace`).
 
 **If not:**
 - `FAILED: no password in this terminal`: run the line under **Type the password**, then this
@@ -654,7 +654,8 @@ kubectl --kubeconfig $VKS_KUBECONFIG delete namespace monitoring --ignore-not-fo
 ```
 
 **Expect:** `release "prometheus" uninstalled`, `service "prometheus-kube-prometheus-kubelet"
-deleted` and `namespace "monitoring" deleted`.
+deleted` (newer kubectl: `… deleted from kube-system namespace`) and `namespace "monitoring"
+deleted`.
 
 **If not:** `Release not loaded`: it was already uninstalled; the other lines print nothing.
 
@@ -1074,7 +1075,8 @@ if ($LASTEXITCODE -eq 0) {
 
 **Expect:** `application.argoproj.io "prometheus" deleted`, `appproject.argoproj.io "monitoring"
 deleted`, `service "prometheus-kube-prometheus-kubelet" deleted` and `namespace "monitoring"
-deleted`. Newer kubectl adds `from <namespace> namespace` to each `deleted` line.
+deleted`. Newer kubectl adds `from <namespace> namespace` to each `deleted` line but the
+namespace's.
 
 **If not:** `timed out waiting`: ArgoCD cannot reach the VKS cluster. In the ArgoCD page, delete the
 Application with **Non-cascading**. If the VKS cluster is gone, stop here. Otherwise run this block

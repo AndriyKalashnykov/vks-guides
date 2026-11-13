@@ -1647,7 +1647,8 @@ helm uninstall jaeger loki --kubeconfig $VKS_KUBECONFIG -n observability
 kubectl --kubeconfig $VKS_KUBECONFIG delete namespace observability --ignore-not-found
 ```
 
-**Expect:** `namespace "podinfo" deleted`, `configmap "observability-datasources" deleted …`,
+**Expect:** `namespace "podinfo" deleted`, `configmap "observability-datasources" deleted` (newer
+kubectl: `… deleted from monitoring namespace`),
 `deployment.apps/prometheus-grafana restarted`, `release "jaeger" uninstalled`, `release "loki"
 uninstalled` and `namespace "observability" deleted`.
 
