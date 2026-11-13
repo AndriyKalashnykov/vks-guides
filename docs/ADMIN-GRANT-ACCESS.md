@@ -675,7 +675,8 @@ if (-not $VKS_CLUSTER_NAMESPACE) {
 
 </details>
 
-**Expect:** `rolebinding.rbac.authorization.k8s.io "cicd-account-edit" deleted` (or `-view`), then
+**Expect:** `rolebinding.rbac.authorization.k8s.io "cicd-account-edit" deleted` (or `-view`;
+newer kubectl: `… deleted from team-a namespace`), then
 `sweeping ServiceAccount token Secrets in team-a` and a `deleted` line for each token Secret there,
 or `No resources found`; then `serviceaccount "cicd-account" deleted from kubeconfig-access
 namespace` (older kubectl: `serviceaccount "cicd-account" deleted`) and `may still list pods in

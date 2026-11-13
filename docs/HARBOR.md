@@ -2211,7 +2211,8 @@ if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } el
 
 </details>
 
-**Expect:** `certificate for <the new name>: yes`, `pod "harbor-nginx-…" deleted`, then
+**Expect:** `certificate for <the new name>: yes`, `pod "harbor-nginx-…" deleted` (newer
+kubectl: `… deleted from <Harbor's namespace> namespace`), then
 `deployment "harbor-nginx" successfully rolled out` (Harbor's web server runs again).
 
 **If not:**
@@ -2631,7 +2632,8 @@ if (-not $SUP) { "FAILED: cannot read the Supervisor (see the error above)" } el
 </details>
 
 **Expect:** `Harbor's certificate:` with your CA as issuer (Harbor's own certificate: `CN = Harbor CA`
-/ `CN=Harbor CA`), `pod "harbor-nginx-…" deleted`, then `deployment "harbor-nginx" successfully
+/ `CN=Harbor CA`), `pod "harbor-nginx-…" deleted` (newer kubectl: `… deleted from <Harbor's
+namespace> namespace`), then `deployment "harbor-nginx" successfully
 rolled out` (Harbor's web server runs again).
 
 **If not:**

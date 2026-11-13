@@ -2696,7 +2696,8 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 </details>
 
 **Expect:** `application.argoproj.io "cicd-demo" deleted`, `appproject.argoproj.io "cicd-demo"
-deleted`, `namespace "cicd-demo" deleted`, then with Gitea `namespace "cicd-ci" deleted`,
+deleted` (newer kubectl, both: `… deleted from <ArgoCD's vSphere Namespace> namespace`),
+`namespace "cicd-demo" deleted`, then with Gitea `namespace "cicd-ci" deleted`,
 `repository app: 204`, `repository deploy: 204` and `user cicd-bot: deleted`, or with GitLab
 `release "gitlab-writeback" uninstalled`, `namespace "gitlab-writeback" deleted`, `runner
 gitlab-runner: back to GITLAB.md step 8's settings`, the `harbor-push` and `harbor-ca` deletes and

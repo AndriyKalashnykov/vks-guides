@@ -1864,7 +1864,8 @@ Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_ADMIN_PASSWORD
 
 </details>
 
-**Expect:** `secret/octopus-adminpassword replaced`, `pod "octopus-octopus-deploy-0" deleted`,
+**Expect:** `secret/octopus-adminpassword replaced`, `pod "octopus-octopus-deploy-0" deleted`
+(newer kubectl: `… deleted from octopus namespace`),
 `condition met`, then `admin password: changed`. Sign in with the new password.
 
 **If not:**
