@@ -106,7 +106,11 @@ Remove-Item -Recurse -Force $D
 
 </details>
 
-<!-- DRAFT: Expect and If not are written from the lab run, not before. -->
+**Expect:** the build, `Login Succeeded`, the push, `pushed: <NEXUS_REGISTRY>/apps/test-web-apps:1.0.0`,
+then `Removed login credentials for …` (docker: `Removing login credentials for …`).
+
+**If not:** as in [NEXUS.md step 10](NEXUS.md#10-trust-nexus-and-push-an-image); `redeploy is not
+allowed` means this version was pushed before: push with a new `VERSION`.
 
 ## 3. Serve Gitea over HTTPS and create the deploy repository
 
@@ -115,6 +119,51 @@ Remove-Item -Recurse -Force $D
 ## 5. Create the ArgoCD project and the three Applications
 
 ## 6. Give the gateway its ArgoCD token
+
+Run this once, after step 5, as ArgoCD's `admin`: the gateway signs in to ArgoCD with a token of the
+project's role `octopus`, which may only read and sync the apps of the project `test-web-apps` and
+read their logs. It reads ArgoCD's first `admin` password and certificate from the Supervisor,
+signs in to ArgoCD, makes a token that ends after 90 days, and saves it in
+`~/.config/vks-guides/cd-octopus/argocd-project.token` (readable only by you), then signs out. It
+checks the token by listing the project's apps with it. You get the token that step 7 gives the
+gateway; ArgoCD keeps no copy you can read again, so run this again for a new one. Set
+`ARGOCD_NAMESPACE` to ArgoCD's vSphere Namespace.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+CD_DIR="$HOME/.config/vks-guides/cd-octopus"
+
+K() { kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" "$@"; }
+mkdir -p "$CD_DIR" && chmod 700 "$CD_DIR"
+IP="$(K get argocd argocd-1 -o jsonpath='{.status.externalIP}')"
+if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
+elif [ -z "$IP" ] || ! K get secret argocd-secret -o go-template='{{index .data "tls.crt" | base64decode}}' > "$CD_DIR/argocd-server.pem"; then
+  echo "FAILED: no ArgoCD address or certificate (ARGOCD.md step 1)"
+else
+  ac() { curl -sS --resolve "argocd-server:443:$IP" --cacert "$CD_DIR/argocd-server.pem" --connect-timeout 20 --max-time 60 "$@"; }
+  ( umask 077
+    K get secret argocd-initial-admin-secret -o go-template='{{.data.password | base64decode}}' | jq -Rs '{username:"admin",password:.}' > "$CD_DIR/login.json"
+    ac -H 'Content-Type: application/json' --data-binary @"$CD_DIR/login.json" https://argocd-server/api/v1/session \
+      | jq -r '"header = \"Authorization: Bearer \(.token)\""' > "$CD_DIR/admin.cfg"
+    ac -K "$CD_DIR/admin.cfg" -H 'Content-Type: application/json' --data-binary '{"id":"octopus-gateway","expiresIn":7776000}' \
+      https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token | jq -j '.token // empty' > "$CD_DIR/argocd-project.token"
+    ac -K "$CD_DIR/admin.cfg" -X DELETE -o /dev/null https://argocd-server/api/v1/session
+    rm -f "$CD_DIR/login.json" "$CD_DIR/admin.cfg"
+    printf 'header = "Authorization: Bearer %s"\n' "$(cat "$CD_DIR/argocd-project.token")" > "$CD_DIR/project.cfg" )
+  ac -K "$CD_DIR/project.cfg" https://argocd-server/api/v1/applications | jq -r '"token lists \(.items // [] | length) apps"'
+  rm -f "$CD_DIR/project.cfg"
+fi
+```
+
+</details>
+
+<!-- DRAFT: Windows twin, Expect and If not from the lab run of this exact block. Measured with the lab script:
+token exp 90 days, GET /api/v1/applications 200. DELETE /api/v1/session answered 415 there: check. -->
 
 ## 7. Connect Octopus to ArgoCD (the gateway)
 
