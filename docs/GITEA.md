@@ -1049,7 +1049,8 @@ This puts Gitea on a load-balancer address, port 3000, so machines outside the c
 the Supervisor) can clone public repositories without a login. **The address is plain HTTP and
 anyone who reaches it can try passwords, and anyone between it and ArgoCD can change what is
 cloned.** Use it for test repositories only. Never sign in, push or send a token through it; use
-step 6's `localhost:3300` for that.
+step 6's `localhost:3300` for that, or the HTTPS address in [Over HTTPS, for pushes and
+tokens](#over-https-for-pushes-and-tokens) below.
 
 1. Make the repository public: at <http://localhost:3300/gitea-admin/hello/settings>, under
    **Danger Zone**, click **Make Public**, then **Make Public** in the dialog.
@@ -1153,10 +1154,479 @@ characters, ending in `HEAD` and `refs/heads/main`.
 - git asks for a username or password, or prints `terminal prompts disabled`: the repository is
   still private. Type nothing; cancel, then do 1.
 
+### Over HTTPS, for pushes and tokens
+
+Do this when a program outside the cluster must push or send a token to Gitea, for example Octopus
+in [CD-OCTOPUS.md](CD-OCTOPUS.md), or must clone a private repository. It puts a small nginx in
+front of Gitea on a second load-balancer address, port 443, with a certificate from a CA of your own,
+so every client can check that it talks to your Gitea. Gitea itself does not restart. You get
+`https://<address>/<owner>/<repository>.git` addresses and the CA file `~/gitea-ca.pem` that the
+clients trust.
+
+1. Install cert-manager in the cluster: run [KEYCLOAK-VKS.md step
+   2](KEYCLOAK-VKS.md#2-install-cert-manager) once, with `VKS_CLUSTER` changed to Gitea's cluster and
+   `VSPHERE_NAMESPACE` to its vSphere Namespace. When the add-on is there already, it changes nothing.
+2. Run the block below. It creates the Service `gitea-https` (a new load-balancer address on port
+   443), waits for its address, then has cert-manager make a CA valid for 10 years and, from it, a
+   certificate for that address and the in-cluster name `gitea-https.gitea.svc`. Run again, it keeps
+   the address and the CA. Set `VKS_CLUSTER` to your VKS cluster's name.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea apply -f - <<'EOF'
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitea-https
+spec:
+  type: LoadBalancer
+  selector:
+    app: gitea-proxy
+  ports:
+    - { name: https, port: 443, targetPort: 8443 }
+EOF
+IP=""
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get service gitea-https -o name && for i in $(seq 60); do
+  IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get service gitea-https -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+  [ -n "$IP" ] && break
+  sleep 5
+done
+if [ -z "$IP" ]; then
+  echo "FAILED: no load-balancer address"
+else
+cat <<EOF | kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea apply -f - \
+  && kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea wait --for=condition=Ready certificate --all --timeout=3m \
+  && echo "Gitea's HTTPS address: $IP"
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: gitea-selfsigned
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gitea-ca
+spec:
+  isCA: true
+  commonName: Gitea CA
+  duration: 87600h
+  secretName: gitea-ca
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: gitea-selfsigned
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: gitea-ca
+spec:
+  ca:
+    secretName: gitea-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gitea-tls
+spec:
+  secretName: gitea-tls
+  commonName: ${IP}
+  dnsNames:
+    - gitea-https.gitea.svc
+  ipAddresses:
+    - ${IP}
+  usages:
+    - server auth
+  issuerRef:
+    name: gitea-ca
+    kind: Issuer
+EOF
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+@'
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitea-https
+spec:
+  type: LoadBalancer
+  selector:
+    app: gitea-proxy
+  ports:
+    - { name: https, port: 443, targetPort: 8443 }
+'@ | kubectl --kubeconfig $VKS_KUBECONFIG -n gitea apply -f -
+$IP = $null
+$global:LASTEXITCODE = $null
+kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get service gitea-https -o name
+if ($LASTEXITCODE -eq 0) { foreach ($i in 1..60) {
+  $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get service gitea-https -o 'jsonpath={.status.loadBalancer.ingress[0].ip}'
+  if ($IP) { break }
+  Start-Sleep -Seconds 5
+} }
+if (-not $IP) { "FAILED: no load-balancer address" } else {
+@"
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: gitea-selfsigned
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gitea-ca
+spec:
+  isCA: true
+  commonName: Gitea CA
+  duration: 87600h
+  secretName: gitea-ca
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: gitea-selfsigned
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: gitea-ca
+spec:
+  ca:
+    secretName: gitea-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gitea-tls
+spec:
+  secretName: gitea-tls
+  commonName: $IP
+  dnsNames:
+    - gitea-https.gitea.svc
+  ipAddresses:
+    - $IP
+  usages:
+    - server auth
+  issuerRef:
+    name: gitea-ca
+    kind: Issuer
+"@ | kubectl --kubeconfig $VKS_KUBECONFIG -n gitea apply -f -
+if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $VKS_KUBECONFIG -n gitea wait --for=condition=Ready certificate --all --timeout=3m }
+if ($LASTEXITCODE -eq 0) { "Gitea's HTTPS address: $IP" }
+}
+```
+
+</details>
+
+**Expect:** `service/gitea-https created` (`unchanged` when run again), `service/gitea-https`, four
+`created` lines, `certificate.cert-manager.io/gitea-ca condition met` and `…/gitea-tls condition
+met`, then `Gitea's HTTPS address:` and an IP address.
+
+**If not:**
+- `FAILED: no load-balancer address`: as for `gitea-public` above.
+- `no matches for kind "Issuer"`: cert-manager is not installed (1.).
+- `failed calling webhook "webhook.cert-manager.io"`: cert-manager is still starting. Wait a minute
+  and run this again.
+
+3. Run the block below. It starts nginx (one small container: it reserves 0.05 CPU and 32 MiB) in the
+   namespace `gitea`, which serves the certificate on port 443 and passes every request on to
+   Gitea, with no limit on the size of a push. It tells Gitea the address and `https` the client
+   used, so the clone addresses Gitea shows start with `https://<address>/`. nginx reloads a renewed
+   certificate within about 6 minutes. Run again, it keeps nginx running. Set `VKS_CLUSTER` to your
+   VKS cluster's name.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+PROXY_IMAGE="docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03"
+
+if C="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea apply -f - <<'EOF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitea-proxy
+data:
+  default.conf: |
+    server {
+      listen 8443 ssl;
+      ssl_certificate /etc/gitea-tls/tls.crt;
+      ssl_certificate_key /etc/gitea-tls/tls.key;
+      client_max_body_size 0;
+      location / {
+        proxy_pass http://gitea-http.gitea.svc:3000;
+        proxy_http_version 1.1;
+        proxy_request_buffering off;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+      }
+    }
+  start.sh: |
+    s="$(sha256sum /etc/gitea-tls/tls.crt)"
+    (while sleep 300; do n="$(sha256sum /etc/gitea-tls/tls.crt)"; if [ "$n" = "$s" ]; then :; else nginx -t && nginx -s reload && s="$n"; fi; done) &
+    exec nginx -g 'daemon off;'
+EOF
+)"; then
+  echo "$C"
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitea-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitea-proxy
+  template:
+    metadata:
+      labels:
+        app: gitea-proxy
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: proxy
+          image: ${PROXY_IMAGE}
+          command: ["/bin/sh", "/etc/nginx/conf.d/start.sh"]
+          ports:
+            - containerPort: 8443
+          readinessProbe:
+            tcpSocket:
+              port: 8443
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: conf
+              mountPath: /etc/nginx/conf.d
+            - name: tls
+              mountPath: /etc/gitea-tls
+              readOnly: true
+      volumes:
+        - name: conf
+          configMap:
+            name: gitea-proxy
+        - name: tls
+          secret:
+            secretName: gitea-tls
+EOF
+  case "$C" in *configured*) kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea rollout restart deployment/gitea-proxy ;; esac
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea rollout status deployment/gitea-proxy --timeout=5m
+fi
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$PROXY_IMAGE = "docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03"
+
+$global:LASTEXITCODE = $null
+$C = @'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitea-proxy
+data:
+  default.conf: |
+    server {
+      listen 8443 ssl;
+      ssl_certificate /etc/gitea-tls/tls.crt;
+      ssl_certificate_key /etc/gitea-tls/tls.key;
+      client_max_body_size 0;
+      location / {
+        proxy_pass http://gitea-http.gitea.svc:3000;
+        proxy_http_version 1.1;
+        proxy_request_buffering off;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+      }
+    }
+  start.sh: |
+    s="$(sha256sum /etc/gitea-tls/tls.crt)"
+    (while sleep 300; do n="$(sha256sum /etc/gitea-tls/tls.crt)"; if [ "$n" = "$s" ]; then :; else nginx -t && nginx -s reload && s="$n"; fi; done) &
+    exec nginx -g 'daemon off;'
+'@ | kubectl --kubeconfig $VKS_KUBECONFIG -n gitea apply -f -
+if ($LASTEXITCODE -eq 0) {
+  $C
+@"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitea-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitea-proxy
+  template:
+    metadata:
+      labels:
+        app: gitea-proxy
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: proxy
+          image: $PROXY_IMAGE
+          command: ["/bin/sh", "/etc/nginx/conf.d/start.sh"]
+          ports:
+            - containerPort: 8443
+          readinessProbe:
+            tcpSocket:
+              port: 8443
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: conf
+              mountPath: /etc/nginx/conf.d
+            - name: tls
+              mountPath: /etc/gitea-tls
+              readOnly: true
+      volumes:
+        - name: conf
+          configMap:
+            name: gitea-proxy
+        - name: tls
+          secret:
+            secretName: gitea-tls
+"@ | kubectl --kubeconfig $VKS_KUBECONFIG -n gitea apply -f -
+  if ("$C" -match 'configured') { kubectl --kubeconfig $VKS_KUBECONFIG -n gitea rollout restart deployment/gitea-proxy }
+  kubectl --kubeconfig $VKS_KUBECONFIG -n gitea rollout status deployment/gitea-proxy --timeout=5m
+}
+```
+
+</details>
+
+**Expect:** `configmap/gitea-proxy created`, `deployment.apps/gitea-proxy created`, then
+`deployment "gitea-proxy" successfully rolled out` (`unchanged` lines when run again).
+
+**If not:** `timed out waiting for the condition`: `kubectl --kubeconfig <the VKS kubeconfig> -n
+gitea describe pods -l app=gitea-proxy` says why; `secret "gitea-tls" not found` means 2. did not
+finish.
+
+4. Run the block below on each machine that clones or pushes over HTTPS. It saves Gitea's CA as
+   `~/gitea-ca.pem` (it replaces the file only when the new one is a certificate), then lists
+   `hello` through the HTTPS address with git checking the certificate against that CA, and reads
+   the clone address Gitea shows on the repository's page. It changes nothing in the cluster. You
+   get the CA file to give to every client of this address (Octopus, ArgoCD). Set `VKS_CLUSTER` to
+   your VKS cluster's name.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get service gitea-https -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get secret gitea-tls -o go-template='{{index .data "ca.crt" | base64decode}}' > "$HOME/gitea-ca.pem.new"
+if [ -z "$IP" ] || ! openssl x509 -noout -subject -in "$HOME/gitea-ca.pem.new"; then
+  rm -f "$HOME/gitea-ca.pem.new"; echo "FAILED: no address or no CA (run 2. and 3. first)"
+else
+  mv "$HOME/gitea-ca.pem.new" "$HOME/gitea-ca.pem"
+  GIT_TERMINAL_PROMPT=0 git -c credential.helper= -c http.sslCAInfo="$HOME/gitea-ca.pem" ls-remote "https://$IP/gitea-admin/hello.git"
+  curl -s --connect-timeout 20 --max-time 30 --cacert "$HOME/gitea-ca.pem" "https://$IP/gitea-admin/hello" | grep -o "https://$IP/gitea-admin/hello.git" | sort -u
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+$IP = kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get service gitea-https -o 'jsonpath={.status.loadBalancer.ingress[0].ip}'
+$CA = kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get secret gitea-tls -o 'jsonpath={.data.ca\.crt}'
+$X = $null
+try { $X = [Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String($CA)) } catch { }
+if (-not $IP -or -not $X) { "FAILED: no address or no CA (run 2. and 3. first)" } else {
+  "subject=$($X.Subject)"
+  [IO.File]::WriteAllText("$HOME\gitea-ca.pem", [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($CA)))
+  $env:GIT_TERMINAL_PROMPT = '0'
+  git -c credential.helper= -c http.sslBackend=openssl -c http.sslCAInfo="$HOME\gitea-ca.pem" ls-remote "https://$IP/gitea-admin/hello.git"
+  Remove-Item Env:GIT_TERMINAL_PROMPT
+  $P = curl.exe -s --connect-timeout 20 --max-time 30 --resolve "gitea-https.gitea.svc:443:$IP" --cacert "$HOME\gitea-ca.pem" "https://gitea-https.gitea.svc/gitea-admin/hello"
+  "$P" -split '"' | Where-Object { $_ -like 'https://*/gitea-admin/hello.git' } | Sort-Object -Unique
+}
+```
+
+**Expect:** `subject=CN = Gitea CA` (`subject=CN=Gitea CA` on macOS and Windows), two lines with the
+same 40 hex characters ending in `HEAD` and `refs/heads/main`, then
+`https://<address>/gitea-admin/hello.git` (Windows: `https://gitea-https.gitea.svc/gitea-admin/hello.git`,
+the name its check connects with). The repository must be public for this check (step 8, 1.).
+
+**If not:**
+- `SSL certificate problem`: `~/gitea-ca.pem` is not the CA nginx serves; run 2. to 4. again, or
+  wait 6 minutes after a renewal.
+- The clone address shows `http://` or `localhost:3300`: 3. did not finish; run it again.
+- `Failed to connect` or `timed out`: this machine cannot reach the address on port 443.
+
+To push or clone private repositories over this address, a client needs `~/gitea-ca.pem` and a
+login of its own: in Gitea, **Settings** → **Applications** → **Generate New Token**.
+
 ## 9. Uninstall (optional)
 
 **This deletes every repository in this Gitea.** Delete first any ArgoCD Application that clones
-from it.
+from it. It also deletes the HTTPS address's CA and gives its address back: a Gitea installed
+again gets a new CA and maybe a new address, so every client that trusted `~/gitea-ca.pem` or
+used the old address must change.
 
 Run this when you no longer need this Gitea, or to switch between A and B in step 4. It deletes
 the namespace `gitea`, with Gitea, its keys and its volume. It then waits until the cluster has
