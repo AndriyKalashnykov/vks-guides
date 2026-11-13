@@ -236,7 +236,7 @@ if ($MISSING.Count -gt 0) { "MISSING: $MISSING" } elseif ($SAME.Count -gt 0) { "
 
 **Expect:** the merged contexts, your old current context still marked `*` (the first file's wins),
 then `merged into …/.kube/config`. Then `kubectl --context <name> get nodes` answers for each
-cluster.
+context in `FILES`: the nodes, or `Forbidden` for a hand-out without rights to nodes.
 
 **If not:**
 - `MISSING: …`: set `FILES` to files that exist (kubectl itself would skip a missing file without
