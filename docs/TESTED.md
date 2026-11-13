@@ -44,7 +44,7 @@ Group page: [vSphere Namespaces and VKS clusters](CLUSTERS.md).
 
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Create a vSphere Namespace](NAMESPACE.md) | part | part | part | part | ✅ | ✅ |
+| [Create a vSphere Namespace](NAMESPACE.md) | part | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install Harbor](HARBOR.md) | part | — | — | — | — | — |
 | [Create a VKS cluster](CLUSTER.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [VKS add-ons](ADDONS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
