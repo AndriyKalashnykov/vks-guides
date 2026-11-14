@@ -806,8 +806,10 @@ foreach ($E in 'dev', 'test', 'prod') {
 **If not:**
 - `Unknown` instead of `Synced`, and the ArgoCD page shows `x509: certificate signed by unknown
   authority` for the Application: ArgoCD tried Gitea before it had read Gitea's CA, and waiting does
-  not clear it. In the ArgoCD page open each Application and click **Refresh** → **Hard Refresh**; it
-  shows `Synced` within a minute.
+  not clear it. In the ArgoCD page open each Application and click **Refresh** → **Hard Refresh**, or
+  run `kubectl --kubeconfig <the Supervisor kubeconfig> -n <ArgoCD's vSphere Namespace> annotate
+  application.argoproj.io test-web-apps-<env> argocd.argoproj.io/refresh=hard --overwrite`; it shows
+  `Synced` within a minute.
 - `pods none`: the Application is not synced yet, or its namespace is missing (step 4).
 - `0/1` with `ErrImagePull` (`kubectl --kubeconfig <file> -n test-web-apps-<env> get pods`): the
   cluster's nodes do not trust Nexus's CA, or `nexus-pull` is missing (step 4).
@@ -1066,7 +1068,7 @@ gateway:
     serverGrpcUrl: grpc://argocd-server:443
     projectAuthenticationSecretName: gw-project-tokens
 EOF
-  helm upgrade --install --atomic --timeout 6m gw "$CHART" --version 2.4.0 --kubeconfig "$VKS_KUBECONFIG" -n "$NS" -f "$CD_DIR/gateway-values.yaml" >/dev/null \
+  helm upgrade --install --rollback-on-failure --timeout 6m gw "$CHART" --version 2.4.0 --kubeconfig "$VKS_KUBECONFIG" -n "$NS" -f "$CD_DIR/gateway-values.yaml" >/dev/null \
     && kc -n "$NS" rollout status deployment/octopus-argocd-gateway --timeout=3m \
     && sleep 20 && kc -n "$NS" logs deployment/octopus-argocd-gateway | grep -E '"state":"READY"|token status' | cut -c1-200
 fi
@@ -1177,7 +1179,7 @@ gateway:
 "@
     [IO.File]::WriteAllText("$CD_DIR\gateway-values.yaml", ($V -replace "`r`n", "`n") + "`n")
     $global:LASTEXITCODE = $null
-    helm upgrade --install --atomic --timeout 6m gw $CHART --version 2.4.0 --kubeconfig $VKS_KUBECONFIG -n $NS -f "$CD_DIR\gateway-values.yaml" | Out-Null
+    helm upgrade --install --rollback-on-failure --timeout 6m gw $CHART --version 2.4.0 --kubeconfig $VKS_KUBECONFIG -n $NS -f "$CD_DIR\gateway-values.yaml" | Out-Null
     if ($LASTEXITCODE -eq 0) { kubectl @KC -n $NS rollout status deployment/octopus-argocd-gateway --timeout=3m }
     if ($LASTEXITCODE -eq 0) {
       Start-Sleep 20
@@ -1194,12 +1196,13 @@ Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_API_KEY
 created` lines, `deployment "octopus-argocd-gateway" successfully rolled out`, then the gateway's log
 lines: `"Argo CD authentication token status"` with `"status":"ok"`, and `"state":"READY"` for
 `octopus-grpc.octopus.svc:8443` and for `argocd-server:443`. Run again: `unchanged` or `configured`
-lines and the same log lines. Helm 4 also prints `Flag --atomic has been deprecated`.
+lines and the same log lines.
 
 **If not:**
 - `Error: … pre-install: … octopus-argocd-gateway-registration … failed`: `kubectl --kubeconfig <file>
   -n octopus-argocd-gateway logs job/octopus-argocd-gateway-registration` says why. `invalid header
   field value for "Authorization"`: the API key was typed with a space or a line break; type it again.
+  `unauthorized`: the API key is wrong or was deleted; make a new one (1.) and type it again.
   `An ArgoCDGateway with this name already exists`: an earlier install registered it; delete the
   instance in Octopus (**Infrastructure** → **Argo CD Instances**), then run the block again.
 - `thumbprint … does not match` in the gateway's log after Octopus's gRPC certificate changed: the
@@ -1934,7 +1937,8 @@ After Gitea was installed again ([GITEA.md step 9](GITEA.md#9-uninstall-optional
 changed, give the new CA and address to both sides:
 
 1. Run [Over HTTPS, for pushes and tokens](GITEA.md#over-https-for-pushes-and-tokens) 2. to 4. again
-   (a new `~/gitea-ca.pem`). If Gitea was installed again, its repositories and users are gone: delete
+   (a new `~/gitea-ca.pem`); 4. checks out only once nginx serves the new certificate, about 6 minutes
+   after 2. If Gitea was installed again, its repositories and users are gone: delete
    `gitea-octopus.token` and `gitea-argocd.token` in `~/.config/vks-guides/cd-octopus`, run step 3 (new
    users and tokens), and step 11's first block if you use it.
 2. Run step 5 again with the new `GITEA_ADDRESS`: it adds the new CA to ArgoCD and points the project and
