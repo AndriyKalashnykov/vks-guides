@@ -1638,7 +1638,7 @@ from it. It also deletes the HTTPS address's CA and gives its address back: a Gi
 again gets a new CA and maybe a new address, so every client that trusted `~/gitea-ca.pem` or
 used the old address must change: run 2. to 4. of the HTTPS part again, give ArgoCD the new CA (and
 the new address) and give Octopus the new CA, then restart it
-([CD-OCTOPUS.md](CD-OCTOPUS.md) says how for both).
+([CD-OCTOPUS.md](CD-OCTOPUS.md#gitea-got-a-new-ca-or-address) says how for both).
 
 Run this when you no longer need this Gitea, or to switch between A and B in step 4. It deletes
 the namespace `gitea`, with Gitea, its keys and its volume. It then waits until the cluster has

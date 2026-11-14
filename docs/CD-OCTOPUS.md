@@ -19,12 +19,17 @@ Do these first:
   and `nexus-ca.pem`; your machine trusts Nexus's CA;
 - [OCTOPUS.md](OCTOPUS.md) steps 1 to 11: Octopus Server 2026.3 with the environments `dev`, `test`
   and `prod`, the lifecycle `dev-test-prod`, the Docker feed `nexus`, and `octopus-ca.pem`;
-- [GITEA.md](GITEA.md) steps 1 to 8 and [Over HTTPS, for pushes and
-  tokens](GITEA.md#over-https-for-pushes-and-tokens), with `gitea-ca.pem`;
+- [GITEA.md](GITEA.md) steps 1 to 7, step 8's 1. (the repository `hello` public) and [Over HTTPS, for
+  pushes and tokens](GITEA.md#over-https-for-pushes-and-tokens), with `gitea-ca.pem`;
 - [ARGOCD.md](ARGOCD.md) steps 1 to 4 and 7: an ArgoCD instance and the VKS cluster for the app
   added to it;
 - [NEXUS.md step 11](NEXUS.md#11-let-vks-clusters-pull-from-nexus) for the app's cluster: its nodes
-  trust Nexus's CA.
+  trust Nexus's CA, and [Check that a cluster can pull](NEXUS.md#check-that-a-cluster-can-pull) made
+  the pull Secret `nexus-pull` in its namespace `default`.
+
+The blocks name three VKS clusters: Octopus's (`my-octopus-cluster`), Gitea's (`my-gitea-cluster`)
+and the app's (`my-app-cluster`, the one added to ArgoCD). They may be the same cluster; set each
+block's `VKS_CLUSTER` to the one it names.
 
 You need [kubectl](KUBECTL.md), [Helm](HELM.md), [the VCF CLI](VCF.md), [jq, curl, openssl and git, and
 podman or docker](PREREQS.md); the **Namespaces Edit** role on ArgoCD's vSphere Namespace; Octopus's
@@ -76,7 +81,7 @@ NEXUS_REGISTRY="192.168.10.50"
 GITEA_ADDRESS="192.168.10.60"
 ARGOCD_NAMESPACE="my-namespace"
 VSPHERE_NAMESPACE="my-namespace"
-VKS_CLUSTER="my-vks-cluster"
+VKS_CLUSTER="my-app-cluster"
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
@@ -99,7 +104,7 @@ $NEXUS_REGISTRY = "192.168.10.50"
 $GITEA_ADDRESS = "192.168.10.60"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VSPHERE_NAMESPACE = "my-namespace"
-$VKS_CLUSTER = "my-vks-cluster"
+$VKS_CLUSTER = "my-app-cluster"
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 
@@ -259,7 +264,7 @@ HTTPS address, and `NEXUS_REGISTRY` and `NEXUS_REPO` as in NEXUS.md.
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
-VKS_CLUSTER="my-vks-cluster"
+VKS_CLUSTER="my-gitea-cluster"
 GITEA_ADDRESS="192.168.10.60"
 NEXUS_REGISTRY="192.168.10.50"
 NEXUS_REPO="apps"
@@ -328,7 +333,7 @@ fi
 <summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
-$VKS_CLUSTER = "my-vks-cluster"
+$VKS_CLUSTER = "my-gitea-cluster"
 $GITEA_ADDRESS = "192.168.10.60"
 $NEXUS_REGISTRY = "192.168.10.50"
 $NEXUS_REPO = "apps"
@@ -497,7 +502,7 @@ it updates the copies. Set `VKS_CLUSTER` to the app's cluster.
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-VKS_CLUSTER="my-vks-cluster"
+VKS_CLUSTER="my-app-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
@@ -515,7 +520,7 @@ fi
 **Windows (PowerShell):**
 
 ```powershell
-$VKS_CLUSTER = "my-vks-cluster"
+$VKS_CLUSTER = "my-app-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $global:LASTEXITCODE = $null
@@ -567,7 +572,7 @@ SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VSPHERE_NAMESPACE="my-namespace"
-VKS_CLUSTER="my-vks-cluster"
+VKS_CLUSTER="my-app-cluster"
 GITEA_ADDRESS="192.168.10.60"
 CD_DIR="$HOME/.config/vks-guides/cd-octopus"
 
@@ -652,7 +657,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VSPHERE_NAMESPACE = "my-namespace"
-$VKS_CLUSTER = "my-vks-cluster"
+$VKS_CLUSTER = "my-app-cluster"
 $GITEA_ADDRESS = "192.168.10.60"
 $CD_DIR = "$HOME\.config\vks-guides\cd-octopus"
 
@@ -753,7 +758,7 @@ need two minutes to trust Gitea's CA. Set the values as above.
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_CLUSTER="my-vks-cluster"
+VKS_CLUSTER="my-app-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 for E in dev test prod; do
@@ -771,7 +776,7 @@ done
 $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
-$VKS_CLUSTER = "my-vks-cluster"
+$VKS_CLUSTER = "my-app-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 foreach ($E in 'dev', 'test', 'prod') {
@@ -916,10 +921,11 @@ if (-not $IP -or $LASTEXITCODE -ne 0 -or -not $CRT) {
 prints the same; the earlier token keeps working until it ends (step 12 removes it).
 
 **If not:**
-- `FAILED: no working token`, after `curl: (22) … 401`: ArgoCD's first `admin` password was changed;
-  the Secret `argocd-initial-admin-secret` no longer holds it.
-- … after `curl: (22) … 403` or `404`: step 5 did not create the project `test-web-apps` with its role
-  `octopus`.
+- `FAILED: no working token`, after `curl: (22) The requested URL returned error: 401`: ArgoCD's first
+  `admin` password was changed, so the Secret `argocd-initial-admin-secret` no longer holds it; ask
+  whoever changed it for the password.
+- … after `curl: (22) The requested URL returned error: 404`: step 5 did not create the project
+  `test-web-apps` with its role `octopus`.
 - `FAILED: no ArgoCD address or certificate`: the instance is not `Ready` ([ARGOCD.md step
   1](ARGOCD.md#1-check-for-an-argocd-you-have)).
 
@@ -1434,6 +1440,21 @@ To change the Gitea token of `octopus` (it does not end): delete
 `~/.config/vks-guides/cd-octopus/gitea-octopus.token`, run step 3 again (it makes a new one), put it into
 the Git credential `gitea-deploy` (step 8), and deploy to `dev` once to check it.
 
+### Gitea got a new CA or address
+
+After Gitea was installed again ([GITEA.md step 9](GITEA.md#9-uninstall-optional)) or its HTTPS address
+changed, give the new CA and address to both sides:
+
+1. Run [Over HTTPS, for pushes and tokens](GITEA.md#over-https-for-pushes-and-tokens) 2. to 4. again
+   (a new `~/gitea-ca.pem`), and step 3 if the repository and users are gone.
+2. Run step 5 again with the new `GITEA_ADDRESS`: it adds the new CA to ArgoCD and points the project and
+   the Applications at the new address.
+3. Run the CA line of step 8 again and give the file to Octopus with OCTOPUS.md step 11, then restart
+   Octopus as that step's **If not:** says; change the allowed repository of the Git credential
+   `gitea-deploy` to the new address (step 8).
+
+<!-- DRAFT: not run on the lab yet. -->
+
 ## 13. Clean up (optional)
 
 Do this when you no longer need the example. It removes only what this guide made; Octopus, Nexus,
@@ -1456,7 +1477,7 @@ Gitea, ArgoCD and the clusters stay.
 SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
-VKS_CLUSTER="my-vks-cluster"
+VKS_CLUSTER="my-app-cluster"
 OCTOPUS_CLUSTER="my-octopus-cluster"
 GITEA_ADDRESS="192.168.10.60"
 
