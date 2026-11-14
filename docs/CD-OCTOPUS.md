@@ -890,6 +890,64 @@ the new one.
 
 ## 13. Clean up (optional)
 
+Do this when you no longer need the example. It removes only what this guide made; Octopus, Nexus,
+Gitea, ArgoCD and the clusters stay.
+
+1. In Octopus: **Projects** → `test-web-apps` → **Settings** → the menu (⋮) → **Delete**; then
+   **Infrastructure** → **Argo CD Instances** → `<VKS_CLUSTER>-argocd` → the menu → **Delete** (the
+   gateway stops reporting); then **Manage** → **Git Credentials** → `gitea-deploy` → **Delete**.
+2. Run the block below. On the Supervisor it deletes the three Applications, which deletes the app in
+   the three namespaces, and waits until they are gone; then the project `test-web-apps`, ArgoCD's login
+   for `deploy` and Gitea's CA in ArgoCD. In the app's cluster it deletes the three namespaces; in
+   Octopus's cluster it uninstalls the gateway and deletes its namespace. It stops before deleting
+   anything of the project if an Application is still there. Run again, it says what is already gone.
+   Set the values as in steps 5 and 7.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+OCTOPUS_CLUSTER="my-octopus-cluster"
+GITEA_ADDRESS="192.168.10.60"
+
+K() { kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" "$@"; }
+for E in dev test prod; do K delete applications.argoproj.io "test-web-apps-$E" --ignore-not-found --wait=false; done
+N=""
+for i in $(seq 60); do
+  if ! N="$(K get applications.argoproj.io test-web-apps-dev test-web-apps-test test-web-apps-prod --ignore-not-found -o name)"; then N="FAILED"; break; fi
+  [ -z "$N" ] && break
+  sleep 5
+done
+if [ -n "$N" ]; then
+  echo "FAILED: Applications not gone after 5 minutes ($N); the project, its login and the CA are kept"
+else
+  K delete appproject test-web-apps --ignore-not-found
+  K delete secret repo-gitea-deploy --ignore-not-found
+  if ! C="$(K get configmap argocd-tls-certs-cm -o jsonpath='{.data}')"; then
+    echo "FAILED: cannot read argocd-tls-certs-cm; Gitea's CA in ArgoCD is kept"
+  elif printf '%s' "$C" | grep -qF "\"$GITEA_ADDRESS\""; then
+    K patch configmap argocd-tls-certs-cm --type json -p "[{\"op\":\"remove\",\"path\":\"/data/$GITEA_ADDRESS\"}]"
+  else
+    echo "Gitea's CA in ArgoCD: already gone"
+  fi
+  for E in dev test prod; do kubectl --kubeconfig "$HOME/.kube/${VKS_CLUSTER}.kubeconfig" delete namespace "test-web-apps-$E" --ignore-not-found; done
+  helm uninstall gw --kubeconfig "$HOME/.kube/${OCTOPUS_CLUSTER}.kubeconfig" -n octopus-argocd-gateway --ignore-not-found
+  kubectl --kubeconfig "$HOME/.kube/${OCTOPUS_CLUSTER}.kubeconfig" delete namespace octopus-argocd-gateway --ignore-not-found
+fi
+```
+
+</details>
+
+<!-- DRAFT: Windows twin; Expect/If not; run on the lab at the very end (it removes the test setup). -->
+
+3. In Gitea, if you no longer need them: delete the repository `deploy` (its **Settings** → **Danger
+   Zone**) and the users `octopus` and `argocd` (**Site Administration** → **User Accounts**), and
+   delete `~/.config/vks-guides/cd-octopus`.
+
 ## References
 
 - Octopus: [Argo CD in Octopus](https://octopus.com/docs/argo-cd)
