@@ -6,7 +6,8 @@ GitLab's cluster needs a worker with its own image disk (tested with 40 GiB), ma
 [CLUSTER.md](CLUSTER.md#9-create-the-cluster-with-kubectl-and-a-yaml-file) step 9, not
 [ARGOCD.md](ARGOCD.md#6-create-a-vks-cluster-with-argocd) step 6. Octopus Deploy, for releases
 promoted through dev, test and prod, needs none of the other guides here except Nexus, for its step
-11.
+11. To have Octopus promote releases through ArgoCD, do Nexus, Octopus, Gitea and ArgoCD first, then
+[CD-OCTOPUS.md](CD-OCTOPUS.md).
 
 | guide | what it is |
 |---|---|
@@ -17,6 +18,7 @@ promoted through dev, test and prod, needs none of the other guides here except 
 | [Run GitLab in a VKS cluster](GITLAB.md) | GitLab Community Edition, Git and CI/CD in one product, in one pod of a VKS cluster, with a runner that runs each CI job as a pod; an alternative to Gitea and Tekton |
 | [Build and deploy on every push](CICD.md) | a push to a Git repository builds the image in the VKS cluster, pushes it to the container registry (Harbor) and has ArgoCD roll it out, with Gitea and Tekton or with GitLab |
 | [Run Octopus Deploy in a VKS cluster](OCTOPUS.md) | a release server that promotes releases through dev, test and prod, with SQL Server Express, in a VKS cluster |
+| [Promote releases with Octopus and ArgoCD](CD-OCTOPUS.md) | Octopus releases each new image from Nexus to dev, test and prod, with an approval before prod, by committing the image tag to Git; ArgoCD rolls it out |
 
 ## Tested on
 
