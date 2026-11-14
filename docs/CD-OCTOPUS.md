@@ -539,6 +539,145 @@ prints the same; the earlier token keeps working until it ends (step 12 removes 
 
 ## 7. Connect Octopus to ArgoCD (the gateway)
 
+The Argo CD gateway is a small program that Octopus provides; it runs in Octopus's cluster, keeps a
+connection to Octopus (gRPC, port 8443) and to ArgoCD, and tells Octopus which Applications exist and
+how they are doing. It registers itself in Octopus once, with an Octopus API key.
+
+1. In Octopus's web page, click your user (bottom left) → **Profile** → **My API Keys** → **New API
+   key**, enter a purpose such as `argocd gateway`, and click **Generate new**. Copy the key (it starts
+   with `API-`); Octopus shows it once. You delete it again in 4.
+2. Type the key in the terminal where you run this guide's blocks; it stays in this terminal only:
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+printf 'Octopus API key: '; IFS= read -rs OCTOPUS_API_KEY; echo
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$OCTOPUS_API_KEY = Read-Host 'Octopus API key' -AsSecureString
+```
+
+3. Then run this, in the same terminal. In Octopus's cluster it creates the namespace
+   `octopus-argocd-gateway` (`restricted` pods only) and in it:
+
+   - the Service `argocd-server`, which points at ArgoCD's address, so that the gateway reaches ArgoCD
+     by the name ArgoCD's certificate is made for (`argocd-server`) and checks that certificate;
+   - three Secrets: the API key, step 6's ArgoCD token, and the certificates to trust (Octopus's CA
+     from OCTOPUS.md step 5 and ArgoCD's own certificate);
+   - the gateway, installed with Helm from Octopus's chart `octopus-argocd-gateway-chart` 2.4.0 (image
+     `v2.2.1`, pinned by its digest), with its daily self-update turned off, reaching Octopus inside the
+     cluster and pinned to the certificate of Octopus's gRPC port.
+
+   It registers the gateway in Octopus as `<VKS_CLUSTER>-argocd` for the environments `dev`, `test` and
+   `prod`, waits until it runs, and prints its log lines about the connections. You get Octopus and
+   ArgoCD connected. Run again, it keeps the registration (it changes the gateway only if a value
+   changed). Set `VKS_CLUSTER` to Octopus's cluster, `ARGOCD_NAMESPACE` to ArgoCD's vSphere Namespace.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_CLUSTER="my-octopus-cluster"
+ARGOCD_NAMESPACE="my-namespace"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+CD_DIR="$HOME/.config/vks-guides/cd-octopus"
+CHART="oci://registry-1.docker.io/octopusdeploy/octopus-argocd-gateway-chart"
+NS="octopus-argocd-gateway"
+
+kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
+ARGOCD_IP="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get argocd argocd-1 -o jsonpath='{.status.externalIP}')"
+GRPC_IP="$(kc -n octopus get service octopus-grpc -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+if ! command -v helm >/dev/null 2>&1; then echo "MISSING: helm (HELM.md)"
+elif [ -z "${OCTOPUS_API_KEY:-}" ]; then echo "STOPPED: type the Octopus API key first (the line above)"
+elif [ -z "$ARGOCD_IP" ] || [ -z "$GRPC_IP" ]; then echo "FAILED: no ArgoCD address or no octopus-grpc address (OCTOPUS.md step 4)"
+elif [ ! -s "$CD_DIR/argocd-project.token" ] || [ ! -s "$CD_DIR/argocd-server.pem" ]; then echo "MISSING: step 6's token or certificate in $CD_DIR"
+elif ! TP="$(openssl s_client -connect "$GRPC_IP:8443" </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha1 | cut -d= -f2 | tr -d :)" || [ -z "$TP" ]; then
+  echo "FAILED: cannot read the certificate of Octopus's gRPC port $GRPC_IP:8443"
+else
+  kc create namespace "$NS" --dry-run=client -o yaml | kc apply -f - >/dev/null
+  kc label namespace "$NS" --overwrite pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/warn=restricted >/dev/null
+  kc -n "$NS" apply -f - <<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-server
+spec:
+  ports:
+    - name: https
+      port: 443
+      targetPort: 443
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: argocd-server-1
+  labels:
+    kubernetes.io/service-name: argocd-server
+addressType: IPv4
+ports:
+  - name: https
+    port: 443
+    protocol: TCP
+endpoints:
+  - addresses:
+      - ${ARGOCD_IP}
+EOF
+  printf '%s' "$OCTOPUS_API_KEY" | kc -n "$NS" create secret generic octo-registration --from-file=token=/dev/stdin --dry-run=client -o yaml | kc apply -f -
+  kc -n "$NS" create secret generic gw-project-tokens --from-file=PROJECT_AUTH_TOKEN_test-web-apps="$CD_DIR/argocd-project.token" --dry-run=client -o yaml | kc apply -f -
+  kc -n octopus get secret octopus-ca -o go-template='{{index .data "ca.crt" | base64decode}}' \
+    | kc -n "$NS" create secret generic gw-certs --from-file=octopus-server-http-certificate.pem=/dev/stdin \
+        --from-file=argo-cd-server-certificate.pem="$CD_DIR/argocd-server.pem" --dry-run=client -o yaml | kc apply -f -
+  cat > "$CD_DIR/gateway-values.yaml" <<EOF
+image:
+  tag: "v2.2.1@sha256:9c8aa3317525c383a4ef623346b7c76b4dbe83b72e61c8b195d3281507b031f7"
+autoUpdate:
+  enabled: false
+podSecurityContext:
+  runAsNonRoot: true
+registration:
+  octopus:
+    name: ${VKS_CLUSTER}-argocd
+    serverApiUrl: https://octopus-web.octopus.svc
+    serverAccessTokenSecretName: octo-registration
+    serverAccessTokenSecretKey: token
+    environments:
+      - dev
+      - test
+      - prod
+    spaceId: Spaces-1
+  argocd:
+    webUiUrl: https://${ARGOCD_IP}
+gateway:
+  serverCertificateSecretName: gw-certs
+  octopus:
+    serverGrpcUrl: grpc://octopus-grpc.octopus.svc:8443
+    serverThumbprint: "${TP}"
+  argocd:
+    serverGrpcUrl: grpc://argocd-server:443
+    projectAuthenticationSecretName: gw-project-tokens
+EOF
+  helm upgrade --install --atomic --timeout 6m gw "$CHART" --version 2.4.0 --kubeconfig "$VKS_KUBECONFIG" -n "$NS" -f "$CD_DIR/gateway-values.yaml" >/dev/null \
+    && kc -n "$NS" rollout status deployment/octopus-argocd-gateway --timeout=3m \
+    && sleep 20 && kc -n "$NS" logs deployment/octopus-argocd-gateway | grep -E '"state":"READY"|token status' | cut -c1-200
+fi
+unset OCTOPUS_API_KEY
+```
+
+</details>
+
+<!-- DRAFT: Windows twin; Expect/If not from a pasted run of this exact block (lab used an equivalent script 2026-11-13 18:08; measured log lines: READY for octopus-grpc.octopus.svc:8443 and argocd-server:443, token status ok). Finding to cover: a token Secret with a trailing newline -> "invalid header field value for Authorization". -->
+
+4. In Octopus, open **Infrastructure** → **Argo CD Instances**: the instance `<VKS_CLUSTER>-argocd` is
+   healthy and shows the three Applications. Then delete the API key from 1. (**Profile** → **My API
+   Keys**): the gateway needs it only to register.
+
+![Argo CD Instances: octopus-gc-argocd healthy, 3 applications, environments dev and 2 more](img/cd-octopus/01-argocd-instances.jpg)
+
 ## 8. Create the Octopus project
 
 ## 9. Release 1.0.0 to dev, test and prod
