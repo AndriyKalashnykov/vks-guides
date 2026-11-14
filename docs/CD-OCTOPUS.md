@@ -1181,7 +1181,22 @@ Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_API_KEY
 
 </details>
 
-<!-- DRAFT: Expect/If not from a pasted run of this exact block (lab used an equivalent script 2026-11-13 18:08). -->
+**Expect:** `service/argocd-server created`, `endpointslice…/argocd-server-1 created`, three `secret/…
+created` lines, `deployment "octopus-argocd-gateway" successfully rolled out`, then the gateway's log
+lines: `"Argo CD authentication token status"` with `"status":"ok"`, and `"state":"READY"` for
+`octopus-grpc.octopus.svc:8443` and for `argocd-server:443`. Run again: `unchanged` or `configured`
+lines and the same log lines. Helm 4 also prints `Flag --atomic has been deprecated`.
+
+**If not:**
+- `Error: … pre-install: … octopus-argocd-gateway-registration … failed`: `kubectl --kubeconfig <file>
+  -n octopus-argocd-gateway logs job/octopus-argocd-gateway-registration` says why. `invalid header
+  field value for "Authorization"`: the API key was typed with a space or a line break; type it again.
+  `An ArgoCDGateway with this name already exists`: an earlier install registered it; delete the
+  instance in Octopus (**Infrastructure** → **Argo CD Instances**), then run the block again.
+- No `"state":"READY"` for `argocd-server:443`: the gateway cannot reach ArgoCD's address on port 443,
+  or ArgoCD's certificate changed; run step 6 again (it saves the certificate), then this block.
+
+<!-- DRAFT: second-run arm of this exact block PASS on the lab 2026-11-14 15:02 EST; first-run arm by an equivalent script 2026-11-13 18:08 (the newline finding); Windows twin parsed, not run. -->
 
 4. In Octopus, open **Infrastructure** → **Argo CD Instances**: the instance `<VKS_CLUSTER>-argocd` is
    healthy and shows the three Applications. Then delete the API key from 1. (**Profile** → **My API
