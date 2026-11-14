@@ -145,17 +145,25 @@ if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
 elif [ -z "$IP" ] || ! K get secret argocd-secret -o go-template='{{index .data "tls.crt" | base64decode}}' > "$CD_DIR/argocd-server.pem"; then
   echo "FAILED: no ArgoCD address or certificate (ARGOCD.md step 1)"
 else
-  ac() { curl -sS --resolve "argocd-server:443:$IP" --cacert "$CD_DIR/argocd-server.pem" --connect-timeout 20 --max-time 60 "$@"; }
+  ac() { curl -fsS --resolve "argocd-server:443:$IP" --cacert "$CD_DIR/argocd-server.pem" --connect-timeout 20 --max-time 60 -H 'Content-Type: application/json' "$@"; }
   ( umask 077
     K get secret argocd-initial-admin-secret -o go-template='{{.data.password | base64decode}}' | jq -Rs '{username:"admin",password:.}' > "$CD_DIR/login.json"
-    ac -H 'Content-Type: application/json' --data-binary @"$CD_DIR/login.json" https://argocd-server/api/v1/session \
-      | jq -r '"header = \"Authorization: Bearer \(.token)\""' > "$CD_DIR/admin.cfg"
-    ac -K "$CD_DIR/admin.cfg" -H 'Content-Type: application/json' --data-binary '{"id":"octopus-gateway","expiresIn":7776000}' \
-      https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token | jq -j '.token // empty' > "$CD_DIR/argocd-project.token"
-    ac -K "$CD_DIR/admin.cfg" -X DELETE -o /dev/null https://argocd-server/api/v1/session
+    ac --data-binary @"$CD_DIR/login.json" https://argocd-server/api/v1/session \
+      | jq -r '"header = \"Authorization: Bearer \(.token // "")\""' > "$CD_DIR/admin.cfg"
+    jq -n --arg id "octopus-gateway-$(date +%Y%m%d%H%M%S)" '{id:$id,expiresIn:7776000}' \
+      | ac -K "$CD_DIR/admin.cfg" --data-binary @- https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token \
+      | jq -j '.token // empty' > "$CD_DIR/argocd-project.token.new"
+    ac -K "$CD_DIR/admin.cfg" -X DELETE -o /dev/null https://argocd-server/api/v1/session || echo "NOTE: ArgoCD sign-out failed (the session ends by itself)"
     rm -f "$CD_DIR/login.json" "$CD_DIR/admin.cfg"
-    printf 'header = "Authorization: Bearer %s"\n' "$(cat "$CD_DIR/argocd-project.token")" > "$CD_DIR/project.cfg" )
-  ac -K "$CD_DIR/project.cfg" https://argocd-server/api/v1/applications | jq -r '"token lists \(.items // [] | length) apps"'
+    printf 'header = "Authorization: Bearer %s"\n' "$(cat "$CD_DIR/argocd-project.token.new")" > "$CD_DIR/project.cfg" )
+  if [ -s "$CD_DIR/argocd-project.token.new" ] \
+     && N="$(ac -K "$CD_DIR/project.cfg" https://argocd-server/api/v1/applications | jq -e '(.items // []) | length')"; then
+    mv "$CD_DIR/argocd-project.token.new" "$CD_DIR/argocd-project.token"
+    echo "token saved: lists $N apps of test-web-apps"
+  else
+    rm -f "$CD_DIR/argocd-project.token.new"
+    echo "FAILED: no working token; $CD_DIR/argocd-project.token is as it was"
+  fi
   rm -f "$CD_DIR/project.cfg"
 fi
 ```

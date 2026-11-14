@@ -16,14 +16,19 @@ The blocks keep their files in `~/.config/vks-guides/gitea` (PowerShell:
   and its kubeconfig ([SUPERVISOR-LOGIN.md](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig));
 - [kubectl](KUBECTL.md), [jq and openssl](PREREQS.md), [git](https://git-scm.com/install/), and for
   step 4 option B [Helm](HELM.md);
-- for step 8, one free load-balancer address.
+- for step 8, one free load-balancer address, and a second one for
+  [Over HTTPS, for pushes and tokens](#over-https-for-pushes-and-tokens), which also installs the
+  cert-manager add-on and needs the [VCF CLI](VCF.md) for it.
 
 **The VKS cluster to make.** One control-plane node and one worker, both `best-effort-medium` (2
 CPUs, 8 GB; [CLUSTER.md step 2](CLUSTER.md#2-choose-a-name-and-the-values)), are enough for Gitea.
 Gitea reserves 0.1 CPU and 256 MiB and may use up to 1 CPU and 1 GiB. Measured on a VKS 3.8 cluster
 with one `best-effort-small` worker: with no repositories, Gitea used under 0.01 CPU and about 90
 MiB. Add a worker ([CLUSTER.md step 10](CLUSTER.md#10-resize-the-cluster-optional)) if the cluster
-also runs other apps, such as the builds of [TEKTON.md](TEKTON.md). Broadcom says not to use a
+also runs other apps, such as the builds of [TEKTON.md](TEKTON.md). The HTTPS part adds nginx (it
+reserves 0.05 CPU and 32 MiB) and cert-manager (three pods, 0.01 CPU and 64 MiB each); measured on a
+VKS 3.8 worker they used 1m CPU and 4 MiB (nginx) and 1 to 2m CPU and 17 to 32 MiB each
+(cert-manager). Broadcom says not to use a
 small or xsmall class for workers that run apps, and to use a guaranteed class for production ([KB
 446139](https://knowledge.broadcom.com/external/article/446139/guest-cluster-deployment-via-the-local-c.html)).
 
@@ -33,9 +38,12 @@ the hosts in [Registry hosts](PREREQS.md#registry-hosts-for-a-firewall)):
 | from | to | port | for |
 |---|---|---|---|
 | your machine (laptop or jump box) | the VKS cluster's API address (in its kubeconfig) | 6443 | kubectl and Helm (all steps), and the port-forward to Gitea (steps 6 to 8) |
-| the cluster's nodes | `docker.io` | 443 | Gitea's image (step 4) |
+| the cluster's nodes | `docker.io` | 443 | Gitea's image (step 4) and nginx's (HTTPS) |
+| the cluster's nodes | `projects.packages.broadcom.com` | 443 | the cert-manager add-on (HTTPS) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | the VCF CLI, for cert-manager (HTTPS) |
 | your machine (laptop or jump box) | `dl.gitea.com` | 443 | Gitea's Helm chart (step 4, option B) |
 | ArgoCD, your machine, other machines that clone | Gitea's load-balancer address (step 8) | 3000 | cloning over plain HTTP |
+| ArgoCD, Octopus, your machine, other machines that clone or push | `gitea-https`'s address (HTTPS) | 443 | cloning and pushing over HTTPS |
 
 ## 1. Check the cluster
 
@@ -1340,7 +1348,7 @@ if ($LASTEXITCODE -eq 0) { "Gitea's HTTPS address: $IP" }
 </details>
 
 **Expect:** `service/gitea-https created` (`unchanged` when run again), `service/gitea-https`, four
-`created` lines, `certificate.cert-manager.io/gitea-ca condition met` and `…/gitea-tls condition
+`created` lines (`unchanged` when run again), `certificate.cert-manager.io/gitea-ca condition met` and `…/gitea-tls condition
 met`, then `Gitea's HTTPS address:` and an IP address.
 
 **If not:**
@@ -1566,8 +1574,8 @@ finish.
    `~/gitea-ca.pem` (it replaces the file only when the new one is a certificate), then lists
    `hello` through the HTTPS address with git checking the certificate against that CA, and reads
    the clone address Gitea shows on the repository's page. It changes nothing in the cluster. You
-   get the CA file to give to every client of this address (Octopus, ArgoCD). Set `VKS_CLUSTER` to
-   your VKS cluster's name.
+   get the CA file to give to every client of this address (Octopus, ArgoCD). The check needs the
+   public repository `hello` (step 7 and step 8, 1.). Set `VKS_CLUSTER` to your VKS cluster's name.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1610,13 +1618,15 @@ if (-not $IP -or -not $X) { "FAILED: no address or no CA (run 2. and 3. first)" 
 **Expect:** `subject=CN = Gitea CA` (`subject=CN=Gitea CA` on macOS and Windows), two lines with the
 same 40 hex characters ending in `HEAD` and `refs/heads/main`, then
 `https://<address>/gitea-admin/hello.git` (Windows: `https://gitea-https.gitea.svc/gitea-admin/hello.git`,
-the name its check connects with). The repository must be public for this check (step 8, 1.).
+the name its check connects with; clients use `https://<address>/…`).
 
 **If not:**
 - `SSL certificate problem`: `~/gitea-ca.pem` is not the CA nginx serves; run 2. to 4. again, or
   wait 6 minutes after a renewal.
 - The clone address shows `http://` or `localhost:3300`: 3. did not finish; run it again.
 - `Failed to connect` or `timed out`: this machine cannot reach the address on port 443.
+- git prints `terminal prompts disabled` and no clone address follows: `hello` is private or missing;
+  do step 8, 1. (or step 7) first.
 
 To push or clone private repositories over this address, a client needs `~/gitea-ca.pem` and a
 login of its own: in Gitea, **Settings** → **Applications** → **Generate New Token**.
@@ -1626,7 +1636,9 @@ login of its own: in Gitea, **Settings** → **Applications** → **Generate New
 **This deletes every repository in this Gitea.** Delete first any ArgoCD Application that clones
 from it. It also deletes the HTTPS address's CA and gives its address back: a Gitea installed
 again gets a new CA and maybe a new address, so every client that trusted `~/gitea-ca.pem` or
-used the old address must change.
+used the old address must change: run 2. to 4. of the HTTPS part again, give ArgoCD the new CA (and
+the new address) and give Octopus the new CA, then restart it
+([CD-OCTOPUS.md](CD-OCTOPUS.md) says how for both).
 
 Run this when you no longer need this Gitea, or to switch between A and B in step 4. It deletes
 the namespace `gitea`, with Gitea, its keys and its volume. It then waits until the cluster has
