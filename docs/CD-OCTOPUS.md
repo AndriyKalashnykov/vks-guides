@@ -1296,7 +1296,8 @@ step, **Done**, **Save**. A release keeps the process it was created with: creat
 **A release for every new image.** **Triggers** → **Create Trigger** → **External feed**: **Release
 trigger name** `new image in nexus`, and under **Trigger sources** tick `test-web-apps`; **Save**.
 Octopus checks Nexus every few minutes; for a new tag it creates a release and, because `dev` is the
-lifecycle's automatic phase, deploys it to `dev`.
+lifecycle's automatic phase, deploys it to `dev`. In a project with no release yet, its first check
+makes a release right away with the newest image already in Nexus and deploys that to `dev`.
 
 ![Create External Feed Trigger: lifecycle preview dev, test, prod; trigger source test-web-apps](img/cd-octopus/17-trigger-create.jpg)
 
