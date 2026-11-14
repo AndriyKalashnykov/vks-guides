@@ -290,8 +290,8 @@ elif [ -z "${GITEA_PASSWORD:-}" ]; then
 elif [ ! -s "$HOME/gitea-ca.pem" ]; then
   echo "MISSING: $HOME/gitea-ca.pem (GITEA.md, Over HTTPS, 4.)"
 else
-  ( umask 077; printf 'user = "gitea-admin:%s"\n' "$(printf '%s' "$GITEA_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')" > "$CD_DIR/gitea-admin.cfg" )
-  api() { curl -sS --connect-timeout 20 --max-time 30 --cacert "$HOME/gitea-ca.pem" -K "$CD_DIR/gitea-admin.cfg" -H 'Content-Type: application/json' "$@"; }
+  GA="$(printf '%s' "$GITEA_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  api() { printf 'user = "gitea-admin:%s"\n' "$GA" | curl -sS --connect-timeout 20 --max-time 30 --cacert "$HOME/gitea-ca.pem" -K - -H 'Content-Type: application/json' "$@"; }
   if [ "$(api -o /dev/null -w '%{http_code}' "https://$GITEA_ADDRESS/api/v1/user")" != 200 ]; then
     echo "FAILED: Gitea did not accept gitea-admin and this password at https://$GITEA_ADDRESS"
   else
@@ -303,8 +303,8 @@ else
         else
           Y="$(printf 'apiVersion: v1\nkind: Service\nmetadata:\n  name: test-web-apps\nspec:\n  type: LoadBalancer\n  selector:\n    app.kubernetes.io/name: test-web-apps\n  ports:\n    - name: http\n      port: 80\n      targetPort: http\n')"
         fi
-        jq -n --arg c "$(printf '%s\n' "$Y" | base64 | tr -d '\n')" --arg f "envs/$E/$F.yaml" '{content: $c, message: "add \($f)", branch: "main"}' \
-          | api -o /dev/null -w "  envs/$E/$F.yaml: %{http_code}\n" --data-binary @- "https://$GITEA_ADDRESS/api/v1/repos/gitea-admin/deploy/contents/envs/$E/$F.yaml"
+        B="$(jq -n --arg c "$(printf '%s\n' "$Y" | base64 | tr -d '\n')" --arg f "envs/$E/$F.yaml" '{content: $c, message: "add \($f)", branch: "main"}')"
+        api -o /dev/null -w "  envs/$E/$F.yaml: %{http_code}\n" --data-binary "$B" "https://$GITEA_ADDRESS/api/v1/repos/gitea-admin/deploy/contents/envs/$E/$F.yaml"
       done
     done
     for U in octopus argocd; do
@@ -312,8 +312,8 @@ else
         echo "user $U: exists, kept"
       else
         gx create --username "$U" --email "$U@localhost" --random-password --must-change-password=false >/dev/null && echo "user $U: created"
-        jq -n --arg u "$U" '{source_id: 0, login_name: $u, max_repo_creation: 0}' \
-          | api -o /dev/null -w "user $U may create no repositories: %{http_code}\n" -X PATCH --data-binary @- "https://$GITEA_ADDRESS/api/v1/admin/users/$U"
+        api -o /dev/null -w "user $U may create no repositories: %{http_code}\n" -X PATCH \
+          --data-binary "$(jq -n --arg u "$U" '{source_id: 0, login_name: $u, max_repo_creation: 0}')" "https://$GITEA_ADDRESS/api/v1/admin/users/$U"
       fi
     done
     echo "octopus writes deploy: $(api -o /dev/null -w '%{http_code}' -X PUT -d '{"permission":"write"}' "https://$GITEA_ADDRESS/api/v1/repos/gitea-admin/deploy/collaborators/octopus")"
@@ -333,7 +333,7 @@ else
       fi
     done
   fi
-  rm -f "$CD_DIR/gitea-admin.cfg"
+  GA=""
 fi
 ```
 
@@ -850,25 +850,22 @@ elif [ -z "$IP" ] || ! K get secret argocd-secret -o go-template='{{index .data 
   echo "FAILED: no ArgoCD address or certificate (ARGOCD.md step 1)"
 else
   ac() { curl -fsS --resolve "argocd-server:443:$IP" --cacert "$CD_DIR/argocd-server.pem" --connect-timeout 20 --max-time 60 -H 'Content-Type: application/json' "$@"; }
+  hd() { printf 'header = "Authorization: Bearer %s"\n' "$1"; }
+  AT="$(K get secret argocd-initial-admin-secret -o go-template='{{.data.password | base64decode}}' | jq -Rs '{username:"admin",password:.}' \
+    | ac --data-binary @- https://argocd-server/api/v1/session | jq -r '.token // empty')"
   ( umask 077
-    K get secret argocd-initial-admin-secret -o go-template='{{.data.password | base64decode}}' | jq -Rs '{username:"admin",password:.}' > "$CD_DIR/login.json"
-    ac --data-binary @"$CD_DIR/login.json" https://argocd-server/api/v1/session \
-      | jq -r '"header = \"Authorization: Bearer \(.token // "")\""' > "$CD_DIR/admin.cfg"
-    jq -n --arg id "octopus-gateway-$(date +%Y%m%d%H%M%S)" '{id:$id,expiresIn:7776000}' \
-      | ac -K "$CD_DIR/admin.cfg" --data-binary @- https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token \
-      | jq -j '.token // empty' > "$CD_DIR/argocd-project.token.new"
-    ac -K "$CD_DIR/admin.cfg" -X DELETE -o /dev/null https://argocd-server/api/v1/session || echo "NOTE: ArgoCD sign-out failed (the session ends by itself)"
-    rm -f "$CD_DIR/login.json" "$CD_DIR/admin.cfg"
-    printf 'header = "Authorization: Bearer %s"\n' "$(cat "$CD_DIR/argocd-project.token.new")" > "$CD_DIR/project.cfg" )
+    hd "$AT" | ac -K - --data-binary "$(jq -n --arg id "octopus-gateway-$(date +%Y%m%d%H%M%S)" '{id:$id,expiresIn:7776000}')" \
+      https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token | jq -j '.token // empty' > "$CD_DIR/argocd-project.token.new" )
+  hd "$AT" | ac -K - -X DELETE -o /dev/null https://argocd-server/api/v1/session || echo "NOTE: ArgoCD sign-out failed (the session ends by itself)"
+  AT=""
   if [ -s "$CD_DIR/argocd-project.token.new" ] \
-     && N="$(ac -K "$CD_DIR/project.cfg" https://argocd-server/api/v1/applications | jq -e '(.items // []) | length')"; then
+     && N="$(hd "$(cat "$CD_DIR/argocd-project.token.new")" | ac -K - https://argocd-server/api/v1/applications | jq -e '(.items // []) | length')"; then
     mv "$CD_DIR/argocd-project.token.new" "$CD_DIR/argocd-project.token"
     echo "token saved: lists $N apps of test-web-apps"
   else
     rm -f "$CD_DIR/argocd-project.token.new"
     echo "FAILED: no working token; $CD_DIR/argocd-project.token is as it was"
   fi
-  rm -f "$CD_DIR/project.cfg"
 fi
 ```
 
@@ -1359,18 +1356,15 @@ ENVIRONMENT="test"
 if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
 elif [ -z "${OCTOPUS_API_KEY:-}" ]; then echo "STOPPED: type the Octopus API key first (step 7, 2.)"
 else
-  CFG="$(mktemp)"; ( umask 077; printf 'header = "X-Octopus-ApiKey: %s"\n' "$OCTOPUS_API_KEY" > "$CFG" )
-  oc() { curl -fsS --connect-timeout 20 --max-time 60 --cacert "$HOME/octopus-ca.pem" -K "$CFG" "$@"; }
+  oc() { printf 'header = "X-Octopus-ApiKey: %s"\n' "$OCTOPUS_API_KEY" | curl -fsS --connect-timeout 20 --max-time 60 --cacert "$HOME/octopus-ca.pem" -K - "$@"; }
   O="https://$OCTOPUS_ADDRESS/api/Spaces-1"
   if P="$(oc "$O/projects/test-web-apps" | jq -er .Id)" \
      && R="$(oc "$O/projects/$P/releases?take=100" | jq -er --arg v "$RELEASE" '.Items[] | select(.Version == $v) | .Id')" \
      && E="$(oc "$O/environments?name=$ENVIRONMENT" | jq -er '.Items[0].Id')"; then
-    jq -n --arg r "$R" --arg e "$E" '{ReleaseId: $r, EnvironmentId: $e}' \
-      | oc -H 'Content-Type: application/json' --data-binary @- "$O/deployments" | jq -r '"deployment \(.Id) started, task \(.TaskId)"'
+    oc -H 'Content-Type: application/json' --data-binary "$(jq -n --arg r "$R" --arg e "$E" '{ReleaseId: $r, EnvironmentId: $e}')" "$O/deployments" | jq -r '"deployment \(.Id) started, task \(.TaskId)"'
   else
     echo "FAILED: no project test-web-apps, release $RELEASE or environment $ENVIRONMENT"
   fi
-  rm -f "$CFG"
 fi
 ```
 
@@ -1541,8 +1535,8 @@ spec:
           --registry-certificate="${REGISTRY}=/run/ca/ca.crt" \
           --digest-file="$(results.digest.path)"
 EOF
-  ( umask 077; printf 'user = "gitea-admin:%s"\n' "$(printf '%s' "$GITEA_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')" > "$CD_DIR/gitea-admin.cfg" )
-  api() { curl -sS --connect-timeout 20 --max-time 30 --cacert "$HOME/gitea-ca.pem" -K "$CD_DIR/gitea-admin.cfg" -H 'Content-Type: application/json' "$@"; }
+  GA="$(printf '%s' "$GITEA_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  api() { printf 'user = "gitea-admin:%s"\n' "$GA" | curl -sS --connect-timeout 20 --max-time 30 --cacert "$HOME/gitea-ca.pem" -K - -H 'Content-Type: application/json' "$@"; }
   echo "repository app: $(api -o /dev/null -w '%{http_code}' -d '{"name":"app","private":false,"default_branch":"main"}' "https://$GITEA_ADDRESS/api/v1/user/repos")"
   for F in Dockerfile index.html VERSION; do
     case "$F" in
@@ -1552,10 +1546,10 @@ EOF
 <body><h1>test-web-apps @VERSION@</h1></body></html>' ;;
       VERSION) C="$FIRST_VERSION" ;;
     esac
-    jq -n --arg c "$(printf '%s\n' "$C" | base64 | tr -d '\n')" --arg f "$F" '{content: $c, message: "add \($f)", branch: "main"}' \
-      | api -o /dev/null -w "  $F: %{http_code}\n" --data-binary @- "https://$GITEA_ADDRESS/api/v1/repos/gitea-admin/app/contents/$F"
+    B="$(jq -n --arg c "$(printf '%s\n' "$C" | base64 | tr -d '\n')" --arg f "$F" '{content: $c, message: "add \($f)", branch: "main"}')"
+    api -o /dev/null -w "  $F: %{http_code}\n" --data-binary "$B" "https://$GITEA_ADDRESS/api/v1/repos/gitea-admin/app/contents/$F"
   done
-  rm -f "$CD_DIR/gitea-admin.cfg"
+  GA=""
 fi
 unset NEXUS_PUSH_PASSWORD GITEA_PASSWORD
 ```
@@ -1824,16 +1818,15 @@ elif kc create secret generic gw-project-tokens --from-file=PROJECT_AUTH_TOKEN_t
     elif [ -z "$T" ]; then
       echo "old tokens: none"
     else
-      ( umask 077
-        K get secret argocd-initial-admin-secret -o go-template='{{.data.password | base64decode}}' | jq -Rs '{username:"admin",password:.}' > "$CD_DIR/login.json"
-        ac --data-binary @"$CD_DIR/login.json" https://argocd-server/api/v1/session | jq -r '"header = \"Authorization: Bearer \(.token // "")\""' > "$CD_DIR/admin.cfg"
-        rm -f "$CD_DIR/login.json" )
+      hd() { printf 'header = "Authorization: Bearer %s"\n' "$1"; }
+      AT="$(K get secret argocd-initial-admin-secret -o go-template='{{.data.password | base64decode}}' | jq -Rs '{username:"admin",password:.}' \
+        | ac --data-binary @- https://argocd-server/api/v1/session | jq -r '.token // empty')"
       printf '%s\n' "$T" | while read -r IAT ID; do
-        ac -K "$CD_DIR/admin.cfg" -X DELETE -o /dev/null "https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token/$IAT?id=$ID" </dev/null \
+        hd "$AT" | ac -K - -X DELETE -o /dev/null "https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token/$IAT?id=$ID" \
           && echo "deleted old token $ID (issued $IAT)"
       done
-      ac -K "$CD_DIR/admin.cfg" -X DELETE -o /dev/null https://argocd-server/api/v1/session </dev/null || echo "NOTE: ArgoCD sign-out failed (the session ends by itself)"
-      rm -f "$CD_DIR/admin.cfg"
+      hd "$AT" | ac -K - -X DELETE -o /dev/null https://argocd-server/api/v1/session || echo "NOTE: ArgoCD sign-out failed (the session ends by itself)"
+      AT=""
     fi
   fi
 else
