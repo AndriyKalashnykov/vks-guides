@@ -1372,9 +1372,10 @@ release's page.
 **If not:**
 - `FAILED: no project test-web-apps, release <RELEASE> or environment <ENVIRONMENT>`: one of the three
   names is not in Octopus; the release's number is on **Projects** → `test-web-apps` → **Releases**.
-- `curl: (22) The requested URL returned error: 401`: the API key is wrong or was deleted.
+- `curl: (22) The requested URL returned error: 401` above the `FAILED` line: the API key is wrong or
+  was deleted; make a new one (step 7, 1.).
 
-<!-- DRAFT: sh PASS on the lab 2026-11-14 15:08 EST (release 0.0.4 to test; and 9.9.9 -> FAILED); PowerShell twin parsed, not run (needs the API key typed on Windows). 401 line inferred from curl -f. -->
+<!-- DRAFT: sh PASS on the lab 2026-11-14 15:08 EST (release 0.0.4 to test; 9.9.9 -> FAILED; wrong key -> (22) 401 then FAILED); PowerShell twin parsed, not run (needs the API key typed on Windows). -->
 
 ## 10. Roll prod back
 
