@@ -543,7 +543,7 @@ and `secret/nexus-pull created` (`configured` or `unchanged` when run again).
 **If not:** `FAILED: no Secret nexus-pull in default`: run [NEXUS.md step
 11](NEXUS.md#check-that-a-cluster-can-pull) for this cluster first.
 
-<!-- DRAFT: second-run arm of this exact block PASS on the lab 2026-11-14 14:3x (not labeled / unchanged x3); first-run arm by an equivalent script 2026-11-13; Windows twin not run. -->
+<!-- DRAFT: second-run arm PASS on the lab 2026-11-14 (sh 14:3x, PowerShell 15:05 on Windows: not labeled / unchanged x3); first-run arm by an equivalent script 2026-11-13. -->
 
 ## 5. Create the ArgoCD project and the three Applications
 
