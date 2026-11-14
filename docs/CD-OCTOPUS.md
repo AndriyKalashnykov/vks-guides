@@ -250,7 +250,20 @@ fi
 
 </details>
 
-<!-- DRAFT: Windows twin, Expect and If not from the lab run of this exact block. -->
+**Expect:** `repository deploy: 201`, six `envs/…: 201` lines, `user octopus: created`, `user argocd:
+created`, two `… may create no repositories: 200`, `octopus writes deploy: 204`, `argocd reads deploy:
+204`, `token for octopus: saved` and `token for argocd: saved`. Run again: `repository deploy: 409`,
+six `422` lines (the files are kept as they are), `exists, kept`, the two `204` lines and `token …:
+kept`.
+
+**If not:**
+- `FAILED: Gitea did not accept …`: the password or `GITEA_ADDRESS` is wrong, or this machine does not
+  trust Gitea's CA (`curl --cacert ~/gitea-ca.pem https://<GITEA_ADDRESS>` says why).
+- `deployments.apps "gitea" not found`: `VKS_CLUSTER` is not Gitea's cluster (both ways of GITEA.md
+  step 4 run Gitea as the deployment `gitea` in the namespace `gitea`).
+- `FAILED: Gitea made no token for …`: the line above it says why; run the block again.
+
+<!-- DRAFT: Windows twin; first-run arm (201/created/200) not run on the lab yet (lab ran the second-run arm 2026-11-14 14:26). -->
 
 ## 4. Prepare the app cluster
 
