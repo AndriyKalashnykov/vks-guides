@@ -1944,15 +1944,13 @@ changed, give the new CA and address to both sides:
 2. Run step 5 again with the new `GITEA_ADDRESS`: it adds the new CA to ArgoCD and points the project and
    the Applications at the new address. Then run step 5's check block and do its **If not:** Hard Refresh
    for an Application that shows `Unknown`.
-3. Run the CA line of step 8 again and give the file to Octopus with OCTOPUS.md step 11, then restart
-   Octopus as that step's **If not:** says. In the Git credential `gitea-deploy` (step 8) change the
-   allowed repository to the new address, and after a new install put in the new
-   `gitea-octopus.token`.
+3. In the Git credential `gitea-deploy` (step 8) change the allowed repository to the new address, and
+   after a new install put in the new `gitea-octopus.token`. If the CA changed (a new install), run the
+   CA line of step 8 again and give the file to Octopus with OCTOPUS.md step 11, then restart Octopus as
+   that step's **If not:** says.
 4. After a new install, `deploy` holds `1.0.0` for all three environments, and ArgoCD runs that in each,
    `prod` too. Deploy each environment's current release again from Octopus (step 10); `prod` waits for
    its approval.
-
-<!-- DRAFT: not run on the lab yet. -->
 
 ## 13. Clean up (optional)
 
