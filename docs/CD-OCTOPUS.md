@@ -85,7 +85,18 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get argocd 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get managedentities.argocd-service.vsphere.vmware.com "vks-${VSPHERE_NAMESPACE}-${VKS_CLUSTER}" -o jsonpath='ArgoCD destination: {.status.phase}{"\n"}'
 ```
 
-<!-- DRAFT: Windows twin; run on the lab; check the ArgoCD jsonpath fields (phase) against ARGOCD.md step 1's block. -->
+**Expect:** `Octopus: 2026.3.…`, `Nexus: 200`, `Gitea: 200`, `ArgoCD: Ready https://<address>` and
+`ArgoCD destination: Ready`.
+
+**If not:**
+- `Octopus:` with nothing after it, or `Nexus:`/`Gitea:` with `000`: this machine cannot reach the
+  address, or the CA file is missing (`curl` prints why above the line); do that guide first.
+- `managedentities… not found`: do [ARGOCD.md step 7](ARGOCD.md#7-add-the-vks-cluster-to-argocd) for
+  the app's cluster.
+- `Octopus:` older than `2026.3`: the steps in this guide need Octopus 2026.3 or newer.
+
+<!-- DRAFT: Windows twin. Block PASS on the lab 2026-11-14 14:4x. -->
+
 
 ## 2. Push the first version to Nexus
 
