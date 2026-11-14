@@ -978,7 +978,8 @@ $OCTOPUS_API_KEY = Read-Host 'Octopus API key' -AsSecureString
    It registers the gateway in Octopus as `<VKS_CLUSTER>-argocd` for the environments `dev`, `test` and
    `prod`, waits until it runs, and prints its log lines about the connections. You get Octopus and
    ArgoCD connected. Run again, it keeps the registration (it changes the gateway only if a value
-   changed). Set `VKS_CLUSTER` to Octopus's cluster, `ARGOCD_NAMESPACE` to ArgoCD's vSphere Namespace.
+   changed); after 4. a new key from 1. or the deleted one both work. Set `VKS_CLUSTER` to Octopus's
+   cluster, `ARGOCD_NAMESPACE` to ArgoCD's vSphere Namespace.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
