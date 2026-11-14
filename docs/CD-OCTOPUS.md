@@ -267,6 +267,58 @@ kept`.
 
 ## 4. Prepare the app cluster
 
+Run this once, before step 5: ArgoCD deploys into namespaces that exist, and the app's pods pull from
+Nexus with a login. It creates the namespaces `test-web-apps-dev`, `test-web-apps-test` and
+`test-web-apps-prod` (inside the VKS cluster, not vSphere Namespaces), which allow only pods that follow
+the `restricted` Pod Security Standard, and copies into each the pull Secret `nexus-pull` that
+[NEXUS.md step 11](NEXUS.md#check-that-a-cluster-can-pull) made in the namespace `default`. Run again,
+it updates the copies. Set `VKS_CLUSTER` to the app's cluster.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
+if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
+elif ! S="$(kc -n default get secret nexus-pull -o json)"; then echo "FAILED: no Secret nexus-pull in default (NEXUS.md step 11)"
+else
+  for E in dev test prod; do
+    kc create namespace "test-web-apps-$E" --dry-run=client -o yaml | kc apply -f - >/dev/null \
+      && kc label namespace "test-web-apps-$E" --overwrite pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/warn=restricted \
+      && printf '%s' "$S" | jq --arg n "test-web-apps-$E" '{apiVersion, kind, type, data, metadata: {name: .metadata.name, namespace: $n}}' | kc apply -f -
+  done
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+$global:LASTEXITCODE = $null
+$S = kubectl --kubeconfig $VKS_KUBECONFIG -n default get secret nexus-pull -o json | Out-String
+if ($LASTEXITCODE -ne 0) { "FAILED: no Secret nexus-pull in default (NEXUS.md step 11)" } else {
+  $J = $S | ConvertFrom-Json
+  foreach ($E in 'dev', 'test', 'prod') {
+    kubectl --kubeconfig $VKS_KUBECONFIG create namespace "test-web-apps-$E" --dry-run=client -o yaml | kubectl --kubeconfig $VKS_KUBECONFIG apply -f - | Out-Null
+    kubectl --kubeconfig $VKS_KUBECONFIG label namespace "test-web-apps-$E" --overwrite pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/warn=restricted
+    @{ apiVersion = 'v1'; kind = 'Secret'; type = $J.type; data = $J.data; metadata = @{ name = 'nexus-pull'; namespace = "test-web-apps-$E" } } |
+      ConvertTo-Json -Depth 5 | kubectl --kubeconfig $VKS_KUBECONFIG apply -f -
+  }
+}
+```
+
+**Expect:** for each environment `namespace/test-web-apps-<env> labeled` (`not labeled` when run again)
+and `secret/nexus-pull created` (`configured` or `unchanged` when run again).
+
+**If not:** `FAILED: no Secret nexus-pull in default`: run [NEXUS.md step
+11](NEXUS.md#check-that-a-cluster-can-pull) for this cluster first.
+
+<!-- DRAFT: lab ran an equivalent script 2026-11-13 (3x "secret/nexus-pull created"); this exact block not yet run. -->
+
 ## 5. Create the ArgoCD project and the three Applications
 
 ## 6. Give the gateway its ArgoCD token
