@@ -1507,7 +1507,14 @@ unset NEXUS_PUSH_PASSWORD GITEA_PASSWORD
 
 </details>
 
-<!-- DRAFT: Windows twin; Expect/If not from the lab run. -->
+<!-- DRAFT: Windows twin. -->
+
+**Expect:** `namespace/cd-octopus-ci labeled`, `configmap/nexus-ca created`, `secret/nexus-build
+created`, `serviceaccount/build created`, `task.tekton.dev/build-test-web-apps created`, `repository
+app: 201` and three `201` lines (`configured`/`unchanged`, `409` and `422` when run again).
+
+**If not:** `MISSING: … or Tekton in this cluster`: install Tekton ([TEKTON.md](TEKTON.md)) in Gitea's
+cluster first.
 
 Run this for each build, after you changed the app in Gitea and raised the number in `VERSION` (a
 version can be pushed to Nexus only once). It runs the Task once (a TaskRun) on the repository `app`,
@@ -1536,7 +1543,18 @@ if TR="$(printf 'apiVersion: tekton.dev/v1\nkind: TaskRun\nmetadata: {generateNa
 fi
 ```
 
-<!-- DRAFT: Windows twin; Expect/If not from the lab run. -->
+<!-- DRAFT: Windows twin. -->
+
+**Expect:** `started taskrun.tekton.dev/build-test-web-apps-…`, then `Succeeded: All Steps have
+completed executing` and `pushed version <VERSION> sha256:…` (about half a minute). A few minutes
+later `dev` shows the new version (step 5's check block).
+
+**If not:**
+- `Failed`, and `kubectl --kubeconfig <file> -n cd-octopus-ci logs -l tekton.dev/taskRun=<name> -c
+  step-kaniko` ends with `cannot be updated` or `redeploy is not allowed`: this version is in Nexus
+  already; raise `VERSION` in Gitea and run again.
+- … with `x509` or `UNAUTHORIZED`: Nexus's CA or the push user's password in the first block is wrong;
+  run it again.
 
 ## 12. Rotate the tokens (optional)
 
