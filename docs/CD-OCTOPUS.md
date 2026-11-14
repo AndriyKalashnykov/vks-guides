@@ -42,9 +42,11 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl and the VCF CLI (steps 1, 5 and 6) |
-| your machine (laptop or jump box) | the VKS clusters' API addresses (in their kubeconfigs) | 6443 | kubectl and Helm (steps 1, 4 and 7) |
-| your machine (laptop or jump box) | Nexus's address | 443 | pushing images (steps 2 and 10) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl (steps 1, 5, 6, 7 and 13) |
+| your machine (laptop or jump box) | the VKS clusters' API addresses (in their kubeconfigs) | 6443 | kubectl and Helm (steps 3, 4, 5, 7 and 13) |
+| your machine (laptop or jump box) | `octopus-grpc`'s address (OCTOPUS.md step 4) | 8443 | reading the certificate of Octopus's gRPC port (step 7) |
+| your machine (laptop or jump box) | the app's load-balancer addresses | 80 | step 5's check of the three pages |
+| your machine (laptop or jump box) | Nexus's address | 443 | pushing images (steps 2 and 9) |
 | your machine (laptop or jump box) | `registry-1.docker.io` | 443 | the gateway's Helm chart (step 7) |
 | your machine and your browser | Octopus's web address, ArgoCD's address, Gitea's HTTPS address | 443 | the web pages and REST APIs |
 | the nodes of Octopus's cluster | `docker.io` | 443 | the gateway's image (step 7) |
@@ -132,8 +134,8 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedenti
 
 ## 2. Push the first version to Nexus
 
-Run this to give Octopus a first version to release; later, in step 10, you run it again with
-`VERSION="1.0.1"`. It builds the app's image on your machine (an nginx page that shows its version),
+Run this to give Octopus a first version to release; later, in step 9, you run it again with
+`VERSION="1.0.1"` and `VERSION="1.0.2"`. It builds the app's image on your machine (an nginx page that shows its version),
 names it `<NEXUS_REGISTRY>/<NEXUS_REPO>/test-web-apps:<VERSION>`, logs in to Nexus as the push user,
 pushes it and logs out. You get version `1.0.0` of `test-web-apps` in Nexus; Octopus reads its
 versions from there. A version cannot be pushed twice. Your machine must trust Nexus's CA
@@ -1278,6 +1280,8 @@ lifecycle's automatic phase, deploys it to `dev`.
    ![Deploy to prod: Manual Intervention Required, This task is waiting for manual intervention and must be assigned before proceeding](img/cd-octopus/14-prod-waits-approval.jpg)
 
 5. Run step 5's check block again: all three show the new version.
+6. Do 1. to 5. once more with `VERSION="1.0.2"`, so that `prod` has an earlier release to go back to
+   (step 10).
 
 If a version does not start (its pods crash), the deployment fails after the step's 180-second wait
 with `Verification failed due to the timeout being exceeded (180 seconds)`. The environment keeps
@@ -1355,6 +1359,73 @@ the new one.
 ## 11. Build the image with Tekton instead (optional)
 
 ## 12. Rotate the tokens (optional)
+
+Step 6's token ends after 90 days; when it ends, Octopus no longer sees ArgoCD's Applications. Do
+this before then, or when a token may have leaked.
+
+1. Run step 6 again: it makes a new token and saves it in place of the old file.
+2. Run the block below. It gives the gateway the new token (the Secret `gw-project-tokens` in Octopus's
+   cluster) and restarts the gateway, then signs in to ArgoCD as `admin`, deletes every token of the
+   role `octopus` except the one in your token file, and signs out. You get the gateway on the new
+   token and the old ones refused at once. It deletes nothing if it cannot read the role's tokens.
+   Set `VKS_CLUSTER` to Octopus's cluster and `ARGOCD_NAMESPACE` to ArgoCD's vSphere Namespace.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_CLUSTER="my-octopus-cluster"
+ARGOCD_NAMESPACE="my-namespace"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+CD_DIR="$HOME/.config/vks-guides/cd-octopus"
+NS="octopus-argocd-gateway"
+
+K() { kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" "$@"; }
+kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n "$NS" "$@"; }
+IP="$(K get argocd argocd-1 -o jsonpath='{.status.externalIP}')"
+if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
+elif [ -z "$IP" ] || [ ! -s "$CD_DIR/argocd-project.token" ] || [ ! -s "$CD_DIR/argocd-server.pem" ]; then
+  echo "FAILED: no ArgoCD address, or no token or certificate from step 6 in $CD_DIR"
+elif kc create secret generic gw-project-tokens --from-file=PROJECT_AUTH_TOKEN_test-web-apps="$CD_DIR/argocd-project.token" --dry-run=client -o yaml | kc apply -f - \
+     && kc rollout restart deployment/octopus-argocd-gateway && kc rollout status deployment/octopus-argocd-gateway --timeout=3m; then
+  sleep 20; kc logs deployment/octopus-argocd-gateway | grep 'token status' | tail -1 | cut -c1-200
+  ac() { curl -fsS --resolve "argocd-server:443:$IP" --cacert "$CD_DIR/argocd-server.pem" --connect-timeout 20 --max-time 60 -H 'Content-Type: application/json' "$@"; }
+  if ! J="$(K get appproject test-web-apps -o json)"; then
+    echo "FAILED: cannot read the project's tokens; nothing deleted"
+  else
+    KEEP="$(cut -d. -f2 "$CD_DIR/argocd-project.token" | tr '_-' '/+' | base64 -d 2>/dev/null | jq -r '.jti // empty' 2>/dev/null)"
+    T="$(printf '%s' "$J" | jq -r --arg k "$KEEP" '.status.jwtTokensByRole.octopus.items[]? | select(.id != $k) | "\(.iat) \(.id // "")"')"
+    if [ -z "$KEEP" ]; then
+      echo "FAILED: cannot read the id of the token in $CD_DIR; nothing deleted"
+    elif [ -z "$T" ]; then
+      echo "old tokens: none"
+    else
+      ( umask 077
+        K get secret argocd-initial-admin-secret -o go-template='{{.data.password | base64decode}}' | jq -Rs '{username:"admin",password:.}' > "$CD_DIR/login.json"
+        ac --data-binary @"$CD_DIR/login.json" https://argocd-server/api/v1/session | jq -r '"header = \"Authorization: Bearer \(.token // "")\""' > "$CD_DIR/admin.cfg"
+        rm -f "$CD_DIR/login.json" )
+      printf '%s\n' "$T" | while read -r IAT ID; do
+        ac -K "$CD_DIR/admin.cfg" -X DELETE -o /dev/null "https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token/$IAT?id=$ID" </dev/null \
+          && echo "deleted old token $ID (issued $IAT)"
+      done
+      ac -K "$CD_DIR/admin.cfg" -X DELETE -o /dev/null https://argocd-server/api/v1/session </dev/null || echo "NOTE: ArgoCD sign-out failed (the session ends by itself)"
+      rm -f "$CD_DIR/admin.cfg"
+    fi
+  fi
+else
+  echo "FAILED: the gateway did not restart with the new token (see the error above)"
+fi
+```
+
+</details>
+
+<!-- DRAFT: Windows twin; Expect/If not from a pasted run of this exact block (the lab agent ran an equivalent script 2026-11-14 14:30 EST: new pod "token status ... ok" with the new expiry; DELETE .../token/<iat>?id=<id> -> 200; the old token 401 at once). -->
+
+To change the Gitea token of `octopus` (it does not end): delete
+`~/.config/vks-guides/cd-octopus/gitea-octopus.token`, run step 3 again (it makes a new one), put it into
+the Git credential `gitea-deploy` (step 8), and deploy to `dev` once to check it.
 
 ## 13. Clean up (optional)
 
