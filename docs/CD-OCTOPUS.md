@@ -32,16 +32,22 @@ The blocks name three VKS clusters: Octopus's (`my-octopus-cluster`), Gitea's (`
 and the app's (`my-app-cluster`, the one added to ArgoCD). They may be the same cluster; set each
 block's `VKS_CLUSTER` to the one it names.
 
+The ArgoCD instance is called `argocd-1`, as [ARGOCD.md step 3](ARGOCD.md#3-create-the-argocd-instance)
+makes it; for another name, change `argocd-1` in the blocks.
+
 You need [kubectl](KUBECTL.md), [Helm](HELM.md), [the VCF CLI](VCF.md), [jq, curl, openssl and git, and
 podman or docker](PREREQS.md); the **Namespaces Edit** role on ArgoCD's vSphere Namespace; Octopus's
 `admin` (or a user who may manage Argo CD instances, Git credentials and projects); and Gitea's
 administrator.
 
 **The VKS clusters to make.** This guide adds little to the clusters of the guides above. In
-Octopus's cluster, the Argo CD gateway asks for nothing and used 1 to 9m CPU and 17 to 19 MiB
-(measured on VKS 3.8). The app's cluster runs one small web server per environment (0.05 CPU and 32
+Octopus's cluster, the Argo CD gateway asks for nothing and used 1m CPU and 16 MiB
+(measured on a VKS 3.8 worker). The app's cluster runs one small web server per environment (0.05 CPU and 32
 MiB reserved each): one `best-effort-medium` worker with room for that is enough; the app may share
-the cluster of [ARGOCD.md](ARGOCD.md).
+the cluster of [ARGOCD.md](ARGOCD.md), and it takes three free load-balancer addresses, one per
+environment. For step 11, Gitea's cluster runs Tekton ([TEKTON.md](TEKTON.md) gives its size) and one
+build at a time, which reserves 0.5 CPU, 512 MiB and 2 GiB of disk and may use up to 2 GiB and 4 GiB;
+on the lab it ran on a `best-effort-large` worker next to Octopus, Nexus and Gitea.
 
 The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
 [its other hosts](PREREQS.md#registry-hosts-for-a-firewall)):
@@ -53,6 +59,9 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 | your machine (laptop or jump box) | `octopus-grpc`'s address (OCTOPUS.md step 4) | 8443 | reading the certificate of Octopus's gRPC port (step 7) |
 | your machine (laptop or jump box) | the app's load-balancer addresses | 80 | step 5's check of the three pages |
 | your machine (laptop or jump box) | Nexus's address | 443 | pushing images (steps 2 and 9) |
+| your machine (laptop or jump box) | `docker.io` | 443 | the app's base image (steps 2 and 9) |
+| Gitea's cluster's nodes | `docker.io`, `ghcr.io` | 443 | the build's images (step 11) |
+| the build (Gitea's cluster) | Nexus's address | 443 | pushing the image it built (step 11) |
 | your machine (laptop or jump box) | `registry-1.docker.io` | 443 | the gateway's Helm chart (step 7) |
 | your machine and your browser | Octopus's web address, ArgoCD's address, Gitea's HTTPS address | 443 | the web pages and REST APIs |
 | the nodes of Octopus's cluster | `docker.io` | 443 | the gateway's image (step 7) |
@@ -348,6 +357,10 @@ metadata:
   name: test-web-apps
 spec:
   replicas: 1
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: test-web-apps
@@ -371,6 +384,11 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -1193,6 +1211,9 @@ lines and the same log lines. Helm 4 also prints `Flag --atomic has been depreca
   field value for "Authorization"`: the API key was typed with a space or a line break; type it again.
   `An ArgoCDGateway with this name already exists`: an earlier install registered it; delete the
   instance in Octopus (**Infrastructure** → **Argo CD Instances**), then run the block again.
+- `thumbprint … does not match` in the gateway's log after Octopus's gRPC certificate changed: the
+  gateway keeps the thumbprint from its registration. Delete the instance in Octopus, delete the
+  namespace `octopus-argocd-gateway`, then run 1. to 3. again.
 - No `"state":"READY"` for `argocd-server:443`: the gateway cannot reach ArgoCD's address on port 443,
   or ArgoCD's certificate changed; run step 6 again (it saves the certificate), then this block.
 
@@ -1280,6 +1301,13 @@ Octopus checks Nexus every few minutes; for a new tag it creates a release and, 
 lifecycle's automatic phase, deploys it to `dev`.
 
 ![Create External Feed Trigger: lifecycle preview dev, test, prod; trigger source test-web-apps](img/cd-octopus/17-trigger-create.jpg)
+
+**Who can change what runs.** Octopus's approval holds only for people who deploy through Octopus.
+These can change an environment without it: Octopus's administrators (they can change the process),
+anyone who may write to `deploy` in Gitea, ArgoCD's `admin`, and anyone with **Namespaces Edit** on
+ArgoCD's vSphere Namespace (they can change the Applications). Give these only to the people who may
+change `prod`. A user who may deploy only to `dev` and `test` gets `Missing permission:
+DeploymentCreate` for `prod` and `Missing permission: InterruptionSubmit` for its approval.
 
 ## 9. Release a new version to dev, test and prod
 
@@ -1689,7 +1717,9 @@ if TR="$(printf 'apiVersion: tekton.dev/v1\nkind: TaskRun\nmetadata: {generateNa
     sleep 10
   done
   kc get "$TR" -o jsonpath='{.status.conditions[0].reason}: {.status.conditions[0].message}{"\n"}'
-  if [ "$ST" = True ]; then
+  if [ "$ST" != True ] && [ "$ST" != False ]; then
+    echo "STILL RUNNING after 10 minutes: run kubectl --kubeconfig $VKS_KUBECONFIG -n cd-octopus-ci get $TR later"
+  elif [ "$ST" = True ]; then
     kc get "$TR" -o jsonpath='pushed version {.status.results[?(@.name=="version")].value} {.status.results[?(@.name=="digest")].value}{"\n"}'
   else
     echo "FAILED: nothing pushed; the last lines of the build:"
@@ -1784,7 +1814,7 @@ elif kc create secret generic gw-project-tokens --from-file=PROJECT_AUTH_TOKEN_t
   if ! J="$(K get appproject test-web-apps -o json)"; then
     echo "FAILED: cannot read the project's tokens; nothing deleted"
   else
-    KEEP="$(cut -d. -f2 "$CD_DIR/argocd-project.token" | tr '_-' '/+' | base64 -d 2>/dev/null | jq -r '.jti // empty' 2>/dev/null)"
+    KEEP="$(jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | @base64d | fromjson | .jti // empty' "$CD_DIR/argocd-project.token" 2>/dev/null)"
     T="$(printf '%s' "$J" | jq -r --arg k "$KEEP" '.status.jwtTokensByRole.octopus.items[]? | select(.id != $k) | "\(.iat) \(.id // "")"')"
     if [ -z "$KEEP" ]; then
       echo "FAILED: cannot read the id of the token in $CD_DIR; nothing deleted"
@@ -1930,8 +1960,10 @@ Gitea, ArgoCD and the clusters stay.
    the three namespaces, and waits until they are gone; then the project `test-web-apps`, ArgoCD's login
    for `deploy` and Gitea's CA in ArgoCD. In the app's cluster it deletes the three namespaces; in
    Octopus's cluster it uninstalls the gateway and deletes its namespace. It stops before deleting
-   anything of the project if an Application is still there. Run again, it says what is already gone.
-   Set the values as in steps 5 and 7.
+   anything else if an Application is still there, and before anything at all if it cannot find the
+   project. It keeps Gitea's CA in ArgoCD while another Application or repository login still uses
+   Gitea's address. Step 11's namespace `cd-octopus-ci` in Gitea's cluster goes too. Run again, it
+   stops at the missing project. Set the values as in steps 3, 5 and 7.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1942,31 +1974,41 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 ARGOCD_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-app-cluster"
 OCTOPUS_CLUSTER="my-octopus-cluster"
+GITEA_CLUSTER="my-gitea-cluster"
 GITEA_ADDRESS="192.168.10.60"
 
 K() { kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" "$@"; }
-for E in dev test prod; do K delete applications.argoproj.io "test-web-apps-$E" --ignore-not-found --wait=false; done
-N=""
-for i in $(seq 60); do
-  if ! N="$(K get applications.argoproj.io test-web-apps-dev test-web-apps-test test-web-apps-prod --ignore-not-found -o name)"; then N="FAILED"; break; fi
-  [ -z "$N" ] && break
-  sleep 5
-done
-if [ -n "$N" ]; then
-  echo "FAILED: Applications not gone after 5 minutes ($N); the project, its login and the CA are kept"
+if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
+elif ! K get appproject test-web-apps -o name; then
+  echo "FAILED: no project test-web-apps in $ARGOCD_NAMESPACE (wrong ARGOCD_NAMESPACE, or already removed); nothing deleted"
 else
-  K delete appproject test-web-apps --ignore-not-found
-  K delete secret repo-gitea-deploy --ignore-not-found
-  if ! C="$(K get configmap argocd-tls-certs-cm -o jsonpath='{.data}')"; then
-    echo "FAILED: cannot read argocd-tls-certs-cm; Gitea's CA in ArgoCD is kept"
-  elif printf '%s' "$C" | grep -qF "\"$GITEA_ADDRESS\""; then
-    K patch configmap argocd-tls-certs-cm --type json -p "[{\"op\":\"remove\",\"path\":\"/data/$GITEA_ADDRESS\"}]"
+  for E in dev test prod; do K delete applications.argoproj.io "test-web-apps-$E" --ignore-not-found --wait=false; done
+  N=""
+  for i in $(seq 60); do
+    if ! N="$(K get applications.argoproj.io test-web-apps-dev test-web-apps-test test-web-apps-prod --ignore-not-found -o name)"; then N="FAILED"; break; fi
+    [ -z "$N" ] && break
+    sleep 5
+  done
+  if [ -n "$N" ]; then
+    echo "FAILED: Applications not gone after 5 minutes ($N); nothing else deleted"
   else
-    echo "Gitea's CA in ArgoCD: already gone"
+    K delete appproject test-web-apps --ignore-not-found
+    K delete secret repo-gitea-deploy --ignore-not-found
+    if ! A="$(K get applications.argoproj.io -o json)" || ! S="$(K get secrets -l argocd.argoproj.io/secret-type=repository -o json)" \
+       || ! C="$(K get configmap argocd-tls-certs-cm -o json)"; then
+      echo "FAILED: cannot read ArgoCD's Applications, repositories or CAs; Gitea's CA in ArgoCD is kept"
+    elif U="$( { printf '%s' "$A" | jq -r '.items[].spec.source.repoURL // empty'; printf '%s' "$S" | jq -r '.items[].data.url // empty | @base64d'; } | grep -F "https://$GITEA_ADDRESS/" )"; then
+      echo "kept Gitea's CA in ArgoCD: still used by $U"
+    elif printf '%s' "$C" | jq -e --arg k "$GITEA_ADDRESS" '.data[$k]' >/dev/null; then
+      K patch configmap argocd-tls-certs-cm --type json -p "[{\"op\":\"remove\",\"path\":\"/data/$GITEA_ADDRESS\"}]"
+    else
+      echo "Gitea's CA in ArgoCD: already gone"
+    fi
+    for E in dev test prod; do kubectl --kubeconfig "$HOME/.kube/${VKS_CLUSTER}.kubeconfig" delete namespace "test-web-apps-$E" --ignore-not-found; done
+    helm uninstall gw --kubeconfig "$HOME/.kube/${OCTOPUS_CLUSTER}.kubeconfig" -n octopus-argocd-gateway --ignore-not-found
+    kubectl --kubeconfig "$HOME/.kube/${OCTOPUS_CLUSTER}.kubeconfig" delete namespace octopus-argocd-gateway --ignore-not-found
+    kubectl --kubeconfig "$HOME/.kube/${GITEA_CLUSTER}.kubeconfig" delete namespace cd-octopus-ci --ignore-not-found
   fi
-  for E in dev test prod; do kubectl --kubeconfig "$HOME/.kube/${VKS_CLUSTER}.kubeconfig" delete namespace "test-web-apps-$E" --ignore-not-found; done
-  helm uninstall gw --kubeconfig "$HOME/.kube/${OCTOPUS_CLUSTER}.kubeconfig" -n octopus-argocd-gateway --ignore-not-found
-  kubectl --kubeconfig "$HOME/.kube/${OCTOPUS_CLUSTER}.kubeconfig" delete namespace octopus-argocd-gateway --ignore-not-found
 fi
 ```
 
@@ -2023,8 +2065,8 @@ if ($N) {
 <!-- DRAFT: Expect/If not; run on the lab at the very end (it removes the test setup). -->
 
 3. In Gitea, if you no longer need them: delete the repository `deploy` (its **Settings** → **Danger
-   Zone**) and the users `octopus` and `argocd` (**Site Administration** → **User Accounts**), and
-   delete `~/.config/vks-guides/cd-octopus`.
+   Zone**), step 11's repository `app`, and the users `octopus` and `argocd` (**Site Administration** →
+   **User Accounts**), and delete `~/.config/vks-guides/cd-octopus` and `~/octopus-extra-cas.pem`.
 
 ## References
 
