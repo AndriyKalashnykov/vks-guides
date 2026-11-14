@@ -58,6 +58,35 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 
 ## 1. Check what is in place
 
+Run this first, to see that the guides this one builds on are done before you change anything. It
+only reads: it asks Octopus for its version, Nexus and Gitea whether they answer over HTTPS with the
+CAs you saved, and the Supervisor for ArgoCD's instance and the app cluster's ArgoCD destination. You
+get one line per part. Set `OCTOPUS_ADDRESS`, `NEXUS_REGISTRY` and `GITEA_ADDRESS` to their addresses,
+`ARGOCD_NAMESPACE` to ArgoCD's vSphere Namespace, and `VSPHERE_NAMESPACE` and `VKS_CLUSTER` to the app's
+cluster.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+OCTOPUS_ADDRESS="192.168.10.70"
+NEXUS_REGISTRY="192.168.10.50"
+GITEA_ADDRESS="192.168.10.60"
+ARGOCD_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
+
+c() { curl -sS --connect-timeout 20 --max-time 30 "$@"; }
+echo "Octopus: $(c --cacert "$HOME/octopus-ca.pem" "https://$OCTOPUS_ADDRESS/api" | sed -n 's/.*"Version": *"\([^"]*\)".*/\1/p')"
+echo "Nexus: $(c --cacert "$HOME/nexus-ca.pem" -o /dev/null -w '%{http_code}' "https://$NEXUS_REGISTRY/service/rest/v1/status")"
+echo "Gitea: $(c --cacert "$HOME/gitea-ca.pem" -o /dev/null -w '%{http_code}' "https://$GITEA_ADDRESS/api/v1/version")"
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get argocd argocd-1 -o jsonpath='ArgoCD: {.status.phase} https://{.status.externalIP}{"\n"}'
+kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get managedentities.argocd-service.vsphere.vmware.com "vks-${VSPHERE_NAMESPACE}-${VKS_CLUSTER}" -o jsonpath='ArgoCD destination: {.status.phase}{"\n"}'
+```
+
+<!-- DRAFT: Windows twin; run on the lab; check the ArgoCD jsonpath fields (phase) against ARGOCD.md step 1's block. -->
+
 ## 2. Push the first version to Nexus
 
 Run this to give Octopus a first version to release; later, in step 10, you run it again with
