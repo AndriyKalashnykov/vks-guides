@@ -8,7 +8,8 @@ out to the namespace `test-web-apps-dev` of a VKS cluster. You then promote the 
 to. Octopus never reaches the VKS cluster: it only writes to Git and reads ArgoCD's status through
 its Argo CD gateway, a small program that runs in Octopus's cluster.
 
-The app is a page that says which version it runs. The Octopus Argo CD integration is a preview
+The app is a page that says which version it runs. [GLOSSARY.md](GLOSSARY.md) explains the words
+this guide uses (release, lifecycle, feed, gateway, sync). The Octopus Argo CD integration is a preview
 feature of Octopus Server 2026.3 ([Argo CD in Octopus](https://octopus.com/docs/argo-cd)).
 
 ## Prerequisites
@@ -1186,11 +1187,11 @@ Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_API_KEY
    healthy and shows the three Applications. Then delete the API key from 1. (**Profile** → **My API
    Keys**): the gateway needs it only to register.
 
-![Argo CD Instances: octopus-gc-argocd healthy, 3 applications, environments dev and 2 more](img/cd-octopus/01-argocd-instances.jpg)
+![Argo CD Instances: the instance healthy, 3 applications, environments dev and 2 more](img/cd-octopus/01-argocd-instances.jpg)
 
 ## 8. Create the Octopus project
 
-Do this once, in Octopus's web page, signed in as `admin`. It tells Octopus how to deploy: commit the
+Do this once, in Octopus's web page signed in as `admin`, and with one terminal block. It tells Octopus how to deploy: commit the
 new image tag into the Application's folder of `deploy`, ask ArgoCD to sync, and wait until the
 Application is healthy; with an approval before `prod`, and a new release for every new image in
 Nexus.
@@ -1226,7 +1227,7 @@ Get-Content "$HOME\nexus-ca.pem", "$HOME\gitea-ca.pem" | Set-Content -Encoding a
 **Expect:** `2`.
 
 **Expect:** after the restart, `kubectl --kubeconfig <file> -n octopus logs octopus-octopus-deploy-0 -c
-ca-bundle` prints one more CA than before (150 instead of 149 on Octopus 2026.3).
+ca-bundle` prints one more CA than before.
 
 **The project.** **Projects** → **Add Project**: **Project name** `test-web-apps`, **Deploy to**
 **Kubernetes**, **Are you using Argo CD?** **Yes**, and under **Lifecycle** `dev-test-prod` (OCTOPUS.md
@@ -1360,7 +1361,7 @@ same approval; after **Proceed**, Octopus commits the earlier tag into `envs/pro
 ArgoCD rolls it out. Run step 5's check block: `prod` shows the earlier version, `dev` and `test` keep
 the new one.
 
-![Deploy release 0.0.3 to prod (the rollback): approval, then the image step, sync and wait, all green](img/cd-octopus/19-rollback-prod.jpg)
+![Deploying the earlier release to prod (the rollback): approval, then the image step, sync and wait, all green](img/cd-octopus/19-rollback-prod.jpg)
 
 ## 11. Build the image with Tekton instead (optional)
 
