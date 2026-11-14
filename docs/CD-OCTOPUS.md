@@ -755,9 +755,94 @@ lifecycle's automatic phase, deploys it to `dev`.
 
 ![Create External Feed Trigger: lifecycle preview dev, test, prod; trigger source test-web-apps](img/cd-octopus/17-trigger-create.jpg)
 
-## 9. Release 1.0.0 to dev, test and prod
+## 9. Release a new version to dev, test and prod
 
-## 10. Release a new version and roll back
+1. Push a new version: run step 2's block again with `VERSION="1.0.1"`.
+2. Within a few minutes the trigger creates a release (`0.0.1` and up; Octopus numbers releases itself)
+   with `test-web-apps` `1.0.1` and deploys it to `dev`: Octopus commits the new tag into
+   `envs/dev/deployment.yaml` as the user `octopus` (message `Octopus Deploy updated image versions`),
+   asks ArgoCD to sync, and waits until the Application is healthy. Watch it under **Projects** →
+   `test-web-apps` → **Releases**.
+
+   ![Deploy test-web-apps release to dev: Step 1 Update Argo CD Application Image Tags, 1.1 trigger sync, 1.2 wait, all green](img/cd-octopus/10-deploy-dev-success.jpg)
+
+3. Run step 5's check block: `dev` shows `test-web-apps 1.0.1`; `test` and `prod` still show the
+   version they had.
+4. Promote it: on the release's page click **Deploy to test...**, then **Deploy**. When `test` shows
+   the new version, click **Deploy to prod...** → **Deploy**. The prod deployment stops at **Manual
+   Intervention Required**: click **Assign to me**, read the instructions, then **Proceed** (or **Reject
+   Deployment**). Until then nothing changes in `envs/prod`.
+
+   ![Deploy to prod: Manual Intervention Required, This task is waiting for manual intervention and must be assigned before proceeding](img/cd-octopus/14-prod-waits-approval.jpg)
+
+5. Run step 5's check block again: all three show the new version.
+
+Each deployment is one commit in `deploy`, which changes only that environment's
+`envs/<env>/deployment.yaml`; Gitea's history of `deploy` is the record of what ran where.
+
+Or deploy from a terminal, with Octopus's REST API: run this to deploy a release to an environment
+(the prod approval still waits in the web page). It needs an Octopus API key typed first, as in
+step 7 (1. and 2.); delete the key afterwards. On Windows, Windows must trust Octopus's CA ([OCTOPUS.md
+step 9](OCTOPUS.md#9-sign-in)). Set `OCTOPUS_ADDRESS` (OCTOPUS.md step 4), `RELEASE` to
+the release's number and `ENVIRONMENT` to `dev`, `test` or `prod`.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+OCTOPUS_ADDRESS="192.168.10.70"
+RELEASE="0.0.2"
+ENVIRONMENT="test"
+
+if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
+elif [ -z "${OCTOPUS_API_KEY:-}" ]; then echo "STOPPED: type the Octopus API key first (step 7, 2.)"
+else
+  CFG="$(mktemp)"; ( umask 077; printf 'header = "X-Octopus-ApiKey: %s"\n' "$OCTOPUS_API_KEY" > "$CFG" )
+  oc() { curl -fsS --connect-timeout 20 --max-time 60 --cacert "$HOME/octopus-ca.pem" -K "$CFG" "$@"; }
+  O="https://$OCTOPUS_ADDRESS/api/Spaces-1"
+  if P="$(oc "$O/projects/test-web-apps" | jq -er .Id)" \
+     && R="$(oc "$O/projects/$P/releases?take=100" | jq -er --arg v "$RELEASE" '.Items[] | select(.Version == $v) | .Id')" \
+     && E="$(oc "$O/environments?name=$ENVIRONMENT" | jq -er '.Items[0].Id')"; then
+    jq -n --arg r "$R" --arg e "$E" '{ReleaseId: $r, EnvironmentId: $e}' \
+      | oc -H 'Content-Type: application/json' --data-binary @- "$O/deployments" | jq -r '"deployment \(.Id) started, task \(.TaskId)"'
+  else
+    echo "FAILED: no project test-web-apps, release $RELEASE or environment $ENVIRONMENT"
+  fi
+  rm -f "$CFG"
+fi
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$OCTOPUS_ADDRESS = "192.168.10.70"
+$RELEASE = "0.0.2"
+$ENVIRONMENT = "test"
+
+if (-not $OCTOPUS_API_KEY) { "STOPPED: type the Octopus API key first (step 7, 2.)" } else {
+  $H = @{ 'X-Octopus-ApiKey' = [Net.NetworkCredential]::new('', $OCTOPUS_API_KEY).Password }
+  $O = "https://$OCTOPUS_ADDRESS/api/Spaces-1"
+  try {
+    $P = (Invoke-RestMethod -Headers $H "$O/projects/test-web-apps").Id
+    $R = ((Invoke-RestMethod -Headers $H "$O/projects/$P/releases?take=100").Items | Where-Object { $_.Version -eq $RELEASE }).Id
+    $E = ((Invoke-RestMethod -Headers $H "$O/environments?name=$ENVIRONMENT").Items | Select-Object -First 1).Id
+    if (-not $R -or -not $E) { throw "no release $RELEASE or environment $ENVIRONMENT" }
+    $D = Invoke-RestMethod -Headers $H -Method Post -ContentType 'application/json' -Body (@{ ReleaseId = $R; EnvironmentId = $E } | ConvertTo-Json) "$O/deployments"
+    "deployment $($D.Id) started, task $($D.TaskId)"
+  } catch { "FAILED: $($_.Exception.Message)" }
+}
+```
+
+<!-- DRAFT: Expect/If not; the sh form ran on the lab as an equivalent script 2026-11-14 12:10-12:13 (Deployments-28..30); the PowerShell form not run on Windows yet. -->
+
+## 10. Roll prod back
+
+To put `prod` back on the version it had, deploy the earlier release to `prod` again: on that release's
+page, **Deploy to prod...** → **Deploy** (or the block in step 9 with its `RELEASE`). It waits for the
+same approval; after **Proceed**, Octopus commits the earlier tag into `envs/prod/deployment.yaml` and
+ArgoCD rolls it out. Run step 5's check block: `prod` shows the earlier version, `dev` and `test` keep
+the new one.
+
+![Deploy release 0.0.3 to prod (the rollback): approval, then the image step, sync and wait, all green](img/cd-octopus/19-rollback-prod.jpg)
 
 ## 11. Build the image with Tekton instead (optional)
 
