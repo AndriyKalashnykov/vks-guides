@@ -1421,7 +1421,14 @@ fi
 
 </details>
 
-<!-- DRAFT: Windows twin; Expect/If not from a pasted run of this exact block (the lab agent ran an equivalent script 2026-11-14 14:30 EST: new pod "token status ... ok" with the new expiry; DELETE .../token/<iat>?id=<id> -> 200; the old token 401 at once). -->
+**Expect:** `deployment.apps/octopus-argocd-gateway restarted`, `successfully rolled out`, a log line with
+`"Argo CD authentication token status"`, the new `"expires_at"` and `"status":"ok"`, then one `deleted
+old token …` line per older token (`old tokens: none` when there was none).
+
+**If not:** a log line with `"status"` other than `ok`: the token in the file does not work; run step 6
+again, then this block.
+
+<!-- DRAFT: Windows twin. sh block PASS on the lab 2026-11-14 14:52 EST (step 6 then this: status ok, 5 older tokens deleted). -->
 
 To change the Gitea token of `octopus` (it does not end): delete
 `~/.config/vks-guides/cd-octopus/gitea-octopus.token`, run step 3 again (it makes a new one), put it into
