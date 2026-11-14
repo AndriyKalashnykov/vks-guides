@@ -170,8 +170,19 @@ fi
 
 </details>
 
-<!-- DRAFT: Windows twin, Expect and If not from the lab run of this exact block. Measured with the lab script:
-token exp 90 days, GET /api/v1/applications 200. DELETE /api/v1/session answered 415 there: check. -->
+**Expect:** `token saved: lists 3 apps of test-web-apps`. Run again, it makes another token and
+prints the same; the earlier token keeps working until it ends (step 12 removes it).
+
+**If not:**
+- `FAILED: no working token`, after `curl: (22) … 401`: ArgoCD's first `admin` password was changed;
+  the Secret `argocd-initial-admin-secret` no longer holds it.
+- … after `curl: (22) … 403` or `404`: step 5 did not create the project `test-web-apps` with its role
+  `octopus`.
+- `FAILED: no ArgoCD address or certificate`: the instance is not `Ready` ([ARGOCD.md step
+  1](ARGOCD.md#1-check-for-an-argocd-you-have)).
+
+<!-- DRAFT: Windows twin from the lab run of this exact block. -->
+
 
 ## 7. Connect Octopus to ArgoCD (the gateway)
 
