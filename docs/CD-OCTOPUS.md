@@ -1396,8 +1396,6 @@ release's page.
 - `curl: (22) The requested URL returned error: 401` above the `FAILED` line: the API key is wrong or
   was deleted; make a new one (step 7, 1.).
 
-<!-- DRAFT: sh PASS on the lab 2026-11-14 15:08 EST (release 0.0.4 to test; 9.9.9 -> FAILED; wrong key -> (22) 401 then FAILED); PowerShell twin parsed, not run (needs the API key typed on Windows). -->
-
 ## 10. Roll prod back
 
 To put `prod` back on the version it had, deploy the earlier release to `prod` again: on that release's
