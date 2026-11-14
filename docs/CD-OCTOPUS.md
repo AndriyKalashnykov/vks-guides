@@ -1522,7 +1522,132 @@ unset NEXUS_PUSH_PASSWORD GITEA_PASSWORD
 
 </details>
 
-<!-- DRAFT: Windows twin. -->
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-gitea-cluster"
+$GITEA_ADDRESS = "192.168.10.60"
+$NEXUS_REGISTRY = "192.168.10.50"
+$NEXUS_REPO = "apps"
+$NEXUS_PUSH_USER = "apps-push"
+$FIRST_VERSION = "1.0.3"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$CD_DIR = "$HOME\.config\vks-guides\cd-octopus"
+
+$TASK = @'
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: build, namespace: cd-octopus-ci}
+automountServiceAccountToken: false
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: build-test-web-apps, namespace: cd-octopus-ci}
+spec:
+  params:
+    - {name: app-url, type: string}
+    - {name: registry, type: string}
+    - {name: repo, type: string}
+  results:
+    - name: version
+    - name: digest
+  volumes:
+    - {name: src, emptyDir: {}}
+    - {name: push, secret: {secretName: nexus-build}}
+    - {name: ca, configMap: {name: nexus-ca}}
+  steps:
+    - name: clone
+      image: docker.io/alpine/git:v2.54.0@sha256:e8ceedc73bd80992ae8d58a7d24c58b8322146c354f1d2e81a97db4452068ec0
+      env:
+        - {name: HOME, value: /tmp}
+        - {name: URL, value: $(params.app-url)}
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 65532
+        capabilities: {drop: ["ALL"]}
+        seccompProfile: {type: RuntimeDefault}
+      volumeMounts:
+        - {name: src, mountPath: /src}
+      script: |
+        #!/bin/sh
+        set -eu
+        git clone -q --depth 1 "$URL" /src/app
+        V="$(tr -d ' \r\n' < /src/app/VERSION)"
+        printf '%s' "$V" > "$(results.version.path)"
+        sed -i "s/@VERSION@/$V/" /src/app/index.html
+        rm -rf /src/app/.git
+        echo "building version $V"
+    - name: kaniko
+      image: ghcr.io/osscontainertools/kaniko:v1.29.0-debug@sha256:350929376b8a69afb1d8b362086c809e4ef6799fa1bcb317c2806ae1447b3845
+      computeResources:
+        requests: {cpu: 500m, memory: 512Mi, ephemeral-storage: 2Gi}
+        limits: {memory: 2Gi, ephemeral-storage: 4Gi}
+      volumeMounts:
+        - {name: src, mountPath: /src}
+        - {name: push, mountPath: /kaniko/.docker, readOnly: true}
+        - {name: ca, mountPath: /run/ca, readOnly: true}
+      env:
+        - {name: REGISTRY, value: $(params.registry)}
+        - {name: REPO, value: $(params.repo)}
+      script: |
+        #!/busybox/sh
+        set -eu
+        export SSL_CERT_DIR=/kaniko/ssl/certs
+        /kaniko/executor --context=/src/app --dockerfile=/src/app/Dockerfile \
+          --destination="${REGISTRY}/${REPO}/test-web-apps:$(cat "$(results.version.path)")" \
+          --registry-certificate="${REGISTRY}=/run/ca/ca.crt" \
+          --digest-file="$(results.digest.path)"
+'@
+$FILES = [ordered]@{
+  'Dockerfile' = "FROM docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03`nCOPY index.html /usr/share/nginx/html/index.html`nEXPOSE 8080`n"
+  'index.html' = "<!doctype html>`n<html lang=`"en`"><head><meta charset=`"utf-8`"><title>test-web-apps</title></head>`n<body><h1>test-web-apps @VERSION@</h1></body></html>`n"
+  'VERSION' = "$FIRST_VERSION`n"
+}
+$KC = '--kubeconfig', $VKS_KUBECONFIG
+$GH = $GITEA_ADDRESS; $RV = @()
+if ($GITEA_ADDRESS -match '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$') { $GH = 'gitea-https.gitea.svc'; $RV = '--resolve', "${GH}:443:$GITEA_ADDRESS" }
+function api { curl.exe -sS --connect-timeout 20 --max-time 30 --ssl-no-revoke --cacert "$HOME\gitea-ca.pem" -K "$CD_DIR\gitea-admin.cfg" @RV -H 'Content-Type: application/json' -o NUL -D - --suppress-connect-headers @args | Out-String }
+function hc($T) { if ($T -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' } }
+function body($O) { [IO.File]::WriteAllText("$CD_DIR\body.json", ($O | ConvertTo-Json -Compress)) }
+New-Item -ItemType Directory -Force -Path $CD_DIR | Out-Null
+icacls $CD_DIR /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)F" | Out-Null
+$global:LASTEXITCODE = $null
+kubectl @KC get crd tasks.tekton.dev -o name | Out-Null
+$TEKTON = ($LASTEXITCODE -eq 0)
+if (-not $NEXUS_PUSH_PASSWORD -or $NEXUS_PUSH_PASSWORD.Length -eq 0 -or -not $GITEA_PASSWORD -or $GITEA_PASSWORD.Length -eq 0) {
+  "STOPPED: type the two passwords first (the line above)"
+} elseif (-not (Test-Path "$HOME\nexus-ca.pem") -or (Get-Item "$HOME\nexus-ca.pem").Length -eq 0 -or -not (Test-Path "$HOME\gitea-ca.pem") -or (Get-Item "$HOME\gitea-ca.pem").Length -eq 0 -or -not $TEKTON) {
+  "MISSING: $HOME\nexus-ca.pem, $HOME\gitea-ca.pem, or Tekton in this cluster (TEKTON.md)"
+} else {
+  kubectl @KC create namespace cd-octopus-ci --dry-run=client -o yaml | kubectl @KC apply -f - | Out-Null
+  kubectl @KC label namespace cd-octopus-ci --overwrite pod-security.kubernetes.io/enforce=baseline pod-security.kubernetes.io/warn=baseline
+  kubectl @KC -n cd-octopus-ci create configmap nexus-ca "--from-file=ca.crt=$HOME\nexus-ca.pem" --dry-run=client -o yaml | kubectl @KC apply -f -
+  $A = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("${NEXUS_PUSH_USER}:" + [Net.NetworkCredential]::new('', $NEXUS_PUSH_PASSWORD).Password))
+  @{ apiVersion = 'v1'; kind = 'Secret'; type = 'Opaque'; metadata = @{ name = 'nexus-build'; namespace = 'cd-octopus-ci' }
+     stringData = @{ 'config.json' = (@{ auths = @{ $NEXUS_REGISTRY = @{ auth = $A } } } | ConvertTo-Json -Depth 5 -Compress) } } |
+    ConvertTo-Json -Depth 5 | kubectl @KC apply -f -
+  Remove-Variable A
+  ($TASK -replace "`r`n", "`n") | kubectl @KC apply -f -
+  try {
+    $P = [Net.NetworkCredential]::new('', $GITEA_PASSWORD).Password.Replace('\', '\\').Replace('"', '\"')
+    [IO.File]::WriteAllText("$CD_DIR\gitea-admin.cfg", "user = `"gitea-admin:$P`"`n")
+    Remove-Variable P
+    body @{ name = 'app'; private = $false; default_branch = 'main' }
+    "repository app: $(hc (api -d "@$CD_DIR\body.json" "https://$GH/api/v1/user/repos"))"
+    foreach ($F in $FILES.Keys) {
+      body @{ content = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($FILES[$F])); message = "add $F"; branch = 'main' }
+      "  ${F}: $(hc (api -d "@$CD_DIR\body.json" "https://$GH/api/v1/repos/gitea-admin/app/contents/$F"))"
+    }
+  } finally {
+    Remove-Item -Force -ErrorAction SilentlyContinue "$CD_DIR\gitea-admin.cfg", "$CD_DIR\body.json"
+  }
+}
+Remove-Variable -ErrorAction SilentlyContinue NEXUS_PUSH_PASSWORD, GITEA_PASSWORD
+```
+
+</details>
 
 **Expect:** `namespace/cd-octopus-ci labeled`, `configmap/nexus-ca created`, `secret/nexus-build
 created`, `serviceaccount/build created`, `task.tekton.dev/build-test-web-apps created`, `repository
@@ -1537,7 +1662,8 @@ waits up to 10 minutes, and prints the result and the pushed version. Within a f
 trigger creates a release with that version and deploys it to `dev` (step 9 from 2. on). Set
 `VKS_CLUSTER`, `NEXUS_REGISTRY` and `NEXUS_REPO` as above.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-gitea-cluster"
@@ -1563,7 +1689,43 @@ if TR="$(printf 'apiVersion: tekton.dev/v1\nkind: TaskRun\nmetadata: {generateNa
 fi
 ```
 
-<!-- DRAFT: Windows twin. -->
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-gitea-cluster"
+$NEXUS_REGISTRY = "192.168.10.50"
+$NEXUS_REPO = "apps"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+$KC = '--kubeconfig', $VKS_KUBECONFIG, '-n', 'cd-octopus-ci'
+$global:LASTEXITCODE = $null
+$TR = "apiVersion: tekton.dev/v1`nkind: TaskRun`nmetadata: {generateName: build-test-web-apps-}`nspec:`n  serviceAccountName: build`n  taskRef: {name: build-test-web-apps}`n  params:`n    - {name: app-url, value: `"http://gitea-http.gitea.svc:3000/gitea-admin/app.git`"}`n    - {name: registry, value: `"$NEXUS_REGISTRY`"}`n    - {name: repo, value: `"$NEXUS_REPO`"}`n" | kubectl @KC create -o name -f -
+if ($LASTEXITCODE -eq 0 -and $TR) {
+  $TR = "$TR".Trim()
+  "started $TR"
+  $ST = ''
+  foreach ($i in 1..60) {
+    $ST = kubectl @KC get $TR -o 'jsonpath={.status.conditions[0].status}'
+    if ($ST -eq 'True' -or $ST -eq 'False') { break }
+    Start-Sleep 10
+  }
+  $J = $null
+  try { $J = kubectl @KC get $TR -o json | Out-String | ConvertFrom-Json -ErrorAction Stop } catch { }
+  "$($J.status.conditions[0].reason): $($J.status.conditions[0].message)"
+  if ($ST -eq 'True') {
+    $R = @{}; foreach ($x in $J.status.results) { $R[$x.name] = $x.value }
+    "pushed version $($R['version']) $($R['digest'])"
+  } else {
+    "FAILED: nothing pushed; the last lines of the build:"
+    kubectl @KC logs -l "tekton.dev/taskRun=$($TR.Split('/')[-1])" -c step-kaniko --tail=2
+  }
+}
+```
+
+</details>
 
 **Expect:** `started taskrun.tekton.dev/build-test-web-apps-…`, then `Succeeded: All Steps have
 completed executing` and `pushed version <VERSION> sha256:…` (about half a minute). A few minutes
@@ -1639,6 +1801,86 @@ fi
 
 </details>
 
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-octopus-cluster"
+$ARGOCD_NAMESPACE = "my-namespace"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$CD_DIR = "$HOME\.config\vks-guides\cd-octopus"
+$NS = "octopus-argocd-gateway"
+
+$KS = '--kubeconfig', $SUPERVISOR_KUBECONFIG, '-n', $ARGOCD_NAMESPACE
+$KC = '--kubeconfig', $VKS_KUBECONFIG, '-n', $NS
+$TF = "$CD_DIR\argocd-project.token"; $PEM = "$CD_DIR\argocd-server.pem"
+$IP = kubectl @KS get argocd argocd-1 -o 'jsonpath={.status.externalIP}'
+$OK = $false
+if (-not $IP -or -not (Test-Path $TF) -or (Get-Item $TF).Length -eq 0 -or -not (Test-Path $PEM) -or (Get-Item $PEM).Length -eq 0) {
+  "FAILED: no ArgoCD address, or no token or certificate from step 6 in $CD_DIR"
+} else {
+  $global:LASTEXITCODE = $null
+  kubectl @KC create secret generic gw-project-tokens "--from-file=PROJECT_AUTH_TOKEN_test-web-apps=$TF" --dry-run=client -o yaml | kubectl @KC apply -f -
+  if ($LASTEXITCODE -eq 0) { kubectl @KC rollout restart deployment/octopus-argocd-gateway }
+  if ($LASTEXITCODE -eq 0) { kubectl @KC rollout status deployment/octopus-argocd-gateway --timeout=3m }
+  $OK = ($LASTEXITCODE -eq 0)
+  if (-not $OK) { "FAILED: the gateway did not restart with the new token (see the error above)" }
+}
+if ($OK) {
+  Start-Sleep 20
+  kubectl @KC logs deployment/octopus-argocd-gateway | Select-String -CaseSensitive -SimpleMatch 'token status' | Select-Object -Last 1 | ForEach-Object { $_.Line.Substring(0, [Math]::Min(200, $_.Line.Length)) }
+  $AC = '-fsS', '--ssl-no-revoke', '--resolve', "argocd-server:443:$IP", '--cacert', $PEM, '--connect-timeout', '20', '--max-time', '60', '-H', 'Content-Type: application/json'
+  $global:LASTEXITCODE = $null
+  $RAW = kubectl @KS get appproject test-web-apps -o json | Out-String
+  $J = $null
+  if ($LASTEXITCODE -eq 0) { try { $J = $RAW | ConvertFrom-Json -ErrorAction Stop } catch { $J = $null } }
+  if (-not $J) {
+    "FAILED: cannot read the project's tokens; nothing deleted"
+  } else {
+    $KEEP = ''
+    try {
+      $B = ([IO.File]::ReadAllText($TF).Split('.')[1]).Replace('-', '+').Replace('_', '/')
+      $B += '=' * ((4 - $B.Length % 4) % 4)
+      $KEEP = "$(([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B)) | ConvertFrom-Json -ErrorAction Stop).jti)"
+    } catch { $KEEP = '' }
+    $T = @(foreach ($I in @($J.status.jwtTokensByRole.octopus.items)) { if ($I -and "$($I.id)" -ne $KEEP) { $I } })
+    if (-not $KEEP) {
+      "FAILED: cannot read the id of the token in $CD_DIR; nothing deleted"
+    } elseif ($T.Count -eq 0) {
+      "old tokens: none"
+    } else {
+      try {
+        $PB = kubectl @KS get secret argocd-initial-admin-secret -o 'jsonpath={.data.password}'
+        [IO.File]::WriteAllText("$CD_DIR\login.json", (@{ username = 'admin'; password = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("$PB")) } | ConvertTo-Json -Compress))
+        $PB = $null
+        $S = curl.exe @AC --data-binary "@$CD_DIR\login.json" https://argocd-server/api/v1/session | Out-String
+        Remove-Item -Force "$CD_DIR\login.json"
+        $AT = ''; try { $AT = "$(($S | ConvertFrom-Json -ErrorAction Stop).token)" } catch { }
+        [IO.File]::WriteAllText("$CD_DIR\admin.cfg", "header = `"Authorization: Bearer $AT`"`n")
+        $S = $null; $AT = $null
+        foreach ($I in $T) {
+          $IAT = "$($I.iat)"; $ID = "$($I.id)"
+          $global:LASTEXITCODE = $null
+          curl.exe @AC -K "$CD_DIR\admin.cfg" -X DELETE -o NUL "https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token/${IAT}?id=${ID}"
+          if ($LASTEXITCODE -eq 0) { "deleted old token $ID (issued $IAT)" }
+        }
+        $global:LASTEXITCODE = $null
+        curl.exe @AC -K "$CD_DIR\admin.cfg" -X DELETE -o NUL https://argocd-server/api/v1/session
+        if ($LASTEXITCODE -ne 0) { "NOTE: ArgoCD sign-out failed (the session ends by itself)" }
+      } catch {
+        "FAILED: $($_.Exception.Message)"
+      } finally {
+        Remove-Item -Force -ErrorAction SilentlyContinue "$CD_DIR\login.json", "$CD_DIR\admin.cfg"
+      }
+    }
+  }
+}
+```
+
+</details>
+
 **Expect:** `deployment.apps/octopus-argocd-gateway restarted`, `successfully rolled out`, a log line with
 `"Argo CD authentication token status"`, the new `"expires_at"` and `"status":"ok"`, then one `deleted
 old token …` line per older token (`old tokens: none` when there was none).
@@ -1646,7 +1888,7 @@ old token …` line per older token (`old tokens: none` when there was none).
 **If not:** a log line with `"status"` other than `ok`: the token in the file does not work; run step 6
 again, then this block.
 
-<!-- DRAFT: Windows twin. sh block PASS on the lab 2026-11-14 14:52 EST (step 6 then this: status ok, 5 older tokens deleted). -->
+<!-- DRAFT: none open: sh PASS 14:52, PowerShell PASS on Windows 15:06 EST. -->
 
 To change the Gitea token of `octopus` (it does not end): delete
 `~/.config/vks-guides/cd-octopus/gitea-octopus.token`, run step 3 again (it makes a new one), put it into
@@ -1721,7 +1963,55 @@ fi
 
 </details>
 
-<!-- DRAFT: Windows twin; Expect/If not; run on the lab at the very end (it removes the test setup). -->
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-app-cluster"
+$OCTOPUS_CLUSTER = "my-octopus-cluster"
+$GITEA_ADDRESS = "192.168.10.60"
+
+$KS = '--kubeconfig', $SUPERVISOR_KUBECONFIG, '-n', $ARGOCD_NAMESPACE
+foreach ($E in 'dev', 'test', 'prod') { kubectl @KS delete applications.argoproj.io "test-web-apps-$E" --ignore-not-found --wait=false }
+$N = ''
+foreach ($i in 1..60) {
+  $global:LASTEXITCODE = $null
+  $N = "$(kubectl @KS get applications.argoproj.io test-web-apps-dev test-web-apps-test test-web-apps-prod --ignore-not-found -o name)".Trim()
+  if ($LASTEXITCODE -ne 0) { $N = 'FAILED'; break }
+  if (-not $N) { break }
+  Start-Sleep 5
+}
+if ($N) {
+  "FAILED: Applications not gone after 5 minutes ($N); the project, its login and the CA are kept"
+} else {
+  kubectl @KS delete appproject test-web-apps --ignore-not-found
+  kubectl @KS delete secret repo-gitea-deploy --ignore-not-found
+  $global:LASTEXITCODE = $null
+  $RAW = kubectl @KS get configmap argocd-tls-certs-cm -o json | Out-String
+  $C = $null
+  if ($LASTEXITCODE -eq 0) { try { $C = $RAW | ConvertFrom-Json -ErrorAction Stop } catch { $C = $null } }
+  if (-not $C) {
+    "FAILED: cannot read argocd-tls-certs-cm; Gitea's CA in ArgoCD is kept"
+  } elseif ($C.data -and @($C.data.PSObject.Properties.Name) -contains $GITEA_ADDRESS) {
+    $PF = [IO.Path]::GetTempFileName()
+    [IO.File]::WriteAllText($PF, (ConvertTo-Json -Compress -InputObject @(@{ op = 'remove'; path = "/data/$GITEA_ADDRESS" })))
+    kubectl @KS patch configmap argocd-tls-certs-cm --type json --patch-file $PF
+    Remove-Item -Force $PF
+  } else {
+    "Gitea's CA in ArgoCD: already gone"
+  }
+  foreach ($E in 'dev', 'test', 'prod') { kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" delete namespace "test-web-apps-$E" --ignore-not-found }
+  helm uninstall gw --kubeconfig "$HOME\.kube\${OCTOPUS_CLUSTER}.kubeconfig" -n octopus-argocd-gateway --ignore-not-found
+  kubectl --kubeconfig "$HOME\.kube\${OCTOPUS_CLUSTER}.kubeconfig" delete namespace octopus-argocd-gateway --ignore-not-found
+}
+```
+
+</details>
+
+<!-- DRAFT: Expect/If not; run on the lab at the very end (it removes the test setup). -->
 
 3. In Gitea, if you no longer need them: delete the repository `deploy` (its **Settings** → **Danger
    Zone**) and the users `octopus` and `argocd` (**Site Administration** → **User Accounts**), and
