@@ -13,7 +13,48 @@ feature of Octopus Server 2026.3 ([Argo CD in Octopus](https://octopus.com/docs/
 
 ## Prerequisites
 
-<!-- DRAFT: filled from the lab runs; see reports/CD-OCTOPUS design v2.md -->
+Do these first:
+
+- [NEXUS.md](NEXUS.md) steps 1 to 10: Nexus with the Docker repository `apps`, its push and pull users,
+  and `nexus-ca.pem`; your machine trusts Nexus's CA;
+- [OCTOPUS.md](OCTOPUS.md) steps 1 to 11: Octopus Server 2026.3 with the environments `dev`, `test`
+  and `prod`, the lifecycle `dev-test-prod`, the Docker feed `nexus`, and `octopus-ca.pem`;
+- [GITEA.md](GITEA.md) steps 1 to 8 and [Over HTTPS, for pushes and
+  tokens](GITEA.md#over-https-for-pushes-and-tokens), with `gitea-ca.pem`;
+- [ARGOCD.md](ARGOCD.md) steps 1 to 4 and 7: an ArgoCD instance and the VKS cluster for the app
+  added to it;
+- [NEXUS.md step 11](NEXUS.md#11-let-vks-clusters-pull-from-nexus) for the app's cluster: its nodes
+  trust Nexus's CA.
+
+You need [kubectl](KUBECTL.md), [Helm](HELM.md), [the VCF CLI](VCF.md), [jq, curl, openssl and git, and
+podman or docker](PREREQS.md); the **Namespaces Edit** role on ArgoCD's vSphere Namespace; Octopus's
+`admin` (or a user who may manage Argo CD instances, Git credentials and projects); and Gitea's
+administrator.
+
+**The VKS clusters to make.** This guide adds little to the clusters of the guides above. In
+Octopus's cluster, the Argo CD gateway asks for nothing and used 1 to 9m CPU and 17 to 19 MiB
+(measured on VKS 3.8). The app's cluster runs one small web server per environment (0.05 CPU and 32
+MiB reserved each): one `best-effort-medium` worker with room for that is enough; the app may share
+the cluster of [ARGOCD.md](ARGOCD.md).
+
+The connections this guide needs, for a firewall (all TCP, besides DNS; for a registry, also
+[its other hosts](PREREQS.md#registry-hosts-for-a-firewall)):
+
+| from | to | port | for |
+|---|---|---|---|
+| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl and the VCF CLI (steps 1, 5 and 6) |
+| your machine (laptop or jump box) | the VKS clusters' API addresses (in their kubeconfigs) | 6443 | kubectl and Helm (steps 1, 4 and 7) |
+| your machine (laptop or jump box) | Nexus's address | 443 | pushing images (steps 2 and 10) |
+| your machine (laptop or jump box) | `registry-1.docker.io` | 443 | the gateway's Helm chart (step 7) |
+| your machine and your browser | Octopus's web address, ArgoCD's address, Gitea's HTTPS address | 443 | the web pages and REST APIs |
+| the nodes of Octopus's cluster | `docker.io` | 443 | the gateway's image (step 7) |
+| the gateway (Octopus's cluster) | Octopus's web and gRPC Services, in the cluster | 443 and 8443 | registering, then the link to Octopus |
+| the gateway (Octopus's cluster) | ArgoCD's address | 443 | reading and syncing the Applications |
+| Octopus Server | Gitea's HTTPS address | 443 | committing the new image tags |
+| Octopus Server | Nexus's address | 443 | listing image versions |
+| ArgoCD (the Supervisor) | Gitea's HTTPS address | 443 | reading the `deploy` repository |
+| ArgoCD (the Supervisor) | the app cluster's API address | 6443 | deploying the app |
+| the app cluster's nodes | Nexus's address | 443 | pulling the app's image |
 
 ## 1. Check what is in place
 
@@ -112,7 +153,104 @@ then `Removed login credentials for …` (docker: `Removing login credentials fo
 **If not:** as in [NEXUS.md step 10](NEXUS.md#10-trust-nexus-and-push-an-image); `redeploy is not
 allowed` means this version was pushed before: push with a new `VERSION`.
 
-## 3. Serve Gitea over HTTPS and create the deploy repository
+## 3. Create the deploy repository and Gitea's users
+
+Run this once, after step 2: ArgoCD deploys what this repository says, and Octopus changes it. Type
+`gitea-admin`'s password first, in the terminal where you run this guide's blocks; it stays in this
+terminal only:
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+printf 'gitea-admin password: '; IFS= read -rs GITEA_PASSWORD; echo
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$GITEA_PASSWORD = Read-Host 'gitea-admin password' -AsSecureString
+```
+
+Then run this, in the same terminal. Through Gitea's HTTPS address it creates the private repository
+`deploy`, with the folders `envs/dev`, `envs/test` and `envs/prod`; each holds the app's Deployment
+(the image `<NEXUS_REGISTRY>/<NEXUS_REPO>/test-web-apps:1.0.0`, pulled with the Secret `nexus-pull`)
+and a Service with a load-balancer address. It then creates two Gitea users whose passwords no one
+knows and who may create no repositories: `octopus`, who may write to `deploy`, and `argocd`, who may
+only read it, and saves a token for each, readable only by you, in `~/.config/vks-guides/cd-octopus`
+(`gitea-octopus.token` for step 8, `gitea-argocd.token` for step 5). A second run keeps the
+repository, the users and the tokens. Set `VKS_CLUSTER` to Gitea's cluster, `GITEA_ADDRESS` to its
+HTTPS address, and `NEXUS_REGISTRY` and `NEXUS_REPO` as in NEXUS.md.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+VKS_CLUSTER="my-vks-cluster"
+GITEA_ADDRESS="192.168.10.60"
+NEXUS_REGISTRY="192.168.10.50"
+NEXUS_REPO="apps"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+CD_DIR="$HOME/.config/vks-guides/cd-octopus"
+
+gx() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea exec deployment/gitea -- gitea admin user "$@"; }
+mkdir -p "$CD_DIR" && chmod 700 "$CD_DIR"
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ -z "${GITEA_PASSWORD:-}" ]; then
+  echo "STOPPED: type gitea-admin's password first (the line above)"
+elif [ ! -s "$HOME/gitea-ca.pem" ]; then
+  echo "MISSING: $HOME/gitea-ca.pem (GITEA.md, Over HTTPS, 4.)"
+else
+  ( umask 077; printf 'user = "gitea-admin:%s"\n' "$(printf '%s' "$GITEA_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')" > "$CD_DIR/gitea-admin.cfg" )
+  api() { curl -sS --connect-timeout 20 --max-time 30 --cacert "$HOME/gitea-ca.pem" -K "$CD_DIR/gitea-admin.cfg" -H 'Content-Type: application/json' "$@"; }
+  if [ "$(api -o /dev/null -w '%{http_code}' "https://$GITEA_ADDRESS/api/v1/user")" != 200 ]; then
+    echo "FAILED: Gitea did not accept gitea-admin and this password at https://$GITEA_ADDRESS"
+  else
+    echo "repository deploy: $(api -o /dev/null -w '%{http_code}' -d '{"name":"deploy","private":true,"default_branch":"main"}' "https://$GITEA_ADDRESS/api/v1/user/repos")"
+    for E in dev test prod; do
+      for F in deployment service; do
+        if [ "$F" = deployment ]; then
+          Y="$(printf 'apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test-web-apps\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app.kubernetes.io/name: test-web-apps\n  template:\n    metadata:\n      labels:\n        app.kubernetes.io/name: test-web-apps\n    spec:\n      automountServiceAccountToken: false\n      imagePullSecrets:\n        - name: nexus-pull\n      securityContext:\n        runAsNonRoot: true\n        runAsUser: 101\n        runAsGroup: 101\n        seccompProfile:\n          type: RuntimeDefault\n      containers:\n        - name: web\n          image: %s/%s/test-web-apps:1.0.0\n          ports:\n            - name: http\n              containerPort: 8080\n          securityContext:\n            allowPrivilegeEscalation: false\n            readOnlyRootFilesystem: true\n            capabilities:\n              drop: ["ALL"]\n          resources:\n            requests:\n              cpu: 50m\n              memory: 32Mi\n            limits:\n              memory: 128Mi\n          volumeMounts:\n            - name: tmp\n              mountPath: /tmp\n      volumes:\n        - name: tmp\n          emptyDir: {}\n' "$NEXUS_REGISTRY" "$NEXUS_REPO")"
+        else
+          Y="$(printf 'apiVersion: v1\nkind: Service\nmetadata:\n  name: test-web-apps\nspec:\n  type: LoadBalancer\n  selector:\n    app.kubernetes.io/name: test-web-apps\n  ports:\n    - name: http\n      port: 80\n      targetPort: http\n')"
+        fi
+        jq -n --arg c "$(printf '%s\n' "$Y" | base64 | tr -d '\n')" --arg f "envs/$E/$F.yaml" '{content: $c, message: "add \($f)", branch: "main"}' \
+          | api -o /dev/null -w "  envs/$E/$F.yaml: %{http_code}\n" --data-binary @- "https://$GITEA_ADDRESS/api/v1/repos/gitea-admin/deploy/contents/envs/$E/$F.yaml"
+      done
+    done
+    for U in octopus argocd; do
+      if gx list | awk -v u="$U" '$2 == u { f = 1 } END { exit !f }'; then
+        echo "user $U: exists, kept"
+      else
+        gx create --username "$U" --email "$U@localhost" --random-password --must-change-password=false >/dev/null && echo "user $U: created"
+        jq -n --arg u "$U" '{source_id: 0, login_name: $u, max_repo_creation: 0}' \
+          | api -o /dev/null -w "user $U may create no repositories: %{http_code}\n" -X PATCH --data-binary @- "https://$GITEA_ADDRESS/api/v1/admin/users/$U"
+      fi
+    done
+    echo "octopus writes deploy: $(api -o /dev/null -w '%{http_code}' -X PUT -d '{"permission":"write"}' "https://$GITEA_ADDRESS/api/v1/repos/gitea-admin/deploy/collaborators/octopus")"
+    echo "argocd reads deploy: $(api -o /dev/null -w '%{http_code}' -X PUT -d '{"permission":"read"}' "https://$GITEA_ADDRESS/api/v1/repos/gitea-admin/deploy/collaborators/argocd")"
+    for U in octopus argocd; do
+      if [ -s "$CD_DIR/gitea-$U.token" ]; then
+        echo "token for $U: kept"
+      else
+        [ "$U" = octopus ] && S=write:repository || S=read:repository
+        ( umask 077; gx generate-access-token --username "$U" --token-name "cd-octopus-$(date +%Y%m%d%H%M%S)" --scopes "$S" --raw \
+            | tr -d '\r\n' > "$CD_DIR/gitea-$U.token.new" )
+        if grep -Eq '^[0-9a-f]{40}$' "$CD_DIR/gitea-$U.token.new"; then
+          mv "$CD_DIR/gitea-$U.token.new" "$CD_DIR/gitea-$U.token" && echo "token for $U: saved"
+        else
+          rm -f "$CD_DIR/gitea-$U.token.new"; echo "FAILED: Gitea made no token for $U"
+        fi
+      fi
+    done
+  fi
+  rm -f "$CD_DIR/gitea-admin.cfg"
+fi
+```
+
+</details>
+
+<!-- DRAFT: Windows twin, Expect and If not from the lab run of this exact block. -->
 
 ## 4. Prepare the app cluster
 
