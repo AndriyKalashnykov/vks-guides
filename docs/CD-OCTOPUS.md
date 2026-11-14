@@ -813,8 +813,9 @@ foreach ($E in 'dev', 'test', 'prod') {
 
 **If not:**
 - `Unknown` instead of `Synced`, and the ArgoCD page shows `x509: certificate signed by unknown
-  authority` for the Application: ArgoCD has not read Gitea's CA yet. Wait two minutes, then in the
-  ArgoCD page open the Application and click **Refresh** → **Hard Refresh**.
+  authority` for the Application: ArgoCD tried Gitea before it had read Gitea's CA, and keeps that
+  result. Wait two minutes, then in the ArgoCD page open each Application and click **Refresh** →
+  **Hard Refresh**; it shows `Synced` within a minute.
 - `pods none`: the Application is not synced yet, or its namespace is missing (step 4).
 - `0/1` with `ErrImagePull` (`kubectl --kubeconfig <file> -n test-web-apps-<env> get pods`): the
   cluster's nodes do not trust Nexus's CA, or `nexus-pull` is missing (step 4).
