@@ -250,7 +250,7 @@ else
     for E in dev test prod; do
       for F in deployment service; do
         if [ "$F" = deployment ]; then
-          Y="$(printf 'apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test-web-apps\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app.kubernetes.io/name: test-web-apps\n  template:\n    metadata:\n      labels:\n        app.kubernetes.io/name: test-web-apps\n    spec:\n      automountServiceAccountToken: false\n      imagePullSecrets:\n        - name: nexus-pull\n      securityContext:\n        runAsNonRoot: true\n        runAsUser: 101\n        runAsGroup: 101\n        seccompProfile:\n          type: RuntimeDefault\n      containers:\n        - name: web\n          image: %s/%s/test-web-apps:1.0.0\n          ports:\n            - name: http\n              containerPort: 8080\n          securityContext:\n            allowPrivilegeEscalation: false\n            readOnlyRootFilesystem: true\n            capabilities:\n              drop: ["ALL"]\n          resources:\n            requests:\n              cpu: 50m\n              memory: 32Mi\n            limits:\n              memory: 128Mi\n          volumeMounts:\n            - name: tmp\n              mountPath: /tmp\n      volumes:\n        - name: tmp\n          emptyDir: {}\n' "$NEXUS_REGISTRY" "$NEXUS_REPO")"
+          Y="$(printf 'apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test-web-apps\nspec:\n  replicas: 1\n  strategy:\n    rollingUpdate:\n      maxUnavailable: 0\n      maxSurge: 1\n  selector:\n    matchLabels:\n      app.kubernetes.io/name: test-web-apps\n  template:\n    metadata:\n      labels:\n        app.kubernetes.io/name: test-web-apps\n    spec:\n      automountServiceAccountToken: false\n      imagePullSecrets:\n        - name: nexus-pull\n      securityContext:\n        runAsNonRoot: true\n        runAsUser: 101\n        runAsGroup: 101\n        seccompProfile:\n          type: RuntimeDefault\n      containers:\n        - name: web\n          image: %s/%s/test-web-apps:1.0.0\n          ports:\n            - name: http\n              containerPort: 8080\n          readinessProbe:\n            httpGet:\n              path: /\n              port: http\n            periodSeconds: 5\n          securityContext:\n            allowPrivilegeEscalation: false\n            readOnlyRootFilesystem: true\n            capabilities:\n              drop: ["ALL"]\n          resources:\n            requests:\n              cpu: 50m\n              memory: 32Mi\n            limits:\n              memory: 128Mi\n          volumeMounts:\n            - name: tmp\n              mountPath: /tmp\n      volumes:\n        - name: tmp\n          emptyDir: {}\n' "$NEXUS_REGISTRY" "$NEXUS_REPO")"
         else
           Y="$(printf 'apiVersion: v1\nkind: Service\nmetadata:\n  name: test-web-apps\nspec:\n  type: LoadBalancer\n  selector:\n    app.kubernetes.io/name: test-web-apps\n  ports:\n    - name: http\n      port: 80\n      targetPort: http\n')"
         fi
@@ -816,6 +816,12 @@ lifecycle's automatic phase, deploys it to `dev`.
    ![Deploy to prod: Manual Intervention Required, This task is waiting for manual intervention and must be assigned before proceeding](img/cd-octopus/14-prod-waits-approval.jpg)
 
 5. Run step 5's check block again: all three show the new version.
+
+If a version does not start (its pods crash), the deployment fails after the step's 180-second wait
+with `Verification failed due to the timeout being exceeded (180 seconds)`. The environment keeps
+serving the version before: its Deployment starts a new pod next to the old one and removes the old
+one only when the new one is ready. Deploy the release before it again (step 10) to put `deploy`
+back in line with what runs.
 
 Each deployment is one commit in `deploy`, which changes only that environment's
 `envs/<env>/deployment.yaml`; Gitea's history of `deploy` is the record of what ran where.
