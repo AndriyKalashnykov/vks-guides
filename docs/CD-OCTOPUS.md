@@ -65,7 +65,8 @@ get one line per part. Set `OCTOPUS_ADDRESS`, `NEXUS_REGISTRY` and `GITEA_ADDRES
 `ARGOCD_NAMESPACE` to ArgoCD's vSphere Namespace, and `VSPHERE_NAMESPACE` and `VKS_CLUSTER` to the app's
 cluster.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 OCTOPUS_ADDRESS="192.168.10.70"
@@ -85,6 +86,37 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get argocd 
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get managedentities.argocd-service.vsphere.vmware.com "vks-${VSPHERE_NAMESPACE}-${VKS_CLUSTER}" -o jsonpath='ArgoCD destination: {.status.phase}{"\n"}'
 ```
 
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$OCTOPUS_ADDRESS = "192.168.10.70"
+$NEXUS_REGISTRY = "192.168.10.50"
+$GITEA_ADDRESS = "192.168.10.60"
+$ARGOCD_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
+
+function c($CA, $ADDR, $NAME, $URLPATH) {
+  $RV = @(); if ($ADDR -match '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$') { $RV = '--resolve', "${NAME}:443:$ADDR"; $ADDR = $NAME }
+  curl.exe -sS --connect-timeout 20 --max-time 30 --ssl-no-revoke --cacert $CA @RV -D - --suppress-connect-headers "https://$ADDR$URLPATH" | Out-String
+}
+function hc($T) { if ($T -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' } }
+$O = c "$HOME\octopus-ca.pem" $OCTOPUS_ADDRESS 'octopus-web.octopus.svc' '/api'
+$V = if ($O -match '"Version": *"([^"]*)"') { $Matches[1] } else { '' }
+"Octopus: $V"
+"Nexus: $(hc (c "$HOME\nexus-ca.pem" $NEXUS_REGISTRY 'nexus.nexus.svc' '/service/rest/v1/status'))"
+"Gitea: $(hc (c "$HOME\gitea-ca.pem" $GITEA_ADDRESS 'gitea-https.gitea.svc' '/api/v1/version'))"
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get argocd argocd-1 -o 'jsonpath=ArgoCD: {.status.phase} https://{.status.externalIP}{''\n''}'
+kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedentities.argocd-service.vsphere.vmware.com "vks-${VSPHERE_NAMESPACE}-${VKS_CLUSTER}" -o 'jsonpath=ArgoCD destination: {.status.phase}{''\n''}'
+```
+
+</details>
+
 **Expect:** `Octopus: 2026.3.…`, `Nexus: 200`, `Gitea: 200`, `ArgoCD: Ready https://<address>` and
 `ArgoCD destination: Ready`.
 
@@ -95,7 +127,7 @@ kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get managed
   the app's cluster.
 - `Octopus:` older than `2026.3`: the steps in this guide need Octopus 2026.3 or newer.
 
-<!-- DRAFT: Windows twin. Block PASS on the lab 2026-11-14 14:4x. -->
+
 
 
 ## 2. Push the first version to Nexus
@@ -290,6 +322,152 @@ fi
 
 </details>
 
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-vks-cluster"
+$GITEA_ADDRESS = "192.168.10.60"
+$NEXUS_REGISTRY = "192.168.10.50"
+$NEXUS_REPO = "apps"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$CD_DIR = "$HOME\.config\vks-guides\cd-octopus"
+
+$DEP = @'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-web-apps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: test-web-apps
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-web-apps
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: nexus-pull
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: @IMAGE@
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+'@
+$SVC = @'
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-web-apps
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: test-web-apps
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+'@
+$YAML = @{
+  deployment = ($DEP -replace "`r`n", "`n").Replace('@IMAGE@', "$NEXUS_REGISTRY/$NEXUS_REPO/test-web-apps:1.0.0") + "`n"
+  service = ($SVC -replace "`r`n", "`n") + "`n"
+}
+$GH = $GITEA_ADDRESS; $RV = @()
+if ($GITEA_ADDRESS -match '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$') { $GH = 'gitea-https.gitea.svc'; $RV = '--resolve', "${GH}:443:$GITEA_ADDRESS" }
+function api { curl.exe -sS --connect-timeout 20 --max-time 30 --ssl-no-revoke --cacert "$HOME\gitea-ca.pem" -K "$CD_DIR\gitea-admin.cfg" @RV -H 'Content-Type: application/json' -o NUL -D - --suppress-connect-headers @args | Out-String }
+function hc($T) { if ($T -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' } }
+function body($O) { [IO.File]::WriteAllText("$CD_DIR\body.json", ($O | ConvertTo-Json -Compress)) }
+New-Item -ItemType Directory -Force -Path $CD_DIR | Out-Null
+icacls $CD_DIR /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)F" | Out-Null
+if (-not $GITEA_PASSWORD -or $GITEA_PASSWORD.Length -eq 0) {
+  "STOPPED: type gitea-admin's password first (the line above)"
+} elseif (-not (Test-Path "$HOME\gitea-ca.pem") -or (Get-Item "$HOME\gitea-ca.pem").Length -eq 0) {
+  "MISSING: $HOME\gitea-ca.pem (GITEA.md, Over HTTPS, 4.)"
+} else {
+  try {
+    $P = [Net.NetworkCredential]::new('', $GITEA_PASSWORD).Password.Replace('\', '\\').Replace('"', '\"')
+    [IO.File]::WriteAllText("$CD_DIR\gitea-admin.cfg", "user = `"gitea-admin:$P`"`n")
+    Remove-Variable P
+    if ((hc (api "https://$GH/api/v1/user")) -ne '200') {
+      "FAILED: Gitea did not accept gitea-admin and this password at https://$GITEA_ADDRESS"
+    } else {
+      body @{ name = 'deploy'; private = $true; default_branch = 'main' }
+      "repository deploy: $(hc (api -d "@$CD_DIR\body.json" "https://$GH/api/v1/user/repos"))"
+      foreach ($E in 'dev', 'test', 'prod') {
+        foreach ($F in 'deployment', 'service') {
+          body @{ content = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($YAML[$F])); message = "add envs/$E/$F.yaml"; branch = 'main' }
+          "  envs/$E/${F}.yaml: $(hc (api -d "@$CD_DIR\body.json" "https://$GH/api/v1/repos/gitea-admin/deploy/contents/envs/$E/$F.yaml"))"
+        }
+      }
+      foreach ($U in 'octopus', 'argocd') {
+        if (@(kubectl --kubeconfig $VKS_KUBECONFIG -n gitea exec deployment/gitea -- gitea admin user list | Where-Object { (-split $_)[1] -ceq $U }).Count) {
+          "user ${U}: exists, kept"
+        } else {
+          $global:LASTEXITCODE = $null
+          kubectl --kubeconfig $VKS_KUBECONFIG -n gitea exec deployment/gitea -- gitea admin user create `
+            --username $U --email "$U@localhost" --random-password --must-change-password=false | Out-Null
+          if ($LASTEXITCODE -eq 0) { "user ${U}: created" }
+          body @{ source_id = 0; login_name = $U; max_repo_creation = 0 }
+          "user $U may create no repositories: $(hc (api -X PATCH -d "@$CD_DIR\body.json" "https://$GH/api/v1/admin/users/$U"))"
+        }
+      }
+      body @{ permission = 'write' }
+      "octopus writes deploy: $(hc (api -X PUT -d "@$CD_DIR\body.json" "https://$GH/api/v1/repos/gitea-admin/deploy/collaborators/octopus"))"
+      body @{ permission = 'read' }
+      "argocd reads deploy: $(hc (api -X PUT -d "@$CD_DIR\body.json" "https://$GH/api/v1/repos/gitea-admin/deploy/collaborators/argocd"))"
+      foreach ($U in 'octopus', 'argocd') {
+        $TF = "$CD_DIR\gitea-$U.token"
+        if ((Test-Path $TF) -and (Get-Item $TF).Length -gt 0) {
+          "token for ${U}: kept"
+        } else {
+          $S = if ($U -eq 'octopus') { 'write:repository' } else { 'read:repository' }
+          $T = (kubectl --kubeconfig $VKS_KUBECONFIG -n gitea exec deployment/gitea -- gitea admin user generate-access-token `
+            --username $U --token-name "cd-octopus-$(Get-Date -Format yyyyMMddHHmmss)" --scopes $S --raw | Out-String).Trim()
+          if ($T -cmatch '^[0-9a-f]{40}$') {
+            [IO.File]::WriteAllText($TF, $T)
+            "token for ${U}: saved"
+          } else {
+            "FAILED: Gitea made no token for $U"
+          }
+          Remove-Variable T
+        }
+      }
+    }
+  } finally {
+    Remove-Item -Force -ErrorAction SilentlyContinue "$CD_DIR\gitea-admin.cfg", "$CD_DIR\body.json"
+  }
+}
+```
+
+</details>
+
 **Expect:** `repository deploy: 201`, six `envs/…: 201` lines, `user octopus: created`, `user argocd:
 created`, two `… may create no repositories: 200`, `octopus writes deploy: 204`, `argocd reads deploy:
 204`, `token for octopus: saved` and `token for argocd: saved`. Run again: `repository deploy: 409`,
@@ -303,7 +481,7 @@ kept`.
   step 4 run Gitea as the deployment `gitea` in the namespace `gitea`).
 - `FAILED: Gitea made no token for …`: the line above it says why; run the block again.
 
-<!-- DRAFT: Windows twin; first-run arm (201/created/200) not run on the lab yet (lab ran the second-run arm 2026-11-14 14:26). -->
+
 
 ## 4. Prepare the app cluster
 
@@ -464,6 +642,93 @@ fi
 
 </details>
 
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$VSPHERE_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$GITEA_ADDRESS = "192.168.10.60"
+$CD_DIR = "$HOME\.config\vks-guides\cd-octopus"
+
+$KS = '--kubeconfig', $SUPERVISOR_KUBECONFIG, '-n', $ARGOCD_NAMESPACE
+$REPO = "https://$GITEA_ADDRESS/gitea-admin/deploy.git"
+$DEST = "${VKS_CLUSTER}-${VSPHERE_NAMESPACE}"
+$CA = "$HOME\gitea-ca.pem"; $TF = "$CD_DIR\gitea-argocd.token"
+if (-not (Test-Path $CA) -or (Get-Item $CA).Length -eq 0 -or -not (Test-Path $TF) -or (Get-Item $TF).Length -eq 0) {
+  "MISSING: $CA or $TF (GITEA.md Over HTTPS 4., step 3)"
+} else {
+  [IO.File]::WriteAllText("$CD_DIR\tls-patch.json", (@{ data = @{ $GITEA_ADDRESS = [IO.File]::ReadAllText($CA) } } | ConvertTo-Json -Compress))
+  kubectl @KS patch configmap argocd-tls-certs-cm --type merge --patch-file "$CD_DIR\tls-patch.json"
+  Remove-Item -Force "$CD_DIR\tls-patch.json"
+  @{ apiVersion = 'v1'; kind = 'Secret'
+     metadata = @{ name = 'repo-gitea-deploy'; labels = @{ 'argocd.argoproj.io/secret-type' = 'repository' } }
+     stringData = @{ type = 'git'; url = $REPO; username = 'argocd'; password = [IO.File]::ReadAllText($TF); project = 'test-web-apps' } } |
+    ConvertTo-Json -Depth 5 | kubectl @KS apply -f -
+@"
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: test-web-apps
+spec:
+  description: test-web-apps, promoted by Octopus
+  sourceRepos:
+    - ${REPO}
+  destinations:
+    - name: ${DEST}
+      namespace: test-web-apps-dev
+    - name: ${DEST}
+      namespace: test-web-apps-test
+    - name: ${DEST}
+      namespace: test-web-apps-prod
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: ""
+      kind: Service
+  roles:
+    - name: octopus
+      description: the Octopus Argo CD gateway
+      policies:
+        - p, proj:test-web-apps:octopus, applications, get, test-web-apps/*, allow
+        - p, proj:test-web-apps:octopus, applications, sync, test-web-apps/*, allow
+        - p, proj:test-web-apps:octopus, logs, get, test-web-apps/*, allow
+"@ | kubectl @KS apply -f -
+  foreach ($E in 'dev', 'test', 'prod') {
+@"
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: test-web-apps-${E}
+  annotations:
+    argo.octopus.com/project: test-web-apps
+    argo.octopus.com/environment: ${E}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: test-web-apps
+  source:
+    repoURL: ${REPO}
+    targetRevision: main
+    path: envs/${E}
+  destination:
+    name: ${DEST}
+    namespace: test-web-apps-${E}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+"@ | kubectl @KS apply -f -
+  }
+}
+```
+
+</details>
+
 **Expect:** `configmap/argocd-tls-certs-cm patched`, `secret/repo-gitea-deploy created`,
 `appproject.argoproj.io/test-web-apps created` and three `application.argoproj.io/test-web-apps-<env>
 created`, each Application after a `Warning:` about the finalizer name (as in ARGOCD.md step 8). Run
@@ -473,7 +738,7 @@ changed), and `unchanged` for the Applications.
 **If not:** `configmaps "argocd-tls-certs-cm" not found`: `ARGOCD_NAMESPACE` is not ArgoCD's vSphere
 Namespace.
 
-<!-- DRAFT: Windows twin. Re-run arm of this exact block PASS 2026-11-14 14:28 (patched (no change), Secret/project configured, apps unchanged); first-run arm by lab scripts 2026-11-13 18:2x. -->
+
 
 Run this after the block above, to see the three environments run. It only reads: it shows ArgoCD's
 status for each Application, how many of its pods are ready with which image, and what the page at
@@ -498,6 +763,25 @@ for E in dev test prod; do
 done
 ```
 
+**Windows (PowerShell):**
+
+```powershell
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$VKS_CLUSTER = "my-vks-cluster"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+
+foreach ($E in 'dev', 'test', 'prod') {
+  $A = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get applications.argoproj.io "test-web-apps-$E" -o 'jsonpath={.status.sync.status}  {.status.health.status}'
+  $D = kubectl --kubeconfig $VKS_KUBECONFIG -n "test-web-apps-$E" get deployment test-web-apps -o 'jsonpath={.status.readyReplicas}/{.spec.replicas} {.spec.template.spec.containers[0].image}' 2>$null
+  $IP = kubectl --kubeconfig $VKS_KUBECONFIG -n "test-web-apps-$E" get service test-web-apps -o 'jsonpath={.status.loadBalancer.ingress[0].ip}' 2>$null
+  $P = ''
+  if ($IP -and ("$(curl.exe -s --connect-timeout 10 --max-time 20 "http://$IP/")" -match '<h1>(.*)</h1>')) { $P = $Matches[1] }
+  "${E}: ArgoCD $A | pods $(if ($D) { $D } else { 'none' }) | http://$(if ($IP) { $IP } else { '?' })/ $(if ($P) { $P } else { 'no page' })"
+}
+```
+
 **Expect:** three lines such as `dev: ArgoCD Synced  Healthy | pods 1/1
 <NEXUS_REGISTRY>/apps/test-web-apps:1.0.0 | http://<address>/ test-web-apps 1.0.0`.
 
@@ -509,7 +793,7 @@ done
 - `0/1` with `ErrImagePull` (`kubectl --kubeconfig <file> -n test-web-apps-<env> get pods`): the
   cluster's nodes do not trust Nexus's CA, or `nexus-pull` is missing (step 4).
 
-<!-- DRAFT: Windows twin. Check block PASS 2026-11-14 14:28 (1.0.2/1.0.2/1.0.1 after the e2e runs). -->
+
 
 ## 6. Give the gateway its ArgoCD token
 
@@ -563,6 +847,69 @@ fi
 
 </details>
 
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
+$ARGOCD_NAMESPACE = "my-namespace"
+$CD_DIR = "$HOME\.config\vks-guides\cd-octopus"
+
+$KS = '--kubeconfig', $SUPERVISOR_KUBECONFIG, '-n', $ARGOCD_NAMESPACE
+New-Item -ItemType Directory -Force -Path $CD_DIR | Out-Null
+icacls $CD_DIR /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)F" | Out-Null
+$IP = kubectl @KS get argocd argocd-1 -o 'jsonpath={.status.externalIP}'
+$global:LASTEXITCODE = $null
+$CRT = kubectl @KS get secret argocd-secret -o 'jsonpath={.data.tls\.crt}'
+if (-not $IP -or $LASTEXITCODE -ne 0 -or -not $CRT) {
+  "FAILED: no ArgoCD address or certificate (ARGOCD.md step 1)"
+} else {
+  [IO.File]::WriteAllText("$CD_DIR\argocd-server.pem", [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($CRT)))
+  $AC = '-fsS', '--ssl-no-revoke', '--resolve', "argocd-server:443:$IP", '--cacert', "$CD_DIR\argocd-server.pem", '--connect-timeout', '20', '--max-time', '60', '-H', 'Content-Type: application/json'
+  $NEW = "$CD_DIR\argocd-project.token.new"
+  function tok($J) { try { "$(($J | ConvertFrom-Json -ErrorAction Stop).token)" } catch { '' } }
+  try {
+    $B = kubectl @KS get secret argocd-initial-admin-secret -o 'jsonpath={.data.password}'
+    [IO.File]::WriteAllText("$CD_DIR\login.json", (@{ username = 'admin'; password = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("$B")) } | ConvertTo-Json -Compress))
+    $B = $null
+    $S = curl.exe @AC --data-binary "@$CD_DIR\login.json" https://argocd-server/api/v1/session | Out-String
+    [IO.File]::WriteAllText("$CD_DIR\admin.cfg", "header = `"Authorization: Bearer $(tok $S)`"`n")
+    $S = $null
+    [IO.File]::WriteAllText("$CD_DIR\body.json", (@{ id = "octopus-gateway-$(Get-Date -Format yyyyMMddHHmmss)"; expiresIn = 7776000 } | ConvertTo-Json -Compress))
+    $M = curl.exe @AC -K "$CD_DIR\admin.cfg" --data-binary "@$CD_DIR\body.json" https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token | Out-String
+    [IO.File]::WriteAllText($NEW, (tok $M))
+    $M = $null
+    $global:LASTEXITCODE = $null
+    curl.exe @AC -K "$CD_DIR\admin.cfg" -X DELETE -o NUL https://argocd-server/api/v1/session
+    if ($LASTEXITCODE -ne 0) { "NOTE: ArgoCD sign-out failed (the session ends by itself)" }
+  } catch {
+    "FAILED: $($_.Exception.Message)"
+  } finally {
+    Remove-Item -Force -ErrorAction SilentlyContinue "$CD_DIR\login.json", "$CD_DIR\admin.cfg", "$CD_DIR\body.json"
+  }
+  $PT = if (Test-Path $NEW) { [IO.File]::ReadAllText($NEW) } else { '' }
+  [IO.File]::WriteAllText("$CD_DIR\project.cfg", "header = `"Authorization: Bearer $PT`"`n")
+  $N = $null
+  if ($PT) {
+    $global:LASTEXITCODE = $null
+    $L = curl.exe @AC -K "$CD_DIR\project.cfg" https://argocd-server/api/v1/applications | Out-String
+    if ($LASTEXITCODE -eq 0) { try { $J = $L | ConvertFrom-Json -ErrorAction Stop; $N = if ($J.items) { @($J.items).Count } else { 0 } } catch { } }
+  }
+  if ($null -ne $N) {
+    Move-Item -Force $NEW "$CD_DIR\argocd-project.token"
+    "token saved: lists $N apps of test-web-apps"
+  } else {
+    Remove-Item -Force -ErrorAction SilentlyContinue $NEW
+    "FAILED: no working token; $CD_DIR\argocd-project.token is as it was"
+  }
+  Remove-Item -Force -ErrorAction SilentlyContinue "$CD_DIR\project.cfg"
+  Remove-Variable -ErrorAction SilentlyContinue PT, J, L
+}
+```
+
+</details>
+
 **Expect:** `token saved: lists 3 apps of test-web-apps`. Run again, it makes another token and
 prints the same; the earlier token keeps working until it ends (step 12 removes it).
 
@@ -574,7 +921,7 @@ prints the same; the earlier token keeps working until it ends (step 12 removes 
 - `FAILED: no ArgoCD address or certificate`: the instance is not `Ready` ([ARGOCD.md step
   1](ARGOCD.md#1-check-for-an-argocd-you-have)).
 
-<!-- DRAFT: Windows twin from the lab run of this exact block. -->
+
 
 
 ## 7. Connect Octopus to ArgoCD (the gateway)
@@ -710,7 +1057,122 @@ unset OCTOPUS_API_KEY
 
 </details>
 
-<!-- DRAFT: Windows twin; Expect/If not from a pasted run of this exact block (lab used an equivalent script 2026-11-13 18:08; measured log lines: READY for octopus-grpc.octopus.svc:8443 and argocd-server:443, token status ok). Finding to cover: a token Secret with a trailing newline -> "invalid header field value for Authorization". -->
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$VKS_CLUSTER = "my-octopus-cluster"
+$ARGOCD_NAMESPACE = "my-namespace"
+$SUPERVISOR_CONTEXT = "supervisor"
+$SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
+$VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$CD_DIR = "$HOME\.config\vks-guides\cd-octopus"
+$CHART = "oci://registry-1.docker.io/octopusdeploy/octopus-argocd-gateway-chart"
+$NS = "octopus-argocd-gateway"
+
+$ARGOCD_IP = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get argocd argocd-1 -o 'jsonpath={.status.externalIP}'
+$GRPC_IP = kubectl --kubeconfig $VKS_KUBECONFIG -n octopus get service octopus-grpc -o 'jsonpath={.status.loadBalancer.ingress[0].ip}'
+$TF = "$CD_DIR\argocd-project.token"; $PEM = "$CD_DIR\argocd-server.pem"
+$TP = $null; $T = $null
+if ($GRPC_IP) {
+  try {
+    $T = New-Object Net.Sockets.TcpClient($GRPC_IP, 8443)
+    $T.ReceiveTimeout = 20000; $T.SendTimeout = 20000
+    $S = New-Object Net.Security.SslStream($T.GetStream(), $false, { $true })
+    $S.AuthenticateAsClient($GRPC_IP)
+    $TP = [Security.Cryptography.X509Certificates.X509Certificate2]::new($S.RemoteCertificate).Thumbprint
+  } catch { $TP = $null } finally { if ($T) { $T.Close() } }
+}
+if (-not (Get-Command helm -ErrorAction SilentlyContinue)) { "MISSING: helm (HELM.md)"
+} elseif (-not $OCTOPUS_API_KEY -or $OCTOPUS_API_KEY.Length -eq 0) { "STOPPED: type the Octopus API key first (the line above)"
+} elseif (-not $ARGOCD_IP -or -not $GRPC_IP) { "FAILED: no ArgoCD address or no octopus-grpc address (OCTOPUS.md step 4)"
+} elseif (-not (Test-Path $TF) -or (Get-Item $TF).Length -eq 0 -or -not (Test-Path $PEM) -or (Get-Item $PEM).Length -eq 0) { "MISSING: step 6's token or certificate in $CD_DIR"
+} elseif (-not $TP) { "FAILED: cannot read the certificate of Octopus's gRPC port ${GRPC_IP}:8443"
+} else {
+  $KC = '--kubeconfig', $VKS_KUBECONFIG
+  kubectl @KC create namespace $NS --dry-run=client -o yaml | kubectl @KC apply -f - | Out-Null
+  kubectl @KC label namespace $NS --overwrite pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/warn=restricted | Out-Null
+@"
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-server
+spec:
+  ports:
+    - name: https
+      port: 443
+      targetPort: 443
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: argocd-server-1
+  labels:
+    kubernetes.io/service-name: argocd-server
+addressType: IPv4
+ports:
+  - name: https
+    port: 443
+    protocol: TCP
+endpoints:
+  - addresses:
+      - ${ARGOCD_IP}
+"@ | kubectl @KC -n $NS apply -f -
+  @{ apiVersion = 'v1'; kind = 'Secret'; type = 'Opaque'; metadata = @{ name = 'octo-registration'; namespace = $NS }
+     data = @{ token = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([Net.NetworkCredential]::new('', $OCTOPUS_API_KEY).Password)) } } |
+    ConvertTo-Json -Depth 5 | kubectl @KC apply -f -
+  kubectl @KC -n $NS create secret generic gw-project-tokens "--from-file=PROJECT_AUTH_TOKEN_test-web-apps=$TF" --dry-run=client -o yaml | kubectl @KC apply -f -
+  $global:LASTEXITCODE = $null
+  $OCA = kubectl @KC -n octopus get secret octopus-ca -o 'jsonpath={.data.ca\.crt}'
+  if ($LASTEXITCODE -ne 0 -or -not $OCA) { "FAILED: no Secret octopus-ca in the namespace octopus (OCTOPUS.md step 5)" } else {
+    @{ apiVersion = 'v1'; kind = 'Secret'; type = 'Opaque'; metadata = @{ name = 'gw-certs'; namespace = $NS }
+       data = @{ 'octopus-server-http-certificate.pem' = $OCA; 'argo-cd-server-certificate.pem' = [Convert]::ToBase64String([IO.File]::ReadAllBytes($PEM)) } } |
+      ConvertTo-Json -Depth 5 | kubectl @KC apply -f -
+    $V = @"
+image:
+  tag: "v2.2.1@sha256:9c8aa3317525c383a4ef623346b7c76b4dbe83b72e61c8b195d3281507b031f7"
+autoUpdate:
+  enabled: false
+podSecurityContext:
+  runAsNonRoot: true
+registration:
+  octopus:
+    name: ${VKS_CLUSTER}-argocd
+    serverApiUrl: https://octopus-web.octopus.svc
+    serverAccessTokenSecretName: octo-registration
+    serverAccessTokenSecretKey: token
+    environments:
+      - dev
+      - test
+      - prod
+    spaceId: Spaces-1
+  argocd:
+    webUiUrl: https://${ARGOCD_IP}
+gateway:
+  serverCertificateSecretName: gw-certs
+  octopus:
+    serverGrpcUrl: grpc://octopus-grpc.octopus.svc:8443
+    serverThumbprint: "${TP}"
+  argocd:
+    serverGrpcUrl: grpc://argocd-server:443
+    projectAuthenticationSecretName: gw-project-tokens
+"@
+    [IO.File]::WriteAllText("$CD_DIR\gateway-values.yaml", ($V -replace "`r`n", "`n") + "`n")
+    $global:LASTEXITCODE = $null
+    helm upgrade --install --atomic --timeout 6m gw $CHART --version 2.4.0 --kubeconfig $VKS_KUBECONFIG -n $NS -f "$CD_DIR\gateway-values.yaml" | Out-Null
+    if ($LASTEXITCODE -eq 0) { kubectl @KC -n $NS rollout status deployment/octopus-argocd-gateway --timeout=3m }
+    if ($LASTEXITCODE -eq 0) {
+      Start-Sleep 20
+      kubectl @KC -n $NS logs deployment/octopus-argocd-gateway | Select-String -CaseSensitive -Pattern '"state":"READY"|token status' | ForEach-Object { $_.Line.Substring(0, [Math]::Min(200, $_.Line.Length)) }
+    }
+  }
+}
+Remove-Variable -ErrorAction SilentlyContinue OCTOPUS_API_KEY
+```
+
+</details>
+
+<!-- DRAFT: Expect/If not from a pasted run of this exact block (lab used an equivalent script 2026-11-13 18:08). -->
 
 4. In Octopus, open **Infrastructure** → **Argo CD Instances**: the instance `<VKS_CLUSTER>-argocd` is
    healthy and shows the three Applications. Then delete the API key from 1. (**Profile** → **My API
