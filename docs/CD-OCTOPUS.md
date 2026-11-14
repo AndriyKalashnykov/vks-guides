@@ -1366,7 +1366,15 @@ if (-not $OCTOPUS_API_KEY) { "STOPPED: type the Octopus API key first (step 7, 2
 }
 ```
 
-<!-- DRAFT: Expect/If not; the sh form ran on the lab as an equivalent script 2026-11-14 12:10-12:13 (Deployments-28..30); the PowerShell form not run on Windows yet. -->
+**Expect:** `deployment Deployments-<n> started, task ServerTasks-<n>`; the deployment then shows on the
+release's page.
+
+**If not:**
+- `FAILED: no project test-web-apps, release <RELEASE> or environment <ENVIRONMENT>`: one of the three
+  names is not in Octopus; the release's number is on **Projects** → `test-web-apps` → **Releases**.
+- `curl: (22) The requested URL returned error: 401`: the API key is wrong or was deleted.
+
+<!-- DRAFT: sh PASS on the lab 2026-11-14 15:08 EST (release 0.0.4 to test; and 9.9.9 -> FAILED); PowerShell twin parsed, not run (needs the API key typed on Windows). 401 line inferred from curl -f. -->
 
 ## 10. Roll prod back
 
