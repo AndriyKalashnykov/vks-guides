@@ -2019,40 +2019,54 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $ARGOCD_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-app-cluster"
 $OCTOPUS_CLUSTER = "my-octopus-cluster"
+$GITEA_CLUSTER = "my-gitea-cluster"
 $GITEA_ADDRESS = "192.168.10.60"
 
 $KS = '--kubeconfig', $SUPERVISOR_KUBECONFIG, '-n', $ARGOCD_NAMESPACE
-foreach ($E in 'dev', 'test', 'prod') { kubectl @KS delete applications.argoproj.io "test-web-apps-$E" --ignore-not-found --wait=false }
-$N = ''
-foreach ($i in 1..60) {
-  $global:LASTEXITCODE = $null
-  $N = "$(kubectl @KS get applications.argoproj.io test-web-apps-dev test-web-apps-test test-web-apps-prod --ignore-not-found -o name)".Trim()
-  if ($LASTEXITCODE -ne 0) { $N = 'FAILED'; break }
-  if (-not $N) { break }
-  Start-Sleep 5
-}
-if ($N) {
-  "FAILED: Applications not gone after 5 minutes ($N); the project, its login and the CA are kept"
+function kj { $global:LASTEXITCODE = $null; $R = kubectl @KS get @args -o json | Out-String; if ($LASTEXITCODE -ne 0) { return $null }; try { $R | ConvertFrom-Json -ErrorAction Stop } catch { $null } }
+$global:LASTEXITCODE = $null
+kubectl @KS get appproject test-web-apps -o name
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: no project test-web-apps in $ARGOCD_NAMESPACE (wrong ARGOCD_NAMESPACE, or already removed); nothing deleted"
 } else {
-  kubectl @KS delete appproject test-web-apps --ignore-not-found
-  kubectl @KS delete secret repo-gitea-deploy --ignore-not-found
-  $global:LASTEXITCODE = $null
-  $RAW = kubectl @KS get configmap argocd-tls-certs-cm -o json | Out-String
-  $C = $null
-  if ($LASTEXITCODE -eq 0) { try { $C = $RAW | ConvertFrom-Json -ErrorAction Stop } catch { $C = $null } }
-  if (-not $C) {
-    "FAILED: cannot read argocd-tls-certs-cm; Gitea's CA in ArgoCD is kept"
-  } elseif ($C.data -and @($C.data.PSObject.Properties.Name) -contains $GITEA_ADDRESS) {
-    $PF = [IO.Path]::GetTempFileName()
-    [IO.File]::WriteAllText($PF, (ConvertTo-Json -Compress -InputObject @(@{ op = 'remove'; path = "/data/$GITEA_ADDRESS" })))
-    kubectl @KS patch configmap argocd-tls-certs-cm --type json --patch-file $PF
-    Remove-Item -Force $PF
-  } else {
-    "Gitea's CA in ArgoCD: already gone"
+  foreach ($E in 'dev', 'test', 'prod') { kubectl @KS delete applications.argoproj.io "test-web-apps-$E" --ignore-not-found --wait=false }
+  $N = ''
+  foreach ($i in 1..60) {
+    $global:LASTEXITCODE = $null
+    $N = "$(kubectl @KS get applications.argoproj.io test-web-apps-dev test-web-apps-test test-web-apps-prod --ignore-not-found -o name)".Trim()
+    if ($LASTEXITCODE -ne 0) { $N = 'FAILED'; break }
+    if (-not $N) { break }
+    Start-Sleep 5
   }
-  foreach ($E in 'dev', 'test', 'prod') { kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" delete namespace "test-web-apps-$E" --ignore-not-found }
-  helm uninstall gw --kubeconfig "$HOME\.kube\${OCTOPUS_CLUSTER}.kubeconfig" -n octopus-argocd-gateway --ignore-not-found
-  kubectl --kubeconfig "$HOME\.kube\${OCTOPUS_CLUSTER}.kubeconfig" delete namespace octopus-argocd-gateway --ignore-not-found
+  if ($N) {
+    "FAILED: Applications not gone after 5 minutes ($N); nothing else deleted"
+  } else {
+    kubectl @KS delete appproject test-web-apps --ignore-not-found
+    kubectl @KS delete secret repo-gitea-deploy --ignore-not-found
+    $A = kj 'applications.argoproj.io'
+    $S = kj 'secrets' '-l' 'argocd.argoproj.io/secret-type=repository'
+    $C = kj 'configmap' 'argocd-tls-certs-cm'
+    if (-not $A -or -not $S -or -not $C) {
+      "FAILED: cannot read ArgoCD's Applications, repositories or CAs; Gitea's CA in ArgoCD is kept"
+    } else {
+      $URLS = @(@($A.items) | ForEach-Object { $_.spec.source.repoURL }) + @(@($S.items) | ForEach-Object { if ($_.data.url) { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_.data.url)) } })
+      $U = @($URLS | Where-Object { $_ -and $_.StartsWith("https://$GITEA_ADDRESS/") })
+      if ($U.Count -gt 0) {
+        "kept Gitea's CA in ArgoCD: still used by $($U -join ' ')"
+      } elseif ($C.data -and @($C.data.PSObject.Properties.Name) -contains $GITEA_ADDRESS) {
+        $PF = [IO.Path]::GetTempFileName()
+        [IO.File]::WriteAllText($PF, (ConvertTo-Json -Compress -InputObject @(@{ op = 'remove'; path = "/data/$GITEA_ADDRESS" })))
+        kubectl @KS patch configmap argocd-tls-certs-cm --type json --patch-file $PF
+        Remove-Item -Force $PF
+      } else {
+        "Gitea's CA in ArgoCD: already gone"
+      }
+    }
+    foreach ($E in 'dev', 'test', 'prod') { kubectl --kubeconfig "$HOME\.kube\${VKS_CLUSTER}.kubeconfig" delete namespace "test-web-apps-$E" --ignore-not-found }
+    helm uninstall gw --kubeconfig "$HOME\.kube\${OCTOPUS_CLUSTER}.kubeconfig" -n octopus-argocd-gateway --ignore-not-found
+    kubectl --kubeconfig "$HOME\.kube\${OCTOPUS_CLUSTER}.kubeconfig" delete namespace octopus-argocd-gateway --ignore-not-found
+    kubectl --kubeconfig "$HOME\.kube\${GITEA_CLUSTER}.kubeconfig" delete namespace cd-octopus-ci --ignore-not-found
+  }
 }
 ```
 
