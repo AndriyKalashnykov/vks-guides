@@ -561,7 +561,7 @@ and `secret/nexus-pull created` (`configured` or `unchanged` when run again).
 **If not:** `FAILED: no Secret nexus-pull in default`: run [NEXUS.md step
 11](NEXUS.md#check-that-a-cluster-can-pull) for this cluster first.
 
-<!-- DRAFT: second-run arm PASS on the lab 2026-11-14 (sh 14:3x, PowerShell 15:05 on Windows: not labeled / unchanged x3); first-run arm by an equivalent script 2026-11-13. -->
+
 
 ## 5. Create the ArgoCD project and the three Applications
 
@@ -1217,7 +1217,7 @@ lines and the same log lines. Helm 4 also prints `Flag --atomic has been depreca
 - No `"state":"READY"` for `argocd-server:443`: the gateway cannot reach ArgoCD's address on port 443,
   or ArgoCD's certificate changed; run step 6 again (it saves the certificate), then this block.
 
-<!-- DRAFT: second-run arm of this exact block PASS on the lab 2026-11-14 15:02 EST; first-run arm by an equivalent script 2026-11-13 18:08 (the newline finding); Windows twin parsed, not run. -->
+
 
 4. In Octopus, open **Infrastructure** → **Argo CD Instances**: the instance `<VKS_CLUSTER>-argocd` is
    healthy and shows the three Applications. Then delete the API key from 1. (**Profile** → **My API
@@ -1929,7 +1929,6 @@ old token …` line per older token (`old tokens: none` when there was none).
 **If not:** a log line with `"status"` other than `ok`: the token in the file does not work; run step 6
 again, then this block.
 
-<!-- DRAFT: none open: sh PASS 14:52, PowerShell PASS on Windows 15:06 EST. -->
 
 To change the Gitea token of `octopus` (it does not end): delete
 `~/.config/vks-guides/cd-octopus/gitea-octopus.token`, run step 3 again (it makes a new one), put it into
@@ -2064,7 +2063,17 @@ if ($N) {
 
 </details>
 
-<!-- DRAFT: Expect/If not; run on the lab at the very end (it removes the test setup). -->
+**Expect:** `appproject.argoproj.io/test-web-apps`, then `… deleted` lines for the three Applications,
+the project and `repo-gitea-deploy`, `configmap/argocd-tls-certs-cm patched`, the three namespaces
+`deleted`, `release "gw" uninstalled`, and the namespaces `octopus-argocd-gateway` and `cd-octopus-ci`
+`deleted`. Run again: `appprojects.argoproj.io "test-web-apps" not found` and `FAILED: no project
+test-web-apps … nothing deleted`.
+
+**If not:**
+- `FAILED: no project test-web-apps` on the first run: `ARGOCD_NAMESPACE` is not ArgoCD's vSphere
+  Namespace; nothing was deleted.
+- `kept Gitea's CA in ArgoCD: still used by …`: another Application or repository login still uses
+  Gitea; the CA stays until that one is gone.
 
 3. In Gitea, if you no longer need them: delete the repository `deploy` (its **Settings** → **Danger
    Zone**), step 11's repository `app`, and the users `octopus` and `argocd` (**Site Administration** →
