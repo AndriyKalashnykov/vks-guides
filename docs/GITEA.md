@@ -1610,7 +1610,7 @@ if (-not $IP -or -not $X) { "FAILED: no address or no CA (run 2. and 3. first)" 
   $env:GIT_TERMINAL_PROMPT = '0'
   git -c credential.helper= -c http.sslBackend=openssl -c http.sslCAInfo="$HOME\gitea-ca.pem" ls-remote "https://$IP/gitea-admin/hello.git"
   Remove-Item Env:GIT_TERMINAL_PROMPT
-  $P = curl.exe -s --connect-timeout 20 --max-time 30 --resolve "gitea-https.gitea.svc:443:$IP" --cacert "$HOME\gitea-ca.pem" "https://gitea-https.gitea.svc/gitea-admin/hello"
+  $P = curl.exe -s --ssl-no-revoke --connect-timeout 20 --max-time 30 --resolve "gitea-https.gitea.svc:443:$IP" --cacert "$HOME\gitea-ca.pem" "https://gitea-https.gitea.svc/gitea-admin/hello"
   "$P" -split '"' | Where-Object { $_ -like 'https://*/gitea-admin/hello.git' } | Sort-Object -Unique
 }
 ```
