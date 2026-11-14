@@ -54,8 +54,8 @@ The connections this guide needs, for a firewall (all TCP, besides DNS; for a re
 
 | from | to | port | for |
 |---|---|---|---|
-| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl (steps 1, 5, 6, 7 and 13) |
-| your machine (laptop or jump box) | the VKS clusters' API addresses (in their kubeconfigs) | 6443 | kubectl and Helm (steps 3, 4, 5, 7 and 13) |
+| your machine (laptop or jump box) | the Supervisor's address | 443 | kubectl (steps 1, 5, 6, 7, 12 and 13) |
+| your machine (laptop or jump box) | the VKS clusters' API addresses (in their kubeconfigs) | 6443 | kubectl and Helm (steps 3, 4, 5, 7, 8, 11, 12 and 13) |
 | your machine (laptop or jump box) | `octopus-grpc`'s address (OCTOPUS.md step 4) | 8443 | reading the certificate of Octopus's gRPC port (step 7) |
 | your machine (laptop or jump box) | the app's load-balancer addresses | 80 | step 5's check of the three pages |
 | your machine (laptop or jump box) | Nexus's address | 443 | pushing images (steps 2 and 9) |
@@ -139,13 +139,11 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedenti
 
 **If not:**
 - `Octopus:` with nothing after it, or `Nexus:`/`Gitea:` with `000`: this machine cannot reach the
-  address, or the CA file is missing (`curl` prints why above the line); do that guide first.
+  address, or the CA file is missing or from an earlier install (`curl` prints why above the line); do
+  that guide first.
 - `managedentities… not found`: do [ARGOCD.md step 7](ARGOCD.md#7-add-the-vks-cluster-to-argocd) for
   the app's cluster.
 - `Octopus:` older than `2026.3`: the steps in this guide need Octopus 2026.3 or newer.
-
-
-
 
 ## 2. Push the first version to Nexus
 
@@ -507,8 +505,6 @@ kept`.
   step 4 run Gitea as the deployment `gitea` in the namespace `gitea`).
 - `FAILED: Gitea made no token for …`: the line above it says why; run the block again.
 
-
-
 ## 4. Prepare the app cluster
 
 Run this once, before step 5: ArgoCD deploys into namespaces that exist, and the app's pods pull from
@@ -560,8 +556,6 @@ and `secret/nexus-pull created` (`configured` or `unchanged` when run again).
 
 **If not:** `FAILED: no Secret nexus-pull in default`: run [NEXUS.md step
 11](NEXUS.md#check-that-a-cluster-can-pull) for this cluster first.
-
-
 
 ## 5. Create the ArgoCD project and the three Applications
 
@@ -757,19 +751,17 @@ spec:
 
 **Expect:** `configmap/argocd-tls-certs-cm patched`, `secret/repo-gitea-deploy created`,
 `appproject.argoproj.io/test-web-apps created` and three `application.argoproj.io/test-web-apps-<env>
-created`, each Application after a `Warning:` about the finalizer name (as in ARGOCD.md step 8). Run
+created`, with three `Warning:` lines about the finalizer name (as in ARGOCD.md step 8). Run
 again: `patched (no change)`, `configured` for the Secret and the project (`unchanged` when nothing
 changed), and `unchanged` for the Applications.
 
 **If not:** `configmaps "argocd-tls-certs-cm" not found`: `ARGOCD_NAMESPACE` is not ArgoCD's vSphere
 Namespace.
 
-
-
 Run this after the block above, to see the three environments run. It only reads: it shows ArgoCD's
 status for each Application, how many of its pods are ready with which image, and what the page at
-its address says. Run it again until all three show `Synced  Healthy`, `1/1` and a page: ArgoCD may
-need two minutes to trust Gitea's CA. Set the values as above.
+its address says. Run it again until all three show `Synced  Healthy`, `1/1` and a page; if they still
+show `Unknown` after two minutes, see **If not:**. Set the values as above.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -813,14 +805,12 @@ foreach ($E in 'dev', 'test', 'prod') {
 
 **If not:**
 - `Unknown` instead of `Synced`, and the ArgoCD page shows `x509: certificate signed by unknown
-  authority` for the Application: ArgoCD tried Gitea before it had read Gitea's CA, and keeps that
-  result. Wait two minutes, then in the ArgoCD page open each Application and click **Refresh** →
-  **Hard Refresh**; it shows `Synced` within a minute.
+  authority` for the Application: ArgoCD tried Gitea before it had read Gitea's CA, and waiting does
+  not clear it. In the ArgoCD page open each Application and click **Refresh** → **Hard Refresh**; it
+  shows `Synced` within a minute.
 - `pods none`: the Application is not synced yet, or its namespace is missing (step 4).
 - `0/1` with `ErrImagePull` (`kubectl --kubeconfig <file> -n test-web-apps-<env> get pods`): the
   cluster's nodes do not trust Nexus's CA, or `nexus-pull` is missing (step 4).
-
-
 
 ## 6. Give the gateway its ArgoCD token
 
@@ -849,23 +839,28 @@ if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
 elif [ -z "$IP" ] || ! K get secret argocd-secret -o go-template='{{index .data "tls.crt" | base64decode}}' > "$CD_DIR/argocd-server.pem"; then
   echo "FAILED: no ArgoCD address or certificate (ARGOCD.md step 1)"
 else
-  ac() { curl -fsS --resolve "argocd-server:443:$IP" --cacert "$CD_DIR/argocd-server.pem" --connect-timeout 20 --max-time 60 -H 'Content-Type: application/json' "$@"; }
-  hd() { printf 'header = "Authorization: Bearer %s"\n' "$1"; }
+  argocd_api() { curl -fsS --resolve "argocd-server:443:$IP" --cacert "$CD_DIR/argocd-server.pem" --connect-timeout 20 --max-time 60 -H 'Content-Type: application/json' "$@"; }
+  argocd_auth() { printf 'header = "Authorization: Bearer %s"\n' "$1"; }
   AT="$(K get secret argocd-initial-admin-secret -o go-template='{{.data.password | base64decode}}' | jq -Rs '{username:"admin",password:.}' \
-    | ac --data-binary @- https://argocd-server/api/v1/session | jq -r '.token // empty')"
-  ( umask 077
-    hd "$AT" | ac -K - --data-binary "$(jq -n --arg id "octopus-gateway-$(date +%Y%m%d%H%M%S)" '{id:$id,expiresIn:7776000}')" \
-      https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token | jq -j '.token // empty' > "$CD_DIR/argocd-project.token.new" )
-  hd "$AT" | ac -K - -X DELETE -o /dev/null https://argocd-server/api/v1/session || echo "NOTE: ArgoCD sign-out failed (the session ends by itself)"
-  AT=""
-  if [ -s "$CD_DIR/argocd-project.token.new" ] \
-     && N="$(hd "$(cat "$CD_DIR/argocd-project.token.new")" | ac -K - https://argocd-server/api/v1/applications | jq -e '(.items // []) | length')"; then
-    mv "$CD_DIR/argocd-project.token.new" "$CD_DIR/argocd-project.token"
-    echo "token saved: lists $N apps of test-web-apps"
+    | argocd_api --data-binary @- https://argocd-server/api/v1/session | jq -r '.token // empty')"
+  if [ -z "$AT" ]; then
+    echo "FAILED: ArgoCD did not sign admin in; $CD_DIR/argocd-project.token is as it was"
   else
-    rm -f "$CD_DIR/argocd-project.token.new"
-    echo "FAILED: no working token; $CD_DIR/argocd-project.token is as it was"
+    ( umask 077
+      argocd_auth "$AT" | argocd_api -K - --data-binary "$(jq -n --arg id "octopus-gateway-$(date +%Y%m%d%H%M%S)" '{id:$id,expiresIn:7776000}')" \
+        https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token | jq -j '.token // empty' > "$CD_DIR/argocd-project.token.new" )
+    argocd_auth "$AT" | argocd_api -K - -X DELETE -o /dev/null https://argocd-server/api/v1/session || echo "NOTE: ArgoCD sign-out failed (the session ends by itself)"
+    AT=""
+    if [ -s "$CD_DIR/argocd-project.token.new" ] \
+       && N="$(argocd_auth "$(cat "$CD_DIR/argocd-project.token.new")" | argocd_api -K - https://argocd-server/api/v1/applications | jq -e '(.items // []) | length')"; then
+      mv "$CD_DIR/argocd-project.token.new" "$CD_DIR/argocd-project.token"
+      echo "token saved: lists $N apps of test-web-apps"
+    else
+      rm -f "$CD_DIR/argocd-project.token.new"
+      echo "FAILED: no working token; $CD_DIR/argocd-project.token is as it was"
+    fi
   fi
+  unset -f argocd_api argocd_auth
 fi
 ```
 
@@ -945,9 +940,6 @@ prints the same; the earlier token keeps working until it ends (step 12 removes 
   `test-web-apps` with its role `octopus`.
 - `FAILED: no ArgoCD address or certificate`: the instance is not `Ready` ([ARGOCD.md step
   1](ARGOCD.md#1-check-for-an-argocd-you-have)).
-
-
-
 
 ## 7. Connect Octopus to ArgoCD (the gateway)
 
@@ -1215,8 +1207,6 @@ lines and the same log lines. Helm 4 also prints `Flag --atomic has been depreca
 - No `"state":"READY"` for `argocd-server:443`: the gateway cannot reach ArgoCD's address on port 443,
   or ArgoCD's certificate changed; run step 6 again (it saves the certificate), then this block.
 
-
-
 4. In Octopus, open **Infrastructure** → **Argo CD Instances**: the instance `<VKS_CLUSTER>-argocd` is
    healthy and shows the three Applications. Then delete the API key from 1. (**Profile** → **My API
    Keys**): the gateway needs it only to register.
@@ -1295,9 +1285,10 @@ step, **Done**, **Save**. A release keeps the process it was created with: creat
 
 **A release for every new image.** **Triggers** → **Create Trigger** → **External feed**: **Release
 trigger name** `new image in nexus`, and under **Trigger sources** tick `test-web-apps`; **Save**.
-Octopus checks Nexus every few minutes; for a new tag it creates a release and, because `dev` is the
-lifecycle's automatic phase, deploys it to `dev`. In a project with no release yet, its first check
-makes a release right away with the newest image already in Nexus and deploys that to `dev`.
+Octopus checks Nexus every three minutes; for a version higher than the one in the last release it
+creates a release and, because `dev` is the lifecycle's automatic phase, deploys it to `dev`. In a
+project with no release yet, its first check makes a release with the highest version already in Nexus
+and deploys that to `dev`.
 
 ![Create External Feed Trigger: lifecycle preview dev, test, prod; trigger source test-web-apps](img/cd-octopus/17-trigger-create.jpg)
 
@@ -1311,7 +1302,8 @@ DeploymentCreate` for `prod` and `Missing permission: InterruptionSubmit` for it
 ## 9. Release a new version to dev, test and prod
 
 1. Push a new version: run step 2's block again with `VERSION="1.0.1"`.
-2. Within a few minutes the trigger creates a release (`0.0.1` and up; Octopus numbers releases itself)
+2. Within a few minutes the trigger creates a release (Octopus numbers releases itself: `0.0.2` when the
+   trigger's first check made `0.0.1`)
    with `test-web-apps` `1.0.1` and deploys it to `dev`: Octopus commits the new tag into
    `envs/dev/deployment.yaml` as the user `octopus` (message `Octopus Deploy updated image versions`),
    asks ArgoCD to sync, and waits until the Application is healthy. Watch it under **Projects** →
@@ -1357,15 +1349,16 @@ ENVIRONMENT="test"
 if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
 elif [ -z "${OCTOPUS_API_KEY:-}" ]; then echo "STOPPED: type the Octopus API key first (step 7, 2.)"
 else
-  oc() { printf 'header = "X-Octopus-ApiKey: %s"\n' "$OCTOPUS_API_KEY" | curl -fsS --connect-timeout 20 --max-time 60 --cacert "$HOME/octopus-ca.pem" -K - "$@"; }
+  octo() { printf 'header = "X-Octopus-ApiKey: %s"\n' "$OCTOPUS_API_KEY" | curl -fsS --connect-timeout 20 --max-time 60 --cacert "$HOME/octopus-ca.pem" -K - "$@"; }
   O="https://$OCTOPUS_ADDRESS/api/Spaces-1"
-  if P="$(oc "$O/projects/test-web-apps" | jq -er .Id)" \
-     && R="$(oc "$O/projects/$P/releases?take=100" | jq -er --arg v "$RELEASE" '.Items[] | select(.Version == $v) | .Id')" \
-     && E="$(oc "$O/environments?name=$ENVIRONMENT" | jq -er '.Items[0].Id')"; then
-    oc -H 'Content-Type: application/json' --data-binary "$(jq -n --arg r "$R" --arg e "$E" '{ReleaseId: $r, EnvironmentId: $e}')" "$O/deployments" | jq -r '"deployment \(.Id) started, task \(.TaskId)"'
+  if P="$(octo "$O/projects/test-web-apps" | jq -er .Id)" \
+     && R="$(octo "$O/projects/$P/releases?take=100" | jq -er --arg v "$RELEASE" '.Items[] | select(.Version == $v) | .Id')" \
+     && E="$(octo "$O/environments?name=$ENVIRONMENT" | jq -er '.Items[0].Id')"; then
+    octo -H 'Content-Type: application/json' --data-binary "$(jq -n --arg r "$R" --arg e "$E" '{ReleaseId: $r, EnvironmentId: $e}')" "$O/deployments" | jq -r '"deployment \(.Id) started, task \(.TaskId)"'
   else
     echo "FAILED: no project test-web-apps, release $RELEASE or environment $ENVIRONMENT"
   fi
+  unset -f octo
 fi
 ```
 
@@ -1808,7 +1801,7 @@ elif [ -z "$IP" ] || [ ! -s "$CD_DIR/argocd-project.token" ] || [ ! -s "$CD_DIR/
 elif kc create secret generic gw-project-tokens --from-file=PROJECT_AUTH_TOKEN_test-web-apps="$CD_DIR/argocd-project.token" --dry-run=client -o yaml | kc apply -f - \
      && kc rollout restart deployment/octopus-argocd-gateway && kc rollout status deployment/octopus-argocd-gateway --timeout=3m; then
   sleep 20; kc logs deployment/octopus-argocd-gateway | grep 'token status' | tail -1 | cut -c1-200
-  ac() { curl -fsS --resolve "argocd-server:443:$IP" --cacert "$CD_DIR/argocd-server.pem" --connect-timeout 20 --max-time 60 -H 'Content-Type: application/json' "$@"; }
+  argocd_api() { curl -fsS --resolve "argocd-server:443:$IP" --cacert "$CD_DIR/argocd-server.pem" --connect-timeout 20 --max-time 60 -H 'Content-Type: application/json' "$@"; }
   if ! J="$(K get appproject test-web-apps -o json)"; then
     echo "FAILED: cannot read the project's tokens; nothing deleted"
   else
@@ -1819,17 +1812,23 @@ elif kc create secret generic gw-project-tokens --from-file=PROJECT_AUTH_TOKEN_t
     elif [ -z "$T" ]; then
       echo "old tokens: none"
     else
-      hd() { printf 'header = "Authorization: Bearer %s"\n' "$1"; }
+      argocd_auth() { printf 'header = "Authorization: Bearer %s"\n' "$1"; }
       AT="$(K get secret argocd-initial-admin-secret -o go-template='{{.data.password | base64decode}}' | jq -Rs '{username:"admin",password:.}' \
-        | ac --data-binary @- https://argocd-server/api/v1/session | jq -r '.token // empty')"
-      printf '%s\n' "$T" | while read -r IAT ID; do
-        hd "$AT" | ac -K - -X DELETE -o /dev/null "https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token/$IAT?id=$ID" \
-          && echo "deleted old token $ID (issued $IAT)"
-      done
-      hd "$AT" | ac -K - -X DELETE -o /dev/null https://argocd-server/api/v1/session || echo "NOTE: ArgoCD sign-out failed (the session ends by itself)"
-      AT=""
+        | argocd_api --data-binary @- https://argocd-server/api/v1/session | jq -r '.token // empty')"
+      if [ -z "$AT" ]; then
+        echo "FAILED: ArgoCD did not sign admin in; nothing deleted"
+      else
+        printf '%s\n' "$T" | while read -r IAT ID; do
+          argocd_auth "$AT" | argocd_api -K - -X DELETE -o /dev/null "https://argocd-server/api/v1/projects/test-web-apps/roles/octopus/token/$IAT?id=$ID" \
+            && echo "deleted old token $ID (issued $IAT)"
+        done
+        argocd_auth "$AT" | argocd_api -K - -X DELETE -o /dev/null https://argocd-server/api/v1/session || echo "NOTE: ArgoCD sign-out failed (the session ends by itself)"
+        AT=""
+      fi
+      unset -f argocd_auth
     fi
   fi
+  unset -f argocd_api
 else
   echo "FAILED: the gateway did not restart with the new token (see the error above)"
 fi
@@ -1918,12 +1917,11 @@ if ($OK) {
 </details>
 
 **Expect:** `deployment.apps/octopus-argocd-gateway restarted`, `successfully rolled out`, a log line with
-`"Argo CD authentication token status"`, the new `"expires_at"` and `"status":"ok"`, then one `deleted
+`"Argo CD authentication token status"`, the new `"expires_at"` (90 days from now) and `"status":"ok"`, then one `deleted
 old token …` line per older token (`old tokens: none` when there was none).
 
 **If not:** a log line with `"status"` other than `ok`: the token in the file does not work; run step 6
 again, then this block.
-
 
 To change the Gitea token of `octopus` (it does not end): delete
 `~/.config/vks-guides/cd-octopus/gitea-octopus.token`, run step 3 again (it makes a new one), put it into
@@ -1935,12 +1933,19 @@ After Gitea was installed again ([GITEA.md step 9](GITEA.md#9-uninstall-optional
 changed, give the new CA and address to both sides:
 
 1. Run [Over HTTPS, for pushes and tokens](GITEA.md#over-https-for-pushes-and-tokens) 2. to 4. again
-   (a new `~/gitea-ca.pem`), and step 3 if the repository and users are gone.
+   (a new `~/gitea-ca.pem`). If Gitea was installed again, its repositories and users are gone: delete
+   `gitea-octopus.token` and `gitea-argocd.token` in `~/.config/vks-guides/cd-octopus`, run step 3 (new
+   users and tokens), and step 11's first block if you use it.
 2. Run step 5 again with the new `GITEA_ADDRESS`: it adds the new CA to ArgoCD and points the project and
-   the Applications at the new address.
+   the Applications at the new address. Then run step 5's check block and do its **If not:** Hard Refresh
+   for an Application that shows `Unknown`.
 3. Run the CA line of step 8 again and give the file to Octopus with OCTOPUS.md step 11, then restart
-   Octopus as that step's **If not:** says; change the allowed repository of the Git credential
-   `gitea-deploy` to the new address (step 8).
+   Octopus as that step's **If not:** says. In the Git credential `gitea-deploy` (step 8) change the
+   allowed repository to the new address, and after a new install put in the new
+   `gitea-octopus.token`.
+4. After a new install, `deploy` holds `1.0.0` for all three environments, and ArgoCD runs that in each,
+   `prod` too. Deploy each environment's current release again from Octopus (step 10); `prod` waits for
+   its approval.
 
 <!-- DRAFT: not run on the lab yet. -->
 
@@ -1990,10 +1995,11 @@ else
   else
     K delete appproject test-web-apps --ignore-not-found
     K delete secret repo-gitea-deploy --ignore-not-found
-    if ! A="$(K get applications.argoproj.io -o json)" || ! S="$(K get secrets -l argocd.argoproj.io/secret-type=repository -o json)" \
+    if ! A="$(K get applications.argoproj.io -o json)" || ! S="$(K get secrets -l 'argocd.argoproj.io/secret-type in (repository,repo-creds)' -o json)" \
        || ! C="$(K get configmap argocd-tls-certs-cm -o json)"; then
       echo "FAILED: cannot read ArgoCD's Applications, repositories or CAs; Gitea's CA in ArgoCD is kept"
-    elif U="$( { printf '%s' "$A" | jq -r '.items[].spec.source.repoURL // empty'; printf '%s' "$S" | jq -r '.items[].data.url // empty | @base64d'; } | grep -F "https://$GITEA_ADDRESS/" )"; then
+    elif U="$( { printf '%s' "$A" | jq -r '.items[].spec | (.source.repoURL?, .sources[]?.repoURL?) | values'; printf '%s' "$S" | jq -r '.items[].data.url // empty | @base64d'; } \
+              | grep -F -e "https://$GITEA_ADDRESS/" -e "https://$GITEA_ADDRESS:" )"; then
       echo "kept Gitea's CA in ArgoCD: still used by $U"
     elif printf '%s' "$C" | jq -e --arg k "$GITEA_ADDRESS" '.data[$k]' >/dev/null; then
       K patch configmap argocd-tls-certs-cm --type json -p "[{\"op\":\"remove\",\"path\":\"/data/$GITEA_ADDRESS\"}]"
@@ -2044,13 +2050,13 @@ if ($LASTEXITCODE -ne 0) {
     kubectl @KS delete appproject test-web-apps --ignore-not-found
     kubectl @KS delete secret repo-gitea-deploy --ignore-not-found
     $A = kj 'applications.argoproj.io'
-    $S = kj 'secrets' '-l' 'argocd.argoproj.io/secret-type=repository'
+    $S = kj 'secrets' '-l' 'argocd.argoproj.io/secret-type in (repository,repo-creds)'
     $C = kj 'configmap' 'argocd-tls-certs-cm'
     if (-not $A -or -not $S -or -not $C) {
       "FAILED: cannot read ArgoCD's Applications, repositories or CAs; Gitea's CA in ArgoCD is kept"
     } else {
-      $URLS = @(@($A.items) | ForEach-Object { $_.spec.source.repoURL }) + @(@($S.items) | ForEach-Object { if ($_.data.url) { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_.data.url)) } })
-      $U = @($URLS | Where-Object { $_ -and $_.StartsWith("https://$GITEA_ADDRESS/") })
+      $URLS = @(@($A.items) | ForEach-Object { $_.spec.source.repoURL; @($_.spec.sources) | ForEach-Object { $_.repoURL } }) + @(@($S.items) | ForEach-Object { if ($_.data.url) { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_.data.url)) } })
+      $U = @($URLS | Where-Object { $_ -and ($_.StartsWith("https://$GITEA_ADDRESS/") -or $_.StartsWith("https://${GITEA_ADDRESS}:")) })
       if ($U.Count -gt 0) {
         "kept Gitea's CA in ArgoCD: still used by $($U -join ' ')"
       } elseif ($C.data -and @($C.data.PSObject.Properties.Name) -contains $GITEA_ADDRESS) {
@@ -2083,6 +2089,9 @@ test-web-apps … nothing deleted`.
   Namespace; nothing was deleted.
 - `kept Gitea's CA in ArgoCD: still used by …`: another Application or repository login still uses
   Gitea; the CA stays until that one is gone.
+- `FAILED: no project test-web-apps` on a run after one that stopped part-way (the project is already
+  deleted): run the block's lines that set the values, then its last four commands alone, from the one
+  that deletes the namespaces `test-web-apps-<env>`.
 
 3. In Gitea, if you no longer need them: delete the repository `deploy` (its **Settings** → **Danger
    Zone**), step 11's repository `app`, and the users `octopus` and `argocd` (**Site Administration** →
