@@ -1539,7 +1539,12 @@ if TR="$(printf 'apiVersion: tekton.dev/v1\nkind: TaskRun\nmetadata: {generateNa
     sleep 10
   done
   kc get "$TR" -o jsonpath='{.status.conditions[0].reason}: {.status.conditions[0].message}{"\n"}'
-  kc get "$TR" -o jsonpath='pushed version {.status.results[?(@.name=="version")].value} {.status.results[?(@.name=="digest")].value}{"\n"}'
+  if [ "$ST" = True ]; then
+    kc get "$TR" -o jsonpath='pushed version {.status.results[?(@.name=="version")].value} {.status.results[?(@.name=="digest")].value}{"\n"}'
+  else
+    echo "FAILED: nothing pushed; the last lines of the build:"
+    kc logs -l "tekton.dev/taskRun=${TR#*/}" -c step-kaniko --tail=2
+  fi
 fi
 ```
 
@@ -1550,9 +1555,9 @@ completed executing` and `pushed version <VERSION> sha256:…` (about half a min
 later `dev` shows the new version (step 5's check block).
 
 **If not:**
-- `Failed`, and `kubectl --kubeconfig <file> -n cd-octopus-ci logs -l tekton.dev/taskRun=<name> -c
-  step-kaniko` ends with `cannot be updated` or `redeploy is not allowed`: this version is in Nexus
-  already; raise `VERSION` in Gitea and run again.
+- `StepFailed: "step-kaniko" exited with code 1`, `FAILED: nothing pushed`, and a line with
+  `REDEPLOY_DISABLED: … cannot be updated as asset already exists`: this version is in Nexus already;
+  raise `VERSION` in Gitea and run again.
 - … with `x509` or `UNAUTHORIZED`: Nexus's CA or the push user's password in the first block is wrong;
   run it again.
 
