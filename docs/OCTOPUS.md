@@ -1639,7 +1639,10 @@ from [NEXUS.md step 7](NEXUS.md#7-save-nexuss-ca-and-check-its-address) as a Con
 for settings and files that are not secret, inside the cluster; here the certificate only, no
 key), and writes a second values file, `values-ca.yaml`, that builds a CA bundle for Octopus when
 it starts. You get Octopus ready to trust Nexus: then run step 7 again; it uses both values files,
-and Octopus restarts once. Set `VKS_CLUSTER` to the name of Octopus's cluster.
+and Octopus restarts once. Run again with another CA file (for example Nexus's and Gitea's CAs in
+one file, as [CD-OCTOPUS.md](CD-OCTOPUS.md) does), step 7 changes nothing and Octopus keeps its
+old bundle: restart Octopus instead (**If not:** below). Set `VKS_CLUSTER` to the name of Octopus's
+cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1792,7 +1795,10 @@ by its full path in Nexus, `<NEXUS_REPO>/<image>` (for example `apps/busybox`).
 **If not:**
 - `The SSL connection could not be established, see inner exception. The remote certificate is
   invalid because of errors in the certificate chain: PartialChain`: Octopus does not trust
-  Nexus's CA yet; run this step and step 7.
+  Nexus's CA yet; run this step and step 7. If you ran this step before and only the CA file
+  changed, step 7 does not restart Octopus: run `kubectl --kubeconfig <file> -n octopus rollout
+  restart statefulset/octopus-octopus-deploy`, wait until `kubectl --kubeconfig <file> -n octopus
+  rollout status statefulset/octopus-octopus-deploy` says `complete`, and check the CA count again.
 - `Error performing request to https://<NEXUS_REGISTRY>/v2/_catalog?n=100. The endpoint returned
   Not Found`: you searched a bare image name; search `<NEXUS_REPO>/<image>`.
 - `MISSING: …nexus-ca.pem`: run NEXUS.md step 7 on this machine first.

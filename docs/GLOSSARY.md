@@ -22,5 +22,11 @@ The words the guides use for where things live, for logins and kubeconfig files,
 | `edit` | the built-in role to create, change and delete most things in one namespace, its Secrets included; it can act as any ServiceAccount there, but cannot change who has rights |
 | `view` | the built-in role to read most things in one namespace, but not Secrets or who has rights |
 | RoleBinding, ClusterRoleBinding | what gives a user, a group or a ServiceAccount a role: in one namespace, or in the whole cluster |
+| release (Octopus) | a numbered snapshot of a project's deployment process with the versions of its packages (here: the image version); it is deployed to one environment after the other ([CD-OCTOPUS.md](CD-OCTOPUS.md)) |
+| lifecycle (Octopus) | the order of environments a release must go through, such as `dev` → `test` → `prod`; a phase can deploy automatically ([OCTOPUS.md](OCTOPUS.md)) |
+| feed (Octopus) | a place Octopus reads package or image versions from, such as a Docker registry like Nexus ([OCTOPUS.md](OCTOPUS.md)) |
+| Argo CD gateway | Octopus's small program in a cluster that connects Octopus to an ArgoCD and reports its Applications ([CD-OCTOPUS.md](CD-OCTOPUS.md)) |
+| sync (ArgoCD) | ArgoCD making a cluster match what Git says, for one Application |
+| Application, project (ArgoCD) | an Application is one folder of a Git repository that ArgoCD deploys to one place; a project limits what its Applications may take and where they may deploy ([ARGOCD.md](ARGOCD.md)) |
 
 Back to [README](../README.md).
