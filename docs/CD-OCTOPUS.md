@@ -680,6 +680,81 @@ unset OCTOPUS_API_KEY
 
 ## 8. Create the Octopus project
 
+Do this once, in Octopus's web page, signed in as `admin`. It tells Octopus how to deploy: commit the
+new image tag into the Application's folder of `deploy`, ask ArgoCD to sync, and wait until the
+Application is healthy; with an approval before `prod`, and a new release for every new image in
+Nexus.
+
+**Octopus's Git login.** Octopus commits to `deploy` as the Gitea user `octopus` (step 3). Under
+**Manage** → **Git Credentials** → **Add Git Credential**: **Git credential name** `gitea-deploy`,
+**HTTP/HTTPS**, **Username** `octopus`, **Personal Access Token or Password** the content of
+`~/.config/vks-guides/cd-octopus/gitea-octopus.token`, and under **Allowed Repositories** **Only allow
+specified Git repositories** with `https://<GITEA_ADDRESS>/gitea-admin/deploy.git` (**Add to list**),
+then **Save**.
+
+![Create Git Credential: name gitea-deploy, HTTP/HTTPS, user octopus, token, allowed repository deploy.git](img/cd-octopus/02-git-credential.jpg)
+
+**Octopus trusts Gitea.** Octopus checks Gitea's certificate when it clones `deploy`; until it trusts
+Gitea's CA, the deployment stops at `Cloning repository failed` and `The remote certificate is invalid
+because of errors in the certificate chain: PartialChain`. Put Nexus's and Gitea's CAs in one file and
+give it to Octopus with [OCTOPUS.md step 11](OCTOPUS.md#11-trust-nexus-and-add-it-as-a-docker-feed-optional)
+(set `NEXUS_CA` there to this file), then restart Octopus as that step's **If not:** says. This line
+makes the file `~/octopus-extra-cas.pem` from the two CA files:
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+cat "$HOME/nexus-ca.pem" "$HOME/gitea-ca.pem" > "$HOME/octopus-extra-cas.pem" && grep -c BEGIN "$HOME/octopus-extra-cas.pem"
+```
+
+**Windows (PowerShell):**
+
+```powershell
+Get-Content "$HOME\nexus-ca.pem", "$HOME\gitea-ca.pem" | Set-Content -Encoding ascii "$HOME\octopus-extra-cas.pem"; (Select-String -Path "$HOME\octopus-extra-cas.pem" -Pattern 'BEGIN').Count
+```
+
+**Expect:** `2`.
+
+**Expect:** after the restart, `kubectl --kubeconfig <file> -n octopus logs octopus-octopus-deploy-0 -c
+ca-bundle` prints one more CA than before (150 instead of 149 on Octopus 2026.3).
+
+**The project.** **Projects** → **Add Project**: **Project name** `test-web-apps`, **Deploy to**
+**Kubernetes**, **Are you using Argo CD?** **Yes**, and under **Lifecycle** `dev-test-prod` (OCTOPUS.md
+step 10), then **Create Project**. The project's name must be `test-web-apps`: the Applications'
+annotation `argo.octopus.com/project` (step 5) names it.
+
+![Add New Project: test-web-apps, Kubernetes, using Argo CD Yes, lifecycle dev-test-prod](img/cd-octopus/03-add-project.jpg)
+
+**The step that changes the image.** In the **Process Editor**, under **Argo CD**, add **Update Argo CD
+Application Image Tags**. Under **Container Images** click **Add**: **Package feed** `nexus`, **Package
+ID** `apps/test-web-apps` (`<NEXUS_REPO>/test-web-apps`), **Name** `test-web-apps`, then **Add
+Package**. Keep the rest as it is: commit straight to `main` (**Git Commit Method** without pull
+requests: Gitea has none in Octopus), **Step Verification** **Argo CD application is healthy** with a
+180-second timeout, and **Trigger Sync** for all environments. **Save**.
+
+![Reference a package: feed nexus, package ID apps/test-web-apps, name test-web-apps](img/cd-octopus/05-package-reference.jpg)
+
+**Argo CD Applications** then shows **Applications ready to update** `3`. Right after you create the
+project it may say **No Argo CD applications found matching the current scope** for a few minutes,
+until the gateway reports the Applications again; reload the page.
+
+![Process Editor: Applications ready to update 3, 1 container image will be updated](img/cd-octopus/06-apps-ready.jpg)
+
+**An approval before prod.** **Add Step** → **Manual Intervention Required**: **Instructions** such as
+`Approve the release for prod: check that test shows the new version.`, under **Environments** **Run
+only for specific environments** `prod`, and under **Required** **Prevent this step from being skipped
+when deploying**; **Save**. Then, in the step list's menu, **Reorder steps**: move it above the image
+step, **Done**, **Save**. A release keeps the process it was created with: create releases after this.
+
+![Process: 1 Manual Intervention Required (runs for prod), 2 Update Argo CD Application Image Tags; lifecycle dev-test-prod](img/cd-octopus/13-process-approval.jpg)
+
+**A release for every new image.** **Triggers** → **Create Trigger** → **External feed**: **Release
+trigger name** `new image in nexus`, and under **Trigger sources** tick `test-web-apps`; **Save**.
+Octopus checks Nexus every few minutes; for a new tag it creates a release and, because `dev` is the
+lifecycle's automatic phase, deploys it to `dev`.
+
+![Create External Feed Trigger: lifecycle preview dev, test, prod; trigger source test-web-apps](img/cd-octopus/17-trigger-create.jpg)
+
 ## 9. Release 1.0.0 to dev, test and prod
 
 ## 10. Release a new version and roll back
