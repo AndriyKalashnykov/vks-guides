@@ -424,7 +424,16 @@ fi
 
 </details>
 
-<!-- DRAFT: Windows twin; Expect/If not from the lab run of this exact block. -->
+**Expect:** `configmap/argocd-tls-certs-cm patched`, `secret/repo-gitea-deploy created`,
+`appproject.argoproj.io/test-web-apps created` and three `application.argoproj.io/test-web-apps-<env>
+created`, each Application after a `Warning:` about the finalizer name (as in ARGOCD.md step 8). Run
+again: `patched (no change)`, `configured` for the Secret and the project (`unchanged` when nothing
+changed), and `unchanged` for the Applications.
+
+**If not:** `configmaps "argocd-tls-certs-cm" not found`: `ARGOCD_NAMESPACE` is not ArgoCD's vSphere
+Namespace.
+
+<!-- DRAFT: Windows twin. Re-run arm of this exact block PASS 2026-11-14 14:28 (patched (no change), Secret/project configured, apps unchanged); first-run arm by lab scripts 2026-11-13 18:2x. -->
 
 Run this after the block above, to see the three environments run. It only reads: it shows ArgoCD's
 status for each Application, how many of its pods are ready with which image, and what the page at
@@ -449,7 +458,18 @@ for E in dev test prod; do
 done
 ```
 
-<!-- DRAFT: Windows twin; Expect/If not (incl. x509 for ~2 min, MEASURED 2026-11-13: hard refresh fixed it). -->
+**Expect:** three lines such as `dev: ArgoCD Synced  Healthy | pods 1/1
+<NEXUS_REGISTRY>/apps/test-web-apps:1.0.0 | http://<address>/ test-web-apps 1.0.0`.
+
+**If not:**
+- `Unknown` instead of `Synced`, and the ArgoCD page shows `x509: certificate signed by unknown
+  authority` for the Application: ArgoCD has not read Gitea's CA yet. Wait two minutes, then in the
+  ArgoCD page open the Application and click **Refresh** → **Hard Refresh**.
+- `pods none`: the Application is not synced yet, or its namespace is missing (step 4).
+- `0/1` with `ErrImagePull` (`kubectl --kubeconfig <file> -n test-web-apps-<env> get pods`): the
+  cluster's nodes do not trust Nexus's CA, or `nexus-pull` is missing (step 4).
+
+<!-- DRAFT: Windows twin. Check block PASS 2026-11-14 14:28 (1.0.2/1.0.2/1.0.1 after the e2e runs). -->
 
 ## 6. Give the gateway its ArgoCD token
 
