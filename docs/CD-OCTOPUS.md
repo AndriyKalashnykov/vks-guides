@@ -1546,7 +1546,9 @@ EOF
   for F in Dockerfile index.html VERSION; do
     case "$F" in
       Dockerfile) C="$(printf 'FROM docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03\nCOPY index.html /usr/share/nginx/html/index.html\nEXPOSE 8080\n')" ;;
-      index.html) C="$(printf '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>test-web-apps</title></head>\n<body><h1>test-web-apps @VERSION@</h1></body></html>\n')" ;;
+      index.html) C='<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>test-web-apps</title></head>
+<body><h1>test-web-apps @VERSION@</h1></body></html>' ;;
       VERSION) C="$FIRST_VERSION" ;;
     esac
     jq -n --arg c "$(printf '%s\n' "$C" | base64 | tr -d '\n')" --arg f "$F" '{content: $c, message: "add \($f)", branch: "main"}' \
