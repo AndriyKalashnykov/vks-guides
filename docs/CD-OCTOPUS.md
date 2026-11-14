@@ -317,9 +317,139 @@ and `secret/nexus-pull created` (`configured` or `unchanged` when run again).
 **If not:** `FAILED: no Secret nexus-pull in default`: run [NEXUS.md step
 11](NEXUS.md#check-that-a-cluster-can-pull) for this cluster first.
 
-<!-- DRAFT: lab ran an equivalent script 2026-11-13 (3x "secret/nexus-pull created"); this exact block not yet run. -->
+<!-- DRAFT: second-run arm of this exact block PASS on the lab 2026-11-14 14:3x (not labeled / unchanged x3); first-run arm by an equivalent script 2026-11-13; Windows twin not run. -->
 
 ## 5. Create the ArgoCD project and the three Applications
+
+Run this once, after steps 3 and 4, on the Supervisor: ArgoCD then deploys each environment's folder
+of `deploy` to its namespace, and Octopus finds the Applications by their annotations. It:
+
+- adds Gitea's CA to ArgoCD's list of trusted Git servers (the ConfigMap `argocd-tls-certs-cm`, under
+  Gitea's address), so ArgoCD checks Gitea's certificate;
+- stores the Gitea user `argocd` and its token (step 3) as ArgoCD's login for `deploy`;
+- creates the project `test-web-apps`, which may take only `deploy` and deploy only a Deployment and a
+  Service into the three namespaces, with the role `octopus` that may only read and sync its apps and
+  read their logs (step 6 makes its token);
+- creates the Applications `test-web-apps-dev`, `-test` and `-prod`, each with the annotations
+  `argo.octopus.com/project: test-web-apps` and `argo.octopus.com/environment: <env>`, synced
+  automatically.
+
+You get the three environments running version 1.0.0. Run again, it changes nothing. Set
+`ARGOCD_NAMESPACE` to ArgoCD's vSphere Namespace, `VSPHERE_NAMESPACE` and `VKS_CLUSTER` to the app's
+cluster (as in [ARGOCD.md step 7](ARGOCD.md#7-add-the-vks-cluster-to-argocd)), and `GITEA_ADDRESS` as
+in step 3.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+VSPHERE_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+GITEA_ADDRESS="192.168.10.60"
+CD_DIR="$HOME/.config/vks-guides/cd-octopus"
+
+K() { kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" "$@"; }
+REPO="https://$GITEA_ADDRESS/gitea-admin/deploy.git"
+DEST="${VKS_CLUSTER}-${VSPHERE_NAMESPACE}"
+if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
+elif [ ! -s "$HOME/gitea-ca.pem" ] || [ ! -s "$CD_DIR/gitea-argocd.token" ]; then
+  echo "MISSING: $HOME/gitea-ca.pem or $CD_DIR/gitea-argocd.token (GITEA.md Over HTTPS 4., step 3)"
+else
+  jq -n --arg k "$GITEA_ADDRESS" --rawfile c "$HOME/gitea-ca.pem" '{data: {($k): $c}}' \
+    | K patch configmap argocd-tls-certs-cm --type merge --patch-file /dev/stdin
+  jq -n --arg u "$REPO" --rawfile t "$CD_DIR/gitea-argocd.token" '{apiVersion: "v1", kind: "Secret",
+      metadata: {name: "repo-gitea-deploy", labels: {"argocd.argoproj.io/secret-type": "repository"}},
+      stringData: {type: "git", url: $u, username: "argocd", password: $t, project: "test-web-apps"}}' | K apply -f -
+  K apply -f - <<EOF
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: test-web-apps
+spec:
+  description: test-web-apps, promoted by Octopus
+  sourceRepos:
+    - ${REPO}
+  destinations:
+    - name: ${DEST}
+      namespace: test-web-apps-dev
+    - name: ${DEST}
+      namespace: test-web-apps-test
+    - name: ${DEST}
+      namespace: test-web-apps-prod
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: ""
+      kind: Service
+  roles:
+    - name: octopus
+      description: the Octopus Argo CD gateway
+      policies:
+        - p, proj:test-web-apps:octopus, applications, get, test-web-apps/*, allow
+        - p, proj:test-web-apps:octopus, applications, sync, test-web-apps/*, allow
+        - p, proj:test-web-apps:octopus, logs, get, test-web-apps/*, allow
+EOF
+  for E in dev test prod; do
+    K apply -f - <<EOF
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: test-web-apps-${E}
+  annotations:
+    argo.octopus.com/project: test-web-apps
+    argo.octopus.com/environment: ${E}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: test-web-apps
+  source:
+    repoURL: ${REPO}
+    targetRevision: main
+    path: envs/${E}
+  destination:
+    name: ${DEST}
+    namespace: test-web-apps-${E}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+EOF
+  done
+fi
+```
+
+</details>
+
+<!-- DRAFT: Windows twin; Expect/If not from the lab run of this exact block. -->
+
+Run this after the block above, to see the three environments run. It only reads: it shows ArgoCD's
+status for each Application, how many of its pods are ready with which image, and what the page at
+its address says. Run it again until all three show `Synced  Healthy`, `1/1` and a page: ArgoCD may
+need two minutes to trust Gitea's CA. Set the values as above.
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+SUPERVISOR_CONTEXT="supervisor"
+SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
+ARGOCD_NAMESPACE="my-namespace"
+VKS_CLUSTER="my-vks-cluster"
+VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+
+for E in dev test prod; do
+  A="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get applications.argoproj.io "test-web-apps-$E" -o jsonpath='{.status.sync.status}  {.status.health.status}')"
+  D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n "test-web-apps-$E" get deployment test-web-apps -o jsonpath='{.status.readyReplicas}/{.spec.replicas} {.spec.template.spec.containers[0].image}' 2>/dev/null)"
+  IP="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n "test-web-apps-$E" get service test-web-apps -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)"
+  P=""; [ -z "$IP" ] || P="$(curl -s --connect-timeout 10 --max-time 20 "http://$IP/" | sed -n 's/.*<h1>\(.*\)<\/h1>.*/\1/p')"
+  echo "$E: ArgoCD $A | pods ${D:-none} | http://${IP:-?}/ ${P:-no page}"
+done
+```
+
+<!-- DRAFT: Windows twin; Expect/If not (incl. x509 for ~2 min, MEASURED 2026-11-13: hard refresh fixed it). -->
 
 ## 6. Give the gateway its ArgoCD token
 
