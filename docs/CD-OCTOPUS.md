@@ -1397,6 +1397,9 @@ release's page.
   release's number is on **Projects** → `test-web-apps` → **Releases**.
 - `curl: (22) The requested URL returned error: 401` above the `FAILED` line: the API key is wrong or
   was deleted; make a new one (step 7, 1.).
+- Windows: `FAILED: The underlying connection was closed: Could not establish trust relationship for the
+  SSL/TLS secure channel.`: this Windows user does not trust Octopus's CA; do [OCTOPUS.md step
+  9](OCTOPUS.md#9-sign-in) on this machine (it adds `octopus-ca.pem` to your user's trusted CAs).
 
 ## 10. Roll prod back
 
