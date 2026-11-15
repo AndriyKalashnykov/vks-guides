@@ -496,7 +496,7 @@ if (-not $GITEA_PASSWORD -or $GITEA_PASSWORD.Length -eq 0) {
 created`, two `… may create no repositories: 200`, `octopus writes deploy: 204`, `argocd reads deploy:
 204`, `token for octopus: saved` and `token for argocd: saved`. Run again: `repository deploy: 409`,
 six `422` lines (the files are kept as they are), `exists, kept`, the two `204` lines and `token …:
-kept`.
+kept` (`token …: saved` on another machine, which has no token files yet; Gitea keeps the old ones).
 
 **If not:**
 - `FAILED: Gitea did not accept …`: the password or `GITEA_ADDRESS` is wrong, or this machine does not
