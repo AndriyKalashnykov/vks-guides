@@ -806,10 +806,11 @@ foreach ($E in 'dev', 'test', 'prod') {
 **If not:**
 - `Unknown` instead of `Synced`, and the ArgoCD page shows `x509: certificate signed by unknown
   authority` for the Application: ArgoCD tried Gitea before it had read Gitea's CA, and waiting does
-  not clear it. In the ArgoCD page open each Application and click **Refresh** → **Hard Refresh**, or
-  run `kubectl --kubeconfig <the Supervisor kubeconfig> -n <ArgoCD's vSphere Namespace> annotate
-  application.argoproj.io test-web-apps-<env> argocd.argoproj.io/refresh=hard --overwrite`; it shows
-  `Synced` within a minute.
+  not clear it. Two minutes or more after the block above, in the ArgoCD page open each Application and
+  click **Refresh** → **Hard Refresh**, or run `kubectl --kubeconfig <the Supervisor kubeconfig> -n
+  <ArgoCD's vSphere Namespace> annotate application.argoproj.io test-web-apps-<env>
+  argocd.argoproj.io/refresh=hard --overwrite`; it shows `Synced` within a minute. A refresh sooner,
+  before ArgoCD has read the CA, changes nothing: refresh again.
 - `pods none`: the Application is not synced yet, or its namespace is missing (step 4).
 - `0/1` with `ErrImagePull` (`kubectl --kubeconfig <file> -n test-web-apps-<env> get pods`): the
   cluster's nodes do not trust Nexus's CA, or `nexus-pull` is missing (step 4).
@@ -1356,7 +1357,7 @@ else
   octo() { printf 'header = "X-Octopus-ApiKey: %s"\n' "$OCTOPUS_API_KEY" | curl -fsS --connect-timeout 20 --max-time 60 --cacert "$HOME/octopus-ca.pem" -K - "$@"; }
   O="https://$OCTOPUS_ADDRESS/api/Spaces-1"
   if P="$(octo "$O/projects/test-web-apps" | jq -er .Id)" \
-     && R="$(octo "$O/projects/$P/releases?take=100" | jq -er --arg v "$RELEASE" '.Items[] | select(.Version == $v) | .Id')" \
+     && R="$(octo "$O/projects/$P/releases/$RELEASE" | jq -er .Id)" \
      && E="$(octo "$O/environments?name=$ENVIRONMENT" | jq -er '.Items[0].Id')"; then
     octo -H 'Content-Type: application/json' --data-binary "$(jq -n --arg r "$R" --arg e "$E" '{ReleaseId: $r, EnvironmentId: $e}')" "$O/deployments" | jq -r '"deployment \(.Id) started, task \(.TaskId)"'
   else
@@ -1378,7 +1379,7 @@ if (-not $OCTOPUS_API_KEY) { "STOPPED: type the Octopus API key first (step 7, 2
   $O = "https://$OCTOPUS_ADDRESS/api/Spaces-1"
   try {
     $P = (Invoke-RestMethod -Headers $H "$O/projects/test-web-apps").Id
-    $R = ((Invoke-RestMethod -Headers $H "$O/projects/$P/releases?take=100").Items | Where-Object { $_.Version -eq $RELEASE }).Id
+    $R = (Invoke-RestMethod -Headers $H "$O/projects/$P/releases/$RELEASE").Id
     $E = ((Invoke-RestMethod -Headers $H "$O/environments?name=$ENVIRONMENT").Items | Select-Object -First 1).Id
     if (-not $R -or -not $E) { throw "no release $RELEASE or environment $ENVIRONMENT" }
     $D = Invoke-RestMethod -Headers $H -Method Post -ContentType 'application/json' -Body (@{ ReleaseId = $R; EnvironmentId = $E } | ConvertTo-Json) "$O/deployments"
@@ -1391,8 +1392,9 @@ if (-not $OCTOPUS_API_KEY) { "STOPPED: type the Octopus API key first (step 7, 2
 release's page.
 
 **If not:**
-- `FAILED: no project test-web-apps, release <RELEASE> or environment <ENVIRONMENT>`: one of the three
-  names is not in Octopus; the release's number is on **Projects** → `test-web-apps` → **Releases**.
+- `FAILED: no project test-web-apps, release <RELEASE> or environment <ENVIRONMENT>` (with `curl: (22)
+  The requested URL returned error: 404` above it): one of the three names is not in Octopus; the
+  release's number is on **Projects** → `test-web-apps` → **Releases**.
 - `curl: (22) The requested URL returned error: 401` above the `FAILED` line: the API key is wrong or
   was deleted; make a new one (step 7, 1.).
 
