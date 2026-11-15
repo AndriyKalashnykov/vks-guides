@@ -1420,50 +1420,42 @@ Tekton builds the image from a Git repository with Kaniko and pushes it to Nexus
 The build runs as root (Kaniko needs it), so its namespace allows `baseline` pods, not only
 `restricted` ones; from there it can reach the other programs in the cluster over the pod network.
 
-Run this once. Type the push user's password (as in step 2) and `gitea-admin`'s password (as in
-step 3) first, in the same terminal:
+Run the two parts below once, in the same terminal; each asks for one password.
+
+**The build's namespace, login and Task.** Type the push user's password (as in step 2) first:
 
 **Linux, macOS, WSL (bash or zsh):**
 
 ```sh
-printf 'Push user password: '; IFS= read -rs NEXUS_PUSH_PASSWORD; echo; printf 'gitea-admin password: '; IFS= read -rs GITEA_PASSWORD; echo
+printf 'Push user password: '; IFS= read -rs NEXUS_PUSH_PASSWORD; echo
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$NEXUS_PUSH_PASSWORD = Read-Host 'Push user password' -AsSecureString; $GITEA_PASSWORD = Read-Host 'gitea-admin password' -AsSecureString
+$NEXUS_PUSH_PASSWORD = Read-Host 'Push user password' -AsSecureString
 ```
 
 Then run this. In Gitea's cluster it creates the namespace `cd-octopus-ci` (`baseline` pods), with
 Nexus's CA, a Kaniko login for the push user (the Secret `nexus-build`, read by the build only), and
-the build's Task `build-test-web-apps`. In Gitea it creates the public repository `app` with the
-app's Dockerfile, its page (`index.html`, where the build writes the version) and the file `VERSION`
-with the first version to build. You get everything the build needs; the second block runs a build.
-Run again, it keeps the repository and updates the rest. Set `VKS_CLUSTER` to Gitea's cluster,
-`GITEA_ADDRESS` as in step 3, `NEXUS_REGISTRY`, `NEXUS_REPO` and `NEXUS_PUSH_USER` as in NEXUS.md, and
-`FIRST_VERSION` to a version not yet in Nexus.
+the build's Task `build-test-web-apps`. Run again, it updates them. Set `VKS_CLUSTER` to Gitea's
+cluster, `NEXUS_REGISTRY` and `NEXUS_PUSH_USER` as in NEXUS.md.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-gitea-cluster"
-GITEA_ADDRESS="192.168.10.60"
 NEXUS_REGISTRY="192.168.10.50"
-NEXUS_REPO="apps"
 NEXUS_PUSH_USER="apps-push"
-FIRST_VERSION="1.0.3"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
-CD_DIR="$HOME/.config/vks-guides/cd-octopus"
 
 kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
-mkdir -p "$CD_DIR" && chmod 700 "$CD_DIR"
 if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
-elif [ -z "${NEXUS_PUSH_PASSWORD:-}" ] || [ -z "${GITEA_PASSWORD:-}" ]; then
-  echo "STOPPED: type the two passwords first (the line above)"
-elif [ ! -s "$HOME/nexus-ca.pem" ] || [ ! -s "$HOME/gitea-ca.pem" ] || ! kc get crd tasks.tekton.dev -o name >/dev/null; then
-  echo "MISSING: $HOME/nexus-ca.pem, $HOME/gitea-ca.pem, or Tekton in this cluster (TEKTON.md)"
+elif [ -z "${NEXUS_PUSH_PASSWORD:-}" ]; then
+  echo "STOPPED: type the push user's password first (the line above)"
+elif [ ! -s "$HOME/nexus-ca.pem" ] || ! kc get crd tasks.tekton.dev -o name >/dev/null; then
+  echo "MISSING: $HOME/nexus-ca.pem, or Tekton in this cluster (TEKTON.md)"
 else
   kc create namespace cd-octopus-ci --dry-run=client -o yaml | kc apply -f - >/dev/null
   kc label namespace cd-octopus-ci --overwrite pod-security.kubernetes.io/enforce=baseline pod-security.kubernetes.io/warn=baseline
@@ -1536,23 +1528,8 @@ spec:
           --registry-certificate="${REGISTRY}=/run/ca/ca.crt" \
           --digest-file="$(results.digest.path)"
 EOF
-  GA="$(printf '%s' "$GITEA_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
-  api() { printf 'user = "gitea-admin:%s"\n' "$GA" | curl -sS --connect-timeout 20 --max-time 30 --cacert "$HOME/gitea-ca.pem" -K - -H 'Content-Type: application/json' "$@"; }
-  echo "repository app: $(api -o /dev/null -w '%{http_code}' -d '{"name":"app","private":false,"default_branch":"main"}' "https://$GITEA_ADDRESS/api/v1/user/repos")"
-  for F in Dockerfile index.html VERSION; do
-    case "$F" in
-      Dockerfile) C="$(printf 'FROM docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03\nCOPY index.html /usr/share/nginx/html/index.html\nEXPOSE 8080\n')" ;;
-      index.html) C='<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>test-web-apps</title></head>
-<body><h1>test-web-apps @VERSION@</h1></body></html>' ;;
-      VERSION) C="$FIRST_VERSION" ;;
-    esac
-    B="$(jq -n --arg c "$(printf '%s\n' "$C" | base64 | tr -d '\n')" --arg f "$F" '{content: $c, message: "add \($f)", branch: "main"}')"
-    api -o /dev/null -w "  $F: %{http_code}\n" --data-binary "$B" "https://$GITEA_ADDRESS/api/v1/repos/gitea-admin/app/contents/$F"
-  done
-  GA=""
 fi
-unset NEXUS_PUSH_PASSWORD GITEA_PASSWORD
+unset NEXUS_PUSH_PASSWORD
 ```
 
 </details>
@@ -1562,13 +1539,9 @@ unset NEXUS_PUSH_PASSWORD GITEA_PASSWORD
 
 ```powershell
 $VKS_CLUSTER = "my-gitea-cluster"
-$GITEA_ADDRESS = "192.168.10.60"
 $NEXUS_REGISTRY = "192.168.10.50"
-$NEXUS_REPO = "apps"
 $NEXUS_PUSH_USER = "apps-push"
-$FIRST_VERSION = "1.0.3"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
-$CD_DIR = "$HOME\.config\vks-guides\cd-octopus"
 
 $TASK = @'
 apiVersion: v1
@@ -1635,26 +1608,14 @@ spec:
           --registry-certificate="${REGISTRY}=/run/ca/ca.crt" \
           --digest-file="$(results.digest.path)"
 '@
-$FILES = [ordered]@{
-  'Dockerfile' = "FROM docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03`nCOPY index.html /usr/share/nginx/html/index.html`nEXPOSE 8080`n"
-  'index.html' = "<!doctype html>`n<html lang=`"en`"><head><meta charset=`"utf-8`"><title>test-web-apps</title></head>`n<body><h1>test-web-apps @VERSION@</h1></body></html>`n"
-  'VERSION' = "$FIRST_VERSION`n"
-}
 $KC = '--kubeconfig', $VKS_KUBECONFIG
-$GH = $GITEA_ADDRESS; $RV = @()
-if ($GITEA_ADDRESS -match '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$') { $GH = 'gitea-https.gitea.svc'; $RV = '--resolve', "${GH}:443:$GITEA_ADDRESS" }
-function api { curl.exe -sS --connect-timeout 20 --max-time 30 --ssl-no-revoke --cacert "$HOME\gitea-ca.pem" -K "$CD_DIR\gitea-admin.cfg" @RV -H 'Content-Type: application/json' -o NUL -D - --suppress-connect-headers @args | Out-String }
-function hc($T) { if ($T -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' } }
-function body($O) { [IO.File]::WriteAllText("$CD_DIR\body.json", ($O | ConvertTo-Json -Compress)) }
-New-Item -ItemType Directory -Force -Path $CD_DIR | Out-Null
-icacls $CD_DIR /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)F" | Out-Null
 $global:LASTEXITCODE = $null
 kubectl @KC get crd tasks.tekton.dev -o name | Out-Null
 $TEKTON = ($LASTEXITCODE -eq 0)
-if (-not $NEXUS_PUSH_PASSWORD -or $NEXUS_PUSH_PASSWORD.Length -eq 0 -or -not $GITEA_PASSWORD -or $GITEA_PASSWORD.Length -eq 0) {
-  "STOPPED: type the two passwords first (the line above)"
-} elseif (-not (Test-Path "$HOME\nexus-ca.pem") -or (Get-Item "$HOME\nexus-ca.pem").Length -eq 0 -or -not (Test-Path "$HOME\gitea-ca.pem") -or (Get-Item "$HOME\gitea-ca.pem").Length -eq 0 -or -not $TEKTON) {
-  "MISSING: $HOME\nexus-ca.pem, $HOME\gitea-ca.pem, or Tekton in this cluster (TEKTON.md)"
+if (-not $NEXUS_PUSH_PASSWORD -or $NEXUS_PUSH_PASSWORD.Length -eq 0) {
+  "STOPPED: type the push user's password first (the line above)"
+} elseif (-not (Test-Path "$HOME\nexus-ca.pem") -or (Get-Item "$HOME\nexus-ca.pem").Length -eq 0 -or -not $TEKTON) {
+  "MISSING: $HOME\nexus-ca.pem, or Tekton in this cluster (TEKTON.md)"
 } else {
   kubectl @KC create namespace cd-octopus-ci --dry-run=client -o yaml | kubectl @KC apply -f - | Out-Null
   kubectl @KC label namespace cd-octopus-ci --overwrite pod-security.kubernetes.io/enforce=baseline pod-security.kubernetes.io/warn=baseline
@@ -1665,6 +1626,97 @@ if (-not $NEXUS_PUSH_PASSWORD -or $NEXUS_PUSH_PASSWORD.Length -eq 0 -or -not $GI
     ConvertTo-Json -Depth 5 | kubectl @KC apply -f -
   Remove-Variable A
   ($TASK -replace "`r`n", "`n") | kubectl @KC apply -f -
+}
+Remove-Variable -ErrorAction SilentlyContinue NEXUS_PUSH_PASSWORD
+```
+
+</details>
+
+**Expect:** `namespace/cd-octopus-ci labeled`, `configmap/nexus-ca created`, `secret/nexus-build
+created`, `serviceaccount/build created` and `task.tekton.dev/build-test-web-apps created`
+(`not labeled`, `configured` or `unchanged` when run again).
+
+**If not:** `MISSING: … or Tekton in this cluster`: install Tekton ([TEKTON.md](TEKTON.md)) in Gitea's
+cluster first.
+
+**The app's repository in Gitea.** Type `gitea-admin`'s password (as in step 3) first:
+
+**Linux, macOS, WSL (bash or zsh):**
+
+```sh
+printf 'gitea-admin password: '; IFS= read -rs GITEA_PASSWORD; echo
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$GITEA_PASSWORD = Read-Host 'gitea-admin password' -AsSecureString
+```
+
+Then run this. In Gitea it creates the public repository `app` with the app's Dockerfile, its page
+(`index.html`, where the build writes the version) and the file `VERSION` with the first version to
+build. Run again, it keeps the repository and its files. Set `GITEA_ADDRESS` as in step 3 and
+`FIRST_VERSION` to a version not yet in Nexus.
+
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
+
+```sh
+GITEA_ADDRESS="192.168.10.60"
+FIRST_VERSION="1.0.3"
+
+if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
+elif [ -z "${GITEA_PASSWORD:-}" ]; then
+  echo "STOPPED: type gitea-admin's password first (the line above)"
+elif [ ! -s "$HOME/gitea-ca.pem" ]; then
+  echo "MISSING: $HOME/gitea-ca.pem (GITEA.md, Over HTTPS, 4.)"
+else
+  GA="$(printf '%s' "$GITEA_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  api() { printf 'user = "gitea-admin:%s"\n' "$GA" | curl -sS --connect-timeout 20 --max-time 30 --cacert "$HOME/gitea-ca.pem" -K - -H 'Content-Type: application/json' "$@"; }
+  echo "repository app: $(api -o /dev/null -w '%{http_code}' -d '{"name":"app","private":false,"default_branch":"main"}' "https://$GITEA_ADDRESS/api/v1/user/repos")"
+  for F in Dockerfile index.html VERSION; do
+    case "$F" in
+      Dockerfile) C="$(printf 'FROM docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03\nCOPY index.html /usr/share/nginx/html/index.html\nEXPOSE 8080\n')" ;;
+      index.html) C='<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>test-web-apps</title></head>
+<body><h1>test-web-apps @VERSION@</h1></body></html>' ;;
+      VERSION) C="$FIRST_VERSION" ;;
+    esac
+    B="$(jq -n --arg c "$(printf '%s\n' "$C" | base64 | tr -d '\n')" --arg f "$F" '{content: $c, message: "add \($f)", branch: "main"}')"
+    api -o /dev/null -w "  $F: %{http_code}\n" --data-binary "$B" "https://$GITEA_ADDRESS/api/v1/repos/gitea-admin/app/contents/$F"
+  done
+  GA=""
+fi
+unset GITEA_PASSWORD
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+$GITEA_ADDRESS = "192.168.10.60"
+$FIRST_VERSION = "1.0.3"
+$CD_DIR = "$HOME\.config\vks-guides\cd-octopus"
+
+$FILES = [ordered]@{
+  'Dockerfile' = "FROM docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03`nCOPY index.html /usr/share/nginx/html/index.html`nEXPOSE 8080`n"
+  'index.html' = "<!doctype html>`n<html lang=`"en`"><head><meta charset=`"utf-8`"><title>test-web-apps</title></head>`n<body><h1>test-web-apps @VERSION@</h1></body></html>`n"
+  'VERSION' = "$FIRST_VERSION`n"
+}
+$GH = $GITEA_ADDRESS; $RV = @()
+if ($GITEA_ADDRESS -match '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$') { $GH = 'gitea-https.gitea.svc'; $RV = '--resolve', "${GH}:443:$GITEA_ADDRESS" }
+function api { curl.exe -sS --connect-timeout 20 --max-time 30 --ssl-no-revoke --cacert "$HOME\gitea-ca.pem" -K "$CD_DIR\gitea-admin.cfg" @RV -H 'Content-Type: application/json' -o NUL -D - --suppress-connect-headers @args | Out-String }
+function hc($T) { if ($T -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' } }
+function body($O) { [IO.File]::WriteAllText("$CD_DIR\body.json", ($O | ConvertTo-Json -Compress)) }
+New-Item -ItemType Directory -Force -Path $CD_DIR | Out-Null
+icacls $CD_DIR /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)F" | Out-Null
+if (-not $GITEA_PASSWORD -or $GITEA_PASSWORD.Length -eq 0) {
+  "STOPPED: type gitea-admin's password first (the line above)"
+} elseif (-not (Test-Path "$HOME\gitea-ca.pem") -or (Get-Item "$HOME\gitea-ca.pem").Length -eq 0) {
+  "MISSING: $HOME\gitea-ca.pem (GITEA.md, Over HTTPS, 4.)"
+} else {
   try {
     $P = [Net.NetworkCredential]::new('', $GITEA_PASSWORD).Password.Replace('\', '\\').Replace('"', '\"')
     [IO.File]::WriteAllText("$CD_DIR\gitea-admin.cfg", "user = `"gitea-admin:$P`"`n")
@@ -1679,23 +1731,18 @@ if (-not $NEXUS_PUSH_PASSWORD -or $NEXUS_PUSH_PASSWORD.Length -eq 0 -or -not $GI
     Remove-Item -Force -ErrorAction SilentlyContinue "$CD_DIR\gitea-admin.cfg", "$CD_DIR\body.json"
   }
 }
-Remove-Variable -ErrorAction SilentlyContinue NEXUS_PUSH_PASSWORD, GITEA_PASSWORD
+Remove-Variable -ErrorAction SilentlyContinue GITEA_PASSWORD
 ```
 
 </details>
 
-**Expect:** `namespace/cd-octopus-ci labeled`, `configmap/nexus-ca created`, `secret/nexus-build
-created`, `serviceaccount/build created`, `task.tekton.dev/build-test-web-apps created`, `repository
-app: 201` and three `201` lines (`configured`/`unchanged`, `409` and `422` when run again).
-
-**If not:** `MISSING: … or Tekton in this cluster`: install Tekton ([TEKTON.md](TEKTON.md)) in Gitea's
-cluster first.
+**Expect:** `repository app: 201` and three `201` lines (`409` and three `422` lines when run again).
 
 Run this for each build, after you changed the app in Gitea and raised the number in `VERSION` (a
 version can be pushed to Nexus only once). It runs the Task once (a TaskRun) on the repository `app`,
 waits up to 10 minutes, and prints the result and the pushed version. Within a few minutes Octopus's
 trigger creates a release with that version and deploys it to `dev` (step 9 from 2. on). Set
-`VKS_CLUSTER`, `NEXUS_REGISTRY` and `NEXUS_REPO` as above.
+`VKS_CLUSTER` and `NEXUS_REGISTRY` as above and `NEXUS_REPO` as in NEXUS.md.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1772,7 +1819,7 @@ later `dev` shows the new version (step 5's check block).
 - `StepFailed: "step-kaniko" exited with code 1`, `FAILED: nothing pushed`, and a line with
   `REDEPLOY_DISABLED: … cannot be updated as asset already exists`: this version is in Nexus already;
   raise `VERSION` in Gitea and run again.
-- … with `x509` or `UNAUTHORIZED`: Nexus's CA or the push user's password in the first block is wrong;
+- … with `x509` or `UNAUTHORIZED`: Nexus's CA or the push user's password in the first part is wrong;
   run it again.
 
 ## 12. Rotate the tokens (optional)
@@ -1943,7 +1990,7 @@ changed, give the new CA and address to both sides:
    (a new `~/gitea-ca.pem`); 4. checks out only once nginx serves the new certificate, about 6 minutes
    after 2. If Gitea was installed again, its repositories and users are gone: delete
    `gitea-octopus.token` and `gitea-argocd.token` in `~/.config/vks-guides/cd-octopus`, run step 3 (new
-   users and tokens), and step 11's first block if you use it.
+   users and tokens), and step 11's second part (the app's repository in Gitea) if you use it.
 2. Run step 5 again with the new `GITEA_ADDRESS`: it adds the new CA to ArgoCD and points the project and
    the Applications at the new address. Then run step 5's check block and do its **If not:** Hard Refresh
    for an Application that shows `Unknown`.
