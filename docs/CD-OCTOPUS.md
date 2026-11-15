@@ -1634,7 +1634,7 @@ Remove-Variable -ErrorAction SilentlyContinue NEXUS_PUSH_PASSWORD
 
 **Expect:** `namespace/cd-octopus-ci labeled`, `configmap/nexus-ca created`, `secret/nexus-build
 created`, `serviceaccount/build created` and `task.tekton.dev/build-test-web-apps created`
-(`configured` or `unchanged` when run again).
+(`not labeled`, `configured` or `unchanged` when run again).
 
 **If not:** `MISSING: … or Tekton in this cluster`: install Tekton ([TEKTON.md](TEKTON.md)) in Gitea's
 cluster first.
@@ -1742,7 +1742,7 @@ Run this for each build, after you changed the app in Gitea and raised the numbe
 version can be pushed to Nexus only once). It runs the Task once (a TaskRun) on the repository `app`,
 waits up to 10 minutes, and prints the result and the pushed version. Within a few minutes Octopus's
 trigger creates a release with that version and deploys it to `dev` (step 9 from 2. on). Set
-`VKS_CLUSTER`, `NEXUS_REGISTRY` and `NEXUS_REPO` as above.
+`VKS_CLUSTER` and `NEXUS_REGISTRY` as above and `NEXUS_REPO` as in NEXUS.md.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1819,7 +1819,7 @@ later `dev` shows the new version (step 5's check block).
 - `StepFailed: "step-kaniko" exited with code 1`, `FAILED: nothing pushed`, and a line with
   `REDEPLOY_DISABLED: … cannot be updated as asset already exists`: this version is in Nexus already;
   raise `VERSION` in Gitea and run again.
-- … with `x509` or `UNAUTHORIZED`: Nexus's CA or the push user's password in the first block is wrong;
+- … with `x509` or `UNAUTHORIZED`: Nexus's CA or the push user's password in the first part is wrong;
   run it again.
 
 ## 12. Rotate the tokens (optional)
@@ -1990,7 +1990,7 @@ changed, give the new CA and address to both sides:
    (a new `~/gitea-ca.pem`); 4. checks out only once nginx serves the new certificate, about 6 minutes
    after 2. If Gitea was installed again, its repositories and users are gone: delete
    `gitea-octopus.token` and `gitea-argocd.token` in `~/.config/vks-guides/cd-octopus`, run step 3 (new
-   users and tokens), and step 11's first block if you use it.
+   users and tokens), and step 11's second part (the app's repository in Gitea) if you use it.
 2. Run step 5 again with the new `GITEA_ADDRESS`: it adds the new CA to ArgoCD and points the project and
    the Applications at the new address. Then run step 5's check block and do its **If not:** Hard Refresh
    for an Application that shows `Unknown`.
