@@ -170,7 +170,17 @@ blocks; there is nothing to build.
   `~/.kube/config` when unset, and re-records it). `make walkbox-login
   WALKBOX_OS=ubuntu|photon|almalinux|windows` logs a walkbox in (SUPERVISOR-LOGIN.md's files:
   `~/.kube/supervisor.kubeconfig`, context `supervisor`); use it whenever a walkbox run needs the
-  SSO password (one attempt per run: mind the lock-out).
+  SSO password (one attempt per run: mind the lock-out). On Windows it logs in the user `vks`, while
+  `make walkbox-run-ps` runs blocks as `guide`: add `WALKBOX_USER=guide`, or run SUPERVISOR-LOGIN.md's
+  password line and Renew block as one composed file with `SECRET=sso` (MEASURED 2026-11-15).
+- A block that reads a password (`IFS= read -rs`, `Read-Host -AsSecureString`) is run for real with the
+  lab's SECRET kinds (nexus-push, gitea-admin, octopus-api-key, sso): put the value with `make
+  guide-secret-put KIND=<kind>` (stdin, never argv), then `make walkbox-run-sh|walkbox-run-ps
+  BLOCK_FILE=<file> SECRET=<kind>` with a composed file: one `# fence: docs/<GUIDE>.md:<line> sha8
+  <hex>` line per fence, then the prompt fence's lines and its work fence's lines (nested-vsphere-lab
+  WALKBOX.md). One secret per run, so a block that needs two passwords is split. On Windows the
+  harness rewrites the `Read-Host` line, so that fence does not count for TESTED; `make
+  guide-secret-forget KIND=all` after the series.
 - Coordinate every lab use with the nested-vsphere-lab session (find it with ListAgents, message
   it with SendMessage): announce before installing anything cluster-wide on a VKS cluster (CRDs,
   DaemonSets, host ports) or starting the walkbox, say when the lab is clean, and send it any lab
