@@ -1256,7 +1256,8 @@ Get-Content "$HOME\nexus-ca.pem", "$HOME\gitea-ca.pem" | Set-Content -Encoding a
 **Expect:** `2`.
 
 **Expect:** after the restart, `kubectl --kubeconfig <file> -n octopus logs octopus-octopus-deploy-0 -c
-ca-bundle` prints one more CA than before.
+ca-bundle` prints one more CA than before (the same number when Octopus already had Gitea's CA, as on a
+second machine or a run again).
 
 **The project.** **Projects** → **Add Project**: **Project name** `test-web-apps`, **Deploy to**
 **Kubernetes**, **Are you using Argo CD?** **Yes**, and under **Lifecycle** `dev-test-prod` (OCTOPUS.md
