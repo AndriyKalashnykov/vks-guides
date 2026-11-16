@@ -71,7 +71,7 @@ Group page: [GitOps and CI/CD](GITOPS-CICD.md).
 | [Run GitLab](GITLAB.md) | part | — | — | — | — | — |
 | [CI/CD with Gitea and Tekton](CICD.md) | — | — | — | — | — | — |
 | [CI/CD with GitLab](CICD.md) | — | — | — | — | — | — |
-| [Run Octopus Deploy](OCTOPUS.md) | part | part | — | part | part | part |
+| [Run Octopus Deploy](OCTOPUS.md) | part | part | part | part | part | part |
 | [Promote releases with Octopus and ArgoCD](CD-OCTOPUS.md) | ✅ | ✅ | ✅ | ✅ | part | part |
 
 ## Operations and observability
