@@ -1312,8 +1312,9 @@ if kc get secret octopus-tls -o go-template='{{index .data "ca.crt" | base64deco
   if [ -z "$G" ]; then
     echo "FAILED: octopus-grpc has no address yet (step 4)"
   else
-    curl -sSv -k --connect-timeout 20 --max-time 20 --http2 -o /dev/null "https://${G}:8443/" 2>&1 \
-      | sed -n 's/^\* ALPN: server accepted /ALPN protocol: /p; s/^\*  *subject: /gRPC certificate: /p; s/^\*  *Server certificate: /gRPC certificate: /p'
+    A="$(openssl s_client -connect "${G}:8443" -alpn h2 </dev/null 2>/dev/null)"
+    printf '%s\n' "$A" | sed -n 's/^subject= */gRPC certificate: /p; /^ALPN protocol: /p'
+    printf '%s\n' "$A" | grep -q '^ALPN protocol: h2' || echo "FAILED: ${G}:8443 did not answer with HTTP/2 (gRPC)"
   fi
 else
   rm -f "$OCTOPUS_CA.new"; echo "FAILED: no CA read (see the error above)"
@@ -1359,7 +1360,7 @@ if ($LASTEXITCODE -eq 0 -and $B) {
 
 **Expect:** a `subject=` line with `Octopus CA`, a `sha256 Fingerprint=…` line, `saved
 …/octopus-ca.pem`, a `"Version"` line with `2026.3.16049`, `Octopus answers at https://<address>`,
-`ALPN protocol: h2` and a `gRPC certificate:` line naming `Octopus gRPC` (Windows: `Version:
+a `gRPC certificate:` line naming `Octopus gRPC` and `ALPN protocol: h2` (Windows: `Version:
 2026.3.16049` and no ALPN line). The
 gRPC port keeps Octopus's own certificate.
 
@@ -1372,7 +1373,8 @@ gRPC port keeps Octopus's own certificate.
 - `CertGetNameString() failed to match` (Windows): the certificate is older than step 5's
   `octopus-web.octopus.svc` name; run step 5, wait 6 minutes for nginx to load it, then run step 8
   again.
-- No `gRPC certificate:` line: this machine cannot reach `octopus-grpc`'s address on port 8443.
+- No answer for minutes, or `FAILED: … did not answer with HTTP/2`: this machine cannot reach
+  `octopus-grpc`'s address on port 8443, or something between them does not pass HTTP/2.
 
 ## 9. Sign in
 
