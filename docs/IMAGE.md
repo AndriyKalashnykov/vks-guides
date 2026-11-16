@@ -441,7 +441,8 @@ if ($ERR) { "FAILED: $ERR" } else {
 
 </details>
 
-**Expect:** the build's steps (podman: `STEP 1/3: FROM …`; docker: `[1/2] FROM …`), then
+**Expect:** the build's steps (podman: `STEP 1/3: FROM …`; docker: `[1/2] FROM …`; docker without
+BuildKit, as on Photon OS: `Step 1/3 : FROM …`), then
 `built: <your Harbor name>/<your project>/test-web-apps:v1-podman` (or `v1-docker`).
 
 **If not:**

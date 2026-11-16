@@ -34,9 +34,9 @@ Group page: [Identity and access](ACCESS-SIGN-IN.md).
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
 | [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Give an identity provider group access to VKS clusters, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) | part | — | — | — | part | — |
+| [Give an identity provider group access to VKS clusters, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) | part | part | — | — | part | — |
 | [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | part | — | — | — | — | — |
-| [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | ✅ | — | — | — | part | — |
+| [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | ✅ | ✅ | — | — | part | — |
 
 ## vSphere Namespaces and VKS clusters
 
@@ -55,8 +55,8 @@ Group page: [Container images](IMAGES.md).
 
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Build a container image, push it to a registry and run it in a VKS cluster](IMAGE.md) | part | — | — | — | — | — |
-| [Build a container image with docker, push it and run it (short version)](IMAGE-DOCKER.md) | part | — | — | — | — | — |
+| [Build a container image, push it to a registry and run it in a VKS cluster](IMAGE.md) | part | — | part | — | — | — |
+| [Build a container image with docker, push it and run it (short version)](IMAGE-DOCKER.md) | part | — | part | — | — | — |
 
 ## GitOps and CI/CD
 
@@ -65,13 +65,13 @@ Group page: [GitOps and CI/CD](GITOPS-CICD.md).
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
 | [ArgoCD](ARGOCD.md) | part | — | — | — | — | — |
-| [Run Nexus](NEXUS.md) | — | — | — | — | — | — |
-| [Run Gitea](GITEA.md) | part | — | part | — | — | — |
+| [Run Nexus](NEXUS.md) | part | part | part | part | part | part |
+| [Run Gitea](GITEA.md) | part | part | part | part | — | part |
 | [Run Tekton](TEKTON.md) | ✅ | ✅ | — | — | — | — |
 | [Run GitLab](GITLAB.md) | part | — | — | — | — | — |
 | [CI/CD with Gitea and Tekton](CICD.md) | — | — | — | — | — | — |
 | [CI/CD with GitLab](CICD.md) | — | — | — | — | — | — |
-| [Run Octopus Deploy](OCTOPUS.md) | — | — | — | — | — | — |
+| [Run Octopus Deploy](OCTOPUS.md) | part | part | — | part | part | part |
 | [Promote releases with Octopus and ArgoCD](CD-OCTOPUS.md) | ✅ | ✅ | ✅ | ✅ | part | part |
 
 ## Operations and observability
