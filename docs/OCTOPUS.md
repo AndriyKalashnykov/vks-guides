@@ -1768,7 +1768,8 @@ octopus:
 
 </details>
 
-**Expect:** `configmap/nexus-ca created` and `wrote …/values-ca.yaml: now run step 7 again`; after
+**Expect:** `configmap/nexus-ca created` (run again: `configured` with another CA file, `unchanged` with
+the same one) and `wrote …/values-ca.yaml: now run step 7 again`; after
 step 7, `Octopus is ready`, and `kubectl --kubeconfig <file> -n octopus logs
 octopus-octopus-deploy-0 -c ca-bundle` prints the number of CAs in the bundle (about 150).
 
