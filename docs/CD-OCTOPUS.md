@@ -191,6 +191,7 @@ COPY index.html /usr/share/nginx/html/index.html
 EXPOSE 8080
 EOF
 printf '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>test-web-apps</title></head>\n<body><h1>test-web-apps %s</h1></body></html>\n' "$VERSION" > "$D/index.html"
+chmod 644 "$D/index.html"
 if [ -z "${NEXUS_PUSH_PASSWORD:-}" ]; then
   echo "STOPPED: type the push user's password first (the line above)"
 elif "$CONTAINER_ENGINE" build --platform linux/amd64 -t "$IMG" "$D" \
@@ -1256,7 +1257,8 @@ Get-Content "$HOME\nexus-ca.pem", "$HOME\gitea-ca.pem" | Set-Content -Encoding a
 **Expect:** `2`.
 
 **Expect:** after the restart, `kubectl --kubeconfig <file> -n octopus logs octopus-octopus-deploy-0 -c
-ca-bundle` prints one more CA than before.
+ca-bundle` prints one more CA than before (the same number when Octopus already had Gitea's CA, as on a
+second machine or a run again).
 
 **The project.** **Projects** → **Add Project**: **Project name** `test-web-apps`, **Deploy to**
 **Kubernetes**, **Are you using Argo CD?** **Yes**, and under **Lifecycle** `dev-test-prod` (OCTOPUS.md
@@ -1354,12 +1356,17 @@ ENVIRONMENT="test"
 if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
 elif [ -z "${OCTOPUS_API_KEY:-}" ]; then echo "STOPPED: type the Octopus API key first (step 7, 2.)"
 else
-  octo() { printf 'header = "X-Octopus-ApiKey: %s"\n' "$OCTOPUS_API_KEY" | curl -fsS --connect-timeout 20 --max-time 60 --cacert "$HOME/octopus-ca.pem" -K - "$@"; }
+  octo() { printf 'header = "X-Octopus-ApiKey: %s"\n' "$OCTOPUS_API_KEY" | curl -sS --connect-timeout 20 --max-time 60 --cacert "$HOME/octopus-ca.pem" -K - "$@"; }
   O="https://$OCTOPUS_ADDRESS/api/Spaces-1"
-  if P="$(octo "$O/projects/test-web-apps" | jq -er .Id)" \
-     && R="$(octo "$O/projects/$P/releases/$RELEASE" | jq -er .Id)" \
-     && E="$(octo "$O/environments?name=$ENVIRONMENT" | jq -er '.Items[0].Id')"; then
-    octo -H 'Content-Type: application/json' --data-binary "$(jq -n --arg r "$R" --arg e "$E" '{ReleaseId: $r, EnvironmentId: $e}')" "$O/deployments" | jq -r '"deployment \(.Id) started, task \(.TaskId)"'
+  if P="$(octo -f "$O/projects/test-web-apps" | jq -er .Id)" \
+     && R="$(octo -f "$O/projects/$P/releases/$RELEASE" | jq -er .Id)" \
+     && E="$(octo -f "$O/environments?name=$ENVIRONMENT" | jq -er '.Items[0].Id')"; then
+    D="$(octo -H 'Content-Type: application/json' --data-binary "$(jq -n --arg r "$R" --arg e "$E" '{ReleaseId: $r, EnvironmentId: $e}')" "$O/deployments")"
+    if printf '%s\n' "$D" | jq -e '.TaskId' >/dev/null 2>&1; then
+      printf '%s\n' "$D" | jq -r '"deployment \(.Id) started, task \(.TaskId)"'
+    else
+      printf 'FAILED: Octopus did not start the deployment: %s\n' "$(printf '%s\n' "$D" | jq -r '[(.Errors // [])[], .ErrorMessage] | map(select(type == "string")) | first // empty' 2>/dev/null)"
+    fi
   else
     echo "FAILED: no project test-web-apps, release $RELEASE or environment $ENVIRONMENT"
   fi
@@ -1397,6 +1404,14 @@ release's page.
   release's number is on **Projects** → `test-web-apps` → **Releases**.
 - `curl: (22) The requested URL returned error: 401` above the `FAILED` line: the API key is wrong or
   was deleted; make a new one (step 7, 1.).
+- `FAILED: Octopus did not start the deployment: The release has not been deployed to the required
+  environments before it can be promoted to this environment. …`: the release is not green yet in the
+  environment before; wait for its deployment there to finish, or deploy it there first (a failed one
+  again), until it shows green on the release's page, then run again. Another reason after `did not
+  start the deployment:` is Octopus's own; act on it.
+- `FAILED: Octopus did not start the deployment:` with nothing after it: the answer held no reason (no
+  answer at all, with a `curl:` line above it, or a proxy's error page); look on the release's page
+  whether the deployment started before you run again.
 - Windows: `FAILED: The underlying connection was closed: Could not establish trust relationship for the
   SSL/TLS secure channel.`: this Windows user does not trust Octopus's CA; do [OCTOPUS.md step
   9](OCTOPUS.md#9-sign-in) on this machine (it adds `octopus-ca.pem` to your user's trusted CAs).

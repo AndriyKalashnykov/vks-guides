@@ -107,6 +107,13 @@ blocks; there is nothing to build.
   after an in-block check that nothing uses it; a check namespace or Secret is deleted only when
   this run created it.
 - Downloads use `--connect-timeout 20 --speed-time 60`; a file is replaced only after it checks out.
+- A block that builds an image from files or folders it writes sets their mode (files 644, folders 755):
+  the engine copies the mode into the image, and Photon OS 5's login shell runs with umask 0027, so
+  nginx-unprivileged answered 403 (MEASURED 2026-11-15, CD-OCTOPUS step 2).
+- In a new or changed block, a REST call whose refusal the reader must act on does not use `curl -f`,
+  which drops the server's reason: judge it by the response body and print `FAILED: …` with the reason via
+  `printf`, never `echo` (zsh's echo eats backslashes) (CD-OCTOPUS step 9). Older blocks with `curl -f`
+  POSTs (TEKTON, NEXUS, OCTOPUS, CD-OCTOPUS step 6) are not yet changed.
 - Broadcom terms: "VKS cluster" (not guest/TKG cluster), "Supervisor", "vSphere Namespace",
   "VCF CLI". Text is minimal: what to run and what to expect, no notes or mechanism essays.
 
