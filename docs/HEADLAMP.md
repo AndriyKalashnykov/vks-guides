@@ -1137,10 +1137,10 @@ if (-not $VCF_USE.Contains("Successfully activated context '${SUPERVISOR_CONTEXT
 </details>
 
 **Expect:** `Addon 'headlamp' in the cluster … is being updated`, then either
-`deployment.apps/headlamp restarted` and `successfully rolled out`, or nothing (the certificate did
-not change), and `certificate for headlamp.example.com <address>, SHA-256 fingerprint …`. With
-`KUBESCAPE_PLUGIN="yes"` the add-on also restarts Headlamp by itself, with a second container that
-installs the plugin.
+`deployment.apps/headlamp restarted` and `successfully rolled out`, or nothing (Headlamp already
+shows the certificate in the cluster), and `certificate for headlamp.example.com <address>, SHA-256
+fingerprint …` (no address with `CERT_WITH_IP="no"`). With `KUBESCAPE_PLUGIN="yes"` the add-on also
+restarts Headlamp by itself, with a second container that installs the plugin.
 
 **If not:** `NOT YET: …`: cert-manager has not made the new certificate yet; run the block again.
 `FAILED: the add-on`: [renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login). The
@@ -1684,8 +1684,10 @@ if ($LASTEXITCODE -ne 0) {
 </details>
 
 **Expect:** for each plugin whose software is in the cluster (and, for Prometheus, with
-`PROMETHEUS_QUERY="yes"`), its role and binding `created` (`unchanged` on a second run); for the
-others, `… nothing given`. In Headlamp the account then sees, for an account for every namespace,
+`PROMETHEUS_QUERY="yes"`), its role `created` (`unchanged` once any account has it) and its
+binding `created` (`unchanged` on a second run); for the others, `… nothing given`. For an account
+limited to one namespace, Kubescape gets its role but no binding: `… need an account for every
+namespace; nothing given`. In Headlamp the account then sees, for an account for every namespace,
 Kubescape's pages and, with Prometheus, a pod's charts.
 
 **If not:** `STOPPED: …`: run step 8.1 first. A person still sees no charts: Headlamp asks for
