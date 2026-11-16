@@ -1412,6 +1412,10 @@ release's page.
 - `FAILED: Octopus did not start the deployment:` with nothing after it: the answer held no reason (no
   answer at all, with a `curl:` line above it, or a proxy's error page); look on the release's page
   whether the deployment started before you run again.
+- Windows: `FAILED: The remote server returned an error: (400) Bad Request.`: Octopus refused the
+  deployment; this block does not show its reason. If the release is not green yet in the
+  environment before (look on the release's page), do as the line for `The release has not been
+  deployed …` says.
 - Windows: `FAILED: The underlying connection was closed: Could not establish trust relationship for the
   SSL/TLS secure channel.`: this Windows user does not trust Octopus's CA; do [OCTOPUS.md step
   9](OCTOPUS.md#9-sign-in) on this machine (it adds `octopus-ca.pem` to your user's trusted CAs).
