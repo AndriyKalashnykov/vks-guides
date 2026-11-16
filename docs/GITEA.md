@@ -1615,8 +1615,7 @@ if (-not $IP -or -not $X) { "FAILED: no address or no CA (run 2. and 3. first)" 
 }
 ```
 
-**Expect:** `subject=CN = Gitea CA` (`subject=CN=Gitea CA` with newer OpenSSL, as on AlmaLinux 10, Arch
-Linux, macOS and Windows), two lines with the
+**Expect:** `subject=CN = Gitea CA` (newer OpenSSL, macOS and Windows: `subject=CN=Gitea CA`), two lines with the
 same 40 hex characters ending in `HEAD` and `refs/heads/main`, then
 `https://<address>/gitea-admin/hello.git` (Windows: `https://gitea-https.gitea.svc/gitea-admin/hello.git`,
 the name its check connects with; clients use `https://<address>/…`).
