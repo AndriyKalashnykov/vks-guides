@@ -1360,7 +1360,7 @@ if ($LASTEXITCODE -eq 0 -and $B) {
 
 **Expect:** a `subject=` line with `Octopus CA`, a `sha256 Fingerprint=…` line, `saved
 …/octopus-ca.pem`, a `"Version"` line with `2026.3.16049`, `Octopus answers at https://<address>`,
-`ALPN protocol: h2` and a `gRPC certificate:` line naming `Octopus gRPC` (Windows: `Version:
+a `gRPC certificate:` line naming `Octopus gRPC` and `ALPN protocol: h2` (Windows: `Version:
 2026.3.16049` and no ALPN line). The
 gRPC port keeps Octopus's own certificate.
 
@@ -1373,8 +1373,8 @@ gRPC port keeps Octopus's own certificate.
 - `CertGetNameString() failed to match` (Windows): the certificate is older than step 5's
   `octopus-web.octopus.svc` name; run step 5, wait 6 minutes for nginx to load it, then run step 8
   again.
-- `FAILED: … did not answer with HTTP/2`: this machine cannot reach `octopus-grpc`'s address on port
-  8443, or something between them does not pass HTTP/2.
+- No answer for minutes, or `FAILED: … did not answer with HTTP/2`: this machine cannot reach
+  `octopus-grpc`'s address on port 8443, or something between them does not pass HTTP/2.
 
 ## 9. Sign in
 
