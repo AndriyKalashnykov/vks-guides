@@ -1186,7 +1186,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 kubectl --kubeconfig $VKS_KUBECONFIG -n tekton-demo port-forward service/el-hello 8180:8080
 ```
 
-**Expect:** `Forwarding from 127.0.0.1:8180 -> 8080` (and a `[::1]` line).
+**Expect:** `Forwarding from 127.0.0.1:8180 -> 8080`.
 
 **If not:** `address already in use`: another program uses port 8180; stop it and run this again.
 
@@ -1614,8 +1614,8 @@ if ($LASTEXITCODE -ne 0) {
 
 </details>
 
-**Expect:** `Tekton CRDs left: 0`, after the namespaces are gone (a few minutes). On a second run:
-`Tekton is not installed`.
+**Expect:** `No resources found`, then `Tekton CRDs left: 0`, after the namespaces are gone (a few
+minutes). On a second run: `Tekton is not installed`.
 
 **If not:**
 - `Tekton CRDs left:` more than 0: run step 3's first block on this machine (the delete needs its
