@@ -1399,11 +1399,14 @@ if (-not $OCTOPUS_API_KEY) { "STOPPED: type the Octopus API key first (step 7, 2
 release's page.
 
 **If not:**
-- `FAILED: no project test-web-apps, release <RELEASE> or environment <ENVIRONMENT>` (with `curl: (22)
-  The requested URL returned error: 404` above it): one of the three names is not in Octopus; the
-  release's number is on **Projects** → `test-web-apps` → **Releases**.
-- `curl: (22) The requested URL returned error: 401` above the `FAILED` line: the API key is wrong or
-  was deleted; make a new one (step 7, 1.).
+- `FAILED: no project test-web-apps, release <RELEASE> or environment <ENVIRONMENT>` (for a wrong
+  project or release with `curl: (22) The requested URL returned error: 404` above it; Windows: `FAILED:
+  The remote server returned an error: (404) Not Found.`, or for a wrong environment `FAILED: no release
+  <RELEASE> or environment <ENVIRONMENT>`): one of the three names is not in Octopus; the release's
+  number is on **Projects** → `test-web-apps` → **Releases**.
+- `curl: (22) The requested URL returned error: 401` above the `FAILED` line (Windows: `FAILED: The
+  remote server returned an error: (401) Unauthorized.`): the API key is wrong or was deleted; make a
+  new one (step 7, 1.).
 - `FAILED: Octopus did not start the deployment: The release has not been deployed to the required
   environments before it can be promoted to this environment. …`: the release is not green yet in the
   environment before; wait for its deployment there to finish, or deploy it there first (a failed one
