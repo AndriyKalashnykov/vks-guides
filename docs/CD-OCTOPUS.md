@@ -1356,12 +1356,17 @@ ENVIRONMENT="test"
 if ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
 elif [ -z "${OCTOPUS_API_KEY:-}" ]; then echo "STOPPED: type the Octopus API key first (step 7, 2.)"
 else
-  octo() { printf 'header = "X-Octopus-ApiKey: %s"\n' "$OCTOPUS_API_KEY" | curl -fsS --connect-timeout 20 --max-time 60 --cacert "$HOME/octopus-ca.pem" -K - "$@"; }
+  octo() { printf 'header = "X-Octopus-ApiKey: %s"\n' "$OCTOPUS_API_KEY" | curl -sS --connect-timeout 20 --max-time 60 --cacert "$HOME/octopus-ca.pem" -K - "$@"; }
   O="https://$OCTOPUS_ADDRESS/api/Spaces-1"
-  if P="$(octo "$O/projects/test-web-apps" | jq -er .Id)" \
-     && R="$(octo "$O/projects/$P/releases/$RELEASE" | jq -er .Id)" \
-     && E="$(octo "$O/environments?name=$ENVIRONMENT" | jq -er '.Items[0].Id')"; then
-    octo -H 'Content-Type: application/json' --data-binary "$(jq -n --arg r "$R" --arg e "$E" '{ReleaseId: $r, EnvironmentId: $e}')" "$O/deployments" | jq -r '"deployment \(.Id) started, task \(.TaskId)"'
+  if P="$(octo -f "$O/projects/test-web-apps" | jq -er .Id)" \
+     && R="$(octo -f "$O/projects/$P/releases/$RELEASE" | jq -er .Id)" \
+     && E="$(octo -f "$O/environments?name=$ENVIRONMENT" | jq -er '.Items[0].Id')"; then
+    D="$(octo -H 'Content-Type: application/json' --data-binary "$(jq -n --arg r "$R" --arg e "$E" '{ReleaseId: $r, EnvironmentId: $e}')" "$O/deployments")"
+    if printf '%s\n' "$D" | jq -e '.TaskId' >/dev/null 2>&1; then
+      printf '%s\n' "$D" | jq -r '"deployment \(.Id) started, task \(.TaskId)"'
+    else
+      printf 'FAILED: Octopus did not start the deployment: %s\n' "$(printf '%s\n' "$D" | jq -r '[(.Errors // [])[], .ErrorMessage] | map(select(type == "string")) | first // empty' 2>/dev/null)"
+    fi
   else
     echo "FAILED: no project test-web-apps, release $RELEASE or environment $ENVIRONMENT"
   fi
@@ -1399,6 +1404,11 @@ release's page.
   release's number is on **Projects** → `test-web-apps` → **Releases**.
 - `curl: (22) The requested URL returned error: 401` above the `FAILED` line: the API key is wrong or
   was deleted; make a new one (step 7, 1.).
+- `FAILED: Octopus did not start the deployment: The release has not been deployed to the required
+  environments before it can be promoted to this environment. …`: the release has not finished in the
+  environment before (its deployment there is still running, failed, or never ran); wait until it shows
+  green on the release's page, then run again. Another reason after `did not start the deployment:` is
+  Octopus's own; act on it.
 - Windows: `FAILED: The underlying connection was closed: Could not establish trust relationship for the
   SSL/TLS secure channel.`: this Windows user does not trust Octopus's CA; do [OCTOPUS.md step
   9](OCTOPUS.md#9-sign-in) on this machine (it adds `octopus-ca.pem` to your user's trusted CAs).
