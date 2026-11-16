@@ -113,17 +113,20 @@ sudo install -D -m 0644 harbor-ca.crt "/etc/docker/certs.d/$HARBOR_FQDN/ca.crt"
 
 You build your own copy of the app here, so that you have an image to push. This downloads the
 app's two files (`Dockerfile`, the build recipe, and `index.html`, its page), changes the page so
-that you can tell your image from the original, and builds the image for the cluster's nodes. You
-get the image on this machine, named as `IMAGE` says, ready for step 4.
+that you can tell your image from the original and so that the image's web server may read it, and
+builds the image for the cluster's nodes. You get the image on this machine, named as `IMAGE` says,
+ready for step 4.
 
 ```sh
 curl -fsSO "$SRC/Dockerfile"
 curl -fsSO "$SRC/index.html"
 sed -i 's|<h1>test-web-apps v1</h1>|<h1>test-web-apps v1, built with docker, from Harbor</h1>|' index.html
+chmod 644 index.html
 docker build --platform "$IMAGE_PLATFORM" -t "$IMAGE" .
 ```
 
-**Expect:** the build's steps, then `naming to <your Harbor name>/<your project>/test-web-apps:v1`.
+**Expect:** the build's steps, then `naming to <your Harbor name>/<your project>/test-web-apps:v1`
+(docker without BuildKit, as on Photon OS: `Successfully tagged …`).
 
 **If not:** `curl: (22) The requested URL returned error: 404`: check `SRC` (step 0). Another
 `curl:` error or a failed base-image pull: this machine must reach `raw.githubusercontent.com` and
