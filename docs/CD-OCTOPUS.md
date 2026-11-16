@@ -191,6 +191,7 @@ COPY index.html /usr/share/nginx/html/index.html
 EXPOSE 8080
 EOF
 printf '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>test-web-apps</title></head>\n<body><h1>test-web-apps %s</h1></body></html>\n' "$VERSION" > "$D/index.html"
+chmod 644 "$D/index.html"
 if [ -z "${NEXUS_PUSH_PASSWORD:-}" ]; then
   echo "STOPPED: type the push user's password first (the line above)"
 elif "$CONTAINER_ENGINE" build --platform linux/amd64 -t "$IMG" "$D" \
