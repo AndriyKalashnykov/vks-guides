@@ -1108,7 +1108,8 @@ new file, and take the old name's rights away (step 4).
 
 ### 4. Take the certificate away (cluster administrator)
 
-Do this when the person should lose access, or has a new certificate from step 3. It deletes the
+Do this when the person should lose access, or has a new certificate from step 3 (on Windows, in WSL,
+like step 1). It deletes the
 name's ClusterRoleBindings (`-cluster-admin` and `-view`, whichever step 1 made with
 `VKS_CLUSTER_NAMESPACE="*"`) and, in the namespace, its RoleBindings (`-edit` and `-view`), whatever
 `ROLE` step 1 used, then says `FAILED` if a RoleBinding in any namespace still names it (a
@@ -1118,7 +1119,9 @@ else changes. The
 name then has no rights, but the certificate keeps proving the name until its end date (`notAfter`),
 so never give that name rights again. With `edit`, tokens they made for any ServiceAccount in `VKS_CLUSTER_NAMESPACE`, and
 workloads they started, keep working: delete those workloads, re-create every ServiceAccount there that has rights, and restart the workloads that use those ServiceAccounts. With `"*"` and `edit`, logins made with it as a cluster administrator keep working. Set `NAME` to the name from step 1's `subject=` line, and
-`VKS_CLUSTER`, `ADMIN_KUBECONFIG` and `VKS_CLUSTER_NAMESPACE` to what step 1 used.
+`VKS_CLUSTER`, `ADMIN_KUBECONFIG` and `VKS_CLUSTER_NAMESPACE` to what step 1 used. The PowerShell
+block below is for a Windows machine whose `ADMIN_KUBECONFIG` was saved by SUPERVISOR-LOGIN.md's
+PowerShell block ([Get the VKS cluster's kubeconfig](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)).
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
