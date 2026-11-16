@@ -1405,10 +1405,13 @@ release's page.
 - `curl: (22) The requested URL returned error: 401` above the `FAILED` line: the API key is wrong or
   was deleted; make a new one (step 7, 1.).
 - `FAILED: Octopus did not start the deployment: The release has not been deployed to the required
-  environments before it can be promoted to this environment. …`: the release has not finished in the
-  environment before (its deployment there is still running, failed, or never ran); wait until it shows
-  green on the release's page, then run again. Another reason after `did not start the deployment:` is
-  Octopus's own; act on it.
+  environments before it can be promoted to this environment. …`: the release is not green yet in the
+  environment before; wait for its deployment there to finish, or deploy it there first (a failed one
+  again), until it shows green on the release's page, then run again. Another reason after `did not
+  start the deployment:` is Octopus's own; act on it.
+- `FAILED: Octopus did not start the deployment:` with nothing after it: the answer held no reason (no
+  answer at all, with a `curl:` line above it, or a proxy's error page); look on the release's page
+  whether the deployment started before you run again.
 - Windows: `FAILED: The underlying connection was closed: Could not establish trust relationship for the
   SSL/TLS secure channel.`: this Windows user does not trust Octopus's CA; do [OCTOPUS.md step
   9](OCTOPUS.md#9-sign-in) on this machine (it adds `octopus-ca.pem` to your user's trusted CAs).
