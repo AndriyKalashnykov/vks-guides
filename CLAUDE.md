@@ -63,7 +63,15 @@ blocks; there is nothing to build.
   line fails as "The term 'elseif' is not recognized" and its branch never runs (MEASURED 2026-11-10, PowerShell
   5.1.26100 with PSReadLine 2.0.0; a terminal paste that sends each line with Enter is INFERRED to behave the same).
   A `.ps1` run and the parser (`ParseInput`) accept it, so neither catches it. `catch` and `finally` may start a
-  line (the console waits for them).
+  line (the console waits for them; re-MEASURED 2026-11-17 at top level over ssh -tt).
+- A password block ends at its `Read-Host … -AsSecureString` line: several prompts go on that ONE line,
+  `$A = Read-Host …; $B = Read-Host …` (as the sh `read -rs` twin), and the work goes in the next block. A
+  paste puts every line in the console's input, so a `Read-Host` with lines after it takes the next pasted line
+  as the password (NEXUS step 9, #262; the lab's paste mode refuses such a block).
+- A PowerShell block that judges a native command by its output also reads its exit code:
+  `$global:LASTEXITCODE = $null` before, `$LASTEXITCODE -eq 0 -and $V` after. A failing tool can still print
+  stdout (podman's client prints its own `OS: … version:` banner when it cannot connect, MEASURED 2026-11-16), so
+  `if ($V)` alone printed `ok` for a dead engine (PREREQS #259, HARBOR #261).
 - Wherever several OSs appear (labels, sections, lists), the order is Linux, macOS, Windows.
 - Block labels name no distribution or OS version; docs/TESTED.md says what
   was run. Where a command differs per distribution, the text or PREREQS.md names it.
@@ -114,6 +122,10 @@ blocks; there is nothing to build.
   which drops the server's reason: judge it by the response body and print `FAILED: …` with the reason via
   `printf`, never `echo` (zsh's echo eats backslashes) (CD-OCTOPUS step 9). Older blocks with `curl -f`
   POSTs (TEKTON, NEXUS, OCTOPUS, CD-OCTOPUS step 6) are not yet changed.
+- A check whose output goes through `sed`/`grep` to print its result also prints `FAILED: …` when that result
+  is missing: a tool that fails before the pipe leaves the reader with no line at all. OCTOPUS step 8 piped
+  `curl --http2 -v` into `sed`, and on Photon OS 5 (curl 8.22 without HTTP/2) printed nothing (#257). Prefer a
+  tool every target has (`openssl s_client -alpn h2` for the ALPN check).
 - Broadcom terms: "VKS cluster" (not guest/TKG cluster), "Supervisor", "vSphere Namespace",
   "VCF CLI". Text is minimal: what to run and what to expect, no notes or mechanism essays.
 
