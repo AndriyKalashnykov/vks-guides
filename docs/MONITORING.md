@@ -564,7 +564,7 @@ $T | Where-Object { $_.health -ne 'up' } | ForEach-Object { "down: $($_.labels.j
 ```
 
 **Expect:** `up N of N`, the same number twice and above 0 (18 on a cluster with one control
-plane node and one worker, 22 with two workers), and no `down:` line.
+plane node and one worker), and no `down:` line.
 
 **If not:** a `down:` line names the target and its error. Right after step 5 or 9 it can name no
 error yet: wait a minute and run this again.
@@ -1022,7 +1022,7 @@ if ($LASTEXITCODE -eq 0) {
   shows. Run the block above again with the right name; it prints `configured` this time.
 - `ComparisonError` or a message with `failed to fetch chart` or a timeout: the Supervisor cannot
   reach the hosts above. Behind a proxy, see the proxy line in [ARGOCD.md](ARGOCD.md#6-create-a-vks-cluster-with-argocd) step 6.
-- No such error, and `Running` or `OutOfSync` on the first line, `Retrying attempt #…`,
+- No such error, and `Running` or `OutOfSync` on the first line, `Retrying operation. Attempt #…`,
   `prometheuses… not found` or `doesn't have a resource type "prometheus"`: the install is still
   going (a first attempt can fail and is tried again); run the block again in a minute.
 - `Failed` with a message: the message says what failed. ArgoCD tries up to ten times; to try

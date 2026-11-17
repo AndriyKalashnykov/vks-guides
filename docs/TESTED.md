@@ -35,7 +35,7 @@ Group page: [Identity and access](ACCESS-SIGN-IN.md).
 |---|---|---|---|---|---|---|
 | [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Give an identity provider group access to VKS clusters, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) | ✅ | ✅ | ✅ | ✅ | part | — |
-| [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | part | — | — | — | — | — |
+| [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | ✅ | ✅ | ✅ | ✅ | — | — |
 | [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## vSphere Namespaces and VKS clusters
@@ -81,8 +81,8 @@ Group page: [Operations and observability](OPERATE.md).
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
 | [Headlamp](HEADLAMP.md) | ✅ | ✅ | ✅ | ✅ | — | — |
-| [Monitor a VKS cluster](MONITORING.md) | part | — | — | — | — | — |
+| [Monitor a VKS cluster](MONITORING.md) | ✅ | ✅ | ✅ | ✅ | — | — |
 | [Send logs to VCF Operations](LOGGING.md) | — | — | — | — | — | — |
-| [Logs and traces in Grafana](OBSERVABILITY.md) | part | — | — | — | — | — |
+| [Logs and traces in Grafana](OBSERVABILITY.md) | part | part | part | part | — | — |
 
 Back to [README](../README.md).
