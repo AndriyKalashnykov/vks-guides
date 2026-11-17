@@ -1453,6 +1453,8 @@ else
     printf '%s' "$R" | jq -r '"logged in as \(.username), administrator: \(.sysadmin_flag)"'
   elif printf '%s' "$R" | jq -e '.errors' >/dev/null 2>&1; then
     printf '%s' "$R" | jq -r '"ERROR \(.errors[0].code): \(.errors[0].message)"'
+  elif [ -n "$R" ]; then
+    printf 'FAILED: Harbor did not answer with JSON: %.200s\n' "$R"
   else
     printf '%s\n' "FAILED: no answer from Harbor (see the error above)"
   fi
@@ -1496,6 +1498,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 - `ERROR UNAUTHORIZED`: this Harbor was installed with another admin password than the one in
   `secrets.env`, or someone changed it in Harbor since.
 - `FAILED: no answer from Harbor`: curl's error above it says why; the next lines name the usual ones.
+- `FAILED: Harbor did not answer with JSON`: something else answers at that address (its page follows); check `HARBOR_FQDN`.
 - A `curl:` error that the name does not match (`no alternative certificate subject name
   matches`; PowerShell: `failed to match connection hostname`): the name leads to another
   server (step 7, *Check the DNS record*), or Harbor's hostname is no longer the one in
@@ -1595,6 +1598,8 @@ else
     printf '%s' "$R" | jq -r '"project \(.name), public: \(.metadata.public)"'
   elif printf '%s' "$R" | jq -e '.errors' >/dev/null 2>&1; then
     printf '%s' "$R" | jq -r '"ERROR \(.errors[0].code): \(.errors[0].message)"'
+  elif [ -n "$R" ]; then
+    printf 'FAILED: Harbor did not answer with JSON: %.200s\n' "$R"
   else
     printf '%s\n' "FAILED: no answer from Harbor (see the error above)"
   fi
@@ -1691,6 +1696,8 @@ else
     printf '%s' "$R" | jq -r '"name:   \(.name)\nsecret: \(.secret)"'
   elif printf '%s' "$R" | jq -e '.errors' >/dev/null 2>&1; then
     printf '%s' "$R" | jq -r '"ERROR \(.errors[0].code): \(.errors[0].message)"'
+  elif [ -n "$R" ]; then
+    printf 'FAILED: Harbor did not answer with JSON: %.200s\n' "$R"
   else
     printf '%s\n' "FAILED: no answer from Harbor (see the error above)"
   fi
