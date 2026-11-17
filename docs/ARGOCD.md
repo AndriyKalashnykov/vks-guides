@@ -1011,8 +1011,12 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 VSPHERE_NAMESPACE="my-namespace"
 VKS_CLUSTER="my-vks-cluster"
 
-kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get secret "${VKS_CLUSTER}-kubeconfig" -o go-template='{{.data.value | base64decode}}' \
-  | sed -n 's/^ *client-certificate-data: //p' | openssl base64 -d -A | openssl x509 -noout -enddate
+if K="$(kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get secret "${VKS_CLUSTER}-kubeconfig" -o go-template='{{.data.value | base64decode}}')" \
+  && C="$(printf '%s\n' "$K" | sed -n 's/^ *client-certificate-data: //p')" && [ -n "$C" ]; then
+  printf '%s' "$C" | openssl base64 -d -A | openssl x509 -noout -enddate
+else
+  echo "FAILED: cannot read ${VKS_CLUSTER}-kubeconfig (see the error above)"
+fi
 ```
 
 **Windows (PowerShell):**
@@ -1023,13 +1027,18 @@ $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $VSPHERE_NAMESPACE = "my-namespace"
 $VKS_CLUSTER = "my-vks-cluster"
 
+$C = $null
 $global:LASTEXITCODE = $null
 $K = kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHERE_NAMESPACE get secret "${VKS_CLUSTER}-kubeconfig" -o jsonpath='{.data.value}'
 if ($LASTEXITCODE -eq 0 -and $K) {
   $Y = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("$K"))
   $C = (($Y -split "`n") | Where-Object { $_ -match '^\s*client-certificate-data: ' }) -replace '^\s*client-certificate-data: ', ''
+}
+if ("$C".Trim()) {
   $X = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 (,[Convert]::FromBase64String("$C".Trim()))
   "notAfter=$($X.NotAfter.ToUniversalTime().ToString('u'))"
+} else {
+  "FAILED: cannot read ${VKS_CLUSTER}-kubeconfig (see the error above)"
 }
 ```
 
@@ -1044,6 +1053,8 @@ administrator.
 - `secrets "<cluster>-kubeconfig" not found`: check `VKS_CLUSTER` and `VSPHERE_NAMESPACE`.
 - `Unauthorized`: run [Renew the Supervisor login](SUPERVISOR-LOGIN.md#renew-the-supervisor-login), then this
   block again.
+- `FAILED: cannot read <cluster>-kubeconfig` with no error above: the Secret holds no
+  `client-certificate-data`; ask a vCenter administrator.
 
 ### Add every VKS cluster of a namespace (optional)
 
