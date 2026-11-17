@@ -299,7 +299,11 @@ else
   NAME="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n headlamp get secret headlamp-tls-cert -o jsonpath='{.metadata.annotations.cert-manager\.io/alt-names}' | cut -d, -f1)"
   echo "address: https://${IP:-none}/"
   echo "pod security of namespace headlamp: $(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace headlamp -o jsonpath='{.metadata.labels.pod-security\.kubernetes\.io/enforce}')"
-  echo "Headlamp's own account has: $(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings -o json | jq -r '[.items[] | select(any(.subjects[]?; .kind == "ServiceAccount" and .namespace == "headlamp" and .name == "headlamp")) | .roleRef.name] | join(", ")')"
+  if ! CRB="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get clusterrolebindings -o json)" || ! HAS="$(printf '%s\n' "$CRB" | jq -er '[.items[] | select(any(.subjects[]?; .kind == "ServiceAccount" and .namespace == "headlamp" and .name == "headlamp")) | .roleRef.name] | join(", ")')"; then
+    echo "FAILED: cannot read the cluster role bindings (see the error above)"
+  else
+    echo "Headlamp's own account has: $HAS"
+  fi
   echo "a request without a token: HTTP $(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 20 --cacert "$CA" --resolve "${NAME}:443:${IP}" "https://${NAME}/clusters/${VKS_CLUSTER}/api/v1/namespaces/kube-system/secrets")"
   rm -f "$CA"
 fi
@@ -325,8 +329,15 @@ if ($LASTEXITCODE -ne 0) {
   $NAME = $S.metadata.annotations.'cert-manager.io/alt-names'.Split(',')[0]
   "address: https://$IP/"
   "pod security of namespace headlamp: $(kubectl --kubeconfig $VKS_KUBECONFIG get namespace headlamp -o jsonpath='{.metadata.labels.pod-security\.kubernetes\.io/enforce}')"
-  $B = kubectl --kubeconfig $VKS_KUBECONFIG get clusterrolebindings -o json | ConvertFrom-Json
-  "Headlamp's own account has: $((@($B.items | Where-Object { @($_.subjects | Where-Object { $_.kind -eq 'ServiceAccount' -and $_.namespace -eq 'headlamp' -and $_.name -eq 'headlamp' }).Count -gt 0 } | ForEach-Object { $_.roleRef.name })) -join ', ')"
+  $global:LASTEXITCODE = $null
+  $RAW = kubectl --kubeconfig $VKS_KUBECONFIG get clusterrolebindings -o json
+  $B = $null
+  if ($LASTEXITCODE -eq 0) { try { $B = ($RAW -join "`n") | ConvertFrom-Json -ErrorAction Stop } catch { "$_" } }
+  if ($null -ne $B.items) {
+    "Headlamp's own account has: $((@($B.items | Where-Object { @($_.subjects | Where-Object { $_.kind -eq 'ServiceAccount' -and $_.namespace -eq 'headlamp' -and $_.name -eq 'headlamp' }).Count -gt 0 } | ForEach-Object { $_.roleRef.name })) -join ', ')"
+  } else {
+    "FAILED: cannot read the cluster role bindings (see the error above)"
+  }
   $H = if ((curl.exe -s -o NUL -D - --suppress-connect-headers --connect-timeout 10 --max-time 20 --ssl-no-revoke --cacert $CA --resolve "${NAME}:443:${IP}" "https://$NAME/clusters/$VKS_CLUSTER/api/v1/namespaces/kube-system/secrets" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
   "a request without a token: HTTP $H"
   Remove-Item -Force $CA
@@ -341,7 +352,8 @@ privileged`, `Headlamp's own account has: cluster-admin`, and `a request without
 
 **If not:** `HTTP 200` on the last line: Headlamp answers without a login; remove it (step 12) and
 tell Broadcom support. `HTTP 000`: this machine does not reach the address; the people who will
-use Headlamp need that address too.
+use Headlamp need that address too. `FAILED: cannot read the cluster role bindings`: the error above
+says why (`Unauthorized`: [get its kubeconfig again](SUPERVISOR-LOGIN.md#get-the-vks-clusters-kubeconfig)).
 
 **The two settings:**
 
