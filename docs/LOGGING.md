@@ -425,7 +425,12 @@ EOF
 echo "search for: $WORD"
 sleep 30
 kubectl --kubeconfig "$VKS_KUBECONFIG" -n default logs log-check
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging logs daemonset/fluent-bit --since=5m | grep -E 'HTTP status|error|warn' | tail -5
+if F="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n tanzu-system-logging logs daemonset/fluent-bit --since=5m)"; then
+  F="$(printf '%s\n' "$F" | grep -E 'HTTP status|error|warn' | tail -5)"
+  if [ -n "$F" ]; then printf '%s\n' "$F"; else echo "FAILED: no HTTP status line from Fluent Bit in the last 5 minutes"; fi
+else
+  echo "FAILED: cannot read Fluent Bit's log (see the error above)"
+fi
 kubectl --kubeconfig "$VKS_KUBECONFIG" -n default delete pod log-check
 ```
 
@@ -464,7 +469,14 @@ spec:
 "search for: $WORD"
 Start-Sleep 30
 kubectl --kubeconfig $VKS_KUBECONFIG -n default logs log-check
-kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging logs daemonset/fluent-bit --since=5m | Select-String 'HTTP status|error|warn' | Select-Object -Last 5
+$global:LASTEXITCODE = $null
+$F = kubectl --kubeconfig $VKS_KUBECONFIG -n tanzu-system-logging logs daemonset/fluent-bit --since=5m
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: cannot read Fluent Bit's log (see the error above)"
+} else {
+  $F = @($F | Select-String 'HTTP status|error|warn' | Select-Object -Last 5)
+  if ($F.Count -gt 0) { $F } else { "FAILED: no HTTP status line from Fluent Bit in the last 5 minutes" }
+}
 kubectl --kubeconfig $VKS_KUBECONFIG -n default delete pod log-check
 ```
 
@@ -487,6 +499,8 @@ minutes.
   port 9543, or the Secret holds the wrong CA (save the right one as step 2 says, then run step 7).
 - The pod's log says `waiting to start`: the nodes cannot pull `busybox:1.37` from `docker.io`;
   the Fluent Bit lines still apply.
+- `FAILED: no HTTP status line from Fluent Bit`: Fluent Bit sent nothing; check that step 5 ended with
+  the rollout done. `FAILED: cannot read Fluent Bit's log`: the error above it says why.
 
 ## 7. Change the destination (optional)
 

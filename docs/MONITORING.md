@@ -548,8 +548,13 @@ step 1.
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw /api/v1/namespaces/monitoring/services/prometheus-kube-prometheus-prometheus:9090/proxy/api/v1/targets \
-  | jq -r '.data.activeTargets | "up \(map(select(.health == "up")) | length) of \(length)", (.[] | select(.health != "up") | "down: \(.labels.job) \(.lastError)")'
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif T="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw /api/v1/namespaces/monitoring/services/prometheus-kube-prometheus-prometheus:9090/proxy/api/v1/targets)"; then
+  printf '%s\n' "$T" | jq -r '.data.activeTargets | "up \(map(select(.health == "up")) | length) of \(length)", (.[] | select(.health != "up") | "down: \(.labels.job) \(.lastError)")'
+else
+  echo "FAILED: cannot ask Prometheus (see the error above)"
+fi
 ```
 
 **Windows (PowerShell):**
@@ -558,16 +563,25 @@ kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw /api/v1/namespaces/monitoring/s
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
-$T = (kubectl --kubeconfig $VKS_KUBECONFIG get --raw /api/v1/namespaces/monitoring/services/prometheus-kube-prometheus-prometheus:9090/proxy/api/v1/targets | Out-String | ConvertFrom-Json).data.activeTargets
-"up $(@($T | Where-Object { $_.health -eq 'up' }).Count) of $(@($T).Count)"
-$T | Where-Object { $_.health -ne 'up' } | ForEach-Object { "down: $($_.labels.job) $($_.lastError)" }
+$global:LASTEXITCODE = $null
+$R = kubectl --kubeconfig $VKS_KUBECONFIG get --raw /api/v1/namespaces/monitoring/services/prometheus-kube-prometheus-prometheus:9090/proxy/api/v1/targets
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: cannot ask Prometheus (see the error above)"
+} else {
+  $T = ($R | Out-String | ConvertFrom-Json).data.activeTargets
+  "up $(@($T | Where-Object { $_.health -eq 'up' }).Count) of $(@($T).Count)"
+  $T | Where-Object { $_.health -ne 'up' } | ForEach-Object { "down: $($_.labels.job) $($_.lastError)" }
+}
 ```
 
 **Expect:** `up N of N`, the same number twice and above 0 (18 on a cluster with one control
 plane node and one worker), and no `down:` line.
 
-**If not:** a `down:` line names the target and its error. Right after step 5 or 9 it can name no
-error yet: wait a minute and run this again.
+**If not:**
+- A `down:` line names the target and its error. Right after step 5 or 9 it can name no error yet:
+  wait a minute and run this again.
+- `FAILED: cannot ask Prometheus`: the error above it says why; check that step 5 ended with
+  Prometheus running.
 
 ## 7. Open Grafana
 
