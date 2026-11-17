@@ -1048,39 +1048,73 @@ you look in Grafana: it asks Prometheus for its metrics, Loki for its logs and J
 traces, and changes nothing. You get a count or a list per signal, to compare with **Expect**.
 Set `VKS_CLUSTER` as in step 1.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-P=/api/v1/namespaces
-echo "Prometheus targets up: $(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "$P/monitoring/services/prometheus-kube-prometheus-prometheus:9090/proxy/api/v1/query?query=up%7Bnamespace%3D%22podinfo%22%7D" | jq -r '[.data.result[] | select(.value[1] == "1")] | length')"
-echo "Loki log streams: $(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "$P/observability/services/loki:3100/proxy/loki/api/v1/series?match%5B%5D=%7Bnamespace%3D%22podinfo%22%7D" | jq -r '.data | length')"
-echo "Jaeger services: $(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "$P/observability/services/jaeger:16686/proxy/api/services" | jq -r '.data | join(" ")')"
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+else
+  P=/api/v1/namespaces
+  if R="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "$P/monitoring/services/prometheus-kube-prometheus-prometheus:9090/proxy/api/v1/query?query=up%7Bnamespace%3D%22podinfo%22%7D")" &&
+    N="$(printf '%s\n' "$R" | jq -er '[.data.result[] | select(.value[1] == "1")] | length')"; then
+    echo "Prometheus targets up: $N"
+  else
+    echo "FAILED: cannot ask Prometheus (see the error above)"
+  fi
+  if R="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "$P/observability/services/loki:3100/proxy/loki/api/v1/series?match%5B%5D=%7Bnamespace%3D%22podinfo%22%7D")" &&
+    N="$(printf '%s\n' "$R" | jq -er '.data | length')"; then
+    echo "Loki log streams: $N"
+  else
+    echo "FAILED: cannot ask Loki (see the error above)"
+  fi
+  if R="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "$P/observability/services/jaeger:16686/proxy/api/services")" &&
+    N="$(printf '%s\n' "$R" | jq -er '(.data // []) | join(" ")')"; then
+    echo "Jaeger services: $N"
+  else
+    echo "FAILED: cannot ask Jaeger (see the error above)"
+  fi
+fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 $P = "/api/v1/namespaces"
-$R = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "$P/monitoring/services/prometheus-kube-prometheus-prometheus:9090/proxy/api/v1/query?query=up%7Bnamespace%3D%22podinfo%22%7D" | Out-String | ConvertFrom-Json
-"Prometheus targets up: $(@($R.data.result | Where-Object { $_.value[1] -eq '1' }).Count)"
-$R = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "$P/observability/services/loki:3100/proxy/loki/api/v1/series?match%5B%5D=%7Bnamespace%3D%22podinfo%22%7D" | Out-String | ConvertFrom-Json
-"Loki log streams: $(@($R.data).Count)"
-$R = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "$P/observability/services/jaeger:16686/proxy/api/services" | Out-String | ConvertFrom-Json
-"Jaeger services: $($R.data -join ' ')"
+$global:LASTEXITCODE = $null
+$Q = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "$P/monitoring/services/prometheus-kube-prometheus-prometheus:9090/proxy/api/v1/query?query=up%7Bnamespace%3D%22podinfo%22%7D" | Out-String
+$R = $null; if ($LASTEXITCODE -eq 0) { try { $R = $Q | ConvertFrom-Json -ErrorAction Stop } catch { "$_" } }
+if ($null -ne $R.data.result) { "Prometheus targets up: $(@($R.data.result | Where-Object { $_.value[1] -eq '1' }).Count)" } else { "FAILED: cannot ask Prometheus (see the error above)" }
+$global:LASTEXITCODE = $null
+$Q = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "$P/observability/services/loki:3100/proxy/loki/api/v1/series?match%5B%5D=%7Bnamespace%3D%22podinfo%22%7D" | Out-String
+$R = $null; if ($LASTEXITCODE -eq 0) { try { $R = $Q | ConvertFrom-Json -ErrorAction Stop } catch { "$_" } }
+if ($null -ne $R) { "Loki log streams: $(@($R.data).Count)" } else { "FAILED: cannot ask Loki (see the error above)" }
+$global:LASTEXITCODE = $null
+$Q = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "$P/observability/services/jaeger:16686/proxy/api/services" | Out-String
+$R = $null; if ($LASTEXITCODE -eq 0) { try { $R = $Q | ConvertFrom-Json -ErrorAction Stop } catch { "$_" } }
+if ($null -ne $R) { "Jaeger services: $($R.data -join ' ')" } else { "FAILED: cannot ask Jaeger (see the error above)" }
 ```
+
+</details>
 
 **Expect:** `Prometheus targets up: 1`, `Loki log streams:` 1 or more, and `Jaeger services:` with
 `podinfo` in the list.
 
 **If not:**
-- Right after step 6, all three can be empty: wait two or three minutes and run it again.
+- Right after step 6, both counts can be 0 and `Jaeger services:` empty: wait two or three
+  minutes and run it again.
 - `Prometheus targets up: 0`: wait a minute and run it again.
+- `FAILED: cannot ask Prometheus`, `Loki` or `Jaeger`: fix the error printed above it (the
+  kubeconfig, or that product not installed: MONITORING.md, step 3 or step 4), then run it again.
 - `Loki log streams: 0`: step 5 did not finish; run its `rollout status` line again.
 - `Jaeger services:` without `podinfo`: check podinfo's log for `failed to export`
   (`kubectl --kubeconfig <the VKS kubeconfig> -n podinfo logs deployment/podinfo`).
