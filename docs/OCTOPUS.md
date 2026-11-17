@@ -1557,7 +1557,7 @@ kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus "$@"; }
 IP="$(kc get service octopus-web -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
 U="https://${IP}/api"
 api() { curl -sS --connect-timeout 20 --cacert "$OCTOPUS_CA" -b "$T/jar" -H "X-Octopus-Csrf-Token: $X" -H 'Content-Type: application/json' "$@"; }
-why() { printf '%s\n' "$1" | jq -r '[(.Errors // [])[], .ErrorMessage] | map(select(type == "string")) | first // empty' 2>/dev/null; }
+why() { W="$(printf '%s\n' "$1" | jq -r '[(.Errors // [])[], .ErrorMessage] | map(select(type == "string")) | first // empty' 2>/dev/null)"; printf '%s\n' "${W:-no answer from Octopus (see the error above)}"; }
 if ! command -v jq >/dev/null 2>&1; then
   echo "MISSING: jq (PREREQS.md)"
 elif [ ! -s "$OCTOPUS_CA" ]; then
@@ -1582,7 +1582,7 @@ elif T="$(umask 077 && mktemp -d)"; then
     done
     if api -f "$U/Spaces-1/lifecycles/all" | jq -e 'any(.[]; .Name == "dev-test-prod")' >/dev/null; then
       echo "lifecycle dev-test-prod: exists"
-    elif ENV="$(api -f "$U/Spaces-1/environments/all" | jq -c 'map({(.Name): .Id}) | add')"; then
+    elif ENV="$(api -f "$U/Spaces-1/environments/all")" && ENV="$(printf '%s\n' "$ENV" | jq -c 'map({(.Name): .Id}) | add')"; then
       R="$(jq -nc --argjson e "$ENV" '{Name: "dev-test-prod", Phases: [
           {Name: "dev", AutomaticDeploymentTargets: [$e.dev], OptionalDeploymentTargets: [], MinimumEnvironmentsBeforePromotion: 0},
           {Name: "test", AutomaticDeploymentTargets: [], OptionalDeploymentTargets: [$e.test], MinimumEnvironmentsBeforePromotion: 0},
@@ -1593,6 +1593,8 @@ elif T="$(umask 077 && mktemp -d)"; then
       else
         printf 'FAILED: lifecycle dev-test-prod not created: %s\n' "$(why "$R")"
       fi
+    else
+      echo "FAILED: cannot read the environments (see the error above); lifecycle not created"
     fi
   else
     echo "FAILED: sign-in refused (see the error above)"
@@ -1654,8 +1656,8 @@ dev-test-prod: created, phases dev,test,prod` (`exists` when run again).
 
 **If not:**
 - `FAILED: sign-in refused`: see step 9.
-- `FAILED: environment … not created: <reason>` or `FAILED: lifecycle dev-test-prod not created: <reason>`:
-  the reason is Octopus's; fix it and run this again.
+- `FAILED: environment … not created: <reason>` or `FAILED: lifecycle dev-test-prod not created: <reason>`
+  (Windows: `… not created (see the error above)`): the reason is Octopus's; fix it and run this again.
 
 ## 11. Trust Nexus and add it as a Docker feed (optional)
 

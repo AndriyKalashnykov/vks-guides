@@ -1877,11 +1877,13 @@ elif [ -z "$IP" ] || [ ! -s "$CD_DIR/argocd-project.token" ] || [ ! -s "$CD_DIR/
   echo "FAILED: no ArgoCD address, or no token or certificate from step 6 in $CD_DIR"
 elif kc create secret generic gw-project-tokens --from-file=PROJECT_AUTH_TOKEN_test-web-apps="$CD_DIR/argocd-project.token" --dry-run=client -o yaml | kc apply -f - \
      && kc rollout restart deployment/octopus-argocd-gateway && kc rollout status deployment/octopus-argocd-gateway --timeout=3m; then
-  sleep 20; LOG="$(kc logs deployment/octopus-argocd-gateway)"
+  sleep 20; LOG="$(kc logs deployment/octopus-argocd-gateway)" || LOG=FAILED
   L="$(printf '%s\n' "$LOG" | grep 'token status' | tail -1)"
   if [ -n "$L" ]; then printf '%s\n' "$L" | cut -c1-200; fi
   argocd_api() { curl -fsS --resolve "argocd-server:443:$IP" --cacert "$CD_DIR/argocd-server.pem" --connect-timeout 20 --max-time 60 -H 'Content-Type: application/json' "$@"; }
-  if [ -z "$L" ]; then
+  if [ "$LOG" = FAILED ]; then
+    echo "FAILED: cannot read the gateway's log (see the error above); the old tokens were kept"
+  elif [ -z "$L" ]; then
     echo "FAILED: no token status line in the gateway's log yet; the old tokens were kept, run this again"
   elif ! printf '%s\n' "$L" | grep -q '"status":"ok"'; then
     echo "FAILED: the gateway's token status is not ok; the old tokens were kept"
@@ -1948,14 +1950,19 @@ if (-not $IP -or -not (Test-Path $TF) -or (Get-Item $TF).Length -eq 0 -or -not (
 }
 if ($OK) {
   Start-Sleep 20
-  $L = "$(kubectl @KC logs deployment/octopus-argocd-gateway | Select-String -CaseSensitive -SimpleMatch 'token status' | Select-Object -Last 1 | ForEach-Object { $_.Line })"
+  $global:LASTEXITCODE = $null
+  $LOG = kubectl @KC logs deployment/octopus-argocd-gateway
+  $LR = $LASTEXITCODE
+  $L = "$($LOG | Select-String -CaseSensitive -SimpleMatch 'token status' | Select-Object -Last 1 | ForEach-Object { $_.Line })"
   if ($L) { $L.Substring(0, [Math]::Min(200, $L.Length)) }
   $AC = '-fsS', '--ssl-no-revoke', '--resolve', "argocd-server:443:$IP", '--cacert', $PEM, '--connect-timeout', '20', '--max-time', '60', '-H', 'Content-Type: application/json'
   $global:LASTEXITCODE = $null
   $RAW = kubectl @KS get appproject test-web-apps -o json | Out-String
   $J = $null
   if ($LASTEXITCODE -eq 0) { try { $J = $RAW | ConvertFrom-Json -ErrorAction Stop } catch { $J = $null } }
-  if (-not $L) {
+  if ($LR -ne 0) {
+    "FAILED: cannot read the gateway's log (see the error above); the old tokens were kept"
+  } elseif (-not $L) {
     "FAILED: no token status line in the gateway's log yet; the old tokens were kept, run this again"
   } elseif (-not $L.Contains('"status":"ok"')) {
     "FAILED: the gateway's token status is not ok; the old tokens were kept"
