@@ -1020,11 +1020,13 @@ Keycloak's DNS name.
 KEYCLOAK_HOST="keycloak.example.com"
 KEYCLOAK_CA="$HOME/keycloak-ca.pem"
 
-if J="$(curl -fsS --connect-timeout 20 --cacert "$KEYCLOAK_CA" "https://${KEYCLOAK_HOST}/realms/master/.well-known/openid-configuration")" \
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif J="$(curl -fsS --connect-timeout 20 --cacert "$KEYCLOAK_CA" "https://${KEYCLOAK_HOST}/realms/master/.well-known/openid-configuration")" \
   && I="$(printf '%s' "$J" | jq -er .issuer)"; then
   echo "issuer: $I"
 else
-  echo "FAILED: Keycloak did not answer (see the error above)"
+  echo "FAILED: Keycloak did not answer with an issuer (see the error above)"
 fi
 ```
 
@@ -1036,7 +1038,7 @@ $KEYCLOAK_CA = "$HOME\keycloak-ca.pem"
 
 $global:LASTEXITCODE = $null
 $J = curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $KEYCLOAK_CA "https://$KEYCLOAK_HOST/realms/master/.well-known/openid-configuration"
-if ($LASTEXITCODE -eq 0) { "issuer: $((ConvertFrom-Json ($J | Out-String)).issuer)" } else { "FAILED: Keycloak did not answer (see the error above)" }
+if ($LASTEXITCODE -eq 0) { "issuer: $((ConvertFrom-Json ($J | Out-String)).issuer)" } else { "FAILED: Keycloak did not answer with an issuer (see the error above)" }
 ```
 
 **Expect:** `issuer: https://<KEYCLOAK_HOST>/realms/master`.
