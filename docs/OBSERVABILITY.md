@@ -1097,7 +1097,7 @@ if ($null -ne $R.data.result) { "Prometheus targets up: $(@($R.data.result | Whe
 $global:LASTEXITCODE = $null
 $Q = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "$P/observability/services/loki:3100/proxy/loki/api/v1/series?match%5B%5D=%7Bnamespace%3D%22podinfo%22%7D" | Out-String
 $R = $null; if ($LASTEXITCODE -eq 0) { try { $R = $Q | ConvertFrom-Json -ErrorAction Stop } catch { "$_" } }
-if ($null -ne $R) { "Loki log streams: $(@($R.data).Count)" } else { "FAILED: cannot ask Loki (see the error above)" }
+if ($null -ne $R) { "Loki log streams: $(@($R.data | Where-Object { $null -ne $_ }).Count)" } else { "FAILED: cannot ask Loki (see the error above)" }
 $global:LASTEXITCODE = $null
 $Q = kubectl --kubeconfig $VKS_KUBECONFIG get --raw "$P/observability/services/jaeger:16686/proxy/api/services" | Out-String
 $R = $null; if ($LASTEXITCODE -eq 0) { try { $R = $Q | ConvertFrom-Json -ErrorAction Stop } catch { "$_" } }
@@ -1113,8 +1113,10 @@ if ($null -ne $R) { "Jaeger services: $($R.data -join ' ')" } else { "FAILED: ca
 - Right after step 6, both counts can be 0 and `Jaeger services:` empty: wait two or three
   minutes and run it again.
 - `Prometheus targets up: 0`: wait a minute and run it again.
+- `MISSING: jq (PREREQS.md)`: install jq, then run it again.
 - `FAILED: cannot ask Prometheus`, `Loki` or `Jaeger`: fix the error printed above it (the
-  kubeconfig, or that product not installed: MONITORING.md, step 3 or step 4), then run it again.
+  kubeconfig, or that product not installed: Prometheus in MONITORING.md, Loki in step 3, Jaeger in
+  step 4), then run it again.
 - `Loki log streams: 0`: step 5 did not finish; run its `rollout status` line again.
 - `Jaeger services:` without `podinfo`: check podinfo's log for `failed to export`
   (`kubectl --kubeconfig <the VKS kubeconfig> -n podinfo logs deployment/podinfo`).
