@@ -1443,10 +1443,10 @@ elif T="$(umask 077 && mktemp -d)"; then
        | curl -fsS --connect-timeout 20 --cacert "$OCTOPUS_CA" -c "$T/jar" -o /dev/null \
            -H 'Content-Type: application/json' --data-binary @- "$U/users/login"; then
     X="$(awk '$6 ~ /^Octopus-Csrf-Token/ {print $7}' "$T/jar")"
-    if V="$(curl -fsS --cacert "$OCTOPUS_CA" "$U")" && V="$(printf '%s\n' "$V" | jq -r '.Version // empty' 2>/dev/null)" && [ -n "$V" ]; then
+    if V="$(curl -fsS --cacert "$OCTOPUS_CA" "$U")" && V="$(printf '%s\n' "$V" | jq -r '.Version // empty')" && [ -n "$V" ]; then
       echo "version: $V"
     else
-      echo "FAILED: Octopus did not return its version (see the error above)"
+      echo "FAILED: Octopus did not return its version"
     fi
     if L="$(curl -fsS --cacert "$OCTOPUS_CA" -b "$T/jar" -H "X-Octopus-Csrf-Token: $X" "$U/licenses/licenses-current-status")" \
        && printf '%s\n' "$L" | jq -e 'has("IsCompliant")' >/dev/null 2>&1; then
@@ -1489,7 +1489,7 @@ if (-not (Test-Path $OCTOPUS_CA)) { "MISSING: $OCTOPUS_CA (step 8)" } else {
       $RAW = curl.exe -fsS --ssl-no-revoke --cacert $OCTOPUS_CA @RV $U | Out-String
       $V = $null
       if ($LASTEXITCODE -eq 0) { try { $V = ($RAW | ConvertFrom-Json -ErrorAction Stop).Version } catch { $V = $null } }
-      if ($V) { "version: $V" } else { "FAILED: Octopus did not return its version (see the error above)" }
+      if ($V) { "version: $V" } else { "FAILED: Octopus did not return its version" }
       $global:LASTEXITCODE = $null
       $RAW = curl.exe -fsS --ssl-no-revoke --cacert $OCTOPUS_CA @RV -b "$T\jar" -H "X-Octopus-Csrf-Token: $X" "$U/licenses/licenses-current-status" | Out-String
       $L = $null

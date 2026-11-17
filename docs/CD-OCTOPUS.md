@@ -97,7 +97,7 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 c() { curl -sS --connect-timeout 20 --max-time 30 "$@"; }
 V="$(c --cacert "$HOME/octopus-ca.pem" "https://$OCTOPUS_ADDRESS/api" | sed -n 's/.*"Version": *"\([^"]*\)".*/\1/p')"
-if [ -n "$V" ]; then echo "Octopus: $V"; else echo "FAILED: Octopus did not return its version (see the error above)"; fi
+if [ -n "$V" ]; then echo "Octopus: $V"; else echo "FAILED: Octopus did not return its version"; fi
 echo "Nexus: $(c --cacert "$HOME/nexus-ca.pem" -o /dev/null -w '%{http_code}' "https://$NEXUS_REGISTRY/service/rest/v1/status")"
 echo "Gitea: $(c --cacert "$HOME/gitea-ca.pem" -o /dev/null -w '%{http_code}' "https://$GITEA_ADDRESS/api/v1/version")"
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get argocd argocd-1 -o jsonpath='ArgoCD: {.status.phase} https://{.status.externalIP}{"\n"}'
@@ -126,7 +126,7 @@ function c($CA, $ADDR, $NAME, $URLPATH) {
 function hc($T) { if ($T -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' } }
 $O = c "$HOME\octopus-ca.pem" $OCTOPUS_ADDRESS 'octopus-web.octopus.svc' '/api'
 $V = if ($O -match '"Version": *"([^"]*)"') { $Matches[1] } else { '' }
-if ($V) { "Octopus: $V" } else { "FAILED: Octopus did not return its version (see the error above)" }
+if ($V) { "Octopus: $V" } else { "FAILED: Octopus did not return its version" }
 "Nexus: $(hc (c "$HOME\nexus-ca.pem" $NEXUS_REGISTRY 'nexus.nexus.svc' '/service/rest/v1/status'))"
 "Gitea: $(hc (c "$HOME\gitea-ca.pem" $GITEA_ADDRESS 'gitea-https.gitea.svc' '/api/v1/version'))"
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get argocd argocd-1 -o 'jsonpath=ArgoCD: {.status.phase} https://{.status.externalIP}{''\n''}'
@@ -141,7 +141,8 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedenti
 **If not:**
 - `FAILED: Octopus did not return its version`, or `Nexus:`/`Gitea:` with `000`: this machine cannot
   reach the address, or the CA file is missing or from an earlier install (`curl` prints why above the
-  line); do that guide first.
+  line); do that guide first. With no error above it, Octopus is still starting: run this again in a
+  minute.
 - `managedentities… not found`: do [ARGOCD.md step 7](ARGOCD.md#7-add-the-vks-cluster-to-argocd) for
   the app's cluster.
 - `Octopus:` older than `2026.3`: the steps in this guide need Octopus 2026.3 or newer.
