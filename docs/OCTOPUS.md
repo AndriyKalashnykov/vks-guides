@@ -1443,7 +1443,11 @@ elif T="$(umask 077 && mktemp -d)"; then
        | curl -fsS --connect-timeout 20 --cacert "$OCTOPUS_CA" -c "$T/jar" -o /dev/null \
            -H 'Content-Type: application/json' --data-binary @- "$U/users/login"; then
     X="$(awk '$6 ~ /^Octopus-Csrf-Token/ {print $7}' "$T/jar")"
-    echo "version: $(curl -fsS --cacert "$OCTOPUS_CA" "$U" | jq -r .Version)"
+    if V="$(curl -fsS --cacert "$OCTOPUS_CA" "$U")" && V="$(printf '%s\n' "$V" | jq -r '.Version // empty' 2>/dev/null)" && [ -n "$V" ]; then
+      echo "version: $V"
+    else
+      echo "FAILED: Octopus did not return its version (see the error above)"
+    fi
     if L="$(curl -fsS --cacert "$OCTOPUS_CA" -b "$T/jar" -H "X-Octopus-Csrf-Token: $X" "$U/licenses/licenses-current-status")" \
        && printf '%s\n' "$L" | jq -e 'has("IsCompliant")' >/dev/null 2>&1; then
       printf '%s\n' "$L" | jq -r '"licence compliant: \(.IsCompliant)", "limits: " + ([.Limits[] | "\(.Name) \(.EffectiveLimit)"] | join(", "))'
@@ -1481,7 +1485,11 @@ if (-not (Test-Path $OCTOPUS_CA)) { "MISSING: $OCTOPUS_CA (step 8)" } else {
     curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $OCTOPUS_CA @RV -c "$T\jar" -o NUL -H 'Content-Type: application/json' --data-binary "@$T\login.json" "$U/users/login"
     if ($LASTEXITCODE -eq 0) {
       $X = (Select-String -Path "$T\jar" -Pattern 'Octopus-Csrf-Token\S*\s+(\S+)$').Matches[0].Groups[1].Value
-      "version: $(((curl.exe -fsS --ssl-no-revoke --cacert $OCTOPUS_CA @RV $U) | Out-String | ConvertFrom-Json).Version)"
+      $global:LASTEXITCODE = $null
+      $RAW = curl.exe -fsS --ssl-no-revoke --cacert $OCTOPUS_CA @RV $U | Out-String
+      $V = $null
+      if ($LASTEXITCODE -eq 0) { try { $V = ($RAW | ConvertFrom-Json -ErrorAction Stop).Version } catch { $V = $null } }
+      if ($V) { "version: $V" } else { "FAILED: Octopus did not return its version (see the error above)" }
       $global:LASTEXITCODE = $null
       $RAW = curl.exe -fsS --ssl-no-revoke --cacert $OCTOPUS_CA @RV -b "$T\jar" -H "X-Octopus-Csrf-Token: $X" "$U/licenses/licenses-current-status" | Out-String
       $L = $null
@@ -1618,9 +1626,16 @@ $IP = kc get service octopus-web -o 'jsonpath={.status.loadBalancer.ingress[0].i
 $U = 'https://octopus-web.octopus.svc/api'; $RV = '--resolve', "octopus-web.octopus.svc:443:$IP"
 $T = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName())
 function api($path, $body) {
-  $a = @('-fsS', '--connect-timeout', '20', '--ssl-no-revoke', '--cacert', $OCTOPUS_CA) + $RV + @('-b', "$T\jar", '-H', "X-Octopus-Csrf-Token: $X", '-H', 'Content-Type: application/json')
-  if ($body) { [IO.File]::WriteAllText("$T\body.json", $body); $a += @('--data-binary', "@$T\body.json") }
-  (curl.exe @a "$U/$path") | Out-String | ConvertFrom-Json
+  $a = @('-sS', '--connect-timeout', '20', '--ssl-no-revoke', '--cacert', $OCTOPUS_CA) + $RV + @('-b', "$T\jar", '-H', "X-Octopus-Csrf-Token: $X", '-H', 'Content-Type: application/json')
+  if ($body) { [IO.File]::WriteAllText("$T\body.json", $body); $a += @('--data-binary', "@$T\body.json") } else { $a = @('-f') + $a }
+  $global:LASTEXITCODE = $null
+  $raw = (curl.exe @a "$U/$path") | Out-String
+  if (-not $body -and $LASTEXITCODE -ne 0) { return $null }
+  if ($raw.Trim()) { try { $raw | ConvertFrom-Json -ErrorAction Stop } catch { $null } }
+}
+function why($r) {
+  $w = @(@($r.Errors) + @($r.ErrorMessage) | Where-Object { $_ -is [string] }) | Select-Object -First 1
+  if ($w) { $w } else { 'no answer from Octopus (see the error above)' }
 }
 if (-not (Test-Path $OCTOPUS_CA)) { "MISSING: $OCTOPUS_CA (step 8)" } else {
   New-Item -ItemType Directory -Path $T | Out-Null
@@ -1633,16 +1648,17 @@ if (-not (Test-Path $OCTOPUS_CA)) { "MISSING: $OCTOPUS_CA (step 8)" } else {
     if ($LASTEXITCODE -ne 0) { "FAILED: sign-in refused (see the error above)" } else {
       $X = (Select-String -Path "$T\jar" -Pattern 'Octopus-Csrf-Token\S*\s+(\S+)$').Matches[0].Groups[1].Value
       foreach ($E in 'dev', 'test', 'prod') {
-        if ((api 'Spaces-1/environments/all').Name -contains $E) { "environment ${E}: exists" } else { $R = api 'Spaces-1/environments' (@{ Name = $E } | ConvertTo-Json -Compress); if ($R.Name) { "environment $($R.Name): created" } else { "FAILED: environment $E not created (see the error above)" } }
+        if ((api 'Spaces-1/environments/all').Name -contains $E) { "environment ${E}: exists" } else { $R = api 'Spaces-1/environments' (@{ Name = $E } | ConvertTo-Json -Compress); if ($R.Name) { "environment $($R.Name): created" } else { "FAILED: environment $E not created: $(why $R)" } }
       }
-      if ((api 'Spaces-1/lifecycles/all').Name -contains 'dev-test-prod') { "lifecycle dev-test-prod: exists" } else {
-        $ID = @{}; foreach ($N in (api 'Spaces-1/environments/all')) { $ID[$N.Name] = $N.Id }
+      $EN = $null
+      if ((api 'Spaces-1/lifecycles/all').Name -contains 'dev-test-prod') { "lifecycle dev-test-prod: exists" } elseif ($null -eq ($EN = api 'Spaces-1/environments/all')) { "FAILED: cannot read the environments (see the error above); lifecycle not created" } else {
+        $ID = @{}; foreach ($N in $EN) { $ID[$N.Name] = $N.Id }
         $L = @{ Name = 'dev-test-prod'; Phases = @(
           @{ Name = 'dev'; AutomaticDeploymentTargets = @($ID['dev']); OptionalDeploymentTargets = @(); MinimumEnvironmentsBeforePromotion = 0 },
           @{ Name = 'test'; AutomaticDeploymentTargets = @(); OptionalDeploymentTargets = @($ID['test']); MinimumEnvironmentsBeforePromotion = 0 },
           @{ Name = 'prod'; AutomaticDeploymentTargets = @(); OptionalDeploymentTargets = @($ID['prod']); MinimumEnvironmentsBeforePromotion = 0 }) }
         $R = api 'Spaces-1/lifecycles' ($L | ConvertTo-Json -Depth 5 -Compress)
-        if ($R.Name) { "lifecycle $($R.Name): created, phases $(($R.Phases | ForEach-Object { $_.Name }) -join ',')" } else { "FAILED: lifecycle not created (see the error above)" }
+        if ($R.Name) { "lifecycle $($R.Name): created, phases $(($R.Phases | ForEach-Object { $_.Name }) -join ',')" } else { "FAILED: lifecycle dev-test-prod not created: $(why $R)" }
       }
     }
   } finally { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $T }
@@ -1656,8 +1672,8 @@ dev-test-prod: created, phases dev,test,prod` (`exists` when run again).
 
 **If not:**
 - `FAILED: sign-in refused`: see step 9.
-- `FAILED: environment … not created: <reason>` or `FAILED: lifecycle dev-test-prod not created: <reason>`
-  (Windows: `… not created (see the error above)`): the reason is Octopus's; fix it and run this again.
+- `FAILED: environment … not created: <reason>` or `FAILED: lifecycle dev-test-prod not created: <reason>`:
+  the reason is Octopus's; fix it and run this again.
 
 ## 11. Trust Nexus and add it as a Docker feed (optional)
 

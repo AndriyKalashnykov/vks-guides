@@ -96,7 +96,8 @@ SUPERVISOR_CONTEXT="supervisor"
 SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 
 c() { curl -sS --connect-timeout 20 --max-time 30 "$@"; }
-echo "Octopus: $(c --cacert "$HOME/octopus-ca.pem" "https://$OCTOPUS_ADDRESS/api" | sed -n 's/.*"Version": *"\([^"]*\)".*/\1/p')"
+V="$(c --cacert "$HOME/octopus-ca.pem" "https://$OCTOPUS_ADDRESS/api" | sed -n 's/.*"Version": *"\([^"]*\)".*/\1/p')"
+if [ -n "$V" ]; then echo "Octopus: $V"; else echo "FAILED: Octopus did not return its version (see the error above)"; fi
 echo "Nexus: $(c --cacert "$HOME/nexus-ca.pem" -o /dev/null -w '%{http_code}' "https://$NEXUS_REGISTRY/service/rest/v1/status")"
 echo "Gitea: $(c --cacert "$HOME/gitea-ca.pem" -o /dev/null -w '%{http_code}' "https://$GITEA_ADDRESS/api/v1/version")"
 kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" get argocd argocd-1 -o jsonpath='ArgoCD: {.status.phase} https://{.status.externalIP}{"\n"}'
@@ -125,7 +126,7 @@ function c($CA, $ADDR, $NAME, $URLPATH) {
 function hc($T) { if ($T -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' } }
 $O = c "$HOME\octopus-ca.pem" $OCTOPUS_ADDRESS 'octopus-web.octopus.svc' '/api'
 $V = if ($O -match '"Version": *"([^"]*)"') { $Matches[1] } else { '' }
-"Octopus: $V"
+if ($V) { "Octopus: $V" } else { "FAILED: Octopus did not return its version (see the error above)" }
 "Nexus: $(hc (c "$HOME\nexus-ca.pem" $NEXUS_REGISTRY 'nexus.nexus.svc' '/service/rest/v1/status'))"
 "Gitea: $(hc (c "$HOME\gitea-ca.pem" $GITEA_ADDRESS 'gitea-https.gitea.svc' '/api/v1/version'))"
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get argocd argocd-1 -o 'jsonpath=ArgoCD: {.status.phase} https://{.status.externalIP}{''\n''}'
@@ -138,9 +139,9 @@ kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE get managedenti
 `ArgoCD destination: Ready`.
 
 **If not:**
-- `Octopus:` with nothing after it, or `Nexus:`/`Gitea:` with `000`: this machine cannot reach the
-  address, or the CA file is missing or from an earlier install (`curl` prints why above the line); do
-  that guide first.
+- `FAILED: Octopus did not return its version`, or `Nexus:`/`Gitea:` with `000`: this machine cannot
+  reach the address, or the CA file is missing or from an earlier install (`curl` prints why above the
+  line); do that guide first.
 - `managedentities… not found`: do [ARGOCD.md step 7](ARGOCD.md#7-add-the-vks-cluster-to-argocd) for
   the app's cluster.
 - `Octopus:` older than `2026.3`: the steps in this guide need Octopus 2026.3 or newer.
@@ -1070,9 +1071,11 @@ gateway:
     serverGrpcUrl: grpc://argocd-server:443
     projectAuthenticationSecretName: gw-project-tokens
 EOF
-  helm upgrade --install --rollback-on-failure --timeout 6m gw "$CHART" --version 2.4.0 --kubeconfig "$VKS_KUBECONFIG" -n "$NS" -f "$CD_DIR/gateway-values.yaml" >/dev/null \
-    && kc -n "$NS" rollout status deployment/octopus-argocd-gateway --timeout=3m \
-    && sleep 20 && kc -n "$NS" logs deployment/octopus-argocd-gateway | grep -E '"state":"READY"|token status' | cut -c1-200
+  if helm upgrade --install --rollback-on-failure --timeout 6m gw "$CHART" --version 2.4.0 --kubeconfig "$VKS_KUBECONFIG" -n "$NS" -f "$CD_DIR/gateway-values.yaml" >/dev/null \
+    && kc -n "$NS" rollout status deployment/octopus-argocd-gateway --timeout=3m && sleep 20; then
+    L="$(kc -n "$NS" logs deployment/octopus-argocd-gateway | grep -E '"state":"READY"|token status' | cut -c1-200)"
+    if [ -n "$L" ]; then printf '%s\n' "$L"; else echo "FAILED: no READY or token status line in the gateway's log yet"; fi
+  fi
 fi
 unset OCTOPUS_API_KEY
 ```
@@ -1185,7 +1188,8 @@ gateway:
     if ($LASTEXITCODE -eq 0) { kubectl @KC -n $NS rollout status deployment/octopus-argocd-gateway --timeout=3m }
     if ($LASTEXITCODE -eq 0) {
       Start-Sleep 20
-      kubectl @KC -n $NS logs deployment/octopus-argocd-gateway | Select-String -CaseSensitive -Pattern '"state":"READY"|token status' | ForEach-Object { $_.Line.Substring(0, [Math]::Min(200, $_.Line.Length)) }
+      $L = @(kubectl @KC -n $NS logs deployment/octopus-argocd-gateway | Select-String -CaseSensitive -Pattern '"state":"READY"|token status' | ForEach-Object { $_.Line.Substring(0, [Math]::Min(200, $_.Line.Length)) })
+      if ($L.Count -gt 0) { $L } else { "FAILED: no READY or token status line in the gateway's log yet" }
     }
   }
 }
@@ -1210,6 +1214,9 @@ lines and the same log lines.
 - `thumbprint … does not match` in the gateway's log after Octopus's gRPC certificate changed: the
   gateway keeps the thumbprint from its registration. Delete the instance in Octopus, delete the
   namespace `octopus-argocd-gateway`, then run 1. to 3. again.
+- `FAILED: no READY or token status line in the gateway's log yet`: the gateway has not connected yet
+  (`kubectl` prints why above the line if it cannot read the log). In a minute, read the log with
+  `kubectl --kubeconfig <file> -n octopus-argocd-gateway logs deployment/octopus-argocd-gateway`.
 - No `"state":"READY"` for `argocd-server:443`: the gateway cannot reach ArgoCD's address on port 443,
   or ArgoCD's certificate changed; run step 6 again (it saves the certificate), then this block.
 
