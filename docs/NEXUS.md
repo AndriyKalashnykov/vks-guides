@@ -1253,9 +1253,7 @@ printf 'admin password: '; IFS= read -rs NEXUS_ADMIN_PASSWORD; echo; printf 'Pus
 **Windows (PowerShell):**
 
 ```powershell
-$NEXUS_ADMIN_PASSWORD = Read-Host 'admin password' -AsSecureString
-$NEXUS_PUSH_PASSWORD = Read-Host 'Push user password' -AsSecureString
-$NEXUS_PULL_PASSWORD = Read-Host 'Pull user password' -AsSecureString
+$NEXUS_ADMIN_PASSWORD = Read-Host 'admin password' -AsSecureString; $NEXUS_PUSH_PASSWORD = Read-Host 'Push user password' -AsSecureString; $NEXUS_PULL_PASSWORD = Read-Host 'Pull user password' -AsSecureString
 ```
 
 Then run this, in the same terminal, to make the repository and its users. It creates a Docker
