@@ -1697,9 +1697,10 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
   try {
     Set-Content -Encoding ascii -Path $CFG -Value "user = `"admin:$P`""
     Set-Content -Encoding ascii -Path $BODY -Value ('{"name":"push","duration":90,"level":"project","permissions":[{"kind":"project","namespace":"' + $HARBOR_PROJECT + '","access":[{"resource":"repository","action":"push"},{"resource":"repository","action":"pull"},{"resource":"artifact","action":"read"},{"resource":"artifact","action":"list"}]}]}')
+    $global:LASTEXITCODE = $null
     $R = curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG `
       -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" "https://$HARBOR_FQDN/api/v2.0/robots" | Out-String | ConvertFrom-Json
-    if ($R.errors) { "ERROR $($R.errors[0].code): $($R.errors[0].message)" } else { "name:   $($R.name)"; "secret: $($R.secret)" }
+    if ($LASTEXITCODE -eq 0 -and $R.secret) { "name:   $($R.name)"; "secret: $($R.secret)" } elseif ($R.errors) { "ERROR $($R.errors[0].code): $($R.errors[0].message)" } else { "FAILED: no answer from Harbor (see the error above)" }
   } finally {
     Remove-Item -Force $CFG, $BODY
   }
@@ -1715,6 +1716,8 @@ once: keep both where you keep passwords. The `$` is part of the name.
 - `ERROR CONFLICT`: a robot named `push` exists in this project. Use its secret, or delete it in
   Harbor's web page (**Projects** → your project → **Robot Accounts**) and run the block again.
 - `ERROR UNAUTHORIZED`: see *Log in as admin*.
+- `FAILED: no answer from Harbor` (Windows): curl's error above it says why; check the address and
+  that this machine reaches Harbor on port 443.
 
 **In Harbor's web page** the same is a robot account that you then give permissions on your
 project: **Administration** → **Robot Accounts** → **NEW ROBOT ACCOUNT**.
