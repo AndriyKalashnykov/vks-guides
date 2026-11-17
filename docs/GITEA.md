@@ -186,8 +186,12 @@ else
     | kubectl --kubeconfig "$VKS_KUBECONFIG" create -f -
 fi
 unset K1 K2
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get secret gitea-keys -o json \
-  | jq -r '"key lengths: \(.data["secret-key"] | @base64d | length) \(.data["internal-token"] | @base64d | length)"'
+if ! S="$(kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitea get secret gitea-keys -o json)"; then
+  echo "FAILED: cannot read the Secret gitea-keys (see the error above)"
+else
+  printf '%s\n' "$S" | jq -r '"key lengths: \(.data["secret-key"] | @base64d | length) \(.data["internal-token"] | @base64d | length)"'
+fi
+unset S
 ```
 
 </details>
@@ -208,8 +212,16 @@ $K = foreach ($i in 1, 2) {
 "apiVersion: v1`nkind: Secret`nmetadata:`n  name: gitea-keys`n  namespace: gitea`ndata:`n  secret-key: $($K[0])`n  internal-token: $($K[1])`n" |
   kubectl --kubeconfig $VKS_KUBECONFIG create -f -
 Remove-Variable K, B
-$S = kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get secret gitea-keys -o json | Out-String | ConvertFrom-Json
-if ($S) { "key lengths: $([Convert]::FromBase64String($S.data.'secret-key').Length) $([Convert]::FromBase64String($S.data.'internal-token').Length)" }
+$global:LASTEXITCODE = $null
+$RAW = kubectl --kubeconfig $VKS_KUBECONFIG -n gitea get secret gitea-keys -o json | Out-String
+$S = $null
+if ($LASTEXITCODE -eq 0) { try { $S = $RAW | ConvertFrom-Json -ErrorAction Stop } catch { $S = $null } }
+if ($S) {
+  "key lengths: $([Convert]::FromBase64String($S.data.'secret-key').Length) $([Convert]::FromBase64String($S.data.'internal-token').Length)"
+} else {
+  "FAILED: cannot read the Secret gitea-keys (see the error above)"
+}
+Remove-Variable RAW
 Remove-Variable S
 ```
 
@@ -1590,7 +1602,9 @@ if [ -z "$IP" ] || ! openssl x509 -noout -subject -in "$HOME/gitea-ca.pem.new"; 
 else
   mv "$HOME/gitea-ca.pem.new" "$HOME/gitea-ca.pem"
   GIT_TERMINAL_PROMPT=0 git -c credential.helper= -c http.sslCAInfo="$HOME/gitea-ca.pem" ls-remote "https://$IP/gitea-admin/hello.git"
-  curl -s --connect-timeout 20 --max-time 30 --cacert "$HOME/gitea-ca.pem" "https://$IP/gitea-admin/hello" | grep -o "https://$IP/gitea-admin/hello.git" | sort -u
+  P="$(curl -sS --connect-timeout 20 --max-time 30 --cacert "$HOME/gitea-ca.pem" "https://$IP/gitea-admin/hello")"
+  U="$(printf '%s\n' "$P" | grep -o "https://$IP/gitea-admin/hello.git" | sort -u)"
+  if [ -n "$U" ]; then printf '%s\n' "$U"; else echo "FAILED: the web page does not show the clone URL (see the error above)"; fi
 fi
 ```
 
@@ -1610,8 +1624,9 @@ if (-not $IP -or -not $X) { "FAILED: no address or no CA (run 2. and 3. first)" 
   $env:GIT_TERMINAL_PROMPT = '0'
   git -c credential.helper= -c http.sslBackend=openssl -c http.sslCAInfo="$HOME\gitea-ca.pem" ls-remote "https://$IP/gitea-admin/hello.git"
   Remove-Item Env:GIT_TERMINAL_PROMPT
-  $P = curl.exe -s --ssl-no-revoke --connect-timeout 20 --max-time 30 --resolve "gitea-https.gitea.svc:443:$IP" --cacert "$HOME\gitea-ca.pem" "https://gitea-https.gitea.svc/gitea-admin/hello"
-  "$P" -split '"' | Where-Object { $_ -like 'https://*/gitea-admin/hello.git' } | Sort-Object -Unique
+  $P = curl.exe -sS --ssl-no-revoke --connect-timeout 20 --max-time 30 --resolve "gitea-https.gitea.svc:443:$IP" --cacert "$HOME\gitea-ca.pem" "https://gitea-https.gitea.svc/gitea-admin/hello"
+  $U = "$P" -split '"' | Where-Object { $_ -like 'https://*/gitea-admin/hello.git' } | Sort-Object -Unique
+  if ($U) { $U } else { "FAILED: the web page does not show the clone URL (see the error above)" }
 }
 ```
 
@@ -1623,10 +1638,11 @@ the name its check connects with; clients use `https://<address>/…`).
 **If not:**
 - `SSL certificate problem`: `~/gitea-ca.pem` is not the CA nginx serves; run 2. to 4. again, or
   wait 6 minutes after a renewal.
-- The clone address shows `http://` or `localhost:3300`: 3. did not finish; run it again.
+- `FAILED: the web page does not show the clone URL` after git listed `refs/heads/main`: the page
+  gives an `http://` or `localhost:3300` address, so 3. did not finish; run it again.
 - `Failed to connect` or `timed out`: this machine cannot reach the address on port 443.
-- git prints `terminal prompts disabled` and no clone address follows: `hello` is private or missing;
-  do step 8, 1. (or step 7) first.
+- git prints `terminal prompts disabled`, then `FAILED: the web page does not show the clone URL`:
+  `hello` is private or missing; do step 8, 1. (or step 7) first.
 
 To push or clone private repositories over this address, a client needs `~/gitea-ca.pem` and a
 login of its own: in Gitea, **Settings** → **Applications** → **Generate New Token**.

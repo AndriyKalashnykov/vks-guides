@@ -1853,7 +1853,8 @@ this before then, or when a token may have leaked.
 2. Run the block below. It gives the gateway the new token (the Secret `gw-project-tokens` in Octopus's
    cluster) and restarts the gateway, then signs in to ArgoCD as `admin`, deletes every token of the
    role `octopus` except the one in your token file, and signs out. You get the gateway on the new
-   token and the old ones refused at once. It deletes nothing if it cannot read the role's tokens.
+   token and the old ones refused at once. It deletes nothing if it cannot read the role's tokens, or if
+   the gateway's log does not show the new token `ok`.
    Set `VKS_CLUSTER` to Octopus's cluster and `ARGOCD_NAMESPACE` to ArgoCD's vSphere Namespace.
 
 <details>
@@ -1876,9 +1877,15 @@ elif [ -z "$IP" ] || [ ! -s "$CD_DIR/argocd-project.token" ] || [ ! -s "$CD_DIR/
   echo "FAILED: no ArgoCD address, or no token or certificate from step 6 in $CD_DIR"
 elif kc create secret generic gw-project-tokens --from-file=PROJECT_AUTH_TOKEN_test-web-apps="$CD_DIR/argocd-project.token" --dry-run=client -o yaml | kc apply -f - \
      && kc rollout restart deployment/octopus-argocd-gateway && kc rollout status deployment/octopus-argocd-gateway --timeout=3m; then
-  sleep 20; kc logs deployment/octopus-argocd-gateway | grep 'token status' | tail -1 | cut -c1-200
+  sleep 20; LOG="$(kc logs deployment/octopus-argocd-gateway)"
+  L="$(printf '%s\n' "$LOG" | grep 'token status' | tail -1)"
+  if [ -n "$L" ]; then printf '%s\n' "$L" | cut -c1-200; fi
   argocd_api() { curl -fsS --resolve "argocd-server:443:$IP" --cacert "$CD_DIR/argocd-server.pem" --connect-timeout 20 --max-time 60 -H 'Content-Type: application/json' "$@"; }
-  if ! J="$(K get appproject test-web-apps -o json)"; then
+  if [ -z "$L" ]; then
+    echo "FAILED: no token status line in the gateway's log yet; the old tokens were kept, run this again"
+  elif ! printf '%s\n' "$L" | grep -q '"status":"ok"'; then
+    echo "FAILED: the gateway's token status is not ok; the old tokens were kept"
+  elif ! J="$(K get appproject test-web-apps -o json)"; then
     echo "FAILED: cannot read the project's tokens; nothing deleted"
   else
     KEEP="$(jq -Rr 'split(".")[1] | gsub("-"; "+") | gsub("_"; "/") | @base64d | fromjson | .jti // empty' "$CD_DIR/argocd-project.token" 2>/dev/null)"
@@ -1941,13 +1948,18 @@ if (-not $IP -or -not (Test-Path $TF) -or (Get-Item $TF).Length -eq 0 -or -not (
 }
 if ($OK) {
   Start-Sleep 20
-  kubectl @KC logs deployment/octopus-argocd-gateway | Select-String -CaseSensitive -SimpleMatch 'token status' | Select-Object -Last 1 | ForEach-Object { $_.Line.Substring(0, [Math]::Min(200, $_.Line.Length)) }
+  $L = "$(kubectl @KC logs deployment/octopus-argocd-gateway | Select-String -CaseSensitive -SimpleMatch 'token status' | Select-Object -Last 1 | ForEach-Object { $_.Line })"
+  if ($L) { $L.Substring(0, [Math]::Min(200, $L.Length)) }
   $AC = '-fsS', '--ssl-no-revoke', '--resolve', "argocd-server:443:$IP", '--cacert', $PEM, '--connect-timeout', '20', '--max-time', '60', '-H', 'Content-Type: application/json'
   $global:LASTEXITCODE = $null
   $RAW = kubectl @KS get appproject test-web-apps -o json | Out-String
   $J = $null
   if ($LASTEXITCODE -eq 0) { try { $J = $RAW | ConvertFrom-Json -ErrorAction Stop } catch { $J = $null } }
-  if (-not $J) {
+  if (-not $L) {
+    "FAILED: no token status line in the gateway's log yet; the old tokens were kept, run this again"
+  } elseif (-not $L.Contains('"status":"ok"')) {
+    "FAILED: the gateway's token status is not ok; the old tokens were kept"
+  } elseif (-not $J) {
     "FAILED: cannot read the project's tokens; nothing deleted"
   } else {
     $KEEP = ''
@@ -1996,8 +2008,11 @@ if ($OK) {
 `"Argo CD authentication token status"`, the new `"expires_at"` (90 days from now) and `"status":"ok"`, then one `deleted
 old token …` line per older token (`old tokens: none` when there was none).
 
-**If not:** a log line with `"status"` other than `ok`: the token in the file does not work; run step 6
-again, then this block.
+**If not:**
+- `FAILED: no token status line in the gateway's log yet`: the gateway has not checked the token yet; run
+  this block again.
+- A log line with `"status"` other than `ok`, and `FAILED: the gateway's token status is not ok`: the token
+  in the file does not work; run step 6 again, then this block.
 
 To change the Gitea token of `octopus` (it does not end): delete
 `~/.config/vks-guides/cd-octopus/gitea-octopus.token`, run step 3 again (it makes a new one), put it into
