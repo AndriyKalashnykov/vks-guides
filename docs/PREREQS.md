@@ -551,8 +551,9 @@ done
 ```powershell
 foreach ($e in 'podman', 'docker') {
   if (-not (Get-Command "$e.exe" -ErrorAction SilentlyContinue)) { "not installed: $e" } else {
+    $global:LASTEXITCODE = $null
     $V = if ($e -eq 'podman') { podman info --format '{{.Version.Version}}' 2>$null } else { docker version --format '{{.Server.Version}}' 2>$null }
-    if ($V) { "ok       $e $V" } else { "NOT RUNNING: $e" }
+    if ($LASTEXITCODE -eq 0 -and $V) { "ok       $e $V" } else { "NOT RUNNING: $e" }
   }
 }
 ```
