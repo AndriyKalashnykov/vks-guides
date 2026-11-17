@@ -835,7 +835,12 @@ if [ -z "$IP" ]; then
   echo "FAILED: the Service has no external IP after 2 minutes"
 else
   echo "address: http://$IP/"
-  curl -sS --connect-timeout 10 --max-time 20 "http://$IP/" | sed -n 's|.*<h1>\(.*\)</h1>.*|page: \1|p'
+  PAGE="$(curl -sS --connect-timeout 10 --max-time 20 "http://$IP/" | sed -n 's|.*<h1>\(.*\)</h1>.*|page: \1|p')"
+  if [ -n "$PAGE" ]; then
+    printf '%s\n' "$PAGE"
+  else
+    printf '%s\n' "FAILED: http://$IP/ did not answer with the app's page (see the error above)"
+  fi
 fi
 ```
 
@@ -857,8 +862,9 @@ while (-not $IP -and $n -lt 24) {
 }
 if (-not $IP) { "FAILED: the Service has no external IP after 2 minutes" } else {
   "address: http://$IP/"
+  $global:LASTEXITCODE = $null
   $H = curl.exe -sS --connect-timeout 10 --max-time 20 "http://$IP/" | Out-String
-  if ($H -match '<h1>(.*)</h1>') { "page: $($Matches[1])" }
+  if ($LASTEXITCODE -eq 0 -and $H -match '<h1>(.*)</h1>') { "page: $($Matches[1])" } else { "FAILED: http://$IP/ did not answer with the app's page (see the error above)" }
 }
 ```
 
@@ -875,8 +881,9 @@ if (-not $IP) { "FAILED: the Service has no external IP after 2 minutes" } else 
   **Supervisor Management** → **Supervisors** → your Supervisor → **Configure** → **Supervisor** →
   **Network** → **Load Balancer** → **Virtual Server Network** → **VIEW DETAILS** → **Virtual IP
   Address Range(s)**. With NSX or Avi, ask whoever runs the Supervisor's network for the range.
-- No `page:` line: the address does not answer from this machine (a firewall between your network
-  and the Supervisor's load balancer network), or the pods are not running (step 6).
+- `FAILED: http://… did not answer with the app's page`: the address does not answer from this
+  machine (a firewall between your network and the Supervisor's load balancer network), or the
+  pods are not running (step 6).
 
 ## 8. Remove it (optional)
 

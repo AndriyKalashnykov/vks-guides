@@ -1438,16 +1438,26 @@ SUPERVISOR_CONTEXT="supervisor"
 HARBOR_DIR="$HOME/.config/vks-guides/harbor-${SUPERVISOR_CONTEXT}"
 
 HARBOR_FQDN="$(sed -n 's/^hostname: //p' "$HARBOR_DIR/harbor-data-values.yml")"
-if [ -z "$HARBOR_FQDN" ] || [ ! -s "$HARBOR_DIR/harbor-ca.crt" ] || [ ! -r "$HARBOR_DIR/secrets.env" ]; then
+if ! command -v jq >/dev/null 2>&1; then
+  echo "MISSING: jq (PREREQS.md)"
+elif [ -z "$HARBOR_FQDN" ] || [ ! -s "$HARBOR_DIR/harbor-ca.crt" ] || [ ! -r "$HARBOR_DIR/secrets.env" ]; then
   echo "FAILED: harbor-data-values.yml, harbor-ca.crt or secrets.env is missing in $HARBOR_DIR"
 else
   CFG="$(mktemp)"
   ( . "$HARBOR_DIR/secrets.env"
     P="$(printf '%s' "$HARBOR_ADMIN_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
     printf 'user = "admin:%s"\n' "$P" > "$CFG" )
-  curl -sS --cacert "$HARBOR_DIR/harbor-ca.crt" --connect-timeout 20 --max-time 30 -K "$CFG" "https://${HARBOR_FQDN}/api/v2.0/users/current" \
-    | jq -r 'if .username then "logged in as \(.username), administrator: \(.sysadmin_flag)" else "ERROR \(.errors[0].code): \(.errors[0].message)" end'
+  R="$(curl -sS --cacert "$HARBOR_DIR/harbor-ca.crt" --connect-timeout 20 --max-time 30 -K "$CFG" "https://${HARBOR_FQDN}/api/v2.0/users/current")"
   rm -f "$CFG"
+  if printf '%s' "$R" | jq -e '.username' >/dev/null 2>&1; then
+    printf '%s' "$R" | jq -r '"logged in as \(.username), administrator: \(.sysadmin_flag)"'
+  elif printf '%s' "$R" | jq -e '.errors' >/dev/null 2>&1; then
+    printf '%s' "$R" | jq -r '"ERROR \(.errors[0].code): \(.errors[0].message)"'
+  elif [ -n "$R" ]; then
+    printf 'FAILED: Harbor did not answer with JSON: %.200s\n' "$R"
+  else
+    printf '%s\n' "FAILED: no answer from Harbor (see the error above)"
+  fi
 fi
 ```
 
@@ -1470,8 +1480,9 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
   $CFG = [IO.Path]::GetTempFileName()
   try {
     Set-Content -Encoding ascii -Path $CFG -Value "user = `"admin:$P`""
+    $global:LASTEXITCODE = $null; $R = $null
     $R = curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG "https://$HARBOR_FQDN/api/v2.0/users/current" | Out-String | ConvertFrom-Json
-    if ($R.username) { "logged in as $($R.username), administrator: $($R.sysadmin_flag)" } else { "ERROR $($R.errors[0].code): $($R.errors[0].message)" }
+    if ($LASTEXITCODE -eq 0 -and $R.username) { "logged in as $($R.username), administrator: $($R.sysadmin_flag)" } elseif ($R.errors) { "ERROR $($R.errors[0].code): $($R.errors[0].message)" } else { "FAILED: no answer from Harbor (see the error above)" }
   } finally {
     Remove-Item -Force $CFG
   }
@@ -1486,6 +1497,8 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 - `FAILED: … is missing`: run the step that writes it (4, 9, or 3 then 4; `secrets.env` comes from step 4 if you skipped step 3).
 - `ERROR UNAUTHORIZED`: this Harbor was installed with another admin password than the one in
   `secrets.env`, or someone changed it in Harbor since.
+- `FAILED: no answer from Harbor`: curl's error above it says why; the next lines name the usual ones.
+- `FAILED: Harbor did not answer with JSON`: something else answers at that address (its page follows); check `HARBOR_FQDN`.
 - A `curl:` error that the name does not match (`no alternative certificate subject name
   matches`; PowerShell: `failed to match connection hostname`): the name leads to another
   server (step 7, *Check the DNS record*), or Harbor's hostname is no longer the one in
@@ -1578,10 +1591,18 @@ else
     | curl -sS --cacert "$HARBOR_DIR/harbor-ca.crt" --connect-timeout 20 --max-time 30 -K "$CFG" \
         -X POST -H 'Content-Type: application/json' --data-binary @- \
         -o /dev/null -w 'create project: http=%{http_code}\n' "https://${HARBOR_FQDN}/api/v2.0/projects"
-  curl -sS --cacert "$HARBOR_DIR/harbor-ca.crt" --connect-timeout 20 --max-time 30 -K "$CFG" -H 'X-Is-Resource-Name: true' \
-      "https://${HARBOR_FQDN}/api/v2.0/projects/${HARBOR_PROJECT}" \
-    | jq -r 'if .name then "project \(.name), public: \(.metadata.public)" else "ERROR \(.errors[0].code): \(.errors[0].message)" end'
+  R="$(curl -sS --cacert "$HARBOR_DIR/harbor-ca.crt" --connect-timeout 20 --max-time 30 -K "$CFG" -H 'X-Is-Resource-Name: true' \
+      "https://${HARBOR_FQDN}/api/v2.0/projects/${HARBOR_PROJECT}")"
   rm -f "$CFG"
+  if printf '%s' "$R" | jq -e '.name' >/dev/null 2>&1; then
+    printf '%s' "$R" | jq -r '"project \(.name), public: \(.metadata.public)"'
+  elif printf '%s' "$R" | jq -e '.errors' >/dev/null 2>&1; then
+    printf '%s' "$R" | jq -r '"ERROR \(.errors[0].code): \(.errors[0].message)"'
+  elif [ -n "$R" ]; then
+    printf 'FAILED: Harbor did not answer with JSON: %.200s\n' "$R"
+  else
+    printf '%s\n' "FAILED: no answer from Harbor (see the error above)"
+  fi
 fi
 ```
 
@@ -1615,9 +1636,10 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
       -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" `
       -o NUL -D - --suppress-connect-headers "https://$HARBOR_FQDN/api/v2.0/projects" | Out-String) -match '(?s).*HTTP/\S+ (\d{3})') { $Matches[1] } else { '000' }
     "create project: http=$H"
+    $global:LASTEXITCODE = $null; $R = $null
     $R = curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG -H 'X-Is-Resource-Name: true' `
       "https://$HARBOR_FQDN/api/v2.0/projects/$HARBOR_PROJECT" | Out-String | ConvertFrom-Json
-    if ($R.name) { "project $($R.name), public: $($R.metadata.public)" } else { "ERROR $($R.errors[0].code): $($R.errors[0].message)" }
+    if ($LASTEXITCODE -eq 0 -and $R.name) { "project $($R.name), public: $($R.metadata.public)" } elseif ($R.errors) { "ERROR $($R.errors[0].code): $($R.errors[0].message)" } else { "FAILED: no answer from Harbor (see the error above)" }
   } finally {
     Remove-Item -Force $CFG, $BODY
   }
@@ -1630,7 +1652,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
 as it is), then `project my-project, public: false` (`true` for a public project).
 
 **If not:** `http=401`: see *Log in as admin*. `http=400`: Harbor refused the name; use lower-case
-letters and digits.
+letters and digits. `FAILED: no answer from Harbor`: curl's error above it says why; see *Log in as admin*.
 
 **In Harbor's web page** the same is **Projects** → **NEW PROJECT**, with **Public** ticked or not
 under **Access Level**, then **OK**.
@@ -1663,14 +1685,22 @@ else
   ( . "$HARBOR_DIR/secrets.env"
     P="$(printf '%s' "$HARBOR_ADMIN_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
     printf 'user = "admin:%s"\n' "$P" > "$CFG" )
-  jq -nc --arg p "$HARBOR_PROJECT" '{name: "push", duration: 90, level: "project",
+  R="$(jq -nc --arg p "$HARBOR_PROJECT" '{name: "push", duration: 90, level: "project",
       permissions: [{kind: "project", namespace: $p,
         access: [{resource: "repository", action: "push"}, {resource: "repository", action: "pull"},
                  {resource: "artifact", action: "read"}, {resource: "artifact", action: "list"}]}]}' \
     | curl -sS --cacert "$HARBOR_DIR/harbor-ca.crt" --connect-timeout 20 --max-time 30 -K "$CFG" \
-        -X POST -H 'Content-Type: application/json' --data-binary @- "https://${HARBOR_FQDN}/api/v2.0/robots" \
-    | jq -r 'if .errors then "ERROR \(.errors[0].code): \(.errors[0].message)" else "name:   \(.name)\nsecret: \(.secret)" end'
+        -X POST -H 'Content-Type: application/json' --data-binary @- "https://${HARBOR_FQDN}/api/v2.0/robots")"
   rm -f "$CFG"
+  if printf '%s' "$R" | jq -e '.secret' >/dev/null 2>&1; then
+    printf '%s' "$R" | jq -r '"name:   \(.name)\nsecret: \(.secret)"'
+  elif printf '%s' "$R" | jq -e '.errors' >/dev/null 2>&1; then
+    printf '%s' "$R" | jq -r '"ERROR \(.errors[0].code): \(.errors[0].message)"'
+  elif [ -n "$R" ]; then
+    printf 'FAILED: Harbor did not answer with JSON: %.200s\n' "$R"
+  else
+    printf '%s\n' "FAILED: no answer from Harbor (see the error above)"
+  fi
 fi
 ```
 
@@ -1697,7 +1727,7 @@ if (-not $HARBOR_FQDN -or -not (Test-Path "$HARBOR_DIR\harbor-ca.crt") -or -not 
   try {
     Set-Content -Encoding ascii -Path $CFG -Value "user = `"admin:$P`""
     Set-Content -Encoding ascii -Path $BODY -Value ('{"name":"push","duration":90,"level":"project","permissions":[{"kind":"project","namespace":"' + $HARBOR_PROJECT + '","access":[{"resource":"repository","action":"push"},{"resource":"repository","action":"pull"},{"resource":"artifact","action":"read"},{"resource":"artifact","action":"list"}]}]}')
-    $global:LASTEXITCODE = $null
+    $global:LASTEXITCODE = $null; $R = $null
     $R = curl.exe -sS --ssl-no-revoke --cacert "$HARBOR_DIR\harbor-ca.crt" --connect-timeout 20 --max-time 30 -K $CFG `
       -X POST -H 'Content-Type: application/json' --data-binary "@$BODY" "https://$HARBOR_FQDN/api/v2.0/robots" | Out-String | ConvertFrom-Json
     if ($LASTEXITCODE -eq 0 -and $R.secret) { "name:   $($R.name)"; "secret: $($R.secret)" } elseif ($R.errors) { "ERROR $($R.errors[0].code): $($R.errors[0].message)" } else { "FAILED: no answer from Harbor (see the error above)" }
@@ -1716,7 +1746,7 @@ once: keep both where you keep passwords. The `$` is part of the name.
 - `ERROR CONFLICT`: a robot named `push` exists in this project. Use its secret, or delete it in
   Harbor's web page (**Projects** → your project → **Robot Accounts**) and run the block again.
 - `ERROR UNAUTHORIZED`: see *Log in as admin*.
-- `FAILED: no answer from Harbor` (Windows): curl's error above it says why; check the address and
+- `FAILED: no answer from Harbor`: curl's error above it says why; check the address and
   that this machine reaches Harbor on port 443.
 
 **In Harbor's web page** the same is a robot account that you then give permissions on your
