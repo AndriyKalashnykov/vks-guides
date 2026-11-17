@@ -1020,8 +1020,12 @@ Keycloak's DNS name.
 KEYCLOAK_HOST="keycloak.example.com"
 KEYCLOAK_CA="$HOME/keycloak-ca.pem"
 
-curl -fsS --connect-timeout 20 --cacert "$KEYCLOAK_CA" "https://${KEYCLOAK_HOST}/realms/master/.well-known/openid-configuration" \
-  | jq -r '"issuer: " + .issuer'
+if J="$(curl -fsS --connect-timeout 20 --cacert "$KEYCLOAK_CA" "https://${KEYCLOAK_HOST}/realms/master/.well-known/openid-configuration")" \
+  && I="$(printf '%s' "$J" | jq -er .issuer)"; then
+  echo "issuer: $I"
+else
+  echo "FAILED: Keycloak did not answer (see the error above)"
+fi
 ```
 
 **Windows (PowerShell):**
@@ -1032,12 +1036,13 @@ $KEYCLOAK_CA = "$HOME\keycloak-ca.pem"
 
 $global:LASTEXITCODE = $null
 $J = curl.exe -fsS --connect-timeout 20 --ssl-no-revoke --cacert $KEYCLOAK_CA "https://$KEYCLOAK_HOST/realms/master/.well-known/openid-configuration"
-if ($LASTEXITCODE -eq 0) { "issuer: $((ConvertFrom-Json ($J | Out-String)).issuer)" }
+if ($LASTEXITCODE -eq 0) { "issuer: $((ConvertFrom-Json ($J | Out-String)).issuer)" } else { "FAILED: Keycloak did not answer (see the error above)" }
 ```
 
 **Expect:** `issuer: https://<KEYCLOAK_HOST>/realms/master`.
 
 **If not:**
+- `FAILED: Keycloak did not answer`: the error above it is one of those below.
 - `Could not resolve host`: the DNS record is missing, or not yet seen by this machine.
 - `SSL certificate problem`: `KEYCLOAK_HOST` is not the name in step 4, or `KEYCLOAK_CA` is not the
   file from step 6.
