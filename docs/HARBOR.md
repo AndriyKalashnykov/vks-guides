@@ -1663,14 +1663,20 @@ else
   ( . "$HARBOR_DIR/secrets.env"
     P="$(printf '%s' "$HARBOR_ADMIN_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
     printf 'user = "admin:%s"\n' "$P" > "$CFG" )
-  jq -nc --arg p "$HARBOR_PROJECT" '{name: "push", duration: 90, level: "project",
+  R="$(jq -nc --arg p "$HARBOR_PROJECT" '{name: "push", duration: 90, level: "project",
       permissions: [{kind: "project", namespace: $p,
         access: [{resource: "repository", action: "push"}, {resource: "repository", action: "pull"},
                  {resource: "artifact", action: "read"}, {resource: "artifact", action: "list"}]}]}' \
     | curl -sS --cacert "$HARBOR_DIR/harbor-ca.crt" --connect-timeout 20 --max-time 30 -K "$CFG" \
-        -X POST -H 'Content-Type: application/json' --data-binary @- "https://${HARBOR_FQDN}/api/v2.0/robots" \
-    | jq -r 'if .errors then "ERROR \(.errors[0].code): \(.errors[0].message)" else "name:   \(.name)\nsecret: \(.secret)" end'
+        -X POST -H 'Content-Type: application/json' --data-binary @- "https://${HARBOR_FQDN}/api/v2.0/robots")"
   rm -f "$CFG"
+  if printf '%s' "$R" | jq -e '.secret' >/dev/null 2>&1; then
+    printf '%s' "$R" | jq -r '"name:   \(.name)\nsecret: \(.secret)"'
+  elif printf '%s' "$R" | jq -e '.errors' >/dev/null 2>&1; then
+    printf '%s' "$R" | jq -r '"ERROR \(.errors[0].code): \(.errors[0].message)"'
+  else
+    printf '%s\n' "FAILED: no answer from Harbor (see the error above)"
+  fi
 fi
 ```
 
@@ -1716,7 +1722,7 @@ once: keep both where you keep passwords. The `$` is part of the name.
 - `ERROR CONFLICT`: a robot named `push` exists in this project. Use its secret, or delete it in
   Harbor's web page (**Projects** → your project → **Robot Accounts**) and run the block again.
 - `ERROR UNAUTHORIZED`: see *Log in as admin*.
-- `FAILED: no answer from Harbor` (Windows): curl's error above it says why; check the address and
+- `FAILED: no answer from Harbor`: curl's error above it says why; check the address and
   that this machine reaches Harbor on port 443.
 
 **In Harbor's web page** the same is a robot account that you then give permissions on your
