@@ -17,15 +17,15 @@ Group page: [Getting started](GET-STARTED.md).
 
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Prerequisites](PREREQS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | part |
+| [Prerequisites](PREREQS.md) | ✅ | ✅ | ✅ | part | ✅ | part |
 | [Install kubectl](KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Install the VCF CLI](VCF.md) | part | part | part | part | ✅ | ✅ |
 | [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | part | part | part | part | part | part |
 | [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | ✅ | ✅ | ✅ | ✅ | part | part |
 | [Use your vSphere Namespace in the web page](USER-LCI.md) | part | — | — | — | — | n/a |
 | [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) | part | part | part | part | part | part |
-| [Kubeconfig files](KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | part |
+| [Kubeconfig files](KUBECONFIG.md) | part | part | part | part | ✅ | part |
 | [Install Helm](HELM.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 n/a: USER-LCI is a web page; WSL has no browser of its own (use the Windows column).
@@ -36,10 +36,10 @@ Group page: [Identity and access](ACCESS-SIGN-IN.md).
 
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Give an identity provider group access to VKS clusters, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) | ✅ | ✅ | ✅ | ✅ | part | — |
+| [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | part | part | part | part | part | part |
+| [Give an identity provider group access to VKS clusters, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) | part | part | part | part | part | — |
 | [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | ✅ | ✅ | ✅ | ✅ | — | — |
-| [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | part | part | part | part | ✅ | part |
 
 ## vSphere Namespaces and VKS clusters
 
@@ -49,8 +49,8 @@ Group page: [vSphere Namespaces and VKS clusters](CLUSTERS.md).
 |---|---|---|---|---|---|---|
 | [Create a vSphere Namespace](NAMESPACE.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install Harbor](HARBOR.md) | part | — | — | — | — | — |
-| [Create a VKS cluster](CLUSTER.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [VKS add-ons](ADDONS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Create a VKS cluster](CLUSTER.md) | part | part | part | part | part | part |
+| [VKS add-ons](ADDONS.md) | part | part | part | part | part | part |
 
 ## Container images
 
@@ -58,7 +58,7 @@ Group page: [Container images](IMAGES.md).
 
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Build a container image, push it to a registry and run it in a VKS cluster](IMAGE.md) | ✅ | ✅ | ✅ | ✅ | — | — |
+| [Build a container image, push it to a registry and run it in a VKS cluster](IMAGE.md) | part | part | part | part | — | — |
 | [Build a container image with docker, push it and run it (short version)](IMAGE-DOCKER.md) | ✅ | ✅ | ✅ | ✅ | n/a | — |
 
 n/a: IMAGE-DOCKER is a docker-on-Linux walkthrough with no PowerShell blocks.
@@ -85,7 +85,7 @@ Group page: [Operations and observability](OPERATE.md).
 
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Headlamp](HEADLAMP.md) | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| [Headlamp](HEADLAMP.md) | part | part | part | part | part | — |
 | [Monitor a VKS cluster](MONITORING.md) | part | part | part | part | — | — |
 | [Send logs to VCF Operations](LOGGING.md) | — | — | — | — | — | — |
 | [Logs and traces in Grafana](OBSERVABILITY.md) | part | part | part | part | — | — |
