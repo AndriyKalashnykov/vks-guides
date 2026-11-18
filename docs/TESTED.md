@@ -39,7 +39,7 @@ Group page: [Identity and access](ACCESS-SIGN-IN.md).
 | [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | part | part | part | part | part | part |
 | [Give an identity provider group access to VKS clusters, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) | ✅ | ✅ | ✅ | ✅ | part | — |
 | [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | ✅ | ✅ | ✅ | ✅ | — | — |
-| [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | part | part | part | part | ✅ | part |
+| [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## vSphere Namespaces and VKS clusters
 
