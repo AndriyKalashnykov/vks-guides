@@ -17,7 +17,7 @@ Group page: [Getting started](GET-STARTED.md).
 
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Prerequisites](PREREQS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | part |
+| [Prerequisites](PREREQS.md) | ✅ | ✅ | part | ✅ | ✅ | part |
 | [Install kubectl](KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | part | part | part | part | part | part |
@@ -36,7 +36,7 @@ Group page: [Identity and access](ACCESS-SIGN-IN.md).
 
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | ✅ | ✅ | ✅ | ✅ | part | part |
+| [Give people and tools access to a VKS cluster](ADMIN-GRANT-ACCESS.md) | part | part | part | part | part | part |
 | [Give an identity provider group access to VKS clusters, through the Supervisor](ADMIN-GRANT-ACCESS-IDP.md) | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | [Run an OIDC identity provider in a VKS cluster](KEYCLOAK-VKS.md) | ✅ | ✅ | ✅ | ✅ | — | — |
 | [OIDC sign-in on one VKS cluster, without the Supervisor](KEYCLOAK.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
