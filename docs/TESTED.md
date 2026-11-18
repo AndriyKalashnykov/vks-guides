@@ -49,7 +49,7 @@ Group page: [vSphere Namespaces and VKS clusters](CLUSTERS.md).
 |---|---|---|---|---|---|---|
 | [Create a vSphere Namespace](NAMESPACE.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install Harbor](HARBOR.md) | part | — | — | — | — | — |
-| [Create a VKS cluster](CLUSTER.md) | ✅ | part | part | part | part | part |
+| [Create a VKS cluster](CLUSTER.md) | part | part | part | part | part | part |
 | [VKS add-ons](ADDONS.md) | part | part | part | part | part | part |
 
 ## Container images
