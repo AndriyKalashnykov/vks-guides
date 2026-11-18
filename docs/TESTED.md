@@ -21,11 +21,11 @@ Group page: [Getting started](GET-STARTED.md).
 | [Install kubectl](KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | part | part | part | part | part | part |
-| [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | ✅ | ✅ | ✅ | ✅ | part | part |
+| [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | part | part | part | part | part | part |
 | [Use your vSphere Namespace in the web page](USER-LCI.md) | part | — | — | — | — | n/a |
 | [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) | part | part | part | part | part | part |
-| [Kubeconfig files](KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | part |
+| [Kubeconfig files](KUBECONFIG.md) | ✅ | ✅ | ✅ | part | ✅ | part |
 | [Install Helm](HELM.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 n/a: USER-LCI is a web page; WSL has no browser of its own (use the Windows column).
