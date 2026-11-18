@@ -641,10 +641,10 @@ step 10. **First run the first block of step 5 again**, so the permissions VCF O
 monitoring uses are not deleted too. If you did [OBSERVABILITY.md](OBSERVABILITY.md#12-uninstall-loki-jaeger-and-the-sample-app-optional), do its step
 12 first: it restarts Grafana in `monitoring`, and Loki, Jaeger and the sample app stay otherwise.
 This block removes the Helm release `prometheus`, the namespace `monitoring` with everything in it,
-then one Service (a network name) the Prometheus Operator keeps in `kube-system`: only once the
-namespace is gone, or the operator puts it back. **It deletes Prometheus's
-data and the Grafana password.** You then have a cluster without this monitoring; the new object
-types the chart added stay, and the next block removes them. Set `VKS_CLUSTER` as in step 1.
+and last one Service (a network name) the Prometheus Operator keeps in `kube-system`: while the
+operator runs, it puts it back. **It deletes Prometheus's data and the Grafana password.** You then
+have a cluster without this monitoring; the new object types the chart added stay, and the next
+block removes them. Set `VKS_CLUSTER` as in step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -1048,9 +1048,9 @@ if ($LASTEXITCODE -eq 0) {
 
 Run this when you no longer want what step 9 installed with ArgoCD. **This deletes Prometheus's
 data and the Grafana password.** It deletes the Application (and with it what ArgoCD installed)
-and the project on the Supervisor, then the namespace `monitoring`, and only after it a Service
-the Prometheus Operator keeps in `kube-system` (while the operator runs, it puts it back). You then have a cluster without this monitoring; the chart's CRDs
-stay; to delete them, see step 8. Set `ARGOCD_NAMESPACE` and `VKS_CLUSTER` as in step 9. If you
+and the project on the Supervisor, then the namespace `monitoring`, and last a Service the
+Prometheus Operator keeps in `kube-system`: while the operator runs, it puts it back. You then
+have a cluster without this monitoring; the chart's CRDs stay; to delete them, see step 8. Set `ARGOCD_NAMESPACE` and `VKS_CLUSTER` as in step 9. If you
 did [OBSERVABILITY.md](OBSERVABILITY.md#12-uninstall-loki-jaeger-and-the-sample-app-optional), do its step 12 first: it restarts Grafana in
 `monitoring`, and Loki, Jaeger and the sample app stay otherwise.
 
