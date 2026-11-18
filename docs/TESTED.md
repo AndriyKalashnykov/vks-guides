@@ -2,7 +2,8 @@
 
 Where each guide was run, by group; each group's page lists its guides and the order to follow.
 
-✅ every block run, "part" some blocks run, — not run. A guide with no blocks: ✅ every step clicked,
+✅ every block run, "part" some blocks run, — not run, n/a the guide does not apply there (the reason is
+under the table). A guide with no blocks: ✅ every step clicked,
 "part" some steps clicked, in Chrome on that OS. A block counts as run when its current text was
 pasted into an interactive shell (Windows: run as a `.ps1` file in PowerShell 5.1) and its output
 matched its **Expect:**.
@@ -21,11 +22,13 @@ Group page: [Getting started](GET-STARTED.md).
 | [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | part | part | part | part | part | part |
 | [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | ✅ | ✅ | ✅ | ✅ | part | part |
-| [Use your vSphere Namespace in the web page](USER-LCI.md) | part | — | — | — | — | — |
+| [Use your vSphere Namespace in the web page](USER-LCI.md) | part | — | — | — | — | n/a |
 | [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) | part | part | part | part | part | part |
 | [Kubeconfig files](KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | part |
 | [Install Helm](HELM.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+n/a: USER-LCI is a web page; WSL has no browser of its own (use the Windows column).
 
 ## Identity and access
 
@@ -56,7 +59,9 @@ Group page: [Container images](IMAGES.md).
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
 | [Build a container image, push it to a registry and run it in a VKS cluster](IMAGE.md) | ✅ | ✅ | ✅ | ✅ | — | — |
-| [Build a container image with docker, push it and run it (short version)](IMAGE-DOCKER.md) | part | — | part | — | — | — |
+| [Build a container image with docker, push it and run it (short version)](IMAGE-DOCKER.md) | part | — | part | — | n/a | — |
+
+n/a: IMAGE-DOCKER is a docker-on-Linux walkthrough with no PowerShell blocks.
 
 ## GitOps and CI/CD
 
