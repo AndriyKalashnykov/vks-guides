@@ -640,10 +640,11 @@ Run this when you no longer want what step 5 installed with Helm; for an install
 step 10. **First run the first block of step 5 again**, so the permissions VCF Operations'
 monitoring uses are not deleted too. If you did [OBSERVABILITY.md](OBSERVABILITY.md#12-uninstall-loki-jaeger-and-the-sample-app-optional), do its step
 12 first: it restarts Grafana in `monitoring`, and Loki, Jaeger and the sample app stay otherwise.
-This block removes the Helm release `prometheus`, one Service (a network name) it leaves in
-`kube-system`, and the namespace `monitoring` with everything in it. **It deletes Prometheus's
-data and the Grafana password.** You then have a cluster without this monitoring; the new object
-types the chart added stay, and the next block removes them. Set `VKS_CLUSTER` as in step 1.
+This block removes the Helm release `prometheus`, the namespace `monitoring` with everything in it,
+and last one Service (a network name) the Prometheus Operator keeps in `kube-system`: while the
+operator runs, it puts it back. **It deletes Prometheus's data and the Grafana password.** You then
+have a cluster without this monitoring; the new object types the chart added stay, and the next
+block removes them. Set `VKS_CLUSTER` as in step 1.
 
 **Linux, macOS, WSL (bash or zsh):**
 
@@ -652,8 +653,8 @@ VKS_CLUSTER="my-vks-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 helm uninstall prometheus --kubeconfig "$VKS_KUBECONFIG" -n monitoring
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n kube-system delete service prometheus-kube-prometheus-kubelet --ignore-not-found
 kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace monitoring --ignore-not-found
+kubectl --kubeconfig "$VKS_KUBECONFIG" -n kube-system delete service prometheus-kube-prometheus-kubelet --ignore-not-found
 ```
 
 **Windows (PowerShell):**
@@ -663,13 +664,13 @@ $VKS_CLUSTER = "my-vks-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 helm uninstall prometheus --kubeconfig $VKS_KUBECONFIG -n monitoring
-kubectl --kubeconfig $VKS_KUBECONFIG -n kube-system delete service prometheus-kube-prometheus-kubelet --ignore-not-found
 kubectl --kubeconfig $VKS_KUBECONFIG delete namespace monitoring --ignore-not-found
+kubectl --kubeconfig $VKS_KUBECONFIG -n kube-system delete service prometheus-kube-prometheus-kubelet --ignore-not-found
 ```
 
-**Expect:** `release "prometheus" uninstalled`, `service "prometheus-kube-prometheus-kubelet"
-deleted` (newer kubectl: `… deleted from kube-system namespace`) and `namespace "monitoring"
-deleted`.
+**Expect:** `release "prometheus" uninstalled`, `namespace "monitoring" deleted` and
+`service "prometheus-kube-prometheus-kubelet" deleted` (newer kubectl: `… deleted from kube-system
+namespace`).
 
 **If not:** `Release not loaded`: it was already uninstalled; the other lines print nothing.
 
@@ -1047,9 +1048,9 @@ if ($LASTEXITCODE -eq 0) {
 
 Run this when you no longer want what step 9 installed with ArgoCD. **This deletes Prometheus's
 data and the Grafana password.** It deletes the Application (and with it what ArgoCD installed)
-and the project on the Supervisor, then a Service the Prometheus Operator left in `kube-system`,
-and the namespace `monitoring`. You then have a cluster without this monitoring; the chart's CRDs
-stay; to delete them, see step 8. Set `ARGOCD_NAMESPACE` and `VKS_CLUSTER` as in step 9. If you
+and the project on the Supervisor, then the namespace `monitoring`, and last a Service the
+Prometheus Operator keeps in `kube-system`: while the operator runs, it puts it back. You then
+have a cluster without this monitoring; the chart's CRDs stay; to delete them, see step 8. Set `ARGOCD_NAMESPACE` and `VKS_CLUSTER` as in step 9. If you
 did [OBSERVABILITY.md](OBSERVABILITY.md#12-uninstall-loki-jaeger-and-the-sample-app-optional), do its step 12 first: it restarts Grafana in
 `monitoring`, and Loki, Jaeger and the sample app stay otherwise.
 
@@ -1064,8 +1065,8 @@ VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 if kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete applications.argoproj.io prometheus --ignore-not-found --timeout=5m \
    && kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$ARGOCD_NAMESPACE" delete appproject monitoring --ignore-not-found; then
-  kubectl --kubeconfig "$VKS_KUBECONFIG" -n kube-system delete service prometheus-kube-prometheus-kubelet --ignore-not-found
   kubectl --kubeconfig "$VKS_KUBECONFIG" delete namespace monitoring --ignore-not-found
+  kubectl --kubeconfig "$VKS_KUBECONFIG" -n kube-system delete service prometheus-kube-prometheus-kubelet --ignore-not-found
 fi
 ```
 
@@ -1082,13 +1083,13 @@ $global:LASTEXITCODE = $null
 kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete applications.argoproj.io prometheus --ignore-not-found --timeout=5m
 if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $ARGOCD_NAMESPACE delete appproject monitoring --ignore-not-found }
 if ($LASTEXITCODE -eq 0) {
-  kubectl --kubeconfig $VKS_KUBECONFIG -n kube-system delete service prometheus-kube-prometheus-kubelet --ignore-not-found
   kubectl --kubeconfig $VKS_KUBECONFIG delete namespace monitoring --ignore-not-found
+  kubectl --kubeconfig $VKS_KUBECONFIG -n kube-system delete service prometheus-kube-prometheus-kubelet --ignore-not-found
 }
 ```
 
 **Expect:** `application.argoproj.io "prometheus" deleted`, `appproject.argoproj.io "monitoring"
-deleted`, `service "prometheus-kube-prometheus-kubelet" deleted` and `namespace "monitoring"
+deleted`, `namespace "monitoring" deleted` and `service "prometheus-kube-prometheus-kubelet"
 deleted`. Newer kubectl adds `from <namespace> namespace` to each `deleted` line but the
 namespace's.
 
