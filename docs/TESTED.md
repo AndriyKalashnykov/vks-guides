@@ -72,7 +72,7 @@ Group page: [GitOps and CI/CD](GITOPS-CICD.md).
 | [ArgoCD](ARGOCD.md) | part | — | — | — | — | — |
 | [Run Nexus](NEXUS.md) | part | part | part | part | part | part |
 | [Run Gitea](GITEA.md) | part | part | part | part | — | part |
-| [Run Tekton](TEKTON.md) | ✅ | ✅ | ✅ | ✅ | — | — |
+| [Run Tekton](TEKTON.md) | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 | [Run GitLab](GITLAB.md) | part | — | — | — | — | — |
 | [CI/CD with Gitea and Tekton](CICD.md) | — | — | — | — | — | — |
 | [CI/CD with GitLab](CICD.md) | — | — | — | — | — | — |
