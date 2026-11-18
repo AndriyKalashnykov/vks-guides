@@ -831,7 +831,7 @@ DOWNLOADED="$HOME/Downloads/${VKS_CLUSTER}-kubeconfig.yaml"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 mkdir -p "$HOME/.kube"
-if [ -e "$VKS_KUBECONFIG" ] \
+if [ -s "$VKS_KUBECONFIG" ] \
    && ! kubectl --kubeconfig "$VKS_KUBECONFIG" config get-contexts -o name 2>/dev/null | grep -qxF -- "${VKS_CLUSTER}-admin@${VKS_CLUSTER}"; then
   echo "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
 elif [ -f "$DOWNLOADED" ] && kubectl --kubeconfig "$DOWNLOADED" config view >/dev/null 2>&1; then
@@ -854,7 +854,7 @@ $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
 New-Item -ItemType Directory -Force "$HOME\.kube" | Out-Null
 $global:LASTEXITCODE = $null
-if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFIG config get-contexts -o name 2>$null) -ccontains "${VKS_CLUSTER}-admin@${VKS_CLUSTER}")) {
+if ((Test-Path $VKS_KUBECONFIG) -and (Get-Item $VKS_KUBECONFIG).Length -gt 0 -and -not (@(kubectl --kubeconfig $VKS_KUBECONFIG config get-contexts -o name 2>$null) -ccontains "${VKS_CLUSTER}-admin@${VKS_CLUSTER}")) {
   "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
 } else {
   if (Test-Path $DOWNLOADED) { kubectl --kubeconfig $DOWNLOADED config view *> $null }
@@ -906,7 +906,7 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
 rm -f "$VKS_KUBECONFIG.new"
-if [ -e "$VKS_KUBECONFIG" ] \
+if [ -s "$VKS_KUBECONFIG" ] \
    && ! kubectl --kubeconfig "$VKS_KUBECONFIG" config get-contexts -o name 2>/dev/null | grep -qxF -- "${VKS_CLUSTER}-admin@${VKS_CLUSTER}"; then
   echo "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
 elif ( umask 077
@@ -933,7 +933,7 @@ $SUPERVISOR_CONTEXT = "supervisor"
 $SUPERVISOR_KUBECONFIG = "$HOME\.kube\${SUPERVISOR_CONTEXT}.kubeconfig"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
 
-if ((Test-Path $VKS_KUBECONFIG) -and -not (@(kubectl --kubeconfig $VKS_KUBECONFIG config get-contexts -o name 2>$null) -ccontains "${VKS_CLUSTER}-admin@${VKS_CLUSTER}")) {
+if ((Test-Path $VKS_KUBECONFIG) -and (Get-Item $VKS_KUBECONFIG).Length -gt 0 -and -not (@(kubectl --kubeconfig $VKS_KUBECONFIG config get-contexts -o name 2>$null) -ccontains "${VKS_CLUSTER}-admin@${VKS_CLUSTER}")) {
   "FAILED: $VKS_KUBECONFIG holds another login, not this cluster's; it is kept"
 } else {
   $global:LASTEXITCODE = $null
