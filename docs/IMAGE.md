@@ -685,7 +685,7 @@ Remove-Variable -ErrorAction SilentlyContinue HARBOR_PULL_SECRET
 </details>
 
 **Expect:** `namespace/harbor-demo created` (or `unchanged`), then `secret/harbor-pull created`
-(or `configured`).
+(run again: `configured` after a new secret, `unchanged` when nothing changed).
 
 **If not:** `FAILED: the namespace … was not made` with `Unauthorized` above it: the login in the
 cluster's kubeconfig has expired; save it again
