@@ -27,7 +27,7 @@ Group page: [Getting started](GET-STARTED.md).
 | [Use your vSphere Namespace in the web page](USER-LCI.md) | part | — | — | — | — | n/a |
 | [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Sign in with your organization's identity provider](USER-IDP-LOGIN.md) | part | part | part | part | part | part |
-| [Kubeconfig files](KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | part |
+| [Kubeconfig files](KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install Helm](HELM.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 n/a: USER-LCI is a web page; WSL has no browser of its own (use the Windows column).
