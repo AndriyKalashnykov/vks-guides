@@ -7,6 +7,8 @@ the text asks for; "part" some of that run; — not run; n/a the guide does not 
 under the table). A guide with no blocks: ✅ every step clicked, "part" some steps clicked, in Chrome on
 that OS. A block counts as run when its current text was pasted into an interactive shell (Windows: run
 as a `.ps1` file in PowerShell 5.1) and its output matched its **Expect:**.
+The WSL column covers the blocks run inside WSL (Ubuntu-24.04, as root); the block that installs WSL
+itself (PREREQS, `wsl --install`) is not run there yet.
 
 On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines.
 Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
@@ -17,7 +19,7 @@ Group page: [Getting started](GET-STARTED.md).
 
 | guide | Ubuntu (bash) | AlmaLinux 10 (bash) | Photon OS 5 (bash) | Arch Linux (bash) | Windows Server 2025 (PowerShell 5.1) | WSL 2 Ubuntu on Windows Server 2025 (bash, as root) |
 |---|---|---|---|---|---|---|
-| [Prerequisites](PREREQS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | part |
+| [Prerequisites](PREREQS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install kubectl](KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | part | part | part | part | part | part |
