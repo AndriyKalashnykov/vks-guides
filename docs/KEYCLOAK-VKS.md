@@ -1657,8 +1657,12 @@ rm -f "$F.new"
 if ( umask 077; mkdir -p "$KEYCLOAK_DIR" && chmod 700 "$KEYCLOAK_DIR" \
        && kubectl --kubeconfig "$VKS_KUBECONFIG" -n keycloak get secret keycloak-admin -o go-template='{{.data.password | base64decode}}' > "$F.new" ) \
    && [ -s "$F.new" ]; then
-  mv "$F.new" "$F"
-  echo "saved: $F, $(wc -c < "$F" | tr -d ' ') characters"
+  if mv -f "$F.new" "$F"; then
+    echo "saved: $F, $(wc -c < "$F" | tr -d ' ') characters"
+  else
+    rm -f "$F.new"
+    echo "FAILED: $F not replaced (see the error above)"
+  fi
 else
   rm -f "$F.new"
   echo "FAILED: no password read (see the error above); $F is as it was"
@@ -1678,7 +1682,8 @@ $KEYCLOAK_DIR = "$HOME\.config\vks-guides\keycloak-${VKS_CLUSTER}"
 $F = "$KEYCLOAK_DIR\admin-password"
 New-Item -ItemType Directory -Force -Path $KEYCLOAK_DIR | Out-Null
 $global:LASTEXITCODE = $null
-icacls $KEYCLOAK_DIR /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)F" | Out-Null
+$ME = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+icacls $KEYCLOAK_DIR /inheritance:r /grant:r "*${ME}:(OI)(CI)F" | Out-Null
 if ($LASTEXITCODE -ne 0) {
   "FAILED: $KEYCLOAK_DIR could not be made private (see the error above); nothing saved"
 } else {
@@ -1687,6 +1692,7 @@ if ($LASTEXITCODE -ne 0) {
   if ($LASTEXITCODE -eq 0 -and $B) {
     try {
       $P = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B))
+      Remove-Item -Force -ErrorAction SilentlyContinue "$F.new"
       [IO.File]::WriteAllText("$F.new", $P)
       Move-Item -Force -ErrorAction Stop "$F.new" $F
       "saved: $F, $($P.Length) characters"
@@ -1704,14 +1710,17 @@ if ($LASTEXITCODE -ne 0) {
 
 </details>
 
-**Expect:** `saved: …/keycloak-my-keycloak-cluster/admin-password, 48 characters`.
+**Expect:** `saved: …/keycloak-my-keycloak-cluster/admin-password, 48 characters` (Windows: `\` between
+the folders).
 
 **If not:**
 - An error from kubectl and `FAILED: no password read`: step 3 makes the Secret `keycloak-admin`;
   check that `VKS_CLUSTER` is Keycloak's cluster.
 - `FAILED: … could not be made private` (Windows): the error from icacls above it says why.
-- Keycloak refuses the saved password: it was changed in the admin console, or Keycloak was
-  reinstalled; run this block again (it reads the Secret).
+- `FAILED: … not replaced`: the error from `mv` above it says why; the old file is as it was.
+- Keycloak refuses the saved password: if it was changed in the admin console, sign in with that
+  password (the Secret keeps the first one, so running this block again does not help); if Keycloak
+  was reinstalled since the file was saved, run this block again.
 
 ![Keycloak's sign-in page for the admin console: Username or email, Password, Sign In](img/keycloak-vks/01-admin-signin.jpg)
 
