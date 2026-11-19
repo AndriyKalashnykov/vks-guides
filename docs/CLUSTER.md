@@ -784,7 +784,9 @@ during the change the cluster has one node more for the control plane and one mo
    ![The YAML pane in edit mode: SAVE and CANCEL, the note that edit mode checks only YAML syntax, and the vmClass value changed to best-effort-medium](img/cluster/23-yaml-edit.png)
 
 3. Click **SAVE**. The vSphere Client checks only that the text is YAML, not that the change
-   works: check it with the block below.
+   works: check it with the block below. If it reports *the object has been modified*, the cluster
+   changed after you clicked the pencil: click the pencil again, make the change again and click
+   **SAVE**.
 
    ![After SAVE: Cluster 'keycloak' is being updated, and The updated YAML was sent to the server](img/cluster/24-yaml-saved.jpg)
 
