@@ -271,9 +271,9 @@ it is not listed under Supervisor Management → Namespaces), which allows only 
 `restricted` Pod Security Standard (Kubernetes' strictest rules for what a container may do), and
 two Secrets (a Secret is a store for passwords and keys inside the cluster) with random passwords:
 one for PostgreSQL and one for Keycloak's first administrator, `admin`. You get the namespace with
-its two passwords; nothing prints a password (step 12 shows `admin`'s). Run again, it keeps a
-Secret that exists: PostgreSQL keeps the password it was first given. Set `VKS_CLUSTER` to the
-name of Keycloak's cluster.
+its two passwords; nothing prints a password (step 12 saves `admin`'s to a file). Run again, it
+keeps a Secret that exists: PostgreSQL keeps the password it was first given. Set `VKS_CLUSTER` to
+the name of Keycloak's cluster.
 
 <details>
 <summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
@@ -1636,40 +1636,88 @@ the person is `keycloak-sv:<user>`, in `keycloak-sv:<group>`.
 ## 12. Open the admin console (optional)
 
 Run this when you want to work in Keycloak's admin console, its web page for administrators at
-`https://<KEYCLOAK_HOST>/admin` (your browser must trust Keycloak's CA, step 8). It prints the
-password of the administrator `admin` from step 3 and changes nothing. You get the password to sign
-in with; clear the terminal after you have signed in. Set `VKS_CLUSTER` to the name of Keycloak's
+`https://<KEYCLOAK_HOST>/admin` (your browser must trust Keycloak's CA, step 8). It saves the
+password of the administrator `admin` from step 3 in the file
+`~/.config/vks-guides/keycloak-<VKS_CLUSTER>/admin-password` (PowerShell:
+`$HOME\.config\vks-guides\keycloak-<VKS_CLUSTER>\admin-password`), which only you can read. It
+prints where it saved it, never the password, and changes nothing in the cluster. Run again, it
+replaces the file with the password in the Secret. Set `VKS_CLUSTER` to the name of Keycloak's
 cluster.
 
-**Linux, macOS, WSL (bash or zsh):**
+<details>
+<summary><b>Linux, macOS, WSL (bash or zsh)</b></summary>
 
 ```sh
 VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
+KEYCLOAK_DIR="$HOME/.config/vks-guides/keycloak-${VKS_CLUSTER}"
 
-kubectl --kubeconfig "$VKS_KUBECONFIG" -n keycloak get secret keycloak-admin -o go-template='admin password: {{.data.password | base64decode}}{{"\n"}}'
+F="$KEYCLOAK_DIR/admin-password"
+rm -f "$F.new"
+if ( umask 077; mkdir -p "$KEYCLOAK_DIR" && chmod 700 "$KEYCLOAK_DIR" \
+       && kubectl --kubeconfig "$VKS_KUBECONFIG" -n keycloak get secret keycloak-admin -o go-template='{{.data.password | base64decode}}' > "$F.new" ) \
+   && [ -s "$F.new" ]; then
+  mv "$F.new" "$F"
+  echo "saved: $F, $(wc -c < "$F" | tr -d ' ') characters"
+else
+  rm -f "$F.new"
+  echo "FAILED: no password read (see the error above); $F is as it was"
+fi
 ```
 
-**Windows (PowerShell):**
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 ```powershell
 $VKS_CLUSTER = "my-keycloak-cluster"
 $VKS_KUBECONFIG = "$HOME\.kube\${VKS_CLUSTER}.kubeconfig"
+$KEYCLOAK_DIR = "$HOME\.config\vks-guides\keycloak-${VKS_CLUSTER}"
 
+$F = "$KEYCLOAK_DIR\admin-password"
+New-Item -ItemType Directory -Force -Path $KEYCLOAK_DIR | Out-Null
 $global:LASTEXITCODE = $null
-$B = kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak get secret keycloak-admin -o 'jsonpath={.data.password}'
-if ($LASTEXITCODE -eq 0 -and $B) { "admin password: $([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B)))" } else { "FAILED: no password read (see the error above)" }
+icacls $KEYCLOAK_DIR /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)F" | Out-Null
+if ($LASTEXITCODE -ne 0) {
+  "FAILED: $KEYCLOAK_DIR could not be made private (see the error above); nothing saved"
+} else {
+  $global:LASTEXITCODE = $null
+  $B = kubectl --kubeconfig $VKS_KUBECONFIG -n keycloak get secret keycloak-admin -o 'jsonpath={.data.password}'
+  if ($LASTEXITCODE -eq 0 -and $B) {
+    try {
+      $P = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($B))
+      [IO.File]::WriteAllText("$F.new", $P)
+      Move-Item -Force -ErrorAction Stop "$F.new" $F
+      "saved: $F, $($P.Length) characters"
+    } catch {
+      Remove-Item -Force -ErrorAction SilentlyContinue "$F.new"
+      "FAILED: $F not saved: $($_.Exception.Message)"
+    }
+    $P = $null
+  } else {
+    "FAILED: no password read (see the error above); $F is as it was"
+  }
+  $B = $null
+}
 ```
 
-**Expect:** `admin password: ` and the password.
+</details>
 
-**If not:** an error from kubectl, or `FAILED: no password read` (Windows): the error says why.
-Step 3 makes the Secret `keycloak-admin`; check that `VKS_CLUSTER` is Keycloak's cluster.
+**Expect:** `saved: …/keycloak-my-keycloak-cluster/admin-password, 48 characters`.
+
+**If not:**
+- An error from kubectl and `FAILED: no password read`: step 3 makes the Secret `keycloak-admin`;
+  check that `VKS_CLUSTER` is Keycloak's cluster.
+- `FAILED: … could not be made private` (Windows): the error from icacls above it says why.
+- Keycloak refuses the saved password: it was changed in the admin console, or Keycloak was
+  reinstalled; run this block again (it reads the Secret).
 
 ![Keycloak's sign-in page for the admin console: Username or email, Password, Sign In](img/keycloak-vks/01-admin-signin.jpg)
 
-Sign in as `admin`. Keycloak marks this first administrator as temporary: for lasting use, create
-your own administrator under **Users** in the realm `master` and give it the role `admin`.
+Open the file in a text editor and copy the password into the sign-in page. Sign in as `admin`.
+Keycloak marks this first administrator as temporary: for lasting use, create your own
+administrator under **Users** in the realm `master` and give it the role `admin`.
 
 ## 13. Use Keycloak for VKS cluster logins
 
