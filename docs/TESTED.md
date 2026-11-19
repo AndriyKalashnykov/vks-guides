@@ -8,7 +8,7 @@ under the table). A guide with no blocks: ✅ every step clicked, "part" some st
 that OS. A block counts as run when its current text was pasted into an interactive shell (Windows: run
 as a `.ps1` file in PowerShell 5.1) and its output matched its **Expect:**.
 The WSL column covers the blocks run inside WSL (Ubuntu-24.04, as root); the block that installs WSL
-itself (PREREQS, `wsl --install`) has not met its **Expect:** on Windows yet, so PREREQS is part there.
+itself (PREREQS, `wsl --install`) has not met its **Expect:** yet, so PREREQS is part in the Windows column.
 
 On VCF 9.1.1 with VKS 3.8.0 (Kubernetes v1.37.1), on amd64 machines.
 Not run with these versions: macOS, Debian, Windows 10 and 11, Arm machines.
