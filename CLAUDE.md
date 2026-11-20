@@ -119,7 +119,9 @@ blocks; there is nothing to build.
   prompt reads the next pasted line as its answer. In a new or changed block, a command that replaces a
   file uses `mv -f` (inside an `if` with a `FAILED: …` arm when a later line prints success or uses the
   file), `command cp` (`cp -f` does not beat a `cp -i` alias; `mv -i -f` takes the last flag) and
-  `rm -f`/`rm -rf` (MEASURED 2026-11-19). Older blocks in other guides are not yet changed.
+  `rm -f`/`rm -rf` (MEASURED 2026-11-19). Older blocks in other guides are not yet changed. The lab's
+  `make walkbox-run-sh` starts each shell with `\unalias -a`, so a walkbox run does not test this: paste
+  the block on this host into `bash -i` and `zsh -i` with the three aliases set, run it twice.
 - A block that builds an image from files or folders it writes sets their mode (files 644, folders 755):
   the engine copies the mode into the image, and Photon OS 5's login shell runs with umask 0027, so
   nginx-unprivileged answered 403 (MEASURED 2026-11-15, CD-OCTOPUS step 2).
