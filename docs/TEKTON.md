@@ -468,8 +468,10 @@ while read -r NAME SUM URL; do
     echo "FAILED: download of $URL"
   elif [ "$( (sha256sum "$TEKTON_DIR/$NAME.new" 2>/dev/null || shasum -a 256 "$TEKTON_DIR/$NAME.new") | cut -d' ' -f1)" != "$SUM" ]; then
     echo "FAILED: checksum mismatch for $URL"
+  elif mv -f "$TEKTON_DIR/$NAME.new" "$TEKTON_DIR/$NAME"; then
+    echo "ok $NAME"
   else
-    mv -f "$TEKTON_DIR/$NAME.new" "$TEKTON_DIR/$NAME" && echo "ok $NAME"
+    echo "FAILED: $TEKTON_DIR/$NAME not replaced (see the mv error above)"
   fi
   rm -f "$TEKTON_DIR/$NAME.new"
 done <<'EOF'
@@ -519,6 +521,8 @@ foreach ($F in $FILES) {
   `release-assets.githubusercontent.com`.
 - `FAILED: checksum mismatch …`: the download arrived damaged, or the release was rebuilt. Do not
   install it; run the block again.
+- `FAILED: … not replaced`: the folder `~/.config/vks-guides/tekton` cannot be written (the error
+  above says why); fix that and run the block again.
 
 Run this after the download, to install Tekton from those files: first Pipelines, which runs
 builds, then Triggers, which starts them from a web request. They go in the namespaces

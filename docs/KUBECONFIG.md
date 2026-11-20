@@ -181,8 +181,10 @@ elif [ -n "$SAME" ]; then
   echo "SAME NAME, DIFFERENT CONTENT IN TWO FILES: $SAME"
 elif mkdir -p "$HOME/.kube" && ( umask 077; KUBECONFIG="$LIST" kubectl config view --flatten > "$KUBE_CONFIG.new" ) \
      && kubectl --kubeconfig "$KUBE_CONFIG.new" config get-contexts; then
-  if [ -f "$KUBE_CONFIG" ]; then command cp -p "$KUBE_CONFIG" "$KUBE_CONFIG.before-merge"; fi
-  if mv -f "$KUBE_CONFIG.new" "$KUBE_CONFIG"; then
+  if [ -f "$KUBE_CONFIG" ] && ! command cp -p "$KUBE_CONFIG" "$KUBE_CONFIG.before-merge"; then
+    rm -f "$KUBE_CONFIG.new"
+    echo "FAILED: $KUBE_CONFIG is as it was (no backup made, see the cp error above)"
+  elif mv -f "$KUBE_CONFIG.new" "$KUBE_CONFIG"; then
     echo "merged into $KUBE_CONFIG"
   else
     rm -f "$KUBE_CONFIG.new"
@@ -253,6 +255,8 @@ context in `FILES`: the nodes, or `Forbidden` for a hand-out without rights to n
   **A new file for a merged cluster** below and run this again.
 - `FAILED: … is as it was (see the mv error above)`: `~/.kube/config` could not be replaced (the
   error says why); fix that and run this again.
+- `FAILED: … is as it was (no backup made, …)`: `~/.kube/config.before-merge` could not be
+  written (a full disk, or a file you cannot replace); nothing was merged. Fix that and run this again.
 - To undo: `mv ~/.kube/config.before-merge ~/.kube/config` (Windows:
   `Move-Item -Force $HOME\.kube\config.before-merge $HOME\.kube\config`); if you had no
   `~/.kube/config` before, delete it instead. A second merge replaces `config.before-merge`.
