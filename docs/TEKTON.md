@@ -469,7 +469,7 @@ while read -r NAME SUM URL; do
   elif [ "$( (sha256sum "$TEKTON_DIR/$NAME.new" 2>/dev/null || shasum -a 256 "$TEKTON_DIR/$NAME.new") | cut -d' ' -f1)" != "$SUM" ]; then
     echo "FAILED: checksum mismatch for $URL"
   else
-    mv "$TEKTON_DIR/$NAME.new" "$TEKTON_DIR/$NAME" && echo "ok $NAME"
+    mv -f "$TEKTON_DIR/$NAME.new" "$TEKTON_DIR/$NAME" && echo "ok $NAME"
   fi
   rm -f "$TEKTON_DIR/$NAME.new"
 done <<'EOF'

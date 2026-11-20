@@ -181,8 +181,13 @@ elif [ -n "$SAME" ]; then
   echo "SAME NAME, DIFFERENT CONTENT IN TWO FILES: $SAME"
 elif mkdir -p "$HOME/.kube" && ( umask 077; KUBECONFIG="$LIST" kubectl config view --flatten > "$KUBE_CONFIG.new" ) \
      && kubectl --kubeconfig "$KUBE_CONFIG.new" config get-contexts; then
-  if [ -f "$KUBE_CONFIG" ]; then cp -p "$KUBE_CONFIG" "$KUBE_CONFIG.before-merge"; fi
-  mv "$KUBE_CONFIG.new" "$KUBE_CONFIG" && echo "merged into $KUBE_CONFIG"
+  if [ -f "$KUBE_CONFIG" ]; then command cp -p "$KUBE_CONFIG" "$KUBE_CONFIG.before-merge"; fi
+  if mv -f "$KUBE_CONFIG.new" "$KUBE_CONFIG"; then
+    echo "merged into $KUBE_CONFIG"
+  else
+    rm -f "$KUBE_CONFIG.new"
+    echo "FAILED: $KUBE_CONFIG is as it was (see the mv error above)"
+  fi
 else
   rm -f "$KUBE_CONFIG.new"
   echo "FAILED: $KUBE_CONFIG is as it was (see the kubectl error above)"
@@ -246,6 +251,8 @@ context in `FILES`: the nodes, or `Forbidden` for a hand-out without rights to n
   own and use it with `--kubeconfig` (renaming the context does not help: its cluster and user keep
   their names). If the entry is an old one already in `~/.kube/config`, delete it there as in
   **A new file for a merged cluster** below and run this again.
+- `FAILED: … is as it was (see the mv error above)`: `~/.kube/config` could not be replaced (the
+  error says why); fix that and run this again.
 - To undo: `mv ~/.kube/config.before-merge ~/.kube/config` (Windows:
   `Move-Item -Force $HOME\.kube\config.before-merge $HOME\.kube\config`); if you had no
   `~/.kube/config` before, delete it instead. A second merge replaces `config.before-merge`.
@@ -387,7 +394,7 @@ context from that list and `SUPERVISOR_CONTEXT` to the name you logged in with, 
 SUPERVISOR_CONTEXT="supervisor"
 MY_CONTEXT="my-old-context"
 
-[ ! -f "$HOME/.kube/config" ] || cp -p "$HOME/.kube/config" "$HOME/.kube/config.before-cleanup"
+[ ! -f "$HOME/.kube/config" ] || command cp -p "$HOME/.kube/config" "$HOME/.kube/config.before-cleanup"
 kubectl config get-contexts -o name
 kubectl config use-context "$MY_CONTEXT" && vcf context delete "$SUPERVISOR_CONTEXT" -y </dev/null
 ```
