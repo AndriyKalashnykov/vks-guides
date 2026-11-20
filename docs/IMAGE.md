@@ -391,12 +391,14 @@ fi
 if [ -z "$ERR" ] && ! grep -q -x '<h1>test-web-apps v1</h1>' "$IMAGE_DIR/new/app/index.html"; then
   ERR="index.html is not the expected page"
 fi
+if [ -z "$ERR" ] && ! { sed "s|^<h1>test-web-apps v1</h1>\$|<h1>test-web-apps v1, from Harbor ($CONTAINER_ENGINE)</h1>|" "$IMAGE_DIR/new/app/index.html" > "$IMAGE_DIR/new/app/index.html.tmp" \
+    && mv -f "$IMAGE_DIR/new/app/index.html.tmp" "$IMAGE_DIR/new/app/index.html"; }; then
+  ERR="index.html could not be changed (see the error above)"
+fi
 if [ -n "$ERR" ]; then
   echo "FAILED: $ERR"
 else
-  sed "s|^<h1>test-web-apps v1</h1>\$|<h1>test-web-apps v1, from Harbor ($CONTAINER_ENGINE)</h1>|" "$IMAGE_DIR/new/app/index.html" > "$IMAGE_DIR/new/app/index.html.tmp" \
-    && mv "$IMAGE_DIR/new/app/index.html.tmp" "$IMAGE_DIR/new/app/index.html" \
-    && chmod 0644 "$IMAGE_DIR/new/app/"* "$IMAGE_DIR/new/k8s/"* \
+  chmod 0644 "$IMAGE_DIR/new/app/"* "$IMAGE_DIR/new/k8s/"* \
     && rm -rf "$IMAGE_DIR/app" "$IMAGE_DIR/k8s" && mv "$IMAGE_DIR/new/app" "$IMAGE_DIR/new/k8s" "$IMAGE_DIR/" && rm -rf "$IMAGE_DIR/new" \
     && "$CONTAINER_ENGINE" build --platform "$IMAGE_PLATFORM" -t "$IMG" "$IMAGE_DIR/app" \
     && echo "built: $IMG"
@@ -447,6 +449,8 @@ BuildKit, as on Photon OS: `Step 1/3 : FROM …`), then
 
 **If not:**
 - `download of … failed`: the machine does not reach `raw.githubusercontent.com`.
+- `FAILED: index.html could not be changed`: `~/.config/vks-guides/image/new/app` could not be
+  written (the error above says why); fix that and run this again.
 - An error pulling `docker.io/nginxinc/nginx-unprivileged`: the machine does not reach Docker
   Hub, or Docker Hub limits your pulls (log in with `podman login docker.io` / `docker login`).
 - `Cannot connect to the Docker daemon` or `permission denied … docker.sock`: see

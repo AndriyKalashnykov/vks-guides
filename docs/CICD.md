@@ -2457,11 +2457,15 @@ case "$GIT_SERVER" in
 esac
 if [ -d "$APP_DIR/.git" ] || git clone -q "$URL" "$APP_DIR"; then
   git -C "$APP_DIR" -c credential.helper= pull -q --ff-only "$URL" main
-  sed 's/test-web-apps v[0-9]*/test-web-apps v2/' "$APP_DIR/index.html" > "$APP_DIR/index.html.new" \
-    && mv "$APP_DIR/index.html.new" "$APP_DIR/index.html"
-  git -C "$APP_DIR" diff --quiet \
-    || git -C "$APP_DIR" -c user.name=cicd -c user.email="$EMAIL" -c commit.gpgsign=false commit -qam "page v2"
-  git -C "$APP_DIR" -c credential.helper= push "$URL" HEAD:main
+  if sed 's/test-web-apps v[0-9]*/test-web-apps v2/' "$APP_DIR/index.html" > "$APP_DIR/index.html.new" \
+     && mv -f "$APP_DIR/index.html.new" "$APP_DIR/index.html"; then
+    git -C "$APP_DIR" diff --quiet \
+      || git -C "$APP_DIR" -c user.name=cicd -c user.email="$EMAIL" -c commit.gpgsign=false commit -qam "page v2"
+    git -C "$APP_DIR" -c credential.helper= push "$URL" HEAD:main
+  else
+    rm -f "$APP_DIR/index.html.new"
+    echo "FAILED: the page in $APP_DIR is as it was (see the error above); nothing pushed"
+  fi
 fi
 ```
 
@@ -2503,6 +2507,8 @@ digest.
   step 6 (or GITLAB.md step 5) again, then run this again.
 - `Everything up-to-date`: the page already said v2; change `v2` to `v3` in the block and run it
   again.
+- `FAILED: the page in … is as it was`: `index.html` could not be replaced (the error above says
+  why); nothing was committed or pushed. Fix that and run this again.
 - With Gitea, no new PipelineRun: see step 7's **If not**.
 - The page still shows v1 but `image:` ends in the new digest: the new pods are still starting;
   run step 5's check again. Pods in `ErrImagePull`: see step 5's **If not**.
