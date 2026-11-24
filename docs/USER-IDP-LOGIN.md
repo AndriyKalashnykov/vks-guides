@@ -169,7 +169,7 @@ CA_FILE="$HOME/.kube/keycloak-ca.pem"
 
 P="$(cmd.exe /c 'echo %USERPROFILE%' </dev/null 2>/dev/null | tr -d '\r')"
 W="$([ -n "$P" ] && wslpath "$P" 2>/dev/null)"
-if [ -n "$W" ] && [ -d "$W" ] && cp "$CA_FILE" "$W/"; then echo "copied to $W"; else echo "FAILED: no Windows home folder found"; fi
+if [ -n "$W" ] && [ -d "$W" ] && command cp "$CA_FILE" "$W/"; then echo "copied to $W"; else echo "FAILED: no Windows home folder found"; fi
 ```
 
 **Windows (PowerShell):** run this so that Edge and Chrome trust the CA. It adds the CA to your

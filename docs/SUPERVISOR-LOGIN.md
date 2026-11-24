@@ -151,7 +151,7 @@ login in step 3 reads as `SUPERVISOR_CA`. Then go on to step 2.
 ```sh
 CA_FILE="$HOME/.kube/vcenter-ca.pem"
 
-mv "$CA_FILE.new" "$CA_FILE" && echo "kept $CA_FILE"
+if mv -f "$CA_FILE.new" "$CA_FILE"; then echo "kept $CA_FILE"; else echo "FAILED: $CA_FILE.new not kept (see the mv error above)"; fi
 ```
 
 **Windows (PowerShell):**
@@ -164,8 +164,8 @@ Move-Item -Force "$CA_FILE.new" $CA_FILE; if ($?) { "kept $CA_FILE" }
 
 **Expect:** `kept …`.
 
-**If not:** an error naming `….pem.new`: there is no file to keep. Run the first block of this step
-again (it ends with `saved as …`).
+**If not:** an error naming `….pem.new` (Linux, macOS, WSL: then `FAILED: … not kept`): there is no
+file to keep. Run the first block of this step again (it ends with `saved as …`).
 
 With a second vCenter, run step 1 again with `CA_FILE` set in both blocks to a file of its own
 (such as `$HOME/.kube/vcenter2-ca.pem`), and use that file as `SUPERVISOR_CA` when you log in to
@@ -913,8 +913,12 @@ elif ( umask 077
      kubectl --kubeconfig "$SUPERVISOR_KUBECONFIG" -n "$VSPHERE_NAMESPACE" get secret "${VKS_CLUSTER}-kubeconfig" \
        -o go-template='{{.data.value | base64decode}}' > "$VKS_KUBECONFIG.new" ) \
    && kubectl --kubeconfig "$VKS_KUBECONFIG.new" config view >/dev/null 2>&1; then
-  mv "$VKS_KUBECONFIG.new" "$VKS_KUBECONFIG"
-  kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes
+  if mv -f "$VKS_KUBECONFIG.new" "$VKS_KUBECONFIG"; then
+    kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes
+  else
+    rm -f "$VKS_KUBECONFIG.new"
+    echo "FAILED: $VKS_KUBECONFIG is as it was (see the mv error above)"
+  fi
 else
   rm -f "$VKS_KUBECONFIG.new"
   echo "FAILED: no kubeconfig read (see the kubectl error above); $VKS_KUBECONFIG is as it was"
