@@ -5,8 +5,8 @@ Where each guide was run, by group; each group's page lists its guides and the o
 ✅ every block run, with each result its **Expect:** names for the guide's path and each "run it again"
 the text asks for; "part" some of that run; — not run; n/a the guide does not apply there (the reason is
 under the table). A guide with no blocks: ✅ every step clicked, "part" some steps clicked, in Chrome on
-that OS. A block counts as run when its current text was pasted into an interactive shell (Windows: run
-as a `.ps1` file in PowerShell 5.1) and its output matched its **Expect:**.
+that OS. A block counts as run when its current text was pasted into an interactive shell (Windows:
+pasted into PowerShell 5.1, or run as a `.ps1` file there) and its output matched its **Expect:**.
 The WSL column covers the blocks run inside WSL (Ubuntu-24.04, as root); the block that installs WSL
 itself (PREREQS, `wsl --install`) has not met its **Expect:** yet, so PREREQS is part in the Windows column.
 
