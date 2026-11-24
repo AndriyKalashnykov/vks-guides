@@ -579,8 +579,8 @@ if ($LASTEXITCODE -eq 0) { kubectl --kubeconfig $SUPERVISOR_KUBECONFIG -n $VSPHE
   for a name that does not exist). Otherwise your SSO user has no role on this namespace, or got
   it after you logged in. Ask a vCenter administrator for the role, then [Log out](#log-out) and
   log in again.
-- `Unauthorized`: the login has ended. Run
-  [Renew the Supervisor login](#renew-the-supervisor-login).
+- `Unauthorized` or `the server has asked for the client to provide credentials`: the login has
+  ended. Run [Renew the Supervisor login](#renew-the-supervisor-login).
 - `No resources found`: the namespace has no VKS cluster yet: [create one](CLUSTER.md).
 
 ### Renew the Supervisor login
@@ -968,7 +968,8 @@ if ((Test-Path $VKS_KUBECONFIG) -and (Get-Item $VKS_KUBECONFIG).Length -gt 0 -an
   `VKS_CLUSTER`, or the cluster is still being created.
 - … under `Forbidden`: your role on the namespace cannot read the kubeconfig; ask for the
   **Namespaces Edit** role, then [Log out](#log-out) and log in again.
-- … under `Unauthorized`: run [Renew the Supervisor login](#renew-the-supervisor-login).
+- … under `Unauthorized` or `the server has asked for the client to provide credentials`: run
+  [Renew the Supervisor login](#renew-the-supervisor-login).
 - `FAILED: … is as it was (see the mv error above)`: `~/.kube/<cluster>.kubeconfig` could not be
   replaced (the error says why); the old file is kept. Fix that and run this again.
 - `error: You must be logged in to the server (Unauthorized)` with no `FAILED:` line: the file the
