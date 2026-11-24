@@ -204,9 +204,12 @@ blocks; there is nothing to build.
   guide-secret-put KIND=<kind>` (stdin, never argv), then `make walkbox-run-sh|walkbox-run-ps
   BLOCK_FILE=<file> SECRET=<kind>` with a composed file: one `# fence: docs/<GUIDE>.md:<line> sha8
   <hex>` line per fence, then the prompt fence's lines and its work fence's lines (nested-vsphere-lab
-  WALKBOX.md). One secret per run, so a block that needs two passwords is split. On Windows the
-  harness rewrites the `Read-Host` line, so that fence does not count for TESTED; `make
-  guide-secret-forget KIND=all` after the series.
+  WALKBOX.md). One secret per run, so a block that needs two passwords is split. On Windows run it
+  with `MODE=paste`: the harness types the guide's `Read-Host` line unchanged, so that fence counts
+  for TESTED (MEASURED 2026-11-24, SUPERVISOR-LOGIN 190/342); the default `-File` mode rewrites that
+  line (it does not count) and refuses any command before it, and `MODE=paste` refuses the token
+  allowances (`TOKEN=…`), so a block that prints a token runs `-File`. `make guide-secret-forget
+  KIND=all` after the series.
 - Coordinate every lab use with the nested-vsphere-lab session (find it with ListAgents, message
   it with SendMessage): announce before installing anything cluster-wide on a VKS cluster (CRDs,
   DaemonSets, host ports) or starting the walkbox, say when the lab is clean, and send it any lab
