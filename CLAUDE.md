@@ -124,6 +124,14 @@ blocks; there is nothing to build.
   the block on this host into `bash -i` and `zsh -i` with the three aliases set, run it twice, and paste
   the old text the same way first: its second run must show the prompt, or the test proves nothing.
   `bash -i` puts `\e[?2004l` before each output line: strip it before matching a line start (#312).
+- Readers' shells may also alias the name of a helper function a block defines (`alias k=kubectl` is on kubernetes.io's
+  kubectl quick reference). The alias is expanded in the definition and in every call: bash defines a `kubectl` function that
+  calls itself and hangs, zsh refuses the paste or, pasted line by line, runs plain `kubectl` without the block's
+  `--kubeconfig`. zsh's global aliases (oh-my-zsh: `H T G L M LL CA NE NUL P`) are expanded in any unquoted word, so
+  `unset T P` leaves a token set (MEASURED 2026-11-25, bash 5.3, zsh 5.9, bash 3.2; reproducer in the lab evidence folder
+  `2026-11-25-alias-fn`). In a new or changed sh block, every function is named `vks_<word>` and no unquoted word outside a
+  heredoc is one of those ten names. `unalias` first, `\k()`, `'k'()` and `function k` do not help. Older blocks are not yet
+  changed; PowerShell is not yet measured.
 - A block that makes a CA certificate a cert-manager CA Issuer signs with makes it an intermediate with: `pathlen:0`,
   `extendedKeyUsage=serverAuth`, and critical name constraints: `permitted;DNS:<zone>`, `permitted;URI:.invalid`,
   `permitted;email:.invalid`, `excluded;IP:` for all of IPv4 and IPv6. The Issuer signs any name it is asked for, so these are
