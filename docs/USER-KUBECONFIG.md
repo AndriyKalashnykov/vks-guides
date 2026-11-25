@@ -59,10 +59,10 @@ to your namespace (for a whole-cluster file, any namespace, for example `default
 KUBECONFIG_FILE="$HOME/.kube/my-vks-cluster-alice-20261110.kubeconfig"
 VKS_CLUSTER_NAMESPACE="team-a"
 
-k() { kubectl --kubeconfig "$KUBECONFIG_FILE" "$@"; }
+vks_k() { kubectl --kubeconfig "$KUBECONFIG_FILE" "$@"; }
 if [ ! -s "$KUBECONFIG_FILE" ]; then
   echo "MISSING: $KUBECONFIG_FILE"
-elif ! VIEW="$(k config view --minify)"; then
+elif ! VIEW="$(vks_k config view --minify)"; then
   echo "FAILED: kubectl cannot read $KUBECONFIG_FILE (see the error above)"
 else
   chmod 600 "$KUBECONFIG_FILE" && ls -l "$KUBECONFIG_FILE"
@@ -81,26 +81,26 @@ else
     if [ "$KIND" = "certificate" ] && ! command -v openssl >/dev/null 2>&1; then
       echo "MISSING: openssl (PREREQS.md): the certificate's end date is not shown"
     elif [ "$KIND" = "certificate" ]; then
-      k config view --minify --raw -o jsonpath='{.users[0].user.client-certificate-data}' | base64 -d | openssl x509 -noout -subject -enddate
+      vks_k config view --minify --raw -o jsonpath='{.users[0].user.client-certificate-data}' | base64 -d | openssl x509 -noout -subject -enddate
     else
-      T="$(k config view --minify --raw -o jsonpath='{.users[0].user.token}')"
-      P="$(printf '%s' "$T" | cut -d. -f2 | tr '_-' '/+')"
-      while [ $(( ${#P} % 4 )) -ne 0 ]; do P="$P="; done
-      EXP="$(printf '%s' "$P" | base64 -d 2>/dev/null | sed -n 's/.*"exp":\([0-9]*\).*/\1/p')"
+      TOKEN="$(vks_k config view --minify --raw -o jsonpath='{.users[0].user.token}')"
+      PAYLOAD="$(printf '%s' "$TOKEN" | cut -d. -f2 | tr '_-' '/+')"
+      while [ $(( ${#PAYLOAD} % 4 )) -ne 0 ]; do PAYLOAD="$PAYLOAD="; done
+      EXP="$(printf '%s' "$PAYLOAD" | base64 -d 2>/dev/null | sed -n 's/.*"exp":\([0-9]*\).*/\1/p')"
       S=""; if [ -n "$EXP" ]; then S=$(( EXP - $(date +%s) )); fi
       if [ -z "$S" ]; then echo "token ends: no end date in the token (ask your administrator)"
       elif [ "$S" -le 0 ]; then echo "token ends: it has ended"
       elif [ "$S" -ge 86400 ]; then N=$(( S / 86400 )); U="days"; if [ "$N" -eq 1 ]; then U="day"; fi; echo "token ends in: $N $U"
       else N=$(( S / 3600 )); U="hours"; if [ "$N" -eq 1 ]; then U="hour"; fi; echo "token ends in: $N $U"; fi
-      unset T P
+      unset TOKEN PAYLOAD
     fi
-    if ! WHO="$(k auth whoami -o jsonpath='{.status.userInfo.username}')"; then
+    if ! WHO="$(vks_k auth whoami -o jsonpath='{.status.userInfo.username}')"; then
       echo "FAILED: kubectl could not ask the cluster who you are (see the error above)"
     else
       echo "acts as: $WHO"
-      echo "create deployments in $VKS_CLUSTER_NAMESPACE: $(k -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments)"
-      echo "list pods in every namespace: $(k auth can-i list pods --all-namespaces)"
-      k -n "$VKS_CLUSTER_NAMESPACE" get pods
+      echo "create deployments in $VKS_CLUSTER_NAMESPACE: $(vks_k -n "$VKS_CLUSTER_NAMESPACE" auth can-i create deployments)"
+      echo "list pods in every namespace: $(vks_k auth can-i list pods --all-namespaces)"
+      vks_k -n "$VKS_CLUSTER_NAMESPACE" get pods
     fi
   fi
 fi
@@ -262,14 +262,14 @@ change and delete in the cluster. Set `KUBECONFIG_FILE` to the saved file.
 KUBECONFIG_FILE="$HOME/.kube/my-vks-cluster-alice-20261110.kubeconfig"
 CHECK_NAMESPACE="access-check"
 
-k() { kubectl --kubeconfig "$KUBECONFIG_FILE" "$@"; }
+vks_k() { kubectl --kubeconfig "$KUBECONFIG_FILE" "$@"; }
 chmod 600 "$KUBECONFIG_FILE"
-echo "acts as: $(k auth whoami -o jsonpath='{.status.userInfo.username}')"
-if k create namespace "$CHECK_NAMESPACE"; then
-  k -n "$CHECK_NAMESPACE" create configmap check --from-literal=step=created --save-config
-  k -n "$CHECK_NAMESPACE" create configmap check --from-literal=step=updated --dry-run=client -o yaml | k apply -f -
-  echo "read back: $(k -n "$CHECK_NAMESPACE" get configmap check -o jsonpath='{.data.step}')"
-  k delete namespace "$CHECK_NAMESPACE"
+echo "acts as: $(vks_k auth whoami -o jsonpath='{.status.userInfo.username}')"
+if vks_k create namespace "$CHECK_NAMESPACE"; then
+  vks_k -n "$CHECK_NAMESPACE" create configmap check --from-literal=step=created --save-config
+  vks_k -n "$CHECK_NAMESPACE" create configmap check --from-literal=step=updated --dry-run=client -o yaml | vks_k apply -f -
+  echo "read back: $(vks_k -n "$CHECK_NAMESPACE" get configmap check -o jsonpath='{.data.step}')"
+  vks_k delete namespace "$CHECK_NAMESPACE"
 else
   echo "STOPPED: $CHECK_NAMESPACE was not made by this run, so it is not deleted (see the error above)"
 fi
@@ -284,16 +284,16 @@ fi
 $KUBECONFIG_FILE = "$HOME\.kube\my-vks-cluster-alice-20261110.kubeconfig"
 $CHECK_NAMESPACE = "access-check"
 
-function k { $input | kubectl --kubeconfig $KUBECONFIG_FILE @args }
+function vks_k { $input | kubectl --kubeconfig $KUBECONFIG_FILE @args }
 icacls $KUBECONFIG_FILE /inheritance:r /grant:r "${env:USERNAME}:F" | Out-Null
-"acts as: $(k auth whoami -o jsonpath='{.status.userInfo.username}')"
+"acts as: $(vks_k auth whoami -o jsonpath='{.status.userInfo.username}')"
 $global:LASTEXITCODE = $null
-k create namespace $CHECK_NAMESPACE
+vks_k create namespace $CHECK_NAMESPACE
 if ($LASTEXITCODE -eq 0) {
-  k -n $CHECK_NAMESPACE create configmap check --from-literal=step=created --save-config
-  k -n $CHECK_NAMESPACE create configmap check --from-literal=step=updated --dry-run=client -o yaml | k apply -f -
-  "read back: $(k -n $CHECK_NAMESPACE get configmap check -o jsonpath='{.data.step}')"
-  k delete namespace $CHECK_NAMESPACE
+  vks_k -n $CHECK_NAMESPACE create configmap check --from-literal=step=created --save-config
+  vks_k -n $CHECK_NAMESPACE create configmap check --from-literal=step=updated --dry-run=client -o yaml | vks_k apply -f -
+  "read back: $(vks_k -n $CHECK_NAMESPACE get configmap check -o jsonpath='{.data.step}')"
+  vks_k delete namespace $CHECK_NAMESPACE
 } else {
   "STOPPED: $CHECK_NAMESPACE was not made by this run, so it is not deleted (see the error above)"
 }
