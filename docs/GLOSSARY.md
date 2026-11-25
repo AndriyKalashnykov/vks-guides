@@ -28,5 +28,9 @@ The words the guides use for where things live, for logins and kubeconfig files,
 | Argo CD gateway | Octopus's small program in a cluster that connects Octopus to an ArgoCD and reports its Applications ([CD-OCTOPUS.md](CD-OCTOPUS.md)) |
 | sync (ArgoCD) | ArgoCD making a cluster match what Git says, for one Application |
 | Application, project (ArgoCD) | an Application is one folder of a Git repository that ArgoCD deploys to one place; a project limits what its Applications may take and where they may deploy ([ARGOCD.md](ARGOCD.md)) |
+| root CA | the certificate authority certificate that clients trust; it signs intermediate CAs, and its key is kept off every server ([CA-ISSUER-NAMESPACE.md](CA-ISSUER-NAMESPACE.md)) |
+| intermediate CA | a certificate authority certificate signed by a root CA, used to sign the certificates of apps; a client that trusts the root CA trusts what the intermediate CA signs |
+| name constraints | a part of a CA certificate that lists the names the certificates it signs may hold; OpenSSL and Go refuse a certificate for any other name (tested), other clients were not tested |
+| Issuer (cert-manager) | a cert-manager object in one namespace that signs the certificates asked for there; an Issuer of kind CA signs with a CA key kept in a Secret; a ClusterIssuer does the same for every namespace |
 
 Back to [README](../README.md).

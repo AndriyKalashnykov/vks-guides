@@ -10,7 +10,9 @@ on your own machine, put only the intermediate CA in the namespace, and create a
 Issuer of kind CA there. The Issuer signs any name it is asked for; the intermediate CA is valid
 only for TLS server certificates for names under your apps' DNS zone, with no IP address, so
 clients refuse a certificate for any other name or use. Clients trust your root CA. The root CA's
-key never goes to the Supervisor. Words: [GLOSSARY.md](GLOSSARY.md).
+key never goes to the Supervisor. The certificates are Secrets in the vSphere Namespace on the
+Supervisor: an app that runs in that namespace reads them; an app inside a VKS cluster does not see
+them. Words: [GLOSSARY.md](GLOSSARY.md).
 
 What you accept with it:
 
@@ -143,8 +145,8 @@ fi
 
 </details>
 
-**Expect:** a line of `-----` while the key is made, then `subject=CN=Example root CA` (your
-`ROOT_CN`) and `notAfter=` with the date it ends.
+**Expect:** a line of `-----` while the key is made, then `subject=CN = Example root CA` or
+`subject=CN=Example root CA` (your `ROOT_CN`; OpenSSL builds differ in the spaces) and `notAfter=` with the date it ends.
 
 **If not:**
 - `FAILED: this openssl is …`: on macOS, install OpenSSL 3 and set `PATH` as in Prerequisites; a
@@ -203,7 +205,7 @@ fi
 </details>
 
 **Expect:** a line of `-----`, `Certificate request self-signature ok`, then
-`subject=CN=my-namespace intermediate CA` twice and `notAfter=` with the date it ends; then
+`subject=CN = my-namespace intermediate CA` (or `subject=CN=…`, without spaces) twice and `notAfter=` with the date it ends; then
 `CA:TRUE, pathlen:0`, `TLS Web Server Authentication`, under `Permitted:` the lines
 `DNS:apps.example.com` (your `APPS_ZONE`), `URI:.invalid` and `email:.invalid`, and under
 `Excluded:` the lines `IP:0.0.0.0/0.0.0.0` and `IP:0:0:0:0:0:0:0:0/0:0:0:0:0:0:0:0`.
@@ -339,9 +341,9 @@ rm -rf "$T"
 
 </details>
 
-**Expect:** two `created` lines, then under `== inside:` `subject=CN=ca-check.apps.example.com`,
-`issuer=CN=my-namespace intermediate CA`, `DNS:ca-check.apps.example.com`, a line ending in
-`inside.crt: OK` and `ca.crt: subject=CN=Example root CA` (your root CA); under `== outside:`
+**Expect:** two `created` lines, then under `== inside:` `subject=CN = ca-check.apps.example.com`,
+`issuer=CN = my-namespace intermediate CA` (some builds print no spaces around `=`), `DNS:ca-check.apps.example.com`, a line ending in
+`inside.crt: OK` and `ca.crt: subject=CN = Example root CA` (your root CA); under `== outside:`
 `DNS:vcenter.example.com` (your `OUTSIDE_NAME`),
 `error 47 at 0 depth lookup: permitted subtree violation`, `verification failed` and the same
 `ca.crt:` line; then four `deleted` lines.
@@ -415,7 +417,7 @@ Do this once on each machine whose browser opens the namespace's apps. Give each
 the lines for your OS in
 [USER-IDP-LOGIN.md step 2](USER-IDP-LOGIN.md#2-trust-the-cas-once-on-the-machine-whose-browser-you-sign-in-with)
 with `CA_FILE` set to that `root.crt` (on Windows after WSL: `$HOME\root.crt`), and on Linux
-`CA_NAME` and `OLD_NAME` both set to the root CA's name: the text after `CN=` that
+`CA_NAME` and `OLD_NAME` both set to the root CA's name: the text after `CN = ` (or `CN=`) that
 `openssl x509 -in root.crt -noout -subject` prints. Clients trust the root CA, not the
 intermediate CA.
 
@@ -464,7 +466,9 @@ fi
 `the Secret namespace-ca holds the intermediate CA of …`.
 
 **If not:**
-- `FAILED: no new intermediate CA …`: make it with step 3, with that `CA_DIR`.
+- `FAILED: no new intermediate CA …`: make it with step 3, with that `CA_DIR`. If this block already
+  printed `the Secret … holds the intermediate CA of …` for that folder, it is done (it deleted the
+  key): go on with the next block.
 - `FAILED: … was not replaced`: read the error above it (`Forbidden`, `Unauthorized`: as in
   step 4). The Issuer still signs with the old intermediate CA.
 
