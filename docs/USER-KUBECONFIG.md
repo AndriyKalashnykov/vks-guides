@@ -221,8 +221,8 @@ kubectl get pods
 **Expect:** `Username` with the name step 2 showed after `acts as:`, then the pods in the file's
 namespace (or `No resources found …`).
 
-**If not:** `connection refused` to `localhost:8080`: the file is not there; check
-`KUBECONFIG_FILE` (`ls ~/.kube`). Any other error: as in step 2.
+**If not:** `connection refused` (Windows: `actively refused it`) to `localhost:8080`: the file is not
+there; check `KUBECONFIG_FILE` (`ls ~/.kube`). Any other error: as in step 2.
 
 ## 4. When it stops working
 
@@ -343,7 +343,7 @@ if (Test-Path $KUBECONFIG_FILE) { "FAILED: still there: $KUBECONFIG_FILE" } else
 ```
 
 **Expect:** `deleted …`. In a terminal where step 3 set `KUBECONFIG`, kubectl then answers
-`connection refused` to `localhost:8080` until you close it.
+`connection refused` (Windows: `actively refused it`) to `localhost:8080` until you close it.
 
 **If not:** `FAILED: still there: …`: the error above says why (often: the file is open in another
 program); close it and run this again.
