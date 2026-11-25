@@ -1905,7 +1905,7 @@ runners:
           mount_path = "/run/deploy"
           read_only = true
 EOF
-gitlab_rails() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>/dev/null | tail -1 | tr -d '\r\n'; }
+vks_rails() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab exec -i gitlab-0 -- gitlab-rails runner - 2>/dev/null | tail -1 | tr -d '\r\n'; }
 if ! command -v jq >/dev/null 2>&1; then
   echo "MISSING: jq (PREREQS.md)"
 elif [ "$( (sha256sum "$CHART" 2>/dev/null || shasum -a 256 "$CHART" 2>/dev/null) | cut -d' ' -f1)" != "$CHART_SHA256" ] || [ ! -s "$GITLAB_DIR/runner-values.yaml" ]; then
@@ -1923,13 +1923,13 @@ metadata:
 EOF
   echo "build runners for cicd/app: $(echo "app = Project.find_by_full_path('cicd/app'); root = User.find_by_username('root')
     rs = Ci::Runner.project_type.tagged_with('vks').to_a; rs.each { |r| r.assign_to(app, root) unless r.projects.include?(app) }
-    puts rs.size" | gitlab_rails)"
-  for T in gitlab-writeback-token deploy-token; do
-    if kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback get secret "$T" -o name >/dev/null 2>&1; then
-      echo "kept: secret $T in gitlab-writeback"
+    puts rs.size" | vks_rails)"
+  for SECRET_NAME in gitlab-writeback-token deploy-token; do
+    if kubectl --kubeconfig "$VKS_KUBECONFIG" -n gitlab-writeback get secret "$SECRET_NAME" -o name >/dev/null 2>&1; then
+      echo "kept: secret $SECRET_NAME in gitlab-writeback"
       continue
     fi
-    if [ "$T" = deploy-token ]; then
+    if [ "$SECRET_NAME" = deploy-token ]; then
       R="deploy = Project.find_by_full_path('cicd/deploy'); root = User.find_by_username('root')
         r = ResourceAccessTokens::CreateService.new(root, deploy, name: 'writeback', scopes: [:write_repository],
           access_level: Gitlab::Access::DEVELOPER, expires_at: 30.days.from_now.to_date).execute
@@ -1942,8 +1942,8 @@ EOF
         print r.payload[:runner].token"
       K=runner-token
     fi
-    printf '%s' "$R" | gitlab_rails \
-      | jq -R --arg n "$T" --arg k "$K" 'if test("^gl[a-z]+-[A-Za-z0-9._-]+$") then
+    printf '%s' "$R" | vks_rails \
+      | jq -R --arg n "$SECRET_NAME" --arg k "$K" 'if test("^gl[a-z]+-[A-Za-z0-9._-]+$") then
           {apiVersion: "v1", kind: "Secret", metadata: {name: $n, namespace: "gitlab-writeback"},
            stringData: ({($k): .} + if $k == "runner-token" then {"runner-registration-token": ""} else {} end)}
           else error("GitLab did not return a token") end' \

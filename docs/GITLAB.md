@@ -63,17 +63,17 @@ WORKERS='!node-role.kubernetes.io/control-plane'
 git --version
 if kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes \
    && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l "$WORKERS" --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory')" \
-   && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory')" \
+   && PODS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory')" \
    && SC="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)" \
    && NS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace -o name)"; then
-  { printf '%s\n' "$P" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
+  { printf '%s\n' "$PODS" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
     function b(v) { if (v ~ /Ki$/) return v * 1024; if (v ~ /Mi$/) return v * 1048576; if (v ~ /Gi$/) return v * 1073741824
       if (v ~ /k$/) return v * 1000; if (v ~ /M$/) return v * 1000000; if (v ~ /G$/) return v * 1000000000; return v + 0 }
     $1 == "P" { n = split($3, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") r[$2] += b(a[i]) }
     $1 == "N" && NF == 3 { printf "%s %d\n", $2, (b($3) - r[$2]) / 1073741824 }' \
-  | while read -r W M; do
+  | while read -r W MEM_FREE; do
       D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "/api/v1/nodes/$W/proxy/stats/summary" </dev/null | jq '.node.runtime.imageFs.availableBytes / 1073741824 | floor')"
-      echo "worker $W: $M GiB memory free, ${D:-?} GiB image disk free"
+      echo "worker $W: $MEM_FREE GiB memory free, ${D:-?} GiB image disk free"
     done
   echo "default storage class: $(printf '%s' "$SC" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | "\(.metadata.name) (\(.volumeBindingMode), reclaim \(.reclaimPolicy))"] | if length == 0 then "NONE" else join(" ") end')"
   echo "gitlab namespace: $(printf '%s\n' "$NS" | grep -cx 'namespace/gitlab')"

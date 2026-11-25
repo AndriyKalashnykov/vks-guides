@@ -151,17 +151,17 @@ VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 SUPERVISOR_CONTEXT="supervisor"
 
-M=""
-for T in vcf kubectl jq; do command -v "$T" >/dev/null 2>&1 || { echo "MISSING: $T (PREREQS.md, KUBECTL.md, VCF.md)"; M=1; }; done
-[ -n "$M" ] || VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
-if [ -n "$M" ]; then
+MISSING=""
+for TOOL in vcf kubectl jq; do command -v "$TOOL" >/dev/null 2>&1 || { echo "MISSING: $TOOL (PREREQS.md, KUBECTL.md, VCF.md)"; MISSING=1; }; done
+[ -n "$MISSING" ] || VCF_USE="$(vcf context use "$SUPERVISOR_CONTEXT" </dev/null 2>&1)"
+if [ -n "$MISSING" ]; then
   echo "STOPPED: install what is MISSING, then run this again"
 elif ! printf '%s\n' "$VCF_USE" | grep -qF "Successfully activated context '${SUPERVISOR_CONTEXT}'"; then
   printf '%s\n' "$VCF_USE"
   echo "FAILED: the VCF CLI is not on context ${SUPERVISOR_CONTEXT}: log in or renew (SUPERVISOR-LOGIN.md), then run this again"
 else
-  if ! L="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -o json)" \
-     || ! N="$(printf '%s' "$L" | jq '[.[]? | select(.addonName == "cert-manager")] | length')" || [ -z "$N" ]; then
+  if ! ADDONS="$(vcf addon install list --cluster-name "$VKS_CLUSTER" -n "$VSPHERE_NAMESPACE" -o json)" \
+     || ! N="$(printf '%s' "$ADDONS" | jq '[.[]? | select(.addonName == "cert-manager")] | length')" || [ -z "$N" ]; then
     echo "FAILED: the VCF CLI or jq (see the error above)"
   elif [ "$N" = 1 ]; then
     echo "cert-manager: already installed"
@@ -282,25 +282,25 @@ the name of Keycloak's cluster.
 VKS_CLUSTER="my-keycloak-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
+vks_kubectl() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
 if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
 else
-  kc create namespace keycloak --dry-run=client -o yaml | kc apply -f - >/dev/null \
-    && kc label namespace keycloak --overwrite pod-security.kubernetes.io/enforce=restricted \
+  vks_kubectl create namespace keycloak --dry-run=client -o yaml | vks_kubectl apply -f - >/dev/null \
+    && vks_kubectl label namespace keycloak --overwrite pod-security.kubernetes.io/enforce=restricted \
          pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
   for S in keycloak-db:keycloak keycloak-admin:admin; do
-    P=
-    if kc -n keycloak get secret "${S%%:*}" >/dev/null 2>&1; then
+    PASSWORD=
+    if vks_kubectl -n keycloak get secret "${S%%:*}" >/dev/null 2>&1; then
       echo "secret ${S%%:*}: exists, kept"
-    elif ! P="$(openssl rand -hex 24)" || [ ${#P} -ne 48 ]; then
+    elif ! PASSWORD="$(openssl rand -hex 24)" || [ ${#PASSWORD} -ne 48 ]; then
       echo "FAILED: no password made for ${S%%:*}: openssl (PREREQS.md)"
     else
       printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: %s\nstringData:\n  username: %s\n  password: %s\n' \
-        "${S%%:*}" "${S#*:}" "$P" | kc -n keycloak create -f -
+        "${S%%:*}" "${S#*:}" "$PASSWORD" | vks_kubectl -n keycloak create -f -
     fi
   done
 fi
-unset P
+unset PASSWORD
 ```
 
 </details>
