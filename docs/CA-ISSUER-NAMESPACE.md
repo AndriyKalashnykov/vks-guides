@@ -482,7 +482,8 @@ SUPERVISOR_KUBECONFIG="$HOME/.kube/${SUPERVISOR_CONTEXT}.kubeconfig"
 cmctl renew --kubeconfig "$SUPERVISOR_KUBECONFIG" --namespace "$VSPHERE_NAMESPACE" --all
 ```
 
-**Expect:** a line for each Certificate of the namespace that its renewal was triggered.
+**Expect:** one line for each Certificate of the namespace, for example
+`Manually triggered issuance of Certificate my-namespace/my-app`. Run step 5 again: it checks with the new intermediate CA.
 
 **If not:**
 - a `not found` line for `cmctl`: install it
