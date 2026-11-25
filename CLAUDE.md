@@ -121,7 +121,9 @@ blocks; there is nothing to build.
   file), `command cp` (`cp -f` does not beat a `cp -i` alias; `mv -i -f` takes the last flag) and
   `rm -f`/`rm -rf` (MEASURED 2026-11-19). Older blocks in other guides are not yet changed. The lab's
   `make walkbox-run-sh` starts each shell with `\unalias -a`, so a walkbox run does not test this: paste
-  the block on this host into `bash -i` and `zsh -i` with the three aliases set, run it twice.
+  the block on this host into `bash -i` and `zsh -i` with the three aliases set, run it twice, and paste
+  the old text the same way first: its second run must show the prompt, or the test proves nothing.
+  `bash -i` puts `\e[?2004l` before each output line: strip it before matching a line start (#312).
 - A block that builds an image from files or folders it writes sets their mode (files 644, folders 755):
   the engine copies the mode into the image, and Photon OS 5's login shell runs with umask 0027, so
   nginx-unprivileged answered 403 (MEASURED 2026-11-15, CD-OCTOPUS step 2).
