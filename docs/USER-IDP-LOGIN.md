@@ -169,7 +169,13 @@ CA_FILE="$HOME/.kube/keycloak-ca.pem"
 
 P="$(cmd.exe /c 'echo %USERPROFILE%' </dev/null 2>/dev/null | tr -d '\r')"
 W="$([ -n "$P" ] && wslpath "$P" 2>/dev/null)"
-if [ -n "$W" ] && [ -d "$W" ] && cp "$CA_FILE" "$W/"; then echo "copied to $W"; else echo "FAILED: no Windows home folder found"; fi
+if [ -z "$W" ] || [ ! -d "$W" ]; then
+  echo "FAILED: no Windows home folder found"
+elif command cp "$CA_FILE" "$W/"; then
+  echo "copied to $W"
+else
+  echo "FAILED: $CA_FILE not copied to $W (see the cp error above)"
+fi
 ```
 
 **Windows (PowerShell):** run this so that Edge and Chrome trust the CA. It adds the CA to your
@@ -197,6 +203,8 @@ first).
   (for example under another Supervisor's address); nothing to do.
 - `FAILED: no Windows home folder found` (WSL): copy the CA file to Windows by hand, for example
   with Explorer at `\\wsl$`.
+- `FAILED: … not copied to …` (WSL): the cp error above says why (no CA file at `CA_FILE`, or the
+  Windows folder refused it); fix that and run the block again.
 - `UI is not allowed in this operation` (Windows): this PowerShell has no desktop to ask on (for
   example over SSH); run the line in Windows PowerShell on the desktop.
 - No vCenter CA file (part A): ask your administrator for it. No CA file for the identity provider:
