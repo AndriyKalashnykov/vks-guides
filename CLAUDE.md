@@ -125,22 +125,23 @@ blocks; there is nothing to build.
   the old text the same way first: its second run must show the prompt, or the test proves nothing.
   `bash -i` puts `\e[?2004l` before each output line: strip it before matching a line start (#312).
 - Readers' shells may also alias the name of a helper function a block defines (`alias k=kubectl` is on kubernetes.io's
-  kubectl quick reference; oh-my-zsh sets `alias h=history`). The alias is expanded in the definition and in every call:
-  bash defines a `kubectl` function that calls itself and hangs, zsh refuses the paste or, pasted line by line, runs
-  plain `kubectl` without the block's `--kubeconfig` (OCTOPUS step 7's old `h()`: zsh printed `defining function based
-  on alias 'h'` and its `h` calls ran `history`). zsh's global aliases (oh-my-zsh: `H T G L M LL CA NE NUL P`) are
-  expanded in a command's argument words, so `unset T P` leaves a token or a password set, `for T in` is a parse error
-  and `read -r W M C` pipes into `most`. PowerShell runs an alias before a function of the same name
-  (about_Command_Precedence), so `Set-Alias k kubectl` makes every `k` plain `kubectl` (MEASURED 2026-11-25, bash 5.3,
-  zsh 5.9, bash 3.2, Windows PowerShell 5.1 and pwsh 7.4; reproducers in the lab evidence folders `2026-11-25-alias-fn`
-  and `2026-11-25-g8-positions`). In a new or changed block, sh or PowerShell, every function is named `vks_<word>`, and
-  in sh no unquoted word is one of those ten names, including inside `$( )` and inside double quotes: zsh reads a `$( )`
-  only when it runs it, so `"$(printf %s M)"` runs `printf %s | most`. `function k` and a quoted name still leave every
-  call alias-expanded; `unalias k` first fails in a zsh paste and removes the reader's alias. Older blocks are not yet
-  changed, besides the sh blocks of KEYCLOAK-VKS steps 2 and 3, NEXUS steps 1 and 3, OCTOPUS steps 1, 3, 6 and 7, GITLAB
-  step 1 and CICD step 6 (With GitLab). The walkbox runner starts each shell with `\unalias -a`, so a walkbox run does
-  not test this: paste the block into `bash -i` and `zsh -i` with `alias k=kubectl` and the `alias -g` names set, the
-  old text first.
+  kubectl quick reference; oh-my-zsh sets `alias h=history`, its helm plugin `alias h=helm`). The alias is expanded in
+  the definition and in every call: bash defines a `kubectl` function that calls itself and hangs, zsh refuses the paste
+  or, pasted line by line, runs plain `kubectl` without the block's `--kubeconfig` (OCTOPUS step 7's old `h()`: zsh
+  refused it as a function based on alias h, its `h` calls ran `history`, and the block printed `Octopus is ready` with
+  helm never run). zsh's global aliases (oh-my-zsh: `H T G L M LL CA NE NUL P`) are expanded in a command's argument
+  words, so `unset T P` leaves a token or a password set, `for T in` is a parse error and `read -r W M C` pipes into
+  `most`. PowerShell runs an alias before a function of the same name (about_Command_Precedence), so
+  `Set-Alias k kubectl` makes every `k` plain `kubectl` (MEASURED 2026-11-25, bash 5.3, zsh 5.9, bash 3.2, Windows
+  PowerShell 5.1 and pwsh 7.4; reproducers in the lab evidence folders `2026-11-25-alias-fn` and
+  `2026-11-25-g8-positions`). In a new or changed block, sh or PowerShell, every function is named `vks_<word>`, and in
+  sh no unquoted word is one of those ten names, including inside a `$( )`, also one within double quotes (a plain
+  double-quoted word is safe): zsh reads a `$( )` only when it runs it, so `"$(printf %s M)"` runs `printf %s | most`.
+  `function k` and a quoted name still leave every call alias-expanded; `unalias k` first fails in a zsh paste and
+  removes the reader's alias. Older blocks are not yet changed, besides the sh blocks of KEYCLOAK-VKS steps 2 and 3,
+  NEXUS steps 1 and 3, OCTOPUS steps 1, 3 (its second block), 6 and 7, GITLAB step 1 and CICD step 6 (With GitLab). The
+  walkbox runner starts each shell with `\unalias -a`, so a walkbox run does not test this: paste the block into
+  `bash -i` and `zsh -i` with `alias k=kubectl` and the `alias -g` names set, the old text first.
 - A block that makes a CA certificate a cert-manager CA Issuer signs with makes it an intermediate with: `pathlen:0`,
   `extendedKeyUsage=serverAuth`, and critical name constraints: `permitted;DNS:<zone>`, `permitted;URI:.invalid`,
   `permitted;email:.invalid`, `excluded;IP:` for all of IPv4 and IPv6. The Issuer signs any name it is asked for, so these are
