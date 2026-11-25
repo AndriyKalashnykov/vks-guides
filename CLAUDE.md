@@ -127,11 +127,15 @@ blocks; there is nothing to build.
 - Readers' shells may also alias the name of a helper function a block defines (`alias k=kubectl` is on kubernetes.io's
   kubectl quick reference). The alias is expanded in the definition and in every call: bash defines a `kubectl` function that
   calls itself and hangs, zsh refuses the paste or, pasted line by line, runs plain `kubectl` without the block's
-  `--kubeconfig`. zsh's global aliases (oh-my-zsh: `H T G L M LL CA NE NUL P`) are expanded in any unquoted word, so
-  `unset T P` leaves a token set (MEASURED 2026-11-25, bash 5.3, zsh 5.9, bash 3.2; reproducer in the lab evidence folder
-  `2026-11-25-alias-fn`). In a new or changed sh block, every function is named `vks_<word>` and no unquoted word outside a
-  heredoc is one of those ten names. `unalias` first, `\k()`, `'k'()` and `function k` do not help. Older blocks are not yet
-  changed; PowerShell is not yet measured.
+  `--kubeconfig`. zsh's global aliases (oh-my-zsh: `H T G L M LL CA NE NUL P`) are expanded in a command's argument words,
+  so `unset T P` leaves a token or a password set. PowerShell runs an alias before a function of the same name
+  (about_Command_Precedence), so `Set-Alias k kubectl` makes every `k` plain `kubectl` (MEASURED 2026-11-25, bash 5.3,
+  zsh 5.9, bash 3.2, Windows PowerShell 5.1 and pwsh 7.4; reproducers in the lab evidence folder `2026-11-25-alias-fn`). In a new or changed block,
+  sh or PowerShell, every function is named `vks_<word>`, and in sh no unquoted argument word is one of those ten names.
+  `function k` and a quoted name still leave every call alias-expanded; `unalias k` first fails in a zsh paste and removes
+  the reader's alias. Older blocks are not yet changed. The walkbox runner starts each shell with `\unalias -a`, so a walkbox
+  run does not test this: paste the block into `bash -i` and `zsh -i` with `alias k=kubectl` and the `alias -g` names set,
+  the old text first.
 - A block that makes a CA certificate a cert-manager CA Issuer signs with makes it an intermediate with: `pathlen:0`,
   `extendedKeyUsage=serverAuth`, and critical name constraints: `permitted;DNS:<zone>`, `permitted;URI:.invalid`,
   `permitted;email:.invalid`, `excluded;IP:` for all of IPv4 and IPv6. The Issuer signs any name it is asked for, so these are

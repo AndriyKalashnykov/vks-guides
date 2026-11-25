@@ -284,16 +284,16 @@ fi
 $KUBECONFIG_FILE = "$HOME\.kube\my-vks-cluster-alice-20261110.kubeconfig"
 $CHECK_NAMESPACE = "access-check"
 
-function k { $input | kubectl --kubeconfig $KUBECONFIG_FILE @args }
+function vks_k { $input | kubectl --kubeconfig $KUBECONFIG_FILE @args }
 icacls $KUBECONFIG_FILE /inheritance:r /grant:r "${env:USERNAME}:F" | Out-Null
-"acts as: $(k auth whoami -o jsonpath='{.status.userInfo.username}')"
+"acts as: $(vks_k auth whoami -o jsonpath='{.status.userInfo.username}')"
 $global:LASTEXITCODE = $null
-k create namespace $CHECK_NAMESPACE
+vks_k create namespace $CHECK_NAMESPACE
 if ($LASTEXITCODE -eq 0) {
-  k -n $CHECK_NAMESPACE create configmap check --from-literal=step=created --save-config
-  k -n $CHECK_NAMESPACE create configmap check --from-literal=step=updated --dry-run=client -o yaml | k apply -f -
-  "read back: $(k -n $CHECK_NAMESPACE get configmap check -o jsonpath='{.data.step}')"
-  k delete namespace $CHECK_NAMESPACE
+  vks_k -n $CHECK_NAMESPACE create configmap check --from-literal=step=created --save-config
+  vks_k -n $CHECK_NAMESPACE create configmap check --from-literal=step=updated --dry-run=client -o yaml | vks_k apply -f -
+  "read back: $(vks_k -n $CHECK_NAMESPACE get configmap check -o jsonpath='{.data.step}')"
+  vks_k delete namespace $CHECK_NAMESPACE
 } else {
   "STOPPED: $CHECK_NAMESPACE was not made by this run, so it is not deleted (see the error above)"
 }
