@@ -98,10 +98,10 @@ elif ! command -v jq >/dev/null 2>&1; then echo "MISSING: jq (PREREQS.md)"
 elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"
 elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide \
      && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l "$WORKERS" --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu')" \
-     && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu')" \
+     && PODS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu')" \
      && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
   [ -n "$N" ] || echo "NO WORKER: this cluster has no worker node"
-  { printf '%s\n' "$P" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
+  { printf '%s\n' "$PODS" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
     function b(v) { if (v ~ /Ki$/) return v * 1024; if (v ~ /Mi$/) return v * 1048576; if (v ~ /Gi$/) return v * 1073741824
       if (v ~ /k$/) return v * 1000; if (v ~ /M$/) return v * 1000000; if (v ~ /G$/) return v * 1000000000; return v + 0 }
     function c(v) { if (v ~ /m$/) return v / 1000; return v + 0 }
@@ -109,9 +109,9 @@ elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide \
                 n = split($4, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") r[$3] += b(a[i])
                 n = split($5, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") q[$3] += c(a[i]) }
     $1 == "N" && NF == 4 { printf "%s %.1f %.2f\n", $2, (b($3) - r[$2]) / 1073741824, c($4) - q[$2] }' \
-  | while read -r W M C; do
+  | while read -r W MEM_FREE C; do
       D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "/api/v1/nodes/$W/proxy/stats/summary" </dev/null | jq '.node.runtime.imageFs.availableBytes / 1073741824 | floor')"
-      echo "worker $W: $M GiB memory free, $C CPU free, ${D:-?} GiB image disk free"
+      echo "worker $W: $MEM_FREE GiB memory free, $C CPU free, ${D:-?} GiB image disk free"
     done
   echo "default storage class: $(printf '%s' "$J" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | .metadata.name] | if length == 0 then "NONE" else join(" ") end')"
   kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace nexus 2>/dev/null && echo "NOTE: namespace nexus exists already"
@@ -208,23 +208,23 @@ Set `VKS_CLUSTER` to Nexus's cluster's name.
 VKS_CLUSTER="my-nexus-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 
-kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
+vks_kubectl() { kubectl --kubeconfig "$VKS_KUBECONFIG" "$@"; }
 if ! command -v kubectl >/dev/null 2>&1; then echo "MISSING: kubectl (KUBECTL.md)"
 else
-  kc create namespace nexus --dry-run=client -o yaml | kc apply -f - >/dev/null \
-    && kc label namespace nexus --overwrite pod-security.kubernetes.io/enforce=restricted \
+  vks_kubectl create namespace nexus --dry-run=client -o yaml | vks_kubectl apply -f - >/dev/null \
+    && vks_kubectl label namespace nexus --overwrite pod-security.kubernetes.io/enforce=restricted \
          pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted
-  P=
-  if kc -n nexus get secret nexus-db >/dev/null 2>&1; then
+  DB_PASSWORD=
+  if vks_kubectl -n nexus get secret nexus-db >/dev/null 2>&1; then
     echo "secret nexus-db: exists, kept"
-  elif ! P="$(openssl rand -hex 24)" || [ ${#P} -ne 48 ]; then
+  elif ! DB_PASSWORD="$(openssl rand -hex 24)" || [ ${#DB_PASSWORD} -ne 48 ]; then
     echo "FAILED: no password made: openssl (PREREQS.md)"
   else
-    printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: nexus-db\nstringData:\n  username: nexus\n  password: %s\n' "$P" \
-      | kc -n nexus create -f -
+    printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: nexus-db\nstringData:\n  username: nexus\n  password: %s\n' "$DB_PASSWORD" \
+      | vks_kubectl -n nexus create -f -
   fi
 fi
-unset P
+unset DB_PASSWORD
 ```
 
 </details>

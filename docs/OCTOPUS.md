@@ -106,10 +106,10 @@ elif ! command -v helm >/dev/null 2>&1; then echo "MISSING: helm (HELM.md)"
 elif [ ! -s "$VKS_KUBECONFIG" ]; then echo "MISSING: $VKS_KUBECONFIG (SUPERVISOR-LOGIN.md)"
 elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide \
      && N="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -l "$WORKERS" --no-headers -o 'custom-columns=NAME:.metadata.name,MEM:.status.allocatable.memory,CPU:.status.allocatable.cpu')" \
-     && P="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu')" \
+     && PODS="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get pods -A --field-selector=status.phase!=Succeeded,status.phase!=Failed --no-headers -o 'custom-columns=NS:.metadata.namespace,NODE:.spec.nodeName,MEM:.spec.containers[*].resources.requests.memory,CPU:.spec.containers[*].resources.requests.cpu')" \
      && J="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get storageclass -o json)"; then
   [ -n "$N" ] || echo "NO WORKER: this cluster has no worker node"
-  { printf '%s\n' "$P" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
+  { printf '%s\n' "$PODS" | sed 's/^/P /'; printf '%s\n' "$N" | sed 's/^/N /'; } | awk '
     function b(v) { if (v ~ /Ki$/) return v * 1024; if (v ~ /Mi$/) return v * 1048576; if (v ~ /Gi$/) return v * 1073741824
       if (v ~ /k$/) return v * 1000; if (v ~ /M$/) return v * 1000000; if (v ~ /G$/) return v * 1000000000; return v + 0 }
     function c(v) { if (v ~ /m$/) return v / 1000; return v + 0 }
@@ -117,9 +117,9 @@ elif kubectl --kubeconfig "$VKS_KUBECONFIG" get nodes -o wide \
                 n = split($4, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") r[$3] += b(a[i])
                 n = split($5, a, ","); for (i = 1; i <= n; i++) if (a[i] != "<none>") q[$3] += c(a[i]) }
     $1 == "N" && NF == 4 { printf "%s %.1f %.2f\n", $2, (b($3) - r[$2]) / 1073741824, c($4) - q[$2] }' \
-  | while read -r W M C; do
+  | while read -r W MEM_FREE C; do
       D="$(kubectl --kubeconfig "$VKS_KUBECONFIG" get --raw "/api/v1/nodes/$W/proxy/stats/summary" </dev/null | jq '.node.runtime.imageFs.availableBytes / 1073741824 | floor')"
-      echo "worker $W: $M GiB memory free, $C CPU free, ${D:-?} GiB image disk free"
+      echo "worker $W: $MEM_FREE GiB memory free, $C CPU free, ${D:-?} GiB image disk free"
     done
   echo "default storage class: $(printf '%s' "$J" | jq -r '[.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | .metadata.name] | if length == 0 then "NONE" else join(" ") end')"
   kubectl --kubeconfig "$VKS_KUBECONFIG" get namespace octopus 2>/dev/null && echo "NOTE: namespace octopus exists already"
@@ -233,9 +233,9 @@ VKS_CLUSTER="my-octopus-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 OCTOPUS_LICENSE_FILE="$HOME/octopus-license.xml"
 
-kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus "$@"; }
-mk() { if kc get secret "$1" >/dev/null 2>&1; then echo "secret $1: exists, kept"; else kc create secret generic "$1" --from-file="$2=/dev/stdin" >/dev/null && echo "secret $1: created"; fi; }
-pw() { printf 'A%sz' "$(openssl rand -hex 16)"; }
+vks_kubectl() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus "$@"; }
+vks_secret() { if vks_kubectl get secret "$1" >/dev/null 2>&1; then echo "secret $1: exists, kept"; else vks_kubectl create secret generic "$1" --from-file="$2=/dev/stdin" >/dev/null && echo "secret $1: created"; fi; }
+vks_password() { printf 'A%sz' "$(openssl rand -hex 16)"; }
 if ! command -v openssl >/dev/null 2>&1; then
   echo "MISSING: openssl (PREREQS.md)"
 elif [ -z "${OCTOPUS_ADMIN_PASSWORD:-}" ]; then
@@ -249,22 +249,22 @@ elif ! kubectl --kubeconfig "$VKS_KUBECONFIG" create namespace octopus --dry-run
        pod-security.kubernetes.io/warn=restricted; then
   echo "FAILED: no namespace octopus (see the error above)"
 else
-  pw | mk sql-sa password
-  pw | mk sql-octopus password
-  openssl rand -base64 16 | tr -d '\n' | mk octopus-masterkey secret
-  printf '%s' admin | mk octopus-adminusername secret
-  printf '%s' "$OCTOPUS_ADMIN_PASSWORD" | mk octopus-adminpassword secret
-  base64 < "$OCTOPUS_LICENSE_FILE" | tr -d '\n' | mk octopus-licensekey secret
-  if kc get secret octopus-connectionstring >/dev/null 2>&1; then
+  vks_password | vks_secret sql-sa password
+  vks_password | vks_secret sql-octopus password
+  openssl rand -base64 16 | tr -d '\n' | vks_secret octopus-masterkey secret
+  printf '%s' admin | vks_secret octopus-adminusername secret
+  printf '%s' "$OCTOPUS_ADMIN_PASSWORD" | vks_secret octopus-adminpassword secret
+  base64 < "$OCTOPUS_LICENSE_FILE" | tr -d '\n' | vks_secret octopus-licensekey secret
+  if vks_kubectl get secret octopus-connectionstring >/dev/null 2>&1; then
     echo "secret octopus-connectionstring: exists, kept"
-  elif P="$(kc get secret sql-octopus -o jsonpath='{.data.password}' | base64 -d)" && [ -n "$P" ]; then
-    printf 'Server=sql;Initial Catalog=OctopusDeploy;Persist Security Info=False;User ID=octopus;Password=%s;Encrypt=True;Connection Timeout=30;' "$P" \
-      | mk octopus-connectionstring secret
+  elif SQL_PASSWORD="$(vks_kubectl get secret sql-octopus -o jsonpath='{.data.password}' | base64 -d)" && [ -n "$SQL_PASSWORD" ]; then
+    printf 'Server=sql;Initial Catalog=OctopusDeploy;Persist Security Info=False;User ID=octopus;Password=%s;Encrypt=True;Connection Timeout=30;' "$SQL_PASSWORD" \
+      | vks_secret octopus-connectionstring secret
   else
     echo "FAILED: no secret sql-octopus (see the error above)"
   fi
 fi
-unset P OCTOPUS_ADMIN_PASSWORD
+unset SQL_PASSWORD OCTOPUS_ADMIN_PASSWORD
 ```
 
 </details>
@@ -631,9 +631,9 @@ VKS_CLUSTER="my-octopus-cluster"
 VKS_KUBECONFIG="$HOME/.kube/${VKS_CLUSTER}.kubeconfig"
 SQL_IMAGE="mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-22.04@sha256:6972fb831759433def6a34e107fa32a85230bff5af8014c6263fe4633ea9cc0f"
 
-kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus "$@"; }
-sq() { kc exec -i sql-0 -- sh -c 'SQLCMDPASSWORD="$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -h -1 -W'; }
-cat <<EOF | kc apply -f -
+vks_kubectl() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus "$@"; }
+vks_sqlcmd() { vks_kubectl exec -i sql-0 -- sh -c 'SQLCMDPASSWORD="$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -h -1 -W'; }
+cat <<EOF | vks_kubectl apply -f -
 apiVersion: v1
 kind: Service
 metadata:
@@ -722,21 +722,21 @@ spec:
             storage: 10Gi
 EOF
 V=""
-if kc rollout status statefulset/sql --timeout=10m; then
+if vks_kubectl rollout status statefulset/sql --timeout=10m; then
   for i in $(seq 30); do
-    V="$(printf "SET NOCOUNT ON;\nSELECT CONVERT(varchar(60), SERVERPROPERTY('Edition')) + ' ' + CONVERT(varchar(30), SERVERPROPERTY('ProductVersion'));\nGO\n" | sq 2>/dev/null)" && break
+    V="$(printf "SET NOCOUNT ON;\nSELECT CONVERT(varchar(60), SERVERPROPERTY('Edition')) + ' ' + CONVERT(varchar(30), SERVERPROPERTY('ProductVersion'));\nGO\n" | vks_sqlcmd 2>/dev/null)" && break
     sleep 5
   done
 fi
 if [ -z "$V" ]; then
   echo "FAILED: SQL Server does not accept logins (see kubectl --kubeconfig '$VKS_KUBECONFIG' -n octopus describe pod sql-0 and its logs)"
-elif ! P="$(kc get secret sql-octopus -o jsonpath='{.data.password}' | base64 -d)" || [ -z "$P" ]; then
+elif ! SQL_PASSWORD="$(vks_kubectl get secret sql-octopus -o jsonpath='{.data.password}' | base64 -d)" || [ -z "$SQL_PASSWORD" ]; then
   echo "FAILED: no secret sql-octopus (step 3)"
 else
   echo "SQL Server: $V"
-  printf "SET NOCOUNT ON;\nIF DB_ID('OctopusDeploy') IS NULL CREATE DATABASE OctopusDeploy;\nIF SUSER_ID('octopus') IS NULL CREATE LOGIN octopus WITH PASSWORD = '%s';\nALTER AUTHORIZATION ON DATABASE::OctopusDeploy TO octopus;\nSELECT 'database owner: ' + SUSER_SNAME(owner_sid) FROM sys.databases WHERE name = 'OctopusDeploy';\nGO\n" "$P" | sq
+  printf "SET NOCOUNT ON;\nIF DB_ID('OctopusDeploy') IS NULL CREATE DATABASE OctopusDeploy;\nIF SUSER_ID('octopus') IS NULL CREATE LOGIN octopus WITH PASSWORD = '%s';\nALTER AUTHORIZATION ON DATABASE::OctopusDeploy TO octopus;\nSELECT 'database owner: ' + SUSER_SNAME(owner_sid) FROM sys.databases WHERE name = 'OctopusDeploy';\nGO\n" "$SQL_PASSWORD" | vks_sqlcmd
 fi
-unset P
+unset SQL_PASSWORD
 ```
 
 </details>
@@ -903,7 +903,7 @@ CHART_VERSION="1.18.0"
 OCTOPUS_TAG="2026.3.16049@sha256:63a4d70d3011e546e7950671c2cee16a4737a8617748d931719c3fa114ce559d"
 PROXY_IMAGE="docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03"
 
-kc() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus "$@"; }
+vks_kubectl() { kubectl --kubeconfig "$VKS_KUBECONFIG" -n octopus "$@"; }
 mkdir -p "$OCTOPUS_DIR"
 cat > "$OCTOPUS_DIR/values.yaml" <<EOF
 octopus:
@@ -970,18 +970,18 @@ octopus:
 hooks:
   enableSelectorLabelsFix: false
 EOF
-h() { helm upgrade --install octopus oci://ghcr.io/octopusdeploy/octopusdeploy-helm --version "$CHART_VERSION" \
+vks_helm() { helm upgrade --install octopus oci://ghcr.io/octopusdeploy/octopusdeploy-helm --version "$CHART_VERSION" \
         --kubeconfig "$VKS_KUBECONFIG" -n octopus -f "$OCTOPUS_DIR/values.yaml" "$@" >/dev/null; }
 R=""
-if [ -s "$OCTOPUS_DIR/values-ca.yaml" ]; then h -f "$OCTOPUS_DIR/values-ca.yaml"; else h; fi
-if [ $? -eq 0 ] && kc rollout status statefulset/octopus-octopus-deploy --timeout=15m; then R=true; fi
+if [ -s "$OCTOPUS_DIR/values-ca.yaml" ]; then vks_helm -f "$OCTOPUS_DIR/values-ca.yaml"; else vks_helm; fi
+if [ $? -eq 0 ] && vks_kubectl rollout status statefulset/octopus-octopus-deploy --timeout=15m; then R=true; fi
 if [ "$R" != true ]; then
   echo "FAILED: Octopus is not ready (see kubectl --kubeconfig '$VKS_KUBECONFIG' -n octopus describe pod octopus-octopus-deploy-0)"
-elif ! M="$(helm get manifest octopus --kubeconfig "$VKS_KUBECONFIG" -n octopus)"; then
+elif ! MANIFEST="$(helm get manifest octopus --kubeconfig "$VKS_KUBECONFIG" -n octopus)"; then
   echo "FAILED: cannot read the Helm release (see the error above)"
 else
-  echo "Octopus is ready; Secrets in the Helm release: $(printf '%s\n' "$M" | grep -c '^kind: Secret') of $(printf '%s\n' "$M" | grep -c '^kind: ') objects"
-  C="$(cat <<'EOF' | kc apply -f -
+  echo "Octopus is ready; Secrets in the Helm release: $(printf '%s\n' "$MANIFEST" | grep -c '^kind: Secret') of $(printf '%s\n' "$MANIFEST" | grep -c '^kind: ') objects"
+  C="$(cat <<'EOF' | vks_kubectl apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -1015,7 +1015,7 @@ data:
 EOF
 )"
   echo "$C"
-  cat <<EOF | kc apply -f -
+  cat <<EOF | vks_kubectl apply -f -
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1070,8 +1070,8 @@ spec:
           secret:
             secretName: octopus-tls
 EOF
-  case "$C" in *configured*) kc rollout restart deployment/octopus-proxy ;; esac
-  kc rollout status deployment/octopus-proxy --timeout=5m
+  case "$C" in *configured*) vks_kubectl rollout restart deployment/octopus-proxy ;; esac
+  vks_kubectl rollout status deployment/octopus-proxy --timeout=5m
 fi
 ```
 
