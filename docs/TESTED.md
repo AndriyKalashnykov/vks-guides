@@ -22,7 +22,7 @@ Group page: [Getting started](GET-STARTED.md).
 | [Prerequisites](PREREQS.md) | ✅ | ✅ | ✅ | ✅ | part | ✅ |
 | [Install kubectl](KUBECTL.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install the VCF CLI](VCF.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | ✅ | ✅ | ✅ | ✅ | part | part |
+| [Log in to the Supervisor and a VKS cluster](SUPERVISOR-LOGIN.md) | ✅ | ✅ | ✅ | ✅ | ✅ | part |
 | [Log in to a VKS cluster you were given access to](USER-LOGIN.md) | ✅ | ✅ | ✅ | ✅ | part | part |
 | [Use your vSphere Namespace in the web page](USER-LCI.md) | part | — | — | — | — | n/a |
 | [Use a kubeconfig file you were given](USER-KUBECONFIG.md) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
